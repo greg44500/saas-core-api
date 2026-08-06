@@ -5,10 +5,12 @@ import helmet from 'helmet';
 import { helmetOptions } from './config/helmet.config.js';
 import cors from 'cors';
 import { corsOptions } from './config/cors.config.js';
+import { apiRateLimiter } from './config/rateLimit.config.js';
 import { healthRouter } from './routes/health.routes.js';
 const app = express();
-app.use(helmet(helmetOptions)) 
+app.use(helmet(helmetOptions))
 app.use(cors(corsOptions));// Placer avant les parsers et les routes pour que ce soit traité avec Cors
+app.use('/api', apiRateLimiter);
 app.use(express.json());
 
 /*
