@@ -1,4 +1,6 @@
 import express from 'express';
+import { env } from './config/env.js';
+import { requestContext } from './middlewares/requestContext.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import helmet from 'helmet';
@@ -6,10 +8,19 @@ import { helmetOptions } from './config/helmet.config.js';
 import cors from 'cors';
 import { corsOptions } from './config/cors.config.js';
 import { apiRateLimiter } from './config/rateLimit.config.js';
+import compression from 'compression';
+import morgan from 'morgan';
+
 import { healthRouter } from './routes/health.routes.js';
 const app = express();
 app.use(helmet(helmetOptions))
 app.use(cors(corsOptions));// Placer avant les parsers et les routes pour que ce soit traité avec Cors
+app.use(compression());
+app.use(requestContext)
+if (env.NODE_ENV === 'development') {
+    app.use(morgan('dev'));
+}
+
 app.use('/api', apiRateLimiter);
 app.use(express.json());
 
@@ -22,6 +33,7 @@ app.use(express.json());
 app.use('/api/health', healthRouter);// Route pour vérifier l'état de santé de l'API
 app.use(notFound);// Middleware pour gérer les routes non trouvées (404)
 app.use(errorHandler);// Middleware pour gérer les erreurs
+
 // Réduit les informations techniques exposées par l'API
 // Ce réglage ne remplace pas les autres protections HTTP.
 app.disable('x-powered-by');

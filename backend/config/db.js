@@ -1,5 +1,9 @@
 import mongoose from 'mongoose';
 
+// Protège globalement les filtres Mongoose contre certaines injections
+// d'opérateurs MongoDB provenant de données non fiables.
+mongoose.set('sanitizeFilter', true);
+
 // Ouvre la connexion MongoDB en utilisant l'URI de connexion depuis les variables d'environnement
 const connectDB = async (mongoURI) => {
     try {
