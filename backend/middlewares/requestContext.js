@@ -10,4 +10,4 @@ const requestContext = (req, res, next) => {
     next()
 };
 
-export { requestContext }
+export { requestContext };
