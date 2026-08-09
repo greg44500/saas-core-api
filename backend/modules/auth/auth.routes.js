@@ -1,8 +1,9 @@
 import { Router } from 'express';
 
 import { validateRequest } from '../../middlewares/validateRequest.js';
-import { login, register } from './auth.controller.js';
+import { login, register, me } from './auth.controller.js';
 import { loginSchema, registerSchema } from './auth.validation.js';
+import { authenticate } from '../../middlewares/authenticate.js';
 
 const router = Router();
 
@@ -24,6 +25,12 @@ router.post(
     '/login',
     validateRequest({ body: loginSchema }),
     login,
+);
+
+router.get(
+    '/me',
+    authenticate,
+    me,
 );
 
 export { router as authRouter };

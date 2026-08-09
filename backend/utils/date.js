@@ -1,0 +1,15 @@
+/**
+ * Ajoute un nombre entier de jours à une date.
+ *
+ * La fonction retourne une nouvelle Date et ne modifie jamais
+ * l'objet Date fourni en argument.
+ *
+ * @param {Date} date Date de départ.
+ * @param {number} days Nombre de jours à ajouter.
+ * @returns {Date} Nouvelle date calculée.
+ */
+export const addDays = (date, days) => {
+  return new Date(
+    date.getTime() + days * 24 * 60 * 60 * 1000
+  );
+};

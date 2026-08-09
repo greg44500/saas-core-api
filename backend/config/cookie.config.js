@@ -1,13 +1,29 @@
-import { env } from "./env.js";
+import { env } from './env.js';
 
-const SEVEN_DAYS_IN_MS = 7 * 24 * 60 * 60 * 1000;
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+
 const refreshCookieName = 'refreshToken';
+
 const refreshCookieOptions = Object.freeze({
     httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/api/auth',
-    maxAge: SEVEN_DAYS_IN_MS,
-})
 
-export { refreshCookieName, refreshCookieOptions }
+    // Le cookie ne doit être transmis qu'en HTTPS en production.
+    secure: env.NODE_ENV === 'production',
+
+    // Adapté à notre architecture web actuelle.
+    // À réévaluer si frontend et API sont réellement cross-site.
+    sameSite: 'lax',
+
+    // Le cookie doit être accessible à refresh ET logout.
+    path: '/api/auth',
+
+    // Même durée que l'AuthSession associée.
+    maxAge:
+        env.REFRESH_TOKEN_EXPIRES_IN_DAYS *
+        MILLISECONDS_PER_DAY,
+});
+
+export {
+    refreshCookieName,
+    refreshCookieOptions,
+};
