@@ -1,4 +1,6 @@
-import { registerUser } from './auth.service.js';
+import {
+    registerUser, loginUser,
+} from './auth.service.js';
 
 /**
  * Inscrit un nouvel utilisateur avec une identité locale.
@@ -11,6 +13,29 @@ export const register = async (req, res) => {
     const user = await registerUser(req.validated.body);
 
     res.status(201).json({
+        status: 'success',
+        data: {
+            user: {
+                id: user._id.toString(),
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                emailVerifiedAt: user.emailVerifiedAt,
+            },
+        },
+    });
+};
+
+/**
+ * Authentifie un utilisateur avec son identité locale.
+ *
+ * Le controller ne vérifie ni l'email ni le mot de passe lui-même :
+ * cette responsabilité appartient au service d'authentification.
+ */
+export const login = async (req, res) => {
+    const user = await loginUser(req.validated.body);
+
+    res.status(200).json({
         status: 'success',
         data: {
             user: {

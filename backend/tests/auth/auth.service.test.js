@@ -3,25 +3,28 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AUTH_PROVIDER } from '../../constants/authProvider.constants.js';
 import { AuthIdentity } from '../../modules/authIdentities/authIdentity.model.js';
-import { registerUser } from '../../modules/auth/auth.service.js';
+import { registerUser, loginUser, } from '../../modules/auth/auth.service.js';
 import { User } from '../../modules/users/user.model.js';
-import { hashPassword } from '../../utils/password.js';
+import { hashPassword, verifyPassword } from '../../utils/password.js';
 
 vi.mock('../../modules/users/user.model.js', () => ({
     User: {
         exists: vi.fn(),
         create: vi.fn(),
+        findOne: vi.fn(),
     },
 }));
 
 vi.mock('../../modules/authIdentities/authIdentity.model.js', () => ({
     AuthIdentity: {
         create: vi.fn(),
+        findOne: vi.fn(),
     },
 }));
 
 vi.mock('../../utils/password.js', () => ({
     hashPassword: vi.fn(),
+    verifyPassword: vi.fn(),
 }));
 
 describe('registerUser', () => {
@@ -101,5 +104,110 @@ describe('registerUser', () => {
         expect(hashPassword).not.toHaveBeenCalled();
         expect(User.create).not.toHaveBeenCalled();
         expect(AuthIdentity.create).not.toHaveBeenCalled();
+    });
+
+    describe('loginUser', () => {
+        it('authentifie un utilisateur avec des credentials valides', async () => {
+            const user = {
+                _id: 'user-id',
+                status: 'active',
+                lastLoginAt: null,
+                save: vi.fn().mockResolvedValue(undefined),
+            };
+
+            const authIdentity = {
+                passwordHash: 'stored-password-hash',
+            };
+
+            User.findOne = vi.fn().mockResolvedValue(user);
+
+            const select = vi.fn().mockResolvedValue(authIdentity);
+
+            AuthIdentity.findOne = vi.fn(() => ({
+                select,
+            }));
+
+            verifyPassword.mockResolvedValue(true);
+
+            const result = await loginUser({
+                email: 'Greg@Example.com',
+                password: 'une phrase de passe suffisamment longue',
+            });
+
+            expect(User.findOne).toHaveBeenCalledWith({
+                emailCanonical: 'greg@example.com',
+            });
+
+            expect(AuthIdentity.findOne).toHaveBeenCalledWith({
+                user: 'user-id',
+                provider: AUTH_PROVIDER.LOCAL,
+            });
+
+            expect(select).toHaveBeenCalledWith('+passwordHash');
+
+            expect(verifyPassword).toHaveBeenCalledWith(
+                'une phrase de passe suffisamment longue',
+                'stored-password-hash',
+            );
+
+            expect(user.lastLoginAt).toBeInstanceOf(Date);
+            expect(user.save).toHaveBeenCalled();
+
+            expect(result).toBe(user);
+        });
+
+        it('refuse des credentials invalides', async () => {
+            const user = {
+                _id: 'user-id',
+                status: 'active',
+            };
+
+            User.findOne = vi.fn().mockResolvedValue(user);
+
+            AuthIdentity.findOne = vi.fn(() => ({
+                select: vi.fn().mockResolvedValue({
+                    passwordHash: 'stored-password-hash',
+                }),
+            }));
+
+            verifyPassword.mockResolvedValue(false);
+
+            await expect(
+                loginUser({
+                    email: 'greg@example.com',
+                    password: 'mauvais mot de passe suffisamment long',
+                }),
+            ).rejects.toMatchObject({
+                statusCode: 401,
+                message: 'Identifiants invalides',
+            });
+        });
+
+        it('refuse la connexion d’un compte désactivé', async () => {
+            const user = {
+                _id: 'user-id',
+                status: 'disabled',
+            };
+
+            User.findOne = vi.fn().mockResolvedValue(user);
+
+            AuthIdentity.findOne = vi.fn(() => ({
+                select: vi.fn().mockResolvedValue({
+                    passwordHash: 'stored-password-hash',
+                }),
+            }));
+
+            verifyPassword.mockResolvedValue(true);
+
+            await expect(
+                loginUser({
+                    email: 'greg@example.com',
+                    password: 'une phrase de passe suffisamment longue',
+                }),
+            ).rejects.toMatchObject({
+                statusCode: 403,
+                message: 'Compte désactivé',
+            });
+        });
     });
 });

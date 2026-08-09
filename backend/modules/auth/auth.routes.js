@@ -1,8 +1,8 @@
 import { Router } from 'express';
 
 import { validateRequest } from '../../middlewares/validateRequest.js';
-import { register } from './auth.controller.js';
-import { registerSchema } from './auth.validation.js';
+import { login, register } from './auth.controller.js';
+import { loginSchema, registerSchema } from './auth.validation.js';
 
 const router = Router();
 
@@ -16,6 +16,14 @@ router.post(
     '/register',
     validateRequest({ body: registerSchema }),
     register,
+);
+/**
+ * Authentification locale.
+ */
+router.post(
+    '/login',
+    validateRequest({ body: loginSchema }),
+    login,
 );
 
 export { router as authRouter };

@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { register } from '../../modules/auth/auth.controller.js';
-import { registerUser } from '../../modules/auth/auth.service.js';
+import { login, register } from '../../modules/auth/auth.controller.js';
+import { loginUser, registerUser } from '../../modules/auth/auth.service.js';
 
 vi.mock('../../modules/auth/auth.service.js', () => ({
+    loginUser: vi.fn(),
     registerUser: vi.fn(),
 }));
 
@@ -61,4 +62,55 @@ describe('auth.controller', () => {
             },
         });
     });
+    it('renvoie le User authentifié sans exposer ses champs internes', async () => {
+  loginUser.mockResolvedValue({
+    _id: {
+      toString: () => 'user-id',
+    },
+    firstName: 'Greg',
+    lastName: 'Ballat',
+    email: 'greg@example.com',
+    emailCanonical: 'greg@example.com',
+    platformRole: 'user',
+    emailVerifiedAt: null,
+  });
+
+  const req = {
+    validated: {
+      body: {
+        email: 'greg@example.com',
+        password: 'une phrase de passe suffisamment longue',
+      },
+    },
+  };
+
+  const json = vi.fn();
+
+  const res = {
+    status: vi.fn(() => ({
+      json,
+    })),
+  };
+
+  await login(req, res);
+
+  expect(loginUser).toHaveBeenCalledWith(
+    req.validated.body,
+  );
+
+  expect(res.status).toHaveBeenCalledWith(200);
+
+  expect(json).toHaveBeenCalledWith({
+    status: 'success',
+    data: {
+      user: {
+        id: 'user-id',
+        firstName: 'Greg',
+        lastName: 'Ballat',
+        email: 'greg@example.com',
+        emailVerifiedAt: null,
+      },
+    },
+  });
+});
 });

@@ -3,12 +3,14 @@ import mongoose from 'mongoose';
 import { AUTH_PROVIDER } from '../../constants/authProvider.constants.js';
 import { AppError } from '../../utils/AppError.js';
 import { canonicalizeEmail } from '../../utils/canonicalizeEmail.js';
-import { hashPassword } from '../../utils/password.js';
+import { hashPassword, verifyPassword } from '../../utils/password.js';
 import { AuthIdentity } from '../authIdentities/authIdentity.model.js';
 import { User } from '../users/user.model.js';
 
 const EMAIL_ALREADY_USED_MESSAGE =
     'Un compte existe déjà avec cette adresse email';
+
+const INVALID_CREDENTIALS_MESSAGE = 'Identifiants invalides';
 
 /**
  * Crée un compte utilisateur utilisant l'authentification locale.
@@ -89,4 +91,65 @@ const registerUser = async ({
     return createdUser;
 };
 
-export { registerUser };
+/**
+ * Authentifie un utilisateur avec son identité locale.
+ *
+ * Le même message d'erreur est utilisé lorsque l'email, l'identité
+ * locale ou le mot de passe est incorrect afin de ne pas révéler
+ * inutilement l'existence d'un compte.
+ *
+ * @param {object} input Données préalablement validées par loginSchema.
+ * @param {string} input.email
+ * @param {string} input.password
+ * @returns {Promise<import('mongoose').Document>} User authentifié.
+ */
+const loginUser = async ({ email, password }) => {
+    const emailCanonical = canonicalizeEmail(email);
+
+    const user = await User.findOne({ emailCanonical });
+
+    if (!user) {
+        throw new AppError(INVALID_CREDENTIALS_MESSAGE, 401);
+    }
+
+    // passwordHash est select:false dans le modèle.
+    // Le login est l'un des rares endroits autorisés à le récupérer.
+    const authIdentity = await AuthIdentity.findOne({
+        user: user._id,
+        provider: AUTH_PROVIDER.LOCAL,
+    }).select('+passwordHash');
+
+    if (!authIdentity) {
+        throw new AppError(INVALID_CREDENTIALS_MESSAGE, 401);
+    }
+
+    const passwordIsValid = await verifyPassword(
+        password,
+        authIdentity.passwordHash,
+    );
+
+    if (!passwordIsValid) {
+        throw new AppError(INVALID_CREDENTIALS_MESSAGE, 401);
+    }
+
+    // On contrôle l'état du compte seulement après avoir validé
+    // les credentials afin de ne pas exposer son existence.
+    if (user.status === 'disabled') {
+        throw new AppError('Compte désactivé', 403);
+    }
+
+    if (user.status === 'closed') {
+        throw new AppError('Compte clôturé', 403);
+    }
+
+    user.lastLoginAt = new Date();
+
+    await user.save();
+
+    return user;
+};
+
+export {
+    registerUser,
+    loginUser
+};
