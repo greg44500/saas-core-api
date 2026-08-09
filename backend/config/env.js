@@ -21,6 +21,23 @@ const envSchema = z.object({
             (value) => /^mongodb(?:\+srv)?:\/\/.+/.test(value),
             'MONGODB_URI doit commencer par mongodb:// ou mongodb+srv://',
         ),
+    JWT_ACCESS_SECRET: z
+        .string()
+        .min(32, 'JWT_ACCESS_SECRET doit contenir au minimum 32 caractères'),
+
+    JWT_ACCESS_EXPIRES_IN: z
+        .string()
+        .default('15m'),
+
+    JWT_ACCESS_ISSUER: z
+        .string()
+        .min(1)
+        .default('saas-core-api'),
+
+    JWT_ACCESS_AUDIENCE: z
+        .string()
+        .min(1)
+        .default('saas-core-api'),
 
 });
 // Valider les variables d'environnement et les transformer en types appropriés
