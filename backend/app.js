@@ -11,6 +11,8 @@ import { apiRateLimiter } from './config/rateLimit.config.js';
 import compression from 'compression';
 import morgan from 'morgan';
 
+import { authRouter } from './modules/auth/auth.routes.js';
+
 import { healthRouter } from './routes/health.routes.js';
 const app = express();
 app.use(helmet(helmetOptions))
@@ -30,6 +32,9 @@ app.use(express.json());
  * Exemple futur :
  * app.use("/api/auth", authRoutes);
  */
+app.use('/api/auth', authRouter);
+
+
 app.use('/api/health', healthRouter);// Route pour vérifier l'état de santé de l'API
 app.use(notFound);// Middleware pour gérer les routes non trouvées (404)
 app.use(errorHandler);// Middleware pour gérer les erreurs
