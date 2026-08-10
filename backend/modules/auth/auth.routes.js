@@ -5,6 +5,7 @@ import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
     login,
     logout,
+    logoutAll,
     me,
     refresh,
     register,
@@ -65,6 +66,20 @@ router.post(
 router.post(
     '/logout',
     logout)
+
+/**
+* Déconnecte l'utilisateur de toutes ses sessions actives.
+*
+* Cette route nécessite un access token valide afin d'identifier
+* de manière fiable l'utilisateur concerné.
+*
+* Le controller révoque ensuite toutes ses AuthSession encore
+* actives et supprime le refresh token du navigateur courant.
+*/
+router.post(
+    '/logout-all',
+    authenticate,
+    logoutAll)
 
 /**
  * Retourne l'utilisateur actuellement authentifié.

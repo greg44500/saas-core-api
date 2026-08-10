@@ -8,6 +8,7 @@ import {
 import {
   login,
   logout,
+  logoutAll,
   me,
   refresh,
   register,
@@ -18,7 +19,11 @@ import {
   registerUser,
 } from '../../modules/auth/auth.service.js';
 
-import { revokeCurrentAuthSession, rotateAuthSession } from '../../modules/authSessions/authSession.service.js';
+import {
+  revokeAllUserAuthSessions,
+  revokeCurrentAuthSession,
+  rotateAuthSession,
+} from '../../modules/authSessions/authSession.service.js';
 
 import { signAccessToken } from '../../utils/jwt.js';
 
@@ -29,6 +34,7 @@ vi.mock('../../modules/auth/auth.service.js', () => ({
 }));
 
 vi.mock('../../modules/authSessions/authSession.service.js', () => ({
+  revokeAllUserAuthSessions: vi.fn(),
   revokeCurrentAuthSession: vi.fn(),
   rotateAuthSession: vi.fn(),
 }));
@@ -275,6 +281,7 @@ describe('auth.controller', () => {
     ).toBeUndefined();
   });
 
+
   it('révoque la session courante et supprime le cookie refresh', async () => {
     revokeCurrentAuthSession.mockResolvedValue({
       _id: 'session-id',
@@ -302,6 +309,47 @@ describe('auth.controller', () => {
       revokeCurrentAuthSession,
     ).toHaveBeenCalledWith({
       refreshToken: 'refresh-token-current',
+    });
+
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      refreshCookieName,
+      refreshCookieOptions,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(204);
+
+    expect(send).toHaveBeenCalledWith();
+  });
+
+
+  it('révoque toutes les sessions de l’utilisateur et supprime le cookie refresh', async () => {
+    revokeAllUserAuthSessions.mockResolvedValue({
+      acknowledged: true,
+      matchedCount: 3,
+      modifiedCount: 3,
+    });
+
+    const req = {
+      user: {
+        id: 'user-id',
+      },
+    };
+
+    const send = vi.fn();
+
+    const res = {
+      clearCookie: vi.fn(),
+      status: vi.fn(() => ({
+        send,
+      })),
+    };
+
+    await logoutAll(req, res);
+
+    expect(
+      revokeAllUserAuthSessions,
+    ).toHaveBeenCalledWith({
+      userId: 'user-id',
     });
 
     expect(res.clearCookie).toHaveBeenCalledWith(

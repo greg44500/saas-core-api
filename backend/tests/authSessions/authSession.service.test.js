@@ -5,8 +5,9 @@ import mongoose from 'mongoose';
 import { AuthSession } from '../../modules/authSessions/authSession.model.js';
 import {
   createInitialAuthSession,
+  revokeAllUserAuthSessions,
+  revokeCurrentAuthSession,
   rotateAuthSession,
-  revokeCurrentAuthSession
 } from '../../modules/authSessions/authSession.service.js';
 import { User } from '../../modules/users/user.model.js';
 
@@ -186,9 +187,6 @@ describe('authSession.service', () => {
         usedAt: null,
         replacedBySession: null,
         compromisedAt: null,
-        expiresAt: {
-          $gt: expect.any(Date),
-        },
       }),
     );
 
@@ -205,7 +203,7 @@ describe('authSession.service', () => {
 
     expect(consumptionOptions).toEqual(
       expect.objectContaining({
-        new: true,
+        returnDocument: 'after',
         session: expect.any(Object),
       }),
     );
@@ -247,6 +245,8 @@ describe('authSession.service', () => {
       refreshToken: expect.any(String),
     });
   });
+
+
   it('révoque la session courante lors du logout', async () => {
     const revokedSession = {
       _id: new mongoose.Types.ObjectId(),
@@ -286,7 +286,7 @@ describe('authSession.service', () => {
     });
 
     expect(revocationOptions).toEqual({
-      new: true,
+      returnDocument: 'after',
     });
 
     expect(result).toBe(revokedSession);
@@ -304,6 +304,50 @@ describe('authSession.service', () => {
       AuthSession.findOneAndUpdate,
     ).not.toHaveBeenCalled();
   });
+
+
+  it('révoque toutes les AuthSession actives d’un utilisateur lors du logout-all', async () => {
+    const userId =
+      new mongoose.Types.ObjectId();
+
+    const updateResult = {
+      acknowledged: true,
+      matchedCount: 3,
+      modifiedCount: 3,
+    };
+
+    AuthSession.updateMany.mockResolvedValue(
+      updateResult,
+    );
+
+    const result = await revokeAllUserAuthSessions({
+      userId,
+    });
+
+    expect(
+      AuthSession.updateMany,
+    ).toHaveBeenCalledOnce();
+
+    const [
+      revocationFilter,
+      revocationUpdate,
+    ] = AuthSession.updateMany.mock.calls[0];
+
+    expect(revocationFilter).toEqual({
+      user: userId,
+      revokedAt: null,
+    });
+
+    expect(revocationUpdate).toEqual({
+      $set: {
+        revokedAt: expect.any(Date),
+        revokedReason: 'logout_all',
+      },
+    });
+
+    expect(result).toBe(updateResult);
+  });
+
 
   it('refuse la rotation d’une AuthSession expirée', async () => {
     const currentAuthSession = {

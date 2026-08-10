@@ -112,7 +112,7 @@ const revokeCurrentAuthSession = async ({
                 },
             },
             {
-                new: true,
+                returnDocument: 'after',
             },
         );
 
@@ -447,9 +447,9 @@ const rotateAuthSession = async ({
                         usedAt: null,
                         replacedBySession: null,
                         compromisedAt: null,
-                        expiresAt: {
+                        expiresAt: mongoose.trusted({
                             $gt: now,
-                        },
+                        }),
                     },
                     {
                         $set: {
@@ -462,7 +462,7 @@ const rotateAuthSession = async ({
                         },
                     },
                     {
-                        new: true,
+                        returnDocument: 'after',
                         session,
                     },
                 );
@@ -517,9 +517,41 @@ const rotateAuthSession = async ({
     };
 };
 
+/**
+ * Révoque toutes les AuthSession encore actives d'un utilisateur.
+ *
+ * Cette opération est utilisée pour un logout global :
+ * toutes les connexions actives du compte deviennent inutilisables.
+ *
+ * Les sessions déjà révoquées ne sont pas modifiées afin de
+ * conserver leur raison historique de révocation.
+ *
+ * @param {object} input
+ * @param {import('mongoose').Types.ObjectId|string} input.userId
+ * @returns {Promise<object>}
+ */
+
+const revokeAllUserAuthSessions = async ({ userId, }) => {
+    const now = new Date();
+    const result = await AuthSession.updateMany(
+        {
+            user: userId,
+            revokedAt: null,
+        },
+        {
+            $set: {
+                revokedAt: now,
+                revokedReason: AUTH_SESSION_REVOKED_REASON.LOGOUT_ALL,
+            },
+        },
+    );
+    return result;
+}
+
 
 export {
     createInitialAuthSession,
     rotateAuthSession,
     revokeCurrentAuthSession,
+    revokeAllUserAuthSessions
 };

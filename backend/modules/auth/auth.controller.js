@@ -3,7 +3,7 @@ import {
     refreshCookieOptions,
 } from '../../config/cookie.config.js';
 
-import { revokeCurrentAuthSession, rotateAuthSession } from '../authSessions/authSession.service.js';
+import { revokeCurrentAuthSession, rotateAuthSession, revokeAllUserAuthSessions, } from '../authSessions/authSession.service.js';
 
 import {
     loginUser,
@@ -181,6 +181,17 @@ export const logout = async (req, res) => {
 
     res.status(204).send();
 };
+
+export const logoutAll = async (req, res) => {
+    await revokeAllUserAuthSessions({
+        userId: req.user.id,
+    });
+    res.clearCookie(
+        refreshCookieName,
+        refreshCookieOptions,
+    );
+    res.status(204).send()
+}
 
 /**
  * Retourne le profil public du User actuellement authentifié.
