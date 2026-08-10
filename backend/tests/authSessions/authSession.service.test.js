@@ -1,18 +1,67 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import mongoose from 'mongoose';
+
 import { AuthSession } from '../../modules/authSessions/authSession.model.js';
-import { createInitialAuthSession } from '../../modules/authSessions/authSession.service.js';
+import {
+  createInitialAuthSession,
+  rotateAuthSession,
+  revokeCurrentAuthSession
+} from '../../modules/authSessions/authSession.service.js';
+import { User } from '../../modules/users/user.model.js';
+
+
+vi.mock('mongoose', async () => {
+  const actual = await vi.importActual('mongoose');
+
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      Types: actual.default.Types,
+      connection: {
+        transaction: vi.fn(),
+      },
+    },
+  };
+});
+
 
 vi.mock('../../modules/authSessions/authSession.model.js', () => ({
   AuthSession: {
     create: vi.fn(),
+    findOne: vi.fn(),
+    findOneAndUpdate: vi.fn(),
+    updateMany: vi.fn(),
   },
 }));
+
+
+vi.mock('../../modules/users/user.model.js', () => ({
+  User: {
+    findById: vi.fn(),
+  },
+}));
+
 
 describe('authSession.service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    /*
+     * Le test unitaire ne reteste pas MongoDB.
+     * On simule simplement l'exécution du callback transactionnel.
+     */
+    mongoose.connection.transaction.mockImplementation(
+      async (callback) => callback({ id: 'mongo-session' }),
+    );
+
+    AuthSession.updateMany.mockResolvedValue({
+      acknowledged: true,
+      modifiedCount: 1,
+    });
   });
+
 
   it('crée une nouvelle famille de session et retourne le refresh token brut', async () => {
     const userId = 'user-id';
@@ -41,14 +90,341 @@ describe('authSession.service', () => {
         refreshTokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
         familyId: expect.any(String),
         expiresAt: expect.any(Date),
-      })
+      }),
     );
 
-    expect(sessionData.refreshTokenHash).not.toBe(result.refreshToken);
+    expect(sessionData.refreshTokenHash).not.toBe(
+      result.refreshToken,
+    );
 
     expect(result).toEqual({
       authSession: createdSession,
       refreshToken: expect.any(String),
     });
+  });
+
+
+  it('fait tourner une AuthSession active dans la même famille', async () => {
+    const currentSessionId =
+      new mongoose.Types.ObjectId();
+
+    const userId =
+      new mongoose.Types.ObjectId();
+
+    const currentAuthSession = {
+      _id: currentSessionId,
+      user: userId,
+      familyId: 'family-id',
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+      revokedReason: null,
+      usedAt: null,
+      replacedBySession: null,
+      compromisedAt: null,
+    };
+
+    const user = {
+      _id: userId,
+      status: 'active',
+    };
+
+    const consumedAuthSession = {
+      ...currentAuthSession,
+      usedAt: new Date(),
+      revokedAt: new Date(),
+      revokedReason: 'token_rotated',
+    };
+
+    const createdNextSession = {
+      _id: new mongoose.Types.ObjectId(),
+      user: userId,
+      familyId: 'family-id',
+    };
+
+    /*
+     * Ces lectures sont désormais directement awaitées
+     * par le service : plus de faux .session().
+     */
+    AuthSession.findOne.mockResolvedValue(
+      currentAuthSession,
+    );
+
+    User.findById.mockResolvedValue(user);
+
+    AuthSession.findOneAndUpdate.mockResolvedValue(
+      consumedAuthSession,
+    );
+
+    AuthSession.create.mockResolvedValue([
+      createdNextSession,
+    ]);
+
+    const result = await rotateAuthSession({
+      refreshToken: 'refresh-token-r1',
+      ipAddress: '192.168.1.20',
+      userAgent: 'Mozilla/5.0 New Browser',
+    });
+
+    expect(AuthSession.findOne).toHaveBeenCalledOnce();
+
+    expect(User.findById).toHaveBeenCalledWith(userId);
+
+    expect(
+      AuthSession.findOneAndUpdate,
+    ).toHaveBeenCalledOnce();
+
+    const [
+      consumptionFilter,
+      consumptionUpdate,
+      consumptionOptions,
+    ] = AuthSession.findOneAndUpdate.mock.calls[0];
+
+    expect(consumptionFilter).toEqual(
+      expect.objectContaining({
+        _id: currentSessionId,
+        revokedAt: null,
+        usedAt: null,
+        replacedBySession: null,
+        compromisedAt: null,
+        expiresAt: {
+          $gt: expect.any(Date),
+        },
+      }),
+    );
+
+    expect(consumptionUpdate).toEqual({
+      $set: expect.objectContaining({
+        usedAt: expect.any(Date),
+        revokedAt: expect.any(Date),
+        revokedReason: 'token_rotated',
+        replacedBySession: expect.any(
+          mongoose.Types.ObjectId,
+        ),
+      }),
+    });
+
+    expect(consumptionOptions).toEqual(
+      expect.objectContaining({
+        new: true,
+        session: expect.any(Object),
+      }),
+    );
+
+    expect(AuthSession.create).toHaveBeenCalledOnce();
+
+    const [createdDocuments, createOptions] =
+      AuthSession.create.mock.calls[0];
+
+    expect(createdDocuments).toHaveLength(1);
+
+    expect(createdDocuments[0]).toEqual(
+      expect.objectContaining({
+        user: userId,
+        familyId: 'family-id',
+        refreshTokenHash:
+          expect.stringMatching(/^[a-f0-9]{64}$/),
+        expiresAt: expect.any(Date),
+        ipAddress: '192.168.1.20',
+        userAgent: 'Mozilla/5.0 New Browser',
+      }),
+    );
+
+    expect(createOptions).toEqual({
+      session: expect.any(Object),
+    });
+
+    /*
+     * Une rotation normale ne doit pas compromettre
+     * la famille.
+     */
+    expect(
+      AuthSession.updateMany,
+    ).not.toHaveBeenCalled();
+
+    expect(result).toEqual({
+      user,
+      authSession: createdNextSession,
+      refreshToken: expect.any(String),
+    });
+  });
+  it('révoque la session courante lors du logout', async () => {
+    const revokedSession = {
+      _id: new mongoose.Types.ObjectId(),
+      revokedAt: new Date(),
+      revokedReason: 'logout',
+    };
+
+    AuthSession.findOneAndUpdate.mockResolvedValue(
+      revokedSession,
+    );
+
+    const result = await revokeCurrentAuthSession({
+      refreshToken: 'current-refresh-token',
+    });
+
+    expect(
+      AuthSession.findOneAndUpdate,
+    ).toHaveBeenCalledOnce();
+
+    const [
+      revocationFilter,
+      revocationUpdate,
+      revocationOptions,
+    ] = AuthSession.findOneAndUpdate.mock.calls[0];
+
+    expect(revocationFilter).toEqual({
+      refreshTokenHash:
+        expect.stringMatching(/^[a-f0-9]{64}$/),
+      revokedAt: null,
+    });
+
+    expect(revocationUpdate).toEqual({
+      $set: {
+        revokedAt: expect.any(Date),
+        revokedReason: 'logout',
+      },
+    });
+
+    expect(revocationOptions).toEqual({
+      new: true,
+    });
+
+    expect(result).toBe(revokedSession);
+  });
+
+
+  it('ignore un logout sans refresh token', async () => {
+    const result = await revokeCurrentAuthSession({
+      refreshToken: undefined,
+    });
+
+    expect(result).toBeNull();
+
+    expect(
+      AuthSession.findOneAndUpdate,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('refuse la rotation d’une AuthSession expirée', async () => {
+    const currentAuthSession = {
+      _id: new mongoose.Types.ObjectId(),
+      user: new mongoose.Types.ObjectId(),
+      familyId: 'family-id',
+      expiresAt: new Date(Date.now() - 60_000),
+      revokedAt: null,
+      revokedReason: null,
+      usedAt: null,
+      replacedBySession: null,
+      compromisedAt: null,
+    };
+
+    AuthSession.findOne.mockResolvedValue(
+      currentAuthSession,
+    );
+
+    await expect(
+      rotateAuthSession({
+        refreshToken: 'expired-refresh-token',
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 401,
+    });
+
+    expect(User.findById).not.toHaveBeenCalled();
+
+    expect(
+      AuthSession.findOneAndUpdate,
+    ).not.toHaveBeenCalled();
+
+    expect(AuthSession.create).not.toHaveBeenCalled();
+
+    expect(
+      AuthSession.updateMany,
+    ).not.toHaveBeenCalled();
+  });
+
+
+  it('détecte la réutilisation d’un refresh token déjà roté et compromet sa famille', async () => {
+    const currentAuthSession = {
+      _id: new mongoose.Types.ObjectId(),
+      user: new mongoose.Types.ObjectId(),
+      familyId: 'family-id',
+      expiresAt: new Date(Date.now() + 60_000),
+
+      usedAt: new Date(),
+      revokedAt: new Date(),
+      revokedReason: 'token_rotated',
+      replacedBySession:
+        new mongoose.Types.ObjectId(),
+
+      compromisedAt: null,
+    };
+
+    AuthSession.findOne.mockResolvedValue(
+      currentAuthSession,
+    );
+
+    await expect(
+      rotateAuthSession({
+        refreshToken:
+          'already-used-refresh-token',
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 401,
+    });
+
+    /*
+     * Première écriture :
+     * toutes les générations deviennent compromises.
+     *
+     * Deuxième écriture :
+     * seules les sessions encore actives sont révoquées
+     * avec token_reuse_detected.
+     */
+    expect(AuthSession.updateMany).toHaveBeenCalledTimes(
+      2,
+    );
+
+    expect(
+      AuthSession.updateMany.mock.calls[0][0],
+    ).toEqual({
+      familyId: 'family-id',
+      compromisedAt: null,
+    });
+
+    expect(
+      AuthSession.updateMany.mock.calls[0][1],
+    ).toEqual({
+      $set: {
+        compromisedAt: expect.any(Date),
+      },
+    });
+
+    expect(
+      AuthSession.updateMany.mock.calls[1][0],
+    ).toEqual({
+      familyId: 'family-id',
+      revokedAt: null,
+    });
+
+    expect(
+      AuthSession.updateMany.mock.calls[1][1],
+    ).toEqual({
+      $set: {
+        revokedAt: expect.any(Date),
+        revokedReason: 'token_reuse_detected',
+      },
+    });
+
+    /*
+     * Le reuse ne doit jamais créer S2.
+     */
+    expect(User.findById).not.toHaveBeenCalled();
+
+    expect(
+      AuthSession.findOneAndUpdate,
+    ).not.toHaveBeenCalled();
+
+    expect(AuthSession.create).not.toHaveBeenCalled();
   });
 });

@@ -10,6 +10,7 @@ import { corsOptions } from './config/cors.config.js';
 import { apiRateLimiter } from './config/rateLimit.config.js';
 import compression from 'compression';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 
 import { authRouter } from './modules/auth/auth.routes.js';
 
@@ -17,6 +18,7 @@ import { healthRouter } from './routes/health.routes.js';
 const app = express();
 app.use(helmet(helmetOptions))
 app.use(cors(corsOptions));// Placer avant les parsers et les routes pour que ce soit traité avec Cors
+app.use(cookieParser())
 app.use(compression());
 app.use(requestContext)
 if (env.NODE_ENV === 'development') {

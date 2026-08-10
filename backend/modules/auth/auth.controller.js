@@ -1,14 +1,17 @@
 import {
-    registerUser,
-    loginUser,
-} from './auth.service.js';
-
-import {
     refreshCookieName,
     refreshCookieOptions,
 } from '../../config/cookie.config.js';
 
+import { revokeCurrentAuthSession, rotateAuthSession } from '../authSessions/authSession.service.js';
+
+import {
+    loginUser,
+    registerUser,
+} from './auth.service.js';
+
 import { signAccessToken } from '../../utils/jwt.js';
+
 
 /**
  * Inscrit un nouvel utilisateur avec une identité locale.
@@ -34,38 +37,36 @@ export const register = async (req, res) => {
     });
 };
 
+
 /**
  * Authentifie un utilisateur avec son identité locale.
  *
- * Le controller :
- * - transmet au service les credentials validés ;
- * - transmet le contexte HTTP utile à la session ;
- * - génère l'Access Token ;
- * - place le Refresh Token dans un cookie HttpOnly ;
- * - ne renvoie jamais le Refresh Token dans le JSON.
+ * Le service vérifie les credentials et crée la première
+ * AuthSession.
+ *
+ * Le controller reste responsable du transport HTTP :
+ * - création de l'access token ;
+ * - écriture du refresh token dans le cookie HttpOnly ;
+ * - construction de la réponse publique.
  */
 export const login = async (req, res) => {
-    const {
-        ipAddress = null,
-        userAgent = null,
-    } = req.context ?? {};
-
     const {
         user,
         refreshToken,
     } = await loginUser({
         ...req.validated.body,
-        ipAddress,
-        userAgent,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
     });
 
-    // Le claim JWT "sub" doit être une chaîne.
-    // On convertit explicitement l'identifiant MongoDB afin que le contrat
-    // du helper JWT ne dépende pas du type renvoyé par Mongoose.
-    const accessToken = signAccessToken(String(user._id));
+    // L'access token reste volontairement indépendant
+    // de l'AuthSession et contient uniquement l'identité minimale.
+    const accessToken = signAccessToken(
+        String(user._id),
+    );
 
-    // Le refresh token brut n'est jamais renvoyé dans le JSON.
-    // Il est uniquement transmis au navigateur dans un cookie HttpOnly.
+    // Le refresh token brut n'est jamais retourné dans le JSON.
+    // Le navigateur le reçoit uniquement via ce cookie HttpOnly.
     res.cookie(
         refreshCookieName,
         refreshToken,
@@ -85,6 +86,100 @@ export const login = async (req, res) => {
             accessToken,
         },
     });
+};
+
+
+/**
+ * Renouvelle la session d'authentification.
+ *
+ * Le refresh token courant est lu depuis le cookie HttpOnly.
+ *
+ * rotateAuthSession() porte toute la logique de sécurité :
+ * - validation de la session ;
+ * - expiration ;
+ * - statut du User ;
+ * - consommation unique ;
+ * - rotation S1 -> S2 ;
+ * - reuse detection ;
+ * - compromission éventuelle de la famille.
+ *
+ * Le controller ne fait ensuite que :
+ * - générer un nouvel access token ;
+ * - remplacer le cookie par le nouveau refresh token ;
+ * - retourner le User public et l'access token.
+ */
+export const refresh = async (req, res) => {
+    const currentRefreshToken =
+        req.cookies?.[refreshCookieName];
+
+    const {
+        user,
+        refreshToken: nextRefreshToken,
+    } = await rotateAuthSession({
+        refreshToken: currentRefreshToken,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
+    });
+
+    // Chaque refresh réussi produit également
+    // un nouvel access token court.
+    const accessToken = signAccessToken(
+        String(user._id),
+    );
+
+    // Le nouveau refresh token R2 remplace R1
+    // dans le même cookie HttpOnly.
+    res.cookie(
+        refreshCookieName,
+        nextRefreshToken,
+        refreshCookieOptions,
+    );
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            user: {
+                id: user._id.toString(),
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                emailVerifiedAt: user.emailVerifiedAt,
+            },
+            accessToken,
+        },
+    });
+};
+
+/**
+ * Déconnecte la session correspondant au refresh token courant.
+ *
+ * Le logout est idempotent :
+ * - un cookie absent ne provoque pas d'erreur ;
+ * - une session déjà révoquée ne provoque pas d'erreur ;
+ * - le cookie est supprimé après la tentative de révocation.
+ *
+ * Le controller reste responsable du transport HTTP.
+ * La révocation de l'AuthSession appartient au service dédié.
+ */
+export const logout = async (req, res) => {
+    const currentRefreshToken =
+        req.cookies?.[refreshCookieName];
+
+    await revokeCurrentAuthSession({
+        refreshToken: currentRefreshToken,
+    });
+
+    /*
+     * La suppression doit utiliser les mêmes caractéristiques
+     * de cookie, notamment son path, afin que le navigateur
+     * cible bien le cookie créé lors du login/refresh.
+     */
+    res.clearCookie(
+        refreshCookieName,
+        refreshCookieOptions,
+    );
+
+    res.status(204).send();
 };
 
 /**
