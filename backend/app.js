@@ -13,6 +13,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 
 import { authRouter } from './modules/auth/auth.routes.js';
+import { workspaceRouter } from './modules/workspace/workspace.routes.js';
 
 import { healthRouter } from './routes/health.routes.js';
 const app = express();
@@ -35,6 +36,7 @@ app.use(express.json());
  * app.use("/api/auth", authRoutes);
  */
 app.use('/api/auth', authRouter);
+app.use('/api/workspaces', workspaceRouter);
 
 
 app.use('/api/health', healthRouter);// Route pour vérifier l'état de santé de l'API
