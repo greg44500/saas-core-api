@@ -1,42 +1,87 @@
-/**
- * Clés stables des rôles système disponibles dans chaque workspace.
- *
- * Ces clés sont utilisées par le backend pour reconnaître les rôles protégés.
- * Les noms affichés pourront évoluer sans modifier les règles métier.
- */
+import { CORE_PERMISSION } from './permissions.constants.js';
+
+
 const SYSTEM_ROLE_KEY = Object.freeze({
-    /**
-     * Rôle responsable du workspace.
-     *
-     * Au moins un membre actif doit conserver ce rôle.
-     * Il ne pourra être ni supprimé ni rendu librement modifiable.
-     */
     OWNER: 'owner',
-
-    /**
-     * Rôle d’administration courante du workspace.
-     *
-     * Il dispose de droits étendus sans posséder les protections particulières
-     * attachées au rôle owner.
-     */
     ADMIN: 'admin',
-
-    /**
-     * Rôle intermédiaire destiné au pilotage opérationnel.
-     */
     MANAGER: 'manager',
-
-    /**
-     * Rôle standard permettant d’utiliser les fonctionnalités du workspace
-     * selon les permissions qui lui seront attribuées.
-     */
     MEMBER: 'member',
-
-    /**
-     * Rôle principalement destiné à la consultation des données.
-     */
     READER: 'reader',
 });
 
 
-export { SYSTEM_ROLE_KEY };
+// Owner et admin possèdent toutes les permissions actuellement
+// fournies par le socle. Les protections particulières du rôle owner
+// resteront appliquées par les services métier.
+const ADMINISTRATION_PERMISSIONS = Object.freeze([
+    ...Object.values(CORE_PERMISSION),
+]);
+
+
+// Manager et member sont encore proches, car le socle ne connaît
+// volontairement aucune permission propre à une application métier.
+const STANDARD_MEMBER_PERMISSIONS = Object.freeze([
+    CORE_PERMISSION.WORKSPACE_READ,
+    CORE_PERMISSION.MEMBER_READ,
+    CORE_PERMISSION.ROLE_READ,
+]);
+
+
+/**
+ * Définitions immuables des rôles créés automatiquement
+ * dans chaque nouveau workspace.
+ */
+const SYSTEM_ROLE_DEFINITIONS = Object.freeze([
+    Object.freeze({
+        key: SYSTEM_ROLE_KEY.OWNER,
+        name: 'Propriétaire',
+        description: 'Propriétaire du workspace avec un accès complet.',
+        permissions: ADMINISTRATION_PERMISSIONS,
+        isSystem: true,
+        isEditable: false,
+    }),
+
+    Object.freeze({
+        key: SYSTEM_ROLE_KEY.ADMIN,
+        name: 'Administrateur',
+        description: 'Administre le workspace, ses membres et ses rôles.',
+        permissions: ADMINISTRATION_PERMISSIONS,
+        isSystem: true,
+        isEditable: false,
+    }),
+
+    Object.freeze({
+        key: SYSTEM_ROLE_KEY.MANAGER,
+        name: 'Manager',
+        description: 'Consulte le workspace, ses membres et ses rôles.',
+        permissions: STANDARD_MEMBER_PERMISSIONS,
+        isSystem: true,
+        isEditable: false,
+    }),
+
+    Object.freeze({
+        key: SYSTEM_ROLE_KEY.MEMBER,
+        name: 'Membre',
+        description: 'Accède aux informations générales du workspace.',
+        permissions: STANDARD_MEMBER_PERMISSIONS,
+        isSystem: true,
+        isEditable: false,
+    }),
+
+    Object.freeze({
+        key: SYSTEM_ROLE_KEY.READER,
+        name: 'Lecteur',
+        description: 'Dispose d’un accès en lecture au workspace.',
+        permissions: Object.freeze([
+            CORE_PERMISSION.WORKSPACE_READ,
+        ]),
+        isSystem: true,
+        isEditable: false,
+    }),
+]);
+
+
+export {
+    SYSTEM_ROLE_DEFINITIONS,
+    SYSTEM_ROLE_KEY,
+};
