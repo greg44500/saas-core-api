@@ -3,6 +3,10 @@ import mongoose from 'mongoose';
 import {
     SYSTEM_ROLE_KEY,
 } from '../../constants/role.constants.js';
+import {
+    WORKSPACE_STATUS,
+} from '../../constants/workspace.constants.js';
+
 import { createSystemRolesForWorkspace } from '../role/role.service.js';
 import { WorkspaceMember } from '../workspaceMember/workspaceMember.model.js';
 import { Workspace } from './workspace.model.js';
@@ -89,4 +93,52 @@ const createWorkspace = async ({
 };
 
 
-export { createWorkspace };
+/**
+ * Modifie le nom d'un workspace actif.
+ *
+ * Le filtre sur le statut est volontairement répété ici même si
+ * loadWorkspaceContext a déjà vérifié que le workspace était actif.
+ *
+ * Cette seconde vérification protège l'écriture contre un changement
+ * administratif intervenu entre le middleware et l'opération MongoDB.
+ *
+ * @param {object} params
+ * @param {import('mongoose').Types.ObjectId|string} params.workspaceId
+ * @param {string} params.name
+ * @param {import('mongoose').Types.ObjectId|string} params.actorId
+ * @returns {Promise<import('mongoose').Document|null>}
+ */
+const updateWorkspace = async ({
+    workspaceId,
+    name,
+    actorId,
+}) => {
+    if (!workspaceId || !name || !actorId) {
+        throw new TypeError(
+            'workspaceId, name and actorId are required to update a workspace',
+        );
+    }
+
+    return Workspace.findOneAndUpdate(
+        {
+            _id: workspaceId,
+            status: WORKSPACE_STATUS.ACTIVE,
+        },
+        {
+            $set: {
+                name,
+                updatedBy: actorId,
+            },
+        },
+        {
+            new: true,
+            runValidators: true,
+        },
+    );
+};
+
+
+export {
+    createWorkspace,
+    updateWorkspace,
+};

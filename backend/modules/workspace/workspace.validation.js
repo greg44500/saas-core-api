@@ -9,6 +9,14 @@ const createWorkspaceSchema = z.strictObject({
         .max(120),
 });
 
+const updateWorkspaceSchema = z.strictObject({
+    name: z
+        .string()
+        .trim()
+        .min(2)
+        .max(120),
+});
+
 
 /**
  * Valide l'identifiant technique du workspace reçu dans l'URL.
@@ -30,4 +38,5 @@ const workspaceIdParamsSchema = z.strictObject({
 export {
     createWorkspaceSchema,
     workspaceIdParamsSchema,
+    updateWorkspaceSchema,
 };

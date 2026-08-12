@@ -11,9 +11,18 @@ import mongoose from 'mongoose';
 import {
     SYSTEM_ROLE_KEY,
 } from '../../constants/role.constants.js';
+import {
+    WORKSPACE_STATUS,
+} from '../../constants/workspace.constants.js';
+
 import { createSystemRolesForWorkspace } from '../../modules/role/role.service.js';
 import { Workspace } from '../../modules/workspace/workspace.model.js';
-import { createWorkspace } from '../../modules/workspace/workspace.service.js';
+
+import {
+    createWorkspace,
+    updateWorkspace,
+} from '../../modules/workspace/workspace.service.js';
+
 import { WorkspaceMember } from '../../modules/workspaceMember/workspaceMember.model.js';
 
 
@@ -32,6 +41,7 @@ vi.mock('../../modules/role/role.service.js', () => ({
 vi.mock('../../modules/workspace/workspace.model.js', () => ({
     Workspace: {
         create: vi.fn(),
+        findOneAndUpdate: vi.fn(),
     },
 }));
 
@@ -158,5 +168,52 @@ describe('createWorkspace', () => {
         );
 
         expect(WorkspaceMember.create).not.toHaveBeenCalled();
+    });
+});
+
+
+describe('updateWorkspace', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+
+    it('met à jour le nom et updatedBy uniquement si le workspace est actif', async () => {
+        const updatedWorkspace = {
+            _id: 'workspace-id',
+            name: 'Acme Updated',
+            status: WORKSPACE_STATUS.ACTIVE,
+        };
+
+        Workspace.findOneAndUpdate.mockResolvedValue(
+            updatedWorkspace,
+        );
+
+        const result = await updateWorkspace({
+            workspaceId: 'workspace-id',
+            name: 'Acme Updated',
+            actorId: 'actor-id',
+        });
+
+        expect(
+            Workspace.findOneAndUpdate,
+        ).toHaveBeenCalledWith(
+            {
+                _id: 'workspace-id',
+                status: WORKSPACE_STATUS.ACTIVE,
+            },
+            {
+                $set: {
+                    name: 'Acme Updated',
+                    updatedBy: 'actor-id',
+                },
+            },
+            {
+                new: true,
+                runValidators: true,
+            },
+        );
+
+        expect(result).toBe(updatedWorkspace);
     });
 });
