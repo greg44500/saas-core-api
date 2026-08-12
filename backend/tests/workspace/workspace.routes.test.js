@@ -16,6 +16,7 @@ import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
     create,
     getById,
+    list,
     update,
 } from '../../modules/workspace/workspace.controller.js';
 
@@ -96,7 +97,11 @@ vi.mock(
                 status: 'success',
             });
         }),
-
+        list: vi.fn((req, res) => {
+            res.status(200).json({
+                status: 'success',
+            });
+        }),
         getById: vi.fn((req, res) => {
             res.status(200).json({
                 status: 'success',
@@ -118,6 +123,7 @@ beforeEach(() => {
     workspaceContextMiddleware.mockClear();
     permissionMiddleware.mockClear();
     create.mockClear();
+    list.mockClear();
     getById.mockClear();
     update.mockClear();
 });
@@ -266,6 +272,30 @@ describe('workspace.routes', () => {
             permissionMiddleware.mock.invocationCallOrder[0],
         ).toBeLessThan(
             update.mock.invocationCallOrder[0],
+        );
+    });
+    it('protège la liste des workspaces avant d’appeler le controller', async () => {
+        const app = express();
+
+        app.use(express.json());
+        app.use('/workspaces', workspaceRouter);
+
+        const response = await request(app)
+            .get('/workspaces');
+
+        expect(response.status).toBe(200);
+
+        expect(authenticate).toHaveBeenCalledOnce();
+        expect(list).toHaveBeenCalledOnce();
+
+        expect(validationMiddleware).not.toHaveBeenCalled();
+        expect(workspaceContextMiddleware).not.toHaveBeenCalled();
+        expect(permissionMiddleware).not.toHaveBeenCalled();
+
+        expect(
+            authenticate.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            list.mock.invocationCallOrder[0],
         );
     });
 });

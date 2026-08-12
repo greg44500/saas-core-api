@@ -8,17 +8,20 @@ import {
 import {
     create,
     getById,
+    list,
     update,
 } from '../../modules/workspace/workspace.controller.js';
 
 import {
     createWorkspace,
+    listUserWorkspaces,
     updateWorkspace,
 } from '../../modules/workspace/workspace.service.js';
 
 
 vi.mock('../../modules/workspace/workspace.service.js', () => ({
     createWorkspace: vi.fn(),
+    listUserWorkspaces: vi.fn(),
     updateWorkspace: vi.fn(),
 }));
 
@@ -216,5 +219,75 @@ describe('workspace.controller', () => {
 
         expect(res.status).not.toHaveBeenCalled();
         expect(res.json).not.toHaveBeenCalled();
+    });
+
+    it('retourne les workspaces accessibles à l’utilisateur authentifié', async () => {
+        const createdAt = new Date('2026-08-12T10:00:00.000Z');
+        const updatedAt = new Date('2026-08-12T11:00:00.000Z');
+
+        const workspaces = [
+            {
+                id: 'workspace-owner-id',
+                name: 'Agence La Baule',
+                status: 'active',
+                membership: {
+                    id: 'membership-owner-id',
+                    role: {
+                        key: 'owner',
+                        name: 'Propriétaire',
+                    },
+                },
+                createdAt,
+                updatedAt,
+            },
+            {
+                id: 'workspace-member-id',
+                name: 'Agence Nantes',
+                status: 'active',
+                membership: {
+                    id: 'membership-member-id',
+                    role: {
+                        key: 'member',
+                        name: 'Membre',
+                    },
+                },
+                createdAt,
+                updatedAt,
+            },
+        ];
+
+        listUserWorkspaces.mockResolvedValue(workspaces);
+
+        const req = {
+            user: {
+                id: 'user-id',
+            },
+        };
+
+        const res = {
+            status: vi.fn().mockReturnThis(),
+            json: vi.fn(),
+        };
+
+        await list(req, res);
+
+        expect(
+            listUserWorkspaces,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            listUserWorkspaces,
+        ).toHaveBeenCalledWith(
+            'user-id',
+        );
+
+        expect(res.status).toHaveBeenCalledWith(200);
+
+        expect(res.json).toHaveBeenCalledWith({
+            status: 'success',
+            data: {
+                workspaces,
+            },
+        });
     });
 });

@@ -2,6 +2,7 @@ import { AppError } from '../../utils/AppError.js';
 
 import {
     createWorkspace,
+    listUserWorkspaces,
     updateWorkspace,
 } from './workspace.service.js';
 
@@ -29,6 +30,27 @@ export const create = async (req, res) => {
                 createdAt: workspace.createdAt,
                 updatedAt: workspace.updatedAt,
             },
+        },
+    });
+};
+
+/**
+ * Retourne les workspaces actuellement accessibles
+ * à l'utilisateur authentifié.
+ *
+ * Le service applique les règles d'appartenance et de statut.
+ * Le controller se limite à transmettre l'identité de l'utilisateur
+ * et à construire la réponse HTTP.
+ */
+export const list = async (req, res) => {
+    const workspaces = await listUserWorkspaces(
+        req.user.id,
+    );
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            workspaces,
         },
     });
 };

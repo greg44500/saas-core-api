@@ -9,6 +9,7 @@ import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
     create,
     getById,
+    list,
     update,
 } from './workspace.controller.js';
 
@@ -34,6 +35,14 @@ router.post(
         body: createWorkspaceSchema,
     }),
     create,
+);
+/** 
+* Liste les workspaces actuellement accessibles à l'utilisateur à partir de ses memberships actifs.
+*/
+router.get(
+    '/',
+    authenticate,
+    list,
 );
 
 
