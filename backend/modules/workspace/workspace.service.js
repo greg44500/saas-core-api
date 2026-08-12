@@ -7,6 +7,10 @@ import {
     WORKSPACE_STATUS,
 } from '../../constants/workspace.constants.js';
 
+import {
+    WORKSPACE_MEMBER_STATUS,
+} from '../../constants/workspaceMember.constants.js';
+
 import { createSystemRolesForWorkspace } from '../role/role.service.js';
 import { WorkspaceMember } from '../workspaceMember/workspaceMember.model.js';
 import { Workspace } from './workspace.model.js';
@@ -92,6 +96,79 @@ const createWorkspace = async ({
     });
 };
 
+/**
+ * Retourne les workspaces actuellement accessibles à un utilisateur.
+ *
+ * Seuls les memberships actifs sont pris en compte.
+ * Un workspace non actif ou un rôle incohérent rend le membership
+ * inexploitable dans le contexte tenant et il n'est donc pas retourné.
+ *
+ * Le rôle est volontairement limité à key et name afin de fournir
+ * au frontend le contexte nécessaire au filtrage sans exposer
+ * les permissions ou les champs internes du Role.
+ *
+ * @param {string|import('mongoose').Types.ObjectId} userId
+ * @returns {Promise<Array<object>>}
+ */
+const listUserWorkspaces = async (userId) => {
+    if (!userId) {
+        throw new TypeError(
+            'userId is required to list user workspaces',
+        );
+    }
+
+    const memberships = await WorkspaceMember.find({
+        user: userId,
+        status: WORKSPACE_MEMBER_STATUS.ACTIVE,
+    })
+        .select('_id workspace role')
+        .populate({
+            path: 'workspace',
+            match: {
+                status: WORKSPACE_STATUS.ACTIVE,
+            },
+            select: '_id name status createdAt updatedAt',
+        })
+        .populate({
+            path: 'role',
+            select: '_id key name workspace',
+        })
+        .lean();
+
+    /*
+     * populate({ match }) ne supprime pas le WorkspaceMember parent :
+     * si le workspace ne correspond pas au filtre ACTIVE, workspace vaut null.
+     *
+     * On exclut également un rôle absent ou rattaché à un autre workspace,
+     * car le contexte tenant serait alors incohérent.
+     */
+    return memberships
+        .filter((membership) => {
+            if (!membership.workspace || !membership.role) {
+                return false;
+            }
+
+            return (
+                membership.role.workspace?.toString()
+                === membership.workspace._id.toString()
+            );
+        })
+        .map((membership) => ({
+            id: membership.workspace._id.toString(),
+            name: membership.workspace.name,
+            status: membership.workspace.status,
+            membership: {
+                id: membership._id.toString(),
+                role: {
+                    key: membership.role.key,
+                    name: membership.role.name,
+                },
+            },
+            createdAt: membership.workspace.createdAt,
+            updatedAt: membership.workspace.updatedAt,
+        }));
+};
+
 
 /**
  * Modifie le nom d'un workspace actif.
@@ -131,14 +208,15 @@ const updateWorkspace = async ({
             },
         },
         {
-            new: true,
+            returnDocument: 'after',
             runValidators: true,
-        },
+        }
     );
 };
 
 
 export {
     createWorkspace,
+    listUserWorkspaces,
     updateWorkspace,
 };

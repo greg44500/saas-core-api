@@ -8,13 +8,18 @@ import {
 import {
     create,
     getById,
+    update,
 } from '../../modules/workspace/workspace.controller.js';
 
-import { createWorkspace } from '../../modules/workspace/workspace.service.js';
+import {
+    createWorkspace,
+    updateWorkspace,
+} from '../../modules/workspace/workspace.service.js';
 
 
 vi.mock('../../modules/workspace/workspace.service.js', () => ({
     createWorkspace: vi.fn(),
+    updateWorkspace: vi.fn(),
 }));
 
 
@@ -112,5 +117,104 @@ describe('workspace.controller', () => {
                 },
             },
         });
+    });
+
+
+    it('met à jour le workspace courant', async () => {
+        const createdAt = new Date('2026-08-12T10:00:00.000Z');
+        const updatedAt = new Date('2026-08-12T12:00:00.000Z');
+
+        updateWorkspace.mockResolvedValue({
+            _id: {
+                toString: () => 'workspace-id',
+            },
+            name: 'Acme Updated',
+            status: 'active',
+            createdAt,
+            updatedAt,
+        });
+
+        const req = {
+            workspace: {
+                _id: 'workspace-id',
+            },
+            validated: {
+                body: {
+                    name: 'Acme Updated',
+                },
+            },
+            user: {
+                id: 'user-id',
+            },
+        };
+
+        const res = {
+            status: vi.fn().mockReturnThis(),
+            json: vi.fn(),
+        };
+
+        await update(req, res);
+
+        expect(updateWorkspace).toHaveBeenCalledOnce();
+
+        expect(updateWorkspace).toHaveBeenCalledWith({
+            workspaceId: 'workspace-id',
+            name: 'Acme Updated',
+            actorId: 'user-id',
+        });
+
+        expect(res.status).toHaveBeenCalledWith(200);
+
+        expect(res.json).toHaveBeenCalledWith({
+            status: 'success',
+            data: {
+                workspace: {
+                    id: 'workspace-id',
+                    name: 'Acme Updated',
+                    status: 'active',
+                    createdAt,
+                    updatedAt,
+                },
+            },
+        });
+    });
+
+
+    it('refuse la modification si le workspace devient indisponible avant l’écriture', async () => {
+        updateWorkspace.mockResolvedValue(null);
+
+        const req = {
+            workspace: {
+                _id: 'workspace-id',
+            },
+            validated: {
+                body: {
+                    name: 'Acme Updated',
+                },
+            },
+            user: {
+                id: 'user-id',
+            },
+        };
+
+        const res = {
+            status: vi.fn().mockReturnThis(),
+            json: vi.fn(),
+        };
+
+        await expect(
+            update(req, res),
+        ).rejects.toMatchObject({
+            statusCode: 403,
+        });
+
+        expect(updateWorkspace).toHaveBeenCalledWith({
+            workspaceId: 'workspace-id',
+            name: 'Acme Updated',
+            actorId: 'user-id',
+        });
+
+        expect(res.status).not.toHaveBeenCalled();
+        expect(res.json).not.toHaveBeenCalled();
     });
 });

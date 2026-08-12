@@ -9,10 +9,12 @@ import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
     create,
     getById,
+    update,
 } from './workspace.controller.js';
 
 import {
     createWorkspaceSchema,
+    updateWorkspaceSchema,
     workspaceIdParamsSchema,
 } from './workspace.validation.js';
 
@@ -52,6 +54,27 @@ router.get(
         CORE_PERMISSION.WORKSPACE_READ,
     ),
     getById,
+);
+
+
+/**
+ * Modifie le nom d'un workspace accessible à l'utilisateur connecté.
+ *
+ * Le workspace doit être actif et le membre doit posséder
+ * explicitement la permission workspace:update.
+ */
+router.patch(
+    '/:workspaceId',
+    authenticate,
+    validateRequest({
+        params: workspaceIdParamsSchema,
+        body: updateWorkspaceSchema,
+    }),
+    loadWorkspaceContext,
+    authorizePermission(
+        CORE_PERMISSION.WORKSPACE_UPDATE,
+    ),
+    update,
 );
 
 

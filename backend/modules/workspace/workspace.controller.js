@@ -1,4 +1,9 @@
-import { createWorkspace } from './workspace.service.js';
+import { AppError } from '../../utils/AppError.js';
+
+import {
+    createWorkspace,
+    updateWorkspace,
+} from './workspace.service.js';
 
 
 /**
@@ -38,6 +43,51 @@ export const create = async (req, res) => {
  */
 export const getById = (req, res) => {
     const { workspace } = req;
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            workspace: {
+                id: workspace._id.toString(),
+                name: workspace.name,
+                status: workspace.status,
+                createdAt: workspace.createdAt,
+                updatedAt: workspace.updatedAt,
+            },
+        },
+    });
+};
+
+
+/**
+ * Modifie le nom du workspace courant.
+ *
+ * L'autorisation a déjà été vérifiée par loadWorkspaceContext
+ * et authorizePermission.
+ *
+ * Le service répète volontairement la contrainte status = active
+ * au moment exact de l'écriture afin qu'une suspension administrative
+ * concurrente ne puisse pas être contournée.
+ */
+export const update = async (req, res) => {
+    const workspace = await updateWorkspace({
+        workspaceId: req.workspace._id,
+        name: req.validated.body.name,
+        actorId: req.user.id,
+    });
+
+    /**
+     * Le workspace pouvait être actif pendant loadWorkspaceContext
+     * puis être suspendu avant l'écriture.
+     *
+     * Dans ce cas, le service ne modifie rien et retourne null.
+     */
+    if (!workspace) {
+        throw new AppError(
+            'Workspace indisponible',
+            403,
+        );
+    }
 
     res.status(200).json({
         status: 'success',

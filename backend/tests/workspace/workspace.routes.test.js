@@ -16,12 +16,14 @@ import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
     create,
     getById,
+    update,
 } from '../../modules/workspace/workspace.controller.js';
 
 import { workspaceRouter } from '../../modules/workspace/workspace.routes.js';
 
 import {
     createWorkspaceSchema,
+    updateWorkspaceSchema,
     workspaceIdParamsSchema,
 } from '../../modules/workspace/workspace.validation.js';
 
@@ -46,6 +48,7 @@ const {
 
         req.permissions = [
             'workspace:read',
+            'workspace:update',
         ];
 
         next();
@@ -99,8 +102,16 @@ vi.mock(
                 status: 'success',
             });
         }),
+
+        update: vi.fn((req, res) => {
+            res.status(200).json({
+                status: 'success',
+            });
+        }),
     }),
 );
+
+
 beforeEach(() => {
     authenticate.mockClear();
     validationMiddleware.mockClear();
@@ -108,7 +119,9 @@ beforeEach(() => {
     permissionMiddleware.mockClear();
     create.mockClear();
     getById.mockClear();
+    update.mockClear();
 });
+
 
 describe('workspace.routes', () => {
     it('protège et valide la création avant d’appeler le controller', async () => {
@@ -196,6 +209,63 @@ describe('workspace.routes', () => {
             permissionMiddleware.mock.invocationCallOrder[0],
         ).toBeLessThan(
             getById.mock.invocationCallOrder[0],
+        );
+    });
+
+
+    it('protège la modification du workspace avec la permission de mise à jour', async () => {
+        const app = express();
+
+        app.use(express.json());
+        app.use('/workspaces', workspaceRouter);
+
+        const response = await request(app)
+            .patch('/workspaces/507f1f77bcf86cd799439011')
+            .send({
+                name: 'Acme Updated',
+            });
+
+        expect(response.status).toBe(200);
+
+        expect(validateRequest).toHaveBeenCalledWith({
+            params: workspaceIdParamsSchema,
+            body: updateWorkspaceSchema,
+        });
+
+        expect(
+            authorizePermission,
+        ).toHaveBeenCalledWith(
+            CORE_PERMISSION.WORKSPACE_UPDATE,
+        );
+
+        expect(authenticate).toHaveBeenCalledOnce();
+        expect(validationMiddleware).toHaveBeenCalledOnce();
+        expect(workspaceContextMiddleware).toHaveBeenCalledOnce();
+        expect(permissionMiddleware).toHaveBeenCalledOnce();
+        expect(update).toHaveBeenCalledOnce();
+
+        expect(
+            authenticate.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            validationMiddleware.mock.invocationCallOrder[0],
+        );
+
+        expect(
+            validationMiddleware.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            workspaceContextMiddleware.mock.invocationCallOrder[0],
+        );
+
+        expect(
+            workspaceContextMiddleware.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            permissionMiddleware.mock.invocationCallOrder[0],
+        );
+
+        expect(
+            permissionMiddleware.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            update.mock.invocationCallOrder[0],
         );
     });
 });
