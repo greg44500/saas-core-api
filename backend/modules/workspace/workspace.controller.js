@@ -27,3 +27,28 @@ export const create = async (req, res) => {
         },
     });
 };
+
+
+/**
+ * Retourne le workspace courant déjà chargé par loadWorkspaceContext.
+ *
+ * Le middleware a déjà vérifié l'existence du workspace,
+ * son statut, l'appartenance active de l'utilisateur
+ * et la cohérence du rôle.
+ */
+export const getById = (req, res) => {
+    const { workspace } = req;
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            workspace: {
+                id: workspace._id.toString(),
+                name: workspace.name,
+                status: workspace.status,
+                createdAt: workspace.createdAt,
+                updatedAt: workspace.updatedAt,
+            },
+        },
+    });
+};

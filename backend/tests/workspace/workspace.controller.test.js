@@ -5,7 +5,11 @@ import {
     vi,
 } from 'vitest';
 
-import { create } from '../../modules/workspace/workspace.controller.js';
+import {
+    create,
+    getById,
+} from '../../modules/workspace/workspace.controller.js';
+
 import { createWorkspace } from '../../modules/workspace/workspace.service.js';
 
 
@@ -55,6 +59,46 @@ describe('workspace.controller', () => {
         });
 
         expect(res.status).toHaveBeenCalledWith(201);
+
+        expect(res.json).toHaveBeenCalledWith({
+            status: 'success',
+            data: {
+                workspace: {
+                    id: 'workspace-id',
+                    name: 'Acme',
+                    status: 'active',
+                    createdAt,
+                    updatedAt,
+                },
+            },
+        });
+    });
+
+
+    it('renvoie le workspace déjà chargé dans le contexte de la requête', () => {
+        const createdAt = new Date('2026-08-12T10:00:00.000Z');
+        const updatedAt = new Date('2026-08-12T11:00:00.000Z');
+
+        const req = {
+            workspace: {
+                _id: {
+                    toString: () => 'workspace-id',
+                },
+                name: 'Acme',
+                status: 'active',
+                createdAt,
+                updatedAt,
+            },
+        };
+
+        const res = {
+            status: vi.fn().mockReturnThis(),
+            json: vi.fn(),
+        };
+
+        getById(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
 
         expect(res.json).toHaveBeenCalledWith({
             status: 'success',
