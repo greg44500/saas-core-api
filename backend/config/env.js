@@ -46,13 +46,45 @@ const envSchema = z.object({
         .min(1)
         .max(30)
         .default(7),
-        
+
     PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES: z.coerce
         .number()
         .int()
         .min(5)
         .max(60)
         .default(30),
+
+    SMTP_HOST: z
+        .string()
+        .trim()
+        .min(1, 'SMTP_HOST est obligatoire'),
+
+    SMTP_PORT: z.coerce
+        .number()
+        .int()
+        .min(1)
+        .max(65535),
+
+    SMTP_SECURE: z
+        .enum(['true', 'false'])
+        .transform((value) => value === 'true'),
+
+    SMTP_USER: z
+        .string()
+        .trim()
+        .min(1, 'SMTP_USER est obligatoire'),
+
+    SMTP_PASSWORD: z
+        .string()
+        .min(1, 'SMTP_PASSWORD est obligatoire'),
+
+    SMTP_FROM_EMAIL: z
+        .email('SMTP_FROM_EMAIL doit être une adresse email valide'),
+
+    SMTP_FROM_NAME: z
+        .string()
+        .trim()
+        .min(1, 'SMTP_FROM_NAME est obligatoire'),
 
 });
 // Valider les variables d'environnement et les transformer en types appropriés

@@ -1,5 +1,18 @@
 import mongoose from 'mongoose';
+import { env } from '../../config/env.js';
+import { sendEmail } from '../../services/email.service.js';
 
+import {
+    createPasswordResetToken,
+} from '../passwordResetTokens/passwordResetToken.service.js';
+
+import {
+    buildPasswordResetEmail,
+} from '../../services/emailTemplates/passwordResetEmail.js';
+
+import {
+    buildPasswordResetUrl,
+} from './passwordResetUrl.js';
 import { AUTH_PROVIDER } from '../../constants/authProvider.constants.js';
 import { AppError } from '../../utils/AppError.js';
 import { canonicalizeEmail } from '../../utils/canonicalizeEmail.js';
@@ -19,6 +32,9 @@ const EMAIL_ALREADY_USED_MESSAGE =
     'Un compte existe déjà avec cette adresse email';
 
 const INVALID_CREDENTIALS_MESSAGE = 'Identifiants invalides';
+
+const FORGOT_PASSWORD_RESPONSE_MESSAGE =
+    'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.';
 
 /**
  * Crée un compte utilisateur utilisant l'authentification locale.
@@ -360,8 +376,142 @@ const changeUserPassword = async ({
     };
 };
 
+/**
+ * Initialise une procédure de réinitialisation de mot de passe.
+ *
+ * Règle de sécurité principale :
+ * l'appelant ne doit pas pouvoir déterminer si l'adresse email existe.
+ * L'absence d'utilisateur, l'absence d'identité locale ou un compte qui
+ * ne peut pas utiliser ce workflow produisent donc la même réponse métier.
+ *
+ * Le token brut créé par createPasswordResetToken() n'est utilisé que pour
+ * construire le lien envoyé par email. Il ne doit jamais être persisté,
+ * retourné dans l'API ou écrit dans les logs.
+ *
+ * @param {object} input
+ * @param {string} input.email Adresse préalablement validée.
+ * @param {string|null} [input.ipAddress]
+ * @param {string|null} [input.userAgent]
+ *
+ * @returns {Promise<{message: string}>}
+ */
+const forgotUserPassword = async ({
+    email,
+    ipAddress = null,
+    userAgent = null,
+}) => {
+    const emailCanonical = canonicalizeEmail(email);
+
+    /*
+     * On recherche le User par son email canonique afin de conserver
+     * exactement la même stratégie d'identification que register/login.
+     */
+    const user = await User.findOne({
+        emailCanonical,
+    });
+
+    /*
+     * IMPORTANT :
+     * on retourne volontairement la même réponse lorsqu'aucun utilisateur
+     * n'existe. Une erreur 404 révélerait l'existence ou non d'un compte.
+     */
+    if (!user) {
+        return {
+            message: FORGOT_PASSWORD_RESPONSE_MESSAGE,
+        };
+    }
+
+    /*
+     * Un reset password n'a de sens que si l'utilisateur possède une
+     * identité locale avec mot de passe.
+     *
+     * Exemple :
+     * un compte uniquement Google ne doit pas recevoir un token permettant
+     * de créer implicitement un credential local sans workflow explicite.
+     */
+    const localIdentity = await AuthIdentity.exists({
+        user: user._id,
+        provider: AUTH_PROVIDER.LOCAL,
+    });
+
+    if (!localIdentity) {
+        return {
+            message: FORGOT_PASSWORD_RESPONSE_MESSAGE,
+        };
+    }
+
+    /*
+     * Les comptes clôturés ne doivent pas pouvoir réactiver indirectement
+     * une capacité d'authentification par un reset password.
+     *
+     * On ne renvoie cependant aucune erreur spécifique afin de préserver
+     * la protection contre l'énumération des comptes.
+     */
+    if (user.status === USER_STATUS.CLOSED) {
+        return {
+            message: FORGOT_PASSWORD_RESPONSE_MESSAGE,
+        };
+    }
+
+    /*
+     * La création du token est déléguée au service spécialisé.
+     * Ce service :
+     * - révoque les demandes actives précédentes ;
+     * - ne persiste que le hash SHA-256 ;
+     * - retourne temporairement le token brut pour construire le lien.
+     */
+    const { resetToken } =
+        await createPasswordResetToken({
+            userId: user._id,
+            ipAddress,
+            userAgent,
+        });
+
+    /*
+     * L'origine de l'URL vient exclusivement de CLIENT_URL.
+     * Aucune donnée issue du Host HTTP de la requête n'intervient ici.
+     */
+    const resetUrl = buildPasswordResetUrl({
+        token: resetToken,
+    });
+
+    /*
+     * Le template ne connaît ni User ni la configuration globale.
+     * On lui transmet explicitement les données nécessaires à l'affichage.
+     */
+    const {
+        subject,
+        text,
+        html,
+    } = buildPasswordResetEmail({
+        resetUrl,
+        expiresInMinutes:
+            env.PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES,
+    });
+
+    /*
+     * Le transport SMTP reste derrière email.service.js.
+     * Le module Auth ne dépend donc pas directement de Nodemailer.
+     */
+    await sendEmail({
+        to: user.email,
+        subject,
+        text,
+        html,
+    });
+
+    /*
+     * Même réponse que pour une adresse inexistante ou un compte
+     * sans identité locale : l'API ne révèle aucun état interne.
+     */
+    return {
+        message: FORGOT_PASSWORD_RESPONSE_MESSAGE,
+    };
+};
+
 export {
     changeUserPassword,
+    forgotUserPassword,
     registerUser,
     loginUser
 };
