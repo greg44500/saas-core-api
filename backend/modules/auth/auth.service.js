@@ -320,13 +320,12 @@ const changeUserPassword = async ({
                 await User.updateOne(
                     {
                         _id: userId,
-                        status: {
+                        status: mongoose.trusted({
                             $in: [
                                 USER_STATUS.ACTIVE,
-                                USER_STATUS
-                                    .DELETION_REQUESTED,
+                                USER_STATUS.DELETION_REQUESTED,
                             ],
-                        },
+                        }),
                     },
                     {
                         $set: {
