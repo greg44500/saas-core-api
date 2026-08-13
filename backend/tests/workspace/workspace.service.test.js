@@ -17,6 +17,9 @@ import {
 import {
     WORKSPACE_MEMBER_STATUS,
 } from '../../constants/workspaceMember.constants.js';
+import {
+    USER_STATUS,
+} from '../../constants/userStatus.constants.js';
 
 import { createSystemRolesForWorkspace } from '../../modules/role/role.service.js';
 import { Workspace } from '../../modules/workspace/workspace.model.js';
@@ -24,16 +27,43 @@ import { Workspace } from '../../modules/workspace/workspace.model.js';
 import {
     createWorkspace,
     listUserWorkspaces,
+    listWorkspaceMembers,
     updateWorkspace,
 } from '../../modules/workspace/workspace.service.js';
 
 import { WorkspaceMember } from '../../modules/workspaceMember/workspaceMember.model.js';
 
 
-vi.mock('mongoose', () => ({
-    default: {
-        connection: {
-            transaction: vi.fn(),
+vi.mock('mongoose', () => {
+    const ObjectId = vi.fn(function (value) {
+        return {
+            value,
+        };
+    });
+
+    return {
+        default: {
+            connection: {
+                transaction: vi.fn(),
+            },
+            Types: {
+                ObjectId,
+            },
+        },
+    };
+});
+vi.mock('../../modules/role/role.model.js', () => ({
+    Role: {
+        collection: {
+            name: 'roles',
+        },
+    },
+}));
+
+vi.mock('../../modules/users/user.model.js', () => ({
+    User: {
+        collection: {
+            name: 'users',
         },
     },
 }));
@@ -53,6 +83,7 @@ vi.mock(
     '../../modules/workspaceMember/workspaceMember.model.js',
     () => ({
         WorkspaceMember: {
+            aggregate: vi.fn(),
             create: vi.fn(),
             find: vi.fn(),
         },
@@ -424,6 +455,232 @@ describe('listUserWorkspaces', () => {
 
         expect(workspace).not.toHaveProperty('createdBy');
         expect(workspace).not.toHaveProperty('updatedBy');
+    });
+});
+
+describe('listWorkspaceMembers', () => {
+    const workspaceId = '507f1f77bcf86cd799439011';
+
+    let aggregateExec;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        aggregateExec = vi.fn();
+
+        WorkspaceMember.aggregate.mockReturnValue({
+            exec: aggregateExec,
+        });
+    });
+
+
+    it('retourne les membres et les métadonnées de pagination', async () => {
+        const joinedAt =
+            new Date('2026-08-12T10:00:00.000Z');
+
+        aggregateExec.mockResolvedValue([
+            {
+                members: [
+                    {
+                        id: 'membership-id',
+                        status:
+                            WORKSPACE_MEMBER_STATUS.ACTIVE,
+                        joinedAt,
+                        user: {
+                            id: 'user-id',
+                            firstName: 'Greg',
+                            lastName: 'Ballat',
+                            accountStatus:
+                                USER_STATUS.ACTIVE,
+                        },
+                        role: {
+                            id: 'role-id',
+                            key: SYSTEM_ROLE_KEY.OWNER,
+                            name: 'Propriétaire',
+                        },
+                    },
+                ],
+                metadata: [
+                    {
+                        total: 21,
+                    },
+                ],
+            },
+        ]);
+
+        const result = await listWorkspaceMembers({
+            workspaceId,
+            page: 2,
+            limit: 10,
+        });
+
+        expect(result).toEqual({
+            members: [
+                {
+                    id: 'membership-id',
+                    status:
+                        WORKSPACE_MEMBER_STATUS.ACTIVE,
+                    joinedAt,
+                    user: {
+                        id: 'user-id',
+                        firstName: 'Greg',
+                        lastName: 'Ballat',
+                        accountStatus:
+                            USER_STATUS.ACTIVE,
+                    },
+                    role: {
+                        id: 'role-id',
+                        key: SYSTEM_ROLE_KEY.OWNER,
+                        name: 'Propriétaire',
+                    },
+                },
+            ],
+            pagination: {
+                page: 2,
+                limit: 10,
+                total: 21,
+                totalPages: 3,
+            },
+        });
+    });
+
+
+    it('construit un pipeline limité aux membres visibles et aux rôles cohérents', async () => {
+        aggregateExec.mockResolvedValue([
+            {
+                members: [],
+                metadata: [],
+            },
+        ]);
+
+        await listWorkspaceMembers({
+            workspaceId,
+            page: 2,
+            limit: 10,
+        });
+
+        expect(
+            mongoose.Types.ObjectId,
+        ).toHaveBeenCalledWith(workspaceId);
+
+        const [pipeline] =
+            WorkspaceMember.aggregate.mock.calls[0];
+
+        expect(pipeline[0].$match.status).toEqual({
+            $in: [
+                WORKSPACE_MEMBER_STATUS.ACTIVE,
+                WORKSPACE_MEMBER_STATUS.SUSPENDED,
+            ],
+        });
+
+        const userLookup = pipeline.find(
+            (stage) =>
+                stage.$lookup?.from === 'users',
+        ).$lookup;
+
+        expect(userLookup.pipeline[0]).toEqual({
+            $match: {
+                status: {
+                    $ne: USER_STATUS.CLOSED,
+                },
+            },
+        });
+
+        const roleLookup = pipeline.find(
+            (stage) =>
+                stage.$lookup?.from === 'roles',
+        ).$lookup;
+
+        expect(
+            roleLookup.pipeline[0].$match.workspace,
+        ).toBe(pipeline[0].$match.workspace);
+
+        const { members } = pipeline.find(
+            (stage) => stage.$facet,
+        ).$facet;
+
+        expect(members).toEqual(
+            expect.arrayContaining([
+                {
+                    $skip: 10,
+                },
+                {
+                    $limit: 10,
+                },
+            ]),
+        );
+
+        const projection = members.find(
+            (stage) => stage.$project,
+        ).$project;
+
+        expect(projection.user).toEqual({
+            id: {
+                $toString: '$user._id',
+            },
+            firstName: '$user.firstName',
+            lastName: '$user.lastName',
+            accountStatus: '$user.status',
+        });
+
+        expect(projection.role).toEqual({
+            id: {
+                $toString: '$role._id',
+            },
+            key: '$role.key',
+            name: '$role.name',
+        });
+    });
+
+
+    it('retourne une pagination vide lorsque aucun membre n’est visible', async () => {
+        aggregateExec.mockResolvedValue([
+            {
+                members: [],
+                metadata: [],
+            },
+        ]);
+
+        const result = await listWorkspaceMembers({
+            workspaceId,
+        });
+
+        expect(result).toEqual({
+            members: [],
+            pagination: {
+                page: 1,
+                limit: 20,
+                total: 0,
+                totalPages: 0,
+            },
+        });
+    });
+
+
+    it('rejette les paramètres de pagination invalides', async () => {
+        await expect(
+            listWorkspaceMembers({
+                workspaceId,
+                page: 0,
+                limit: 20,
+            }),
+        ).rejects.toThrow(
+            'page must be an integer greater than or equal to 1',
+        );
+
+        await expect(
+            listWorkspaceMembers({
+                workspaceId,
+                page: 1,
+                limit: 101,
+            }),
+        ).rejects.toThrow(
+            'limit must be an integer between 1 and 100',
+        );
+
+        expect(
+            WorkspaceMember.aggregate,
+        ).not.toHaveBeenCalled();
     });
 });
 

@@ -17,6 +17,7 @@ import {
     create,
     getById,
     list,
+    listMembers,
     update,
 } from '../../modules/workspace/workspace.controller.js';
 
@@ -25,6 +26,7 @@ import { workspaceRouter } from '../../modules/workspace/workspace.routes.js';
 import {
     createWorkspaceSchema,
     updateWorkspaceSchema,
+    listWorkspaceMembersQuerySchema,
     workspaceIdParamsSchema,
 } from '../../modules/workspace/workspace.validation.js';
 
@@ -102,6 +104,11 @@ vi.mock(
                 status: 'success',
             });
         }),
+        listMembers: vi.fn((req, res) => {
+            res.status(200).json({
+                status: 'success',
+            });
+        }),
         getById: vi.fn((req, res) => {
             res.status(200).json({
                 status: 'success',
@@ -124,6 +131,7 @@ beforeEach(() => {
     permissionMiddleware.mockClear();
     create.mockClear();
     list.mockClear();
+    listMembers.mockClear();
     getById.mockClear();
     update.mockClear();
 });
@@ -296,6 +304,62 @@ describe('workspace.routes', () => {
             authenticate.mock.invocationCallOrder[0],
         ).toBeLessThan(
             list.mock.invocationCallOrder[0],
+        );
+    });
+    it('protège la liste des membres avec le contexte tenant et la permission member:read', async () => {
+        const app = express();
+
+        app.use(express.json());
+        app.use('/workspaces', workspaceRouter);
+
+        const response = await request(app)
+            .get(
+                '/workspaces/507f1f77bcf86cd799439011/members?page=2&limit=10',
+            );
+
+        expect(response.status).toBe(200);
+
+        expect(validateRequest).toHaveBeenCalledWith({
+            params: workspaceIdParamsSchema,
+            query: listWorkspaceMembersQuerySchema,
+        });
+
+        expect(
+            authorizePermission,
+        ).toHaveBeenCalledWith(
+            CORE_PERMISSION.MEMBER_READ,
+        );
+
+        expect(authenticate).toHaveBeenCalledOnce();
+        expect(validationMiddleware).toHaveBeenCalledOnce();
+        expect(
+            workspaceContextMiddleware,
+        ).toHaveBeenCalledOnce();
+        expect(permissionMiddleware).toHaveBeenCalledOnce();
+        expect(listMembers).toHaveBeenCalledOnce();
+
+        expect(
+            authenticate.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            validationMiddleware.mock.invocationCallOrder[0],
+        );
+
+        expect(
+            validationMiddleware.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            workspaceContextMiddleware.mock.invocationCallOrder[0],
+        );
+
+        expect(
+            workspaceContextMiddleware.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            permissionMiddleware.mock.invocationCallOrder[0],
+        );
+
+        expect(
+            permissionMiddleware.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            listMembers.mock.invocationCallOrder[0],
         );
     });
 });

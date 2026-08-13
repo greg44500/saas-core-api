@@ -9,12 +9,14 @@ import {
     create,
     getById,
     list,
+    listMembers,
     update,
 } from '../../modules/workspace/workspace.controller.js';
 
 import {
     createWorkspace,
     listUserWorkspaces,
+    listWorkspaceMembers,
     updateWorkspace,
 } from '../../modules/workspace/workspace.service.js';
 
@@ -22,9 +24,9 @@ import {
 vi.mock('../../modules/workspace/workspace.service.js', () => ({
     createWorkspace: vi.fn(),
     listUserWorkspaces: vi.fn(),
+    listWorkspaceMembers: vi.fn(),
     updateWorkspace: vi.fn(),
 }));
-
 
 describe('workspace.controller', () => {
     it('crée un workspace pour l’utilisateur authentifié', async () => {
@@ -288,6 +290,82 @@ describe('workspace.controller', () => {
             data: {
                 workspaces,
             },
+        });
+    });
+    it('retourne les membres paginés du workspace courant', async () => {
+        const joinedAt =
+            new Date('2026-08-12T10:00:00.000Z');
+
+        const members = [
+            {
+                id: 'membership-id',
+                status: 'active',
+                joinedAt,
+                user: {
+                    id: 'user-id',
+                    firstName: 'Greg',
+                    lastName: 'Ballat',
+                    accountStatus: 'active',
+                },
+                role: {
+                    id: 'role-id',
+                    key: 'owner',
+                    name: 'Propriétaire',
+                },
+            },
+        ];
+
+        const pagination = {
+            page: 2,
+            limit: 10,
+            total: 11,
+            totalPages: 2,
+        };
+
+        listWorkspaceMembers.mockResolvedValue({
+            members,
+            pagination,
+        });
+
+        const req = {
+            workspace: {
+                _id: 'workspace-id',
+            },
+            validated: {
+                query: {
+                    page: 2,
+                    limit: 10,
+                },
+            },
+        };
+
+        const res = {
+            status: vi.fn().mockReturnThis(),
+            json: vi.fn(),
+        };
+
+        await listMembers(req, res);
+
+        expect(
+            listWorkspaceMembers,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            listWorkspaceMembers,
+        ).toHaveBeenCalledWith({
+            workspaceId: 'workspace-id',
+            page: 2,
+            limit: 10,
+        });
+
+        expect(res.status).toHaveBeenCalledWith(200);
+
+        expect(res.json).toHaveBeenCalledWith({
+            status: 'success',
+            data: {
+                members,
+            },
+            meta: pagination,
         });
     });
 });

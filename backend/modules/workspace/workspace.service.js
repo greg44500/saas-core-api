@@ -12,8 +12,13 @@ import {
 } from '../../constants/workspaceMember.constants.js';
 
 import { createSystemRolesForWorkspace } from '../role/role.service.js';
+import {
+    USER_STATUS,
+} from '../../constants/userStatus.constants.js';
 import { WorkspaceMember } from '../workspaceMember/workspaceMember.model.js';
 import { Workspace } from './workspace.model.js';
+import { Role } from '../role/role.model.js';
+import { User } from '../users/user.model.js';
 
 
 /**
@@ -168,7 +173,192 @@ const listUserWorkspaces = async (userId) => {
             updatedAt: membership.workspace.updatedAt,
         }));
 };
+/**
+ * Retourne les membres actuels d’un workspace avec pagination.
+ *
+ * Les memberships retirés et les comptes clôturés sont exclus.
+ * Le rôle chargé doit appartenir au même workspace que le membership.
+ *
+ * @param {object} params
+ * @param {string|import('mongoose').Types.ObjectId} params.workspaceId
+ * @param {number} [params.page=1]
+ * @param {number} [params.limit=20]
+ * @returns {Promise<{
+ *   members: Array<object>,
+ *   pagination: {
+ *     page: number,
+ *     limit: number,
+ *     total: number,
+ *     totalPages: number
+ *   }
+ * }>}
+ */
+const listWorkspaceMembers = async ({
+    workspaceId,
+    page = 1,
+    limit = 20,
+}) => {
+    if (!workspaceId) {
+        throw new TypeError(
+            'workspaceId is required to list workspace members',
+        );
+    }
 
+    if (!Number.isInteger(page) || page < 1) {
+        throw new TypeError(
+            'page must be an integer greater than or equal to 1',
+        );
+    }
+
+    if (
+        !Number.isInteger(limit)
+        || limit < 1
+        || limit > 100
+    ) {
+        throw new TypeError(
+            'limit must be an integer between 1 and 100',
+        );
+    }
+
+    /*
+     * Mongoose ne convertit pas automatiquement les valeurs contenues
+     * dans les étapes d’une agrégation.
+     */
+    const workspaceObjectId =
+        new mongoose.Types.ObjectId(
+            workspaceId.toString(),
+        );
+
+    const skip = (page - 1) * limit;
+
+    const [result] = await WorkspaceMember.aggregate([
+        {
+            $match: {
+                workspace: workspaceObjectId,
+                status: {
+                    $in: [
+                        WORKSPACE_MEMBER_STATUS.ACTIVE,
+                        WORKSPACE_MEMBER_STATUS.SUSPENDED,
+                    ],
+                },
+            },
+        },
+        {
+            $lookup: {
+                from: User.collection.name,
+                localField: 'user',
+                foreignField: '_id',
+                pipeline: [
+                    {
+                        $match: {
+                            status: {
+                                $ne: USER_STATUS.CLOSED,
+                            },
+                        },
+                    },
+                    {
+                        $project: {
+                            _id: 1,
+                            firstName: 1,
+                            lastName: 1,
+                            status: 1,
+                        },
+                    },
+                ],
+                as: 'user',
+            },
+        },
+        {
+            $unwind: '$user',
+        },
+        {
+            $lookup: {
+                from: Role.collection.name,
+                localField: 'role',
+                foreignField: '_id',
+                pipeline: [
+                    {
+                        $match: {
+                            workspace: workspaceObjectId,
+                        },
+                    },
+                    {
+                        $project: {
+                            _id: 1,
+                            key: 1,
+                            name: 1,
+                        },
+                    },
+                ],
+                as: 'role',
+            },
+        },
+        {
+            $unwind: '$role',
+        },
+        {
+            $facet: {
+                members: [
+                    {
+                        $sort: {
+                            joinedAt: 1,
+                            _id: 1,
+                        },
+                    },
+                    {
+                        $skip: skip,
+                    },
+                    {
+                        $limit: limit,
+                    },
+                    {
+                        $project: {
+                            _id: 0,
+                            id: {
+                                $toString: '$_id',
+                            },
+                            status: 1,
+                            joinedAt: 1,
+                            user: {
+                                id: {
+                                    $toString: '$user._id',
+                                },
+                                firstName: '$user.firstName',
+                                lastName: '$user.lastName',
+                                accountStatus: '$user.status',
+                            },
+                            role: {
+                                id: {
+                                    $toString: '$role._id',
+                                },
+                                key: '$role.key',
+                                name: '$role.name',
+                            },
+                        },
+                    },
+                ],
+                metadata: [
+                    {
+                        $count: 'total',
+                    },
+                ],
+            },
+        },
+    ]).exec();
+
+    const members = result?.members ?? [];
+    const total = result?.metadata?.[0]?.total ?? 0;
+
+    return {
+        members,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+        },
+    };
+};
 
 /**
  * Modifie le nom d'un workspace actif.
@@ -214,9 +404,9 @@ const updateWorkspace = async ({
     );
 };
 
-
 export {
     createWorkspace,
     listUserWorkspaces,
+    listWorkspaceMembers,
     updateWorkspace,
 };

@@ -3,6 +3,7 @@ import { AppError } from '../../utils/AppError.js';
 import {
     createWorkspace,
     listUserWorkspaces,
+    listWorkspaceMembers,
     updateWorkspace,
 } from './workspace.service.js';
 
@@ -55,6 +56,33 @@ export const list = async (req, res) => {
     });
 };
 
+/**
+ * Retourne les membres visibles du workspace courant.
+ *
+ * Le contexte multi-tenant et la permission member:read
+ * sont vérifiés par les middlewares avant ce controller.
+ *
+ * Le controller transmet uniquement les données validées
+ * au service, puis construit le contrat HTTP.
+ */
+export const listMembers = async (req, res) => {
+    const {
+        members,
+        pagination,
+    } = await listWorkspaceMembers({
+        workspaceId: req.workspace._id,
+        page: req.validated.query.page,
+        limit: req.validated.query.limit,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            members,
+        },
+        meta: pagination,
+    });
+};
 
 /**
  * Retourne le workspace courant déjà chargé par loadWorkspaceContext.

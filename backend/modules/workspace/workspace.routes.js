@@ -10,12 +10,14 @@ import {
     create,
     getById,
     list,
+    listMembers,
     update,
 } from './workspace.controller.js';
 
 import {
     createWorkspaceSchema,
     updateWorkspaceSchema,
+    listWorkspaceMembersQuerySchema,
     workspaceIdParamsSchema,
 } from './workspace.validation.js';
 
@@ -45,6 +47,25 @@ router.get(
     list,
 );
 
+/**
+ * Liste les membres actuels d’un workspace.
+ *
+ * Le workspace et le membership du demandeur doivent être actifs.
+ * La consultation exige explicitement la permission member:read.
+ */
+router.get(
+    '/:workspaceId/members',
+    authenticate,
+    validateRequest({
+        params: workspaceIdParamsSchema,
+        query: listWorkspaceMembersQuerySchema,
+    }),
+    loadWorkspaceContext,
+    authorizePermission(
+        CORE_PERMISSION.MEMBER_READ,
+    ),
+    listMembers,
+);
 
 /**
  * Retourne un workspace accessible à l'utilisateur connecté.
