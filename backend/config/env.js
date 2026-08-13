@@ -46,6 +46,13 @@ const envSchema = z.object({
         .min(1)
         .max(30)
         .default(7),
+        
+    PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES: z.coerce
+        .number()
+        .int()
+        .min(5)
+        .max(60)
+        .default(30),
 
 });
 // Valider les variables d'environnement et les transformer en types appropriés

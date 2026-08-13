@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    generatePasswordResetToken,
     generateRefreshToken,
     hashToken,
 } from '../../utils/token.js';
@@ -9,6 +10,19 @@ describe('token utils', () => {
     it('génère des refresh tokens opaques différents', () => {
         const firstToken = generateRefreshToken();
         const secondToken = generateRefreshToken();
+
+        expect(firstToken).toBeTruthy();
+        expect(secondToken).toBeTruthy();
+
+        expect(firstToken).not.toBe(secondToken);
+    });
+
+    it('génère des tokens de réinitialisation opaques différents', () => {
+        const firstToken =
+            generatePasswordResetToken();
+
+        const secondToken =
+            generatePasswordResetToken();
 
         expect(firstToken).toBeTruthy();
         expect(secondToken).toBeTruthy();
