@@ -1,4 +1,4 @@
-import { AppError } from "../utils/appError.js";
+import { AppError } from "../utils/AppError.js";
 // Middleware pour gérer les routes non trouvées (404)
 const notFound = (req, res, next) => {
     const error = new AppError('Route introuvable', 404);

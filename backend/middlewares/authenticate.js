@@ -1,5 +1,5 @@
 import { User } from '../modules/users/user.model.js';
-import { AppError } from '../utils/appError.js';
+import { AppError } from '../utils/AppError.js';
 import { verifyAccessToken } from '../utils/jwt.js';
 import { USER_STATUS } from '../constants/userStatus.constants.js';
 
