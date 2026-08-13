@@ -6,6 +6,7 @@ import {
 } from '../../config/cookie.config.js';
 
 import {
+  changePassword,
   login,
   logout,
   logoutAll,
@@ -15,6 +16,7 @@ import {
 } from '../../modules/auth/auth.controller.js';
 
 import {
+  changeUserPassword,
   loginUser,
   registerUser,
 } from '../../modules/auth/auth.service.js';
@@ -29,6 +31,7 @@ import { signAccessToken } from '../../utils/jwt.js';
 
 
 vi.mock('../../modules/auth/auth.service.js', () => ({
+  changeUserPassword: vi.fn(),
   loginUser: vi.fn(),
   registerUser: vi.fn(),
 }));
@@ -111,6 +114,7 @@ describe('auth.controller', () => {
       emailCanonical: 'greg@example.com',
       platformRole: 'user',
       emailVerifiedAt: null,
+      passwordChangedAt: null,
     };
 
     loginUser.mockResolvedValue({
@@ -153,6 +157,7 @@ describe('auth.controller', () => {
 
     expect(signAccessToken).toHaveBeenCalledWith(
       'user-id',
+      null,
     );
 
     expect(res.cookie).toHaveBeenCalledWith(
@@ -199,6 +204,7 @@ describe('auth.controller', () => {
       emailCanonical: 'greg@example.com',
       platformRole: 'user',
       emailVerifiedAt: null,
+      passwordChangedAt: null,
     };
 
     rotateAuthSession.mockResolvedValue({
@@ -242,6 +248,7 @@ describe('auth.controller', () => {
 
     expect(signAccessToken).toHaveBeenCalledWith(
       'user-id',
+      null,
     );
 
     expect(res.cookie).toHaveBeenCalledWith(
@@ -400,5 +407,54 @@ describe('auth.controller', () => {
         },
       },
     });
+  });
+  it('modifie le mot de passe et supprime le cookie refresh', async () => {
+    changeUserPassword.mockResolvedValue({
+      passwordChangedAt:
+        new Date('2026-08-13T12:00:00.000Z'),
+    });
+
+    const req = {
+      user: {
+        id: 'user-id',
+      },
+      validated: {
+        body: {
+          currentPassword:
+            'mot de passe actuel suffisamment long',
+          newPassword:
+            'nouveau mot de passe suffisamment long',
+        },
+      },
+    };
+
+    const send = vi.fn();
+
+    const res = {
+      clearCookie: vi.fn(),
+      status: vi.fn(() => ({
+        send,
+      })),
+    };
+
+    await changePassword(req, res);
+
+    expect(
+      changeUserPassword,
+    ).toHaveBeenCalledWith({
+      userId: 'user-id',
+      currentPassword:
+        'mot de passe actuel suffisamment long',
+      newPassword:
+        'nouveau mot de passe suffisamment long',
+    });
+
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      refreshCookieName,
+      refreshCookieOptions,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(204);
+    expect(send).toHaveBeenCalledWith();
   });
 });

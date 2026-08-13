@@ -24,21 +24,28 @@ describe('authenticate', () => {
 
 
     it('authentifie un User actif avec un access token valide', async () => {
+        const passwordChangedAt =
+            new Date('2026-08-13T12:00:00.123Z');
+
         const user = {
             _id: 'user-id',
             status: 'active',
+            passwordChangedAt,
         };
 
         const req = {
-            get: vi.fn(() => 'Bearer valid-access-token'),
+            get: vi.fn(
+                () => 'Bearer valid-access-token',
+            ),
         };
 
         const res = {};
-
         const next = vi.fn();
 
         verifyAccessToken.mockReturnValue({
             sub: 'user-id',
+            passwordChangedAt:
+                passwordChangedAt.getTime(),
         });
 
         User.findById.mockResolvedValue(user);
@@ -54,10 +61,43 @@ describe('authenticate', () => {
         );
 
         expect(req.user).toBe(user);
-
         expect(next).toHaveBeenCalledWith();
     });
+    it('refuse un access token antérieur au changement de mot de passe', async () => {
+        const req = {
+            get: vi.fn(
+                () => 'Bearer previous-access-token',
+            ),
+        };
 
+        const res = {};
+        const next = vi.fn();
+
+        verifyAccessToken.mockReturnValue({
+            sub: 'user-id',
+        });
+
+        User.findById.mockResolvedValue({
+            _id: 'user-id',
+            status: 'active',
+            passwordChangedAt:
+                new Date(
+                    '2026-08-13T12:00:00.123Z',
+                ),
+        });
+
+        await authenticate(req, res, next);
+
+        expect(next).toHaveBeenCalledWith(
+            expect.objectContaining({
+                statusCode: 401,
+                message:
+                    'Access token invalide ou expiré',
+            }),
+        );
+
+        expect(req.user).toBeUndefined();
+    });
 
     it('refuse une requête sans access token Bearer', async () => {
         const req = {

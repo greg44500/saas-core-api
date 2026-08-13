@@ -9,13 +9,27 @@ import {
 
 
 describe('JWT access token', () => {
-    it('génère un access token vérifiable pour le bon utilisateur', () => {
-        const userId = '507f1f77bcf86cd799439011';
+    it('génère un access token lié à la version actuelle du mot de passe', () => {
+        const userId =
+            '507f1f77bcf86cd799439011';
 
-        const token = signAccessToken(userId);
+        const passwordChangedAt =
+            new Date('2026-08-13T12:00:00.123Z');
+
+        const token = signAccessToken(
+            userId,
+            passwordChangedAt,
+        );
+
         const payload = verifyAccessToken(token);
 
         expect(payload.sub).toBe(userId);
+
+        expect(
+            payload.passwordChangedAt,
+        ).toBe(
+            passwordChangedAt.getTime(),
+        );
     });
 
 

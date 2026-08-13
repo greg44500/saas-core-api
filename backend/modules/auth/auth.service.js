@@ -6,7 +6,14 @@ import { canonicalizeEmail } from '../../utils/canonicalizeEmail.js';
 import { hashPassword, verifyPassword } from '../../utils/password.js';
 import { AuthIdentity } from '../authIdentities/authIdentity.model.js';
 import { User } from '../users/user.model.js';
-import { createInitialAuthSession } from '../authSessions/authSession.service.js';
+import { createInitialAuthSession, revokeAllUserAuthSessions } from '../authSessions/authSession.service.js';
+import {
+    AUTH_SESSION_REVOKED_REASON,
+} from '../../constants/authSession.constants.js';
+
+import {
+    USER_STATUS,
+} from '../../constants/userStatus.constants.js';
 
 const EMAIL_ALREADY_USED_MESSAGE =
     'Un compte existe déjà avec cette adresse email';
@@ -195,7 +202,167 @@ const loginUser = async ({
     };
 };
 
+/**
+ * Modifie le mot de passe de l'utilisateur authentifié.
+ *
+ * Le hash, la date de changement et la révocation des sessions
+ * sont modifiés dans une même transaction MongoDB.
+ *
+ * Le nouveau hash est calculé avant la transaction afin de limiter
+ * sa durée et d'éviter d'y effectuer un calcul Argon2id coûteux.
+ *
+ * @param {object} input
+ * @param {string|import('mongoose').Types.ObjectId} input.userId
+ * @param {string} input.currentPassword
+ * @param {string} input.newPassword
+ * @returns {Promise<{passwordChangedAt: Date}>}
+ */
+const changeUserPassword = async ({
+    userId,
+    currentPassword,
+    newPassword,
+}) => {
+    const authIdentityQuery = AuthIdentity.findOne({
+        user: userId,
+        provider: AUTH_PROVIDER.LOCAL,
+    });
+
+    const authIdentity =
+        await authIdentityQuery.select(
+            '+passwordHash',
+        );
+
+    /*
+     * Le même refus est utilisé lorsque l'identité locale
+     * est absente ou que le mot de passe actuel est incorrect.
+     */
+    if (!authIdentity) {
+        throw new AppError(
+            'Mot de passe actuel invalide',
+            401,
+        );
+    }
+
+    const currentPasswordIsValid =
+        await verifyPassword(
+            currentPassword,
+            authIdentity.passwordHash,
+        );
+
+    if (!currentPasswordIsValid) {
+        throw new AppError(
+            'Mot de passe actuel invalide',
+            401,
+        );
+    }
+
+    /*
+     * Un nouveau salt produirait un hash différent même si le mot
+     * de passe brut était identique. Il faut donc comparer le nouveau
+     * mot de passe avec le hash existant avant de le recalculer.
+     */
+    const newPasswordIsCurrentPassword =
+        await verifyPassword(
+            newPassword,
+            authIdentity.passwordHash,
+        );
+
+    if (newPasswordIsCurrentPassword) {
+        throw new AppError(
+            'Le nouveau mot de passe doit être différent',
+            400,
+        );
+    }
+
+    const newPasswordHash =
+        await hashPassword(newPassword);
+
+    const passwordChangedAt = new Date();
+
+    await mongoose.connection.transaction(
+        async (session) => {
+            /*
+             * Le hash actuel fait partie du filtre afin de détecter
+             * une modification concurrente du mot de passe.
+             */
+            const identityUpdateResult =
+                await AuthIdentity.updateOne(
+                    {
+                        _id: authIdentity._id,
+                        passwordHash:
+                            authIdentity.passwordHash,
+                    },
+                    {
+                        $set: {
+                            passwordHash:
+                                newPasswordHash,
+                        },
+                    },
+                    {
+                        session,
+                    },
+                );
+
+            if (
+                identityUpdateResult.modifiedCount !== 1
+            ) {
+                throw new AppError(
+                    'Le mot de passe a été modifié simultanément',
+                    409,
+                );
+            }
+
+            /*
+             * Le compte peut être actif ou en demande de suppression :
+             * les opérations nécessaires à sa sécurité restent permises.
+             */
+            const userUpdateResult =
+                await User.updateOne(
+                    {
+                        _id: userId,
+                        status: {
+                            $in: [
+                                USER_STATUS.ACTIVE,
+                                USER_STATUS
+                                    .DELETION_REQUESTED,
+                            ],
+                        },
+                    },
+                    {
+                        $set: {
+                            passwordChangedAt,
+                            updatedBy: userId,
+                        },
+                    },
+                    {
+                        session,
+                    },
+                );
+
+            if (userUpdateResult.matchedCount !== 1) {
+                throw new AppError(
+                    'Utilisateur indisponible',
+                    403,
+                );
+            }
+
+            await revokeAllUserAuthSessions({
+                userId,
+                revokedReason:
+                    AUTH_SESSION_REVOKED_REASON
+                        .PASSWORD_CHANGED,
+                session,
+            });
+        },
+    );
+
+    return {
+        passwordChangedAt,
+    };
+};
+
 export {
+    changeUserPassword,
     registerUser,
     loginUser
 };

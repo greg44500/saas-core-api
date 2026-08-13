@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import mongoose from 'mongoose';
-
+import {
+  AUTH_SESSION_REVOKED_REASON,
+} from '../../constants/authSession.constants.js';
 import { AuthSession } from '../../modules/authSessions/authSession.model.js';
 import {
   createInitialAuthSession,
@@ -348,6 +350,41 @@ describe('authSession.service', () => {
     expect(result).toBe(updateResult);
   });
 
+  it('révoque les AuthSession dans une transaction après un changement de mot de passe', async () => {
+    const userId =
+      new mongoose.Types.ObjectId();
+
+    const session = {
+      id: 'mongo-session',
+    };
+
+    await revokeAllUserAuthSessions({
+      userId,
+      revokedReason:
+        AUTH_SESSION_REVOKED_REASON.PASSWORD_CHANGED,
+      session,
+    });
+
+    expect(
+      AuthSession.updateMany,
+    ).toHaveBeenCalledWith(
+      {
+        user: userId,
+        revokedAt: null,
+      },
+      {
+        $set: {
+          revokedAt: expect.any(Date),
+          revokedReason:
+            AUTH_SESSION_REVOKED_REASON
+              .PASSWORD_CHANGED,
+        },
+      },
+      {
+        session,
+      },
+    );
+  });
 
   it('refuse la rotation d’une AuthSession expirée', async () => {
     const currentAuthSession = {

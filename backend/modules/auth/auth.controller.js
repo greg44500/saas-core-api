@@ -6,6 +6,7 @@ import {
 import { revokeCurrentAuthSession, rotateAuthSession, revokeAllUserAuthSessions, } from '../authSessions/authSession.service.js';
 
 import {
+    changeUserPassword,
     loginUser,
     registerUser,
 } from './auth.service.js';
@@ -63,6 +64,7 @@ export const login = async (req, res) => {
     // de l'AuthSession et contient uniquement l'identité minimale.
     const accessToken = signAccessToken(
         String(user._id),
+        user.passwordChangedAt ?? null,
     );
 
     // Le refresh token brut n'est jamais retourné dans le JSON.
@@ -125,6 +127,7 @@ export const refresh = async (req, res) => {
     // un nouvel access token court.
     const accessToken = signAccessToken(
         String(user._id),
+        user.passwordChangedAt ?? null,
     );
 
     // Le nouveau refresh token R2 remplace R1
@@ -192,6 +195,32 @@ export const logoutAll = async (req, res) => {
     );
     res.status(204).send()
 }
+
+/**
+ * Modifie le mot de passe de l'utilisateur authentifié.
+ *
+ * Le service vérifie le mot de passe actuel, modifie le hash
+ * et révoque toutes les AuthSession dans une transaction.
+ *
+ * Le controller supprime ensuite le refresh token du navigateur.
+ * Une nouvelle authentification sera nécessaire.
+ */
+export const changePassword = async (req, res) => {
+    await changeUserPassword({
+        userId: req.user.id,
+        currentPassword:
+            req.validated.body.currentPassword,
+        newPassword:
+            req.validated.body.newPassword,
+    });
+
+    res.clearCookie(
+        refreshCookieName,
+        refreshCookieOptions,
+    );
+
+    res.status(204).send();
+};
 
 /**
  * Retourne le profil public du User actuellement authentifié.

@@ -3,9 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { app } from '../../app.js';
 import {
+    authenticate,
+} from '../../middlewares/authenticate.js';
+import {
     refreshCookieName,
 } from '../../config/cookie.config.js';
-import { registerUser } from '../../modules/auth/auth.service.js';
+import { registerUser, changeUserPassword, } from '../../modules/auth/auth.service.js';
 import {
     revokeCurrentAuthSession,
     rotateAuthSession,
@@ -14,7 +17,18 @@ import { signAccessToken } from '../../utils/jwt.js';
 
 
 vi.mock('../../modules/auth/auth.service.js', () => ({
+    changeUserPassword: vi.fn(),
     registerUser: vi.fn(),
+}));
+
+vi.mock('../../middlewares/authenticate.js', () => ({
+    authenticate: vi.fn((req, res, next) => {
+        req.user = {
+            id: 'user-id',
+        };
+
+        next();
+    }),
 }));
 
 vi.mock('../../modules/authSessions/authSession.service.js', () => ({
@@ -151,6 +165,41 @@ describe('POST /api/auth/logout', () => {
             revokeCurrentAuthSession,
         ).toHaveBeenCalledWith({
             refreshToken: 'current-refresh-token',
+        });
+    });
+});
+describe('POST /api/auth/change-password', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('protège et exécute le changement de mot de passe', async () => {
+        changeUserPassword.mockResolvedValue({
+            passwordChangedAt:
+                new Date('2026-08-13T12:00:00.000Z'),
+        });
+
+        const response = await request(app)
+            .post('/api/auth/change-password')
+            .send({
+                currentPassword:
+                    'mot de passe actuel suffisamment long',
+                newPassword:
+                    'nouveau mot de passe suffisamment long',
+            });
+
+        expect(response.status).toBe(204);
+
+        expect(authenticate).toHaveBeenCalledOnce();
+
+        expect(
+            changeUserPassword,
+        ).toHaveBeenCalledWith({
+            userId: 'user-id',
+            currentPassword:
+                'mot de passe actuel suffisamment long',
+            newPassword:
+                'nouveau mot de passe suffisamment long',
         });
     });
 });

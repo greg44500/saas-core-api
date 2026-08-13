@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
+    changePassword,
     login,
     logout,
     logoutAll,
@@ -11,6 +12,7 @@ import {
     register,
 } from './auth.controller.js';
 import {
+    changePasswordSchema,
     loginSchema,
     registerSchema,
 } from './auth.validation.js';
@@ -80,6 +82,24 @@ router.post(
     '/logout-all',
     authenticate,
     logoutAll)
+
+/**
+ * Modifie le mot de passe de l'utilisateur authentifié.
+ *
+ * L'identité provient exclusivement de l'access token.
+ * Le body contient uniquement le mot de passe actuel
+ * et le nouveau mot de passe.
+ *
+ * Toutes les sessions sont révoquées après la modification.
+ */
+router.post(
+    '/change-password',
+    authenticate,
+    validateRequest({
+        body: changePasswordSchema,
+    }),
+    changePassword,
+);
 
 /**
  * Retourne l'utilisateur actuellement authentifié.

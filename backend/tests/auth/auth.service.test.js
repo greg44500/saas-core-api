@@ -1,18 +1,24 @@
 import mongoose from 'mongoose';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
+import {
+    AUTH_SESSION_REVOKED_REASON,
+} from '../../constants/authSession.constants.js';
 import { AUTH_PROVIDER } from '../../constants/authProvider.constants.js';
 import { AuthIdentity } from '../../modules/authIdentities/authIdentity.model.js';
-import { loginUser, registerUser } from '../../modules/auth/auth.service.js';
-import { createInitialAuthSession } from '../../modules/authSessions/authSession.service.js';
+import { loginUser, registerUser, changeUserPassword, } from '../../modules/auth/auth.service.js';
+import {
+    createInitialAuthSession, revokeAllUserAuthSessions,
+} from '../../modules/authSessions/authSession.service.js';
 import { User } from '../../modules/users/user.model.js';
 import { hashPassword, verifyPassword } from '../../utils/password.js';
+
 
 vi.mock('../../modules/users/user.model.js', () => ({
     User: {
         exists: vi.fn(),
         create: vi.fn(),
         findOne: vi.fn(),
+        updateOne: vi.fn(),
     },
 }));
 
@@ -20,11 +26,13 @@ vi.mock('../../modules/authIdentities/authIdentity.model.js', () => ({
     AuthIdentity: {
         create: vi.fn(),
         findOne: vi.fn(),
+        updateOne: vi.fn(),
     },
 }));
 
 vi.mock('../../modules/authSessions/authSession.service.js', () => ({
     createInitialAuthSession: vi.fn(),
+    revokeAllUserAuthSessions: vi.fn(),
 }));
 
 vi.mock('../../utils/password.js', () => ({
@@ -246,5 +254,178 @@ describe('loginUser', () => {
 
         // Le statut du compte est contrôlé avant toute création de session.
         expect(createInitialAuthSession).not.toHaveBeenCalled();
+    });
+});
+
+describe('changeUserPassword', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('modifie le hash et révoque les sessions dans une transaction', async () => {
+        const session = {
+            id: 'mongo-session',
+        };
+
+        const authIdentity = {
+            _id: 'identity-id',
+            passwordHash: 'stored-password-hash',
+        };
+
+        const select = vi.fn().mockResolvedValue(
+            authIdentity,
+        );
+
+        AuthIdentity.findOne.mockReturnValue({
+            select,
+        });
+
+        verifyPassword
+            .mockResolvedValueOnce(true)
+            .mockResolvedValueOnce(false);
+
+        hashPassword.mockResolvedValue(
+            'new-password-hash',
+        );
+
+        AuthIdentity.updateOne.mockResolvedValue({
+            modifiedCount: 1,
+        });
+
+        User.updateOne.mockResolvedValue({
+            matchedCount: 1,
+        });
+
+        vi.spyOn(
+            mongoose.connection,
+            'transaction',
+        ).mockImplementation(
+            async (callback) => callback(session),
+        );
+
+        const result = await changeUserPassword({
+            userId: 'user-id',
+            currentPassword:
+                'mot de passe actuel suffisamment long',
+            newPassword:
+                'nouveau mot de passe suffisamment long',
+        });
+
+        expect(
+            AuthIdentity.updateOne,
+        ).toHaveBeenCalledWith(
+            {
+                _id: 'identity-id',
+                passwordHash:
+                    'stored-password-hash',
+            },
+            {
+                $set: {
+                    passwordHash:
+                        'new-password-hash',
+                },
+            },
+            {
+                session,
+            },
+        );
+
+        expect(User.updateOne).toHaveBeenCalledWith(
+            expect.objectContaining({
+                _id: 'user-id',
+            }),
+            {
+                $set: {
+                    passwordChangedAt:
+                        expect.any(Date),
+                    updatedBy: 'user-id',
+                },
+            },
+            {
+                session,
+            },
+        );
+
+        expect(
+            revokeAllUserAuthSessions,
+        ).toHaveBeenCalledWith({
+            userId: 'user-id',
+            revokedReason:
+                AUTH_SESSION_REVOKED_REASON
+                    .PASSWORD_CHANGED,
+            session,
+        });
+
+        expect(result).toEqual({
+            passwordChangedAt:
+                expect.any(Date),
+        });
+    });
+
+    it('refuse un mot de passe actuel incorrect', async () => {
+        AuthIdentity.findOne.mockReturnValue({
+            select: vi.fn().mockResolvedValue({
+                _id: 'identity-id',
+                passwordHash:
+                    'stored-password-hash',
+            }),
+        });
+
+        verifyPassword.mockResolvedValue(false);
+
+        await expect(
+            changeUserPassword({
+                userId: 'user-id',
+                currentPassword:
+                    'mot de passe actuel incorrect',
+                newPassword:
+                    'nouveau mot de passe suffisamment long',
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 401,
+            message:
+                'Mot de passe actuel invalide',
+        });
+
+        expect(hashPassword).not.toHaveBeenCalled();
+        expect(
+            AuthIdentity.updateOne,
+        ).not.toHaveBeenCalled();
+        expect(
+            revokeAllUserAuthSessions,
+        ).not.toHaveBeenCalled();
+    });
+
+    it('refuse de réutiliser le mot de passe actuel', async () => {
+        AuthIdentity.findOne.mockReturnValue({
+            select: vi.fn().mockResolvedValue({
+                _id: 'identity-id',
+                passwordHash:
+                    'stored-password-hash',
+            }),
+        });
+
+        verifyPassword
+            .mockResolvedValueOnce(true)
+            .mockResolvedValueOnce(true);
+
+        await expect(
+            changeUserPassword({
+                userId: 'user-id',
+                currentPassword:
+                    'mot de passe actuel suffisamment long',
+                newPassword:
+                    'mot de passe actuel suffisamment long',
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 400,
+            message:
+                'Le nouveau mot de passe doit être différent',
+        });
+
+        expect(hashPassword).not.toHaveBeenCalled();
+        expect(
+            AuthIdentity.updateOne,
+        ).not.toHaveBeenCalled();
     });
 });

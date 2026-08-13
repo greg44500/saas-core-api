@@ -518,35 +518,70 @@ const rotateAuthSession = async ({
 };
 
 /**
- * Révoque toutes les AuthSession encore actives d'un utilisateur.
+ * Révoque toutes les AuthSession encore actives d’un utilisateur.
  *
- * Cette opération est utilisée pour un logout global :
- * toutes les connexions actives du compte deviennent inutilisables.
+ * Par défaut, cette opération correspond à logout-all.
+ * Une autre raison interne peut être fournie lorsqu’elle est exécutée
+ * dans un processus de sécurité, notamment un changement de mot de passe.
  *
- * Les sessions déjà révoquées ne sont pas modifiées afin de
- * conserver leur raison historique de révocation.
+ * La session MongoDB facultative permet d’intégrer la révocation
+ * dans une transaction appartenant à un autre service.
  *
  * @param {object} input
- * @param {import('mongoose').Types.ObjectId|string} input.userId
+ * @param {string|import('mongoose').Types.ObjectId} input.userId
+ * @param {string} [input.revokedReason]
+ * @param {import('mongoose').ClientSession|null} [input.session]
  * @returns {Promise<object>}
  */
+const revokeAllUserAuthSessions = async ({
+    userId,
+    revokedReason =
+    AUTH_SESSION_REVOKED_REASON.LOGOUT_ALL,
+    session = null,
+}) => {
+    if (!userId) {
+        throw new TypeError(
+            'userId is required to revoke user sessions',
+        );
+    }
 
-const revokeAllUserAuthSessions = async ({ userId, }) => {
+    if (
+        !Object.values(
+            AUTH_SESSION_REVOKED_REASON,
+        ).includes(revokedReason)
+    ) {
+        throw new TypeError(
+            'revokedReason is invalid',
+        );
+    }
+
     const now = new Date();
-    const result = await AuthSession.updateMany(
-        {
-            user: userId,
-            revokedAt: null,
+
+    const filter = {
+        user: userId,
+        revokedAt: null,
+    };
+
+    const update = {
+        $set: {
+            revokedAt: now,
+            revokedReason,
         },
-        {
-            $set: {
-                revokedAt: now,
-                revokedReason: AUTH_SESSION_REVOKED_REASON.LOGOUT_ALL,
-            },
-        },
+    };
+
+    if (session) {
+        return AuthSession.updateMany(
+            filter,
+            update,
+            { session },
+        );
+    }
+
+    return AuthSession.updateMany(
+        filter,
+        update,
     );
-    return result;
-}
+};
 
 
 export {

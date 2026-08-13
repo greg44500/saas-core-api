@@ -32,4 +32,16 @@ export const registerSchema = userIdentityInputSchema.extend({
 export const loginSchema = z.strictObject({
     email: z.email().max(254),
     password: passwordSchema,
-})
+});
+
+/**
+ * Contrat HTTP utilisé pour modifier le mot de passe
+ * de l'utilisateur authentifié.
+ *
+ * La vérification du mot de passe actuel et l'interdiction
+ * de réutiliser le même mot de passe appartiennent au service.
+ */
+export const changePasswordSchema = z.strictObject({
+    currentPassword: passwordSchema,
+    newPassword: passwordSchema,
+});
