@@ -31,7 +31,9 @@ import {
     USER_STATUS,
 } from '../../constants/userStatus.constants.js';
 
-/*messages privés**/
+/*
+ * Messages internes du module Auth.
+ */
 const EMAIL_ALREADY_USED_MESSAGE =
     'Un compte existe déjà avec cette adresse email';
 
@@ -121,18 +123,6 @@ const registerUser = async ({
     return createdUser;
 };
 
-/**
- * Authentifie un utilisateur avec son identité locale.
- *
- * Le même message d'erreur est utilisé lorsque l'email, l'identité
- * locale ou le mot de passe est incorrect afin de ne pas révéler
- * inutilement l'existence d'un compte.
- *
- * @param {object} input Données préalablement validées par loginSchema.
- * @param {string} input.email
- * @param {string} input.password
- * @returns {Promise<import('mongoose').Document>} User authentifié.
- */
 /**
  * Authentifie un utilisateur avec son identité locale.
  *
@@ -566,7 +556,7 @@ const resetUserPassword = async ({
             expiresAt: mongoose.trusted({
                 $gt: now,
             }),
-        })
+        });
 
     if (!passwordResetToken) {
         throw new AppError(
@@ -588,7 +578,7 @@ const resetUserPassword = async ({
             INVALID_PASSWORD_RESET_TOKEN_MESSAGE,
             400,
         );
-    }
+    };
 
     /*
      * Un compte clôturé est dans un état terminal :
@@ -680,6 +670,7 @@ const resetUserPassword = async ({
                     {
                         $set: {
                             usedAt: passwordChangedAt,
+                            updatedBy: null,
                         },
                     },
                     {
@@ -701,7 +692,7 @@ const resetUserPassword = async ({
                     INVALID_PASSWORD_RESET_TOKEN_MESSAGE,
                     400,
                 );
-            }
+            };
 
             /*
              * passwordHash actuel fait partie du filtre.
