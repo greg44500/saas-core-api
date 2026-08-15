@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    ensureMinimumDuration,
+} from '../../utils/securityTiming.js';
+import {
     AUTH_SESSION_REVOKED_REASON,
 } from '../../constants/authSession.constants.js';
 import { AUTH_PROVIDER } from '../../constants/authProvider.constants.js';
@@ -88,6 +91,16 @@ vi.mock('../../services/emailTemplates/passwordResetEmail.js', () => ({
 
 vi.mock('../../services/email.service.js', () => ({
     sendEmail: vi.fn(),
+}));
+
+vi.mock('../../utils/securityTiming.js', () => ({
+    ensureMinimumDuration: vi
+        .fn()
+        .mockResolvedValue({
+            elapsedMs: 0,
+            targetDurationMs: 700,
+            waitedMs: 700,
+        }),
 }));
 
 describe('registerUser', () => {
@@ -563,6 +576,7 @@ describe('forgotUserPassword', () => {
             userAgent: 'Mozilla/5.0 Test Browser',
         });
 
+
         /*
          * Seul le token brut est transmis à la construction de l'URL.
          * Aucun hash ou document MongoDB n'a à être exposé à cette couche.
@@ -597,7 +611,33 @@ describe('forgotUserPassword', () => {
             message:
                 'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.',
         });
+
+        /*
+ * Même le chemin nominal passe par la sortie temporelle commune.
+ * Le service Auth ne doit jamais retourner directement après SMTP.
+ */
+        expect(
+            ensureMinimumDuration,
+        ).toHaveBeenCalledWith({
+            startedAt: expect.any(Number),
+            minimumMs: 700,
+            jitterMs: 150,
+        });
+
+        /*
+ * Une adresse inexistante doit subir la même compensation temporelle
+ * qu'un compte éligible afin de réduire le signal d'énumération.
+ */
+        expect(
+            ensureMinimumDuration,
+        ).toHaveBeenCalledWith({
+            startedAt: expect.any(Number),
+            minimumMs: 700,
+            jitterMs: 150,
+        });
     });
+
+
 
     it('renvoie la réponse générique si l’adresse email n’existe pas', async () => {
         User.findOne.mockResolvedValue(null);
@@ -726,6 +766,18 @@ describe('forgotUserPassword', () => {
         expect(result).toEqual({
             message:
                 'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.',
+        });
+        /*
+* Un compte CLOSED doit lui aussi passer par la sortie temporelle
+* commune afin que ce statut ne puisse pas être déduit
+* d'un temps de réponse plus court.
+*/
+        expect(
+            ensureMinimumDuration,
+        ).toHaveBeenCalledWith({
+            startedAt: expect.any(Number),
+            minimumMs: 700,
+            jitterMs: 150,
         });
     });
 });
@@ -942,6 +994,7 @@ describe('resetUserPassword', () => {
                 $set: {
                     passwordChangedAt:
                         expect.any(Date),
+                    updatedBy: null,
                 },
             },
             {

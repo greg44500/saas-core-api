@@ -195,6 +195,68 @@ describe('POST /api/auth/forgot-password', () => {
             forgotUserPassword,
         ).not.toHaveBeenCalled();
     });
+    it('retourne 429 après trop de demandes visant la même adresse email', async () => {
+        const genericMessage =
+            'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.';
+
+        forgotUserPassword.mockResolvedValue({
+            message: genericMessage,
+        });
+
+        /*
+         * Cette adresse est volontairement différente de celles utilisées
+         * par les autres tests du fichier.
+         *
+         * Le MemoryStore de express-rate-limit appartient à l'instance
+         * du middleware et conserve ses compteurs pendant la suite de tests.
+         * Utiliser une clé dédiée rend donc ce test indépendant des requêtes
+         * forgot-password exécutées précédemment.
+         */
+        const email =
+            'rate-limit-test@example.com';
+
+        const firstResponse = await request(app)
+            .post('/api/auth/forgot-password')
+            .send({ email });
+
+        const secondResponse = await request(app)
+            .post('/api/auth/forgot-password')
+            .send({ email });
+
+        const thirdResponse = await request(app)
+            .post('/api/auth/forgot-password')
+            .send({ email });
+
+        const fourthResponse = await request(app)
+            .post('/api/auth/forgot-password')
+            .send({ email });
+
+        expect(firstResponse.status).toBe(200);
+        expect(secondResponse.status).toBe(200);
+        expect(thirdResponse.status).toBe(200);
+
+        /*
+         * Le quatrième appel dépasse la limite email de
+         * trois demandes sur la fenêtre configurée.
+         */
+        expect(fourthResponse.status).toBe(429);
+
+        expect(fourthResponse.body).toEqual({
+            status: 'fail',
+            message:
+                'Trop de demandes de réinitialisation. Veuillez réessayer plus tard.',
+        });
+
+        /*
+         * Le quatrième appel doit être arrêté par le middleware.
+         *
+         * Le controller et donc forgotUserPassword()
+         * ne doivent jamais être exécutés pour cette requête.
+         */
+        expect(
+            forgotUserPassword,
+        ).toHaveBeenCalledTimes(3);
+    });
 });
 
 describe('POST /api/auth/refresh', () => {

@@ -2,7 +2,10 @@ import express from 'express';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 
-import { createApiRateLimiter } from '../../config/rateLimit.config.js';
+import {
+    createApiRateLimiter,
+    createForgotPasswordIpRateLimiter,
+} from '../../config/rateLimit.config.js';
 
 const createTestApp = () => {
     const app = express();
@@ -25,6 +28,38 @@ const createTestApp = () => {
             status: 'success',
         });
     });
+
+    return app;
+};
+
+/**
+ * Crée une application Express minimale pour tester uniquement
+ * le limiter IP de forgot-password.
+ *
+ * On utilise une limite volontairement basse dans les tests afin
+ * de vérifier le comportement sans reproduire les 10 requêtes
+ * configurées pour l'application réelle.
+ *
+ * @returns {import('express').Express}
+ */
+const createForgotPasswordIpTestApp = () => {
+    const app = express();
+
+    const testRateLimiter =
+        createForgotPasswordIpRateLimiter({
+            windowMs: 60 * 1000,
+            limit: 2,
+        });
+
+    app.post(
+        '/forgot-password',
+        testRateLimiter,
+        (req, res) => {
+            res.status(200).json({
+                status: 'success',
+            });
+        },
+    );
 
     return app;
 };
@@ -68,5 +103,48 @@ describe('Rate limiter global', () => {
         expect(response.status).toBe(200);
         expect(response.headers.ratelimit).toBeUndefined();
         expect(response.headers['ratelimit-policy']).toBeUndefined();
+    });
+});
+
+describe('Rate limiter IP forgot-password', () => {
+    it('renvoie 429 après dépassement du quota pour une même IP', async () => {
+        const app =
+            createForgotPasswordIpTestApp();
+
+        /*
+         * Supertest envoie ces requêtes depuis la même origine locale.
+         *
+         * Avec une limite de 2 :
+         * - requête 1 : autorisée ;
+         * - requête 2 : autorisée ;
+         * - requête 3 : refusée.
+         */
+        const firstResponse = await request(app)
+            .post('/forgot-password');
+
+        const secondResponse = await request(app)
+            .post('/forgot-password');
+
+        const thirdResponse = await request(app)
+            .post('/forgot-password');
+
+        expect(firstResponse.status).toBe(200);
+        expect(secondResponse.status).toBe(200);
+
+        expect(thirdResponse.status).toBe(429);
+
+        expect(thirdResponse.body).toEqual({
+            status: 'fail',
+            message:
+                'Trop de demandes de réinitialisation. Veuillez réessayer plus tard.',
+        });
+
+        /*
+         * Le client doit recevoir l'information standard lui indiquant
+         * qu'il doit attendre avant de tenter une nouvelle requête.
+         */
+        expect(
+            thirdResponse.headers['retry-after'],
+        ).toBeDefined();
     });
 });

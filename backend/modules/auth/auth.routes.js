@@ -1,5 +1,8 @@
 import { Router } from 'express';
-
+import {
+    forgotPasswordEmailRateLimiter,
+    forgotPasswordIpRateLimiter,
+} from '../../config/rateLimit.config.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
@@ -44,21 +47,32 @@ router.post(
     login,
 );
 
-/**
- * Demande l'envoi d'un lien de réinitialisation du mot de passe.
- *
- * Cette route reste publique : l'utilisateur qui a oublié
- * son mot de passe ne peut pas être supposé authentifié.
- *
- * Le body est strictement validé avant d'atteindre le controller.
- * La logique anti-énumération et l'éventuel envoi d'email
- * restent entièrement pris en charge par forgotUserPassword().
- */
 router.post(
     '/forgot-password',
+
+    /*
+     * Première barrière : limite le volume total de demandes
+     * provenant d'une même origine réseau.
+     *
+     * Elle s'exécute avant la validation afin qu'un client
+     * envoyant volontairement des bodies invalides ne puisse
+     * pas contourner la protection anti-abus.
+     */
+    forgotPasswordIpRateLimiter,
+
+    /*
+     * Deuxième barrière : limite les demandes visant
+     * une même adresse email, indépendamment de l'IP.
+     *
+     * Le limiter ne vérifie jamais si le compte existe :
+     * il ne crée donc aucune fuite d'information utilisateur.
+     */
+    forgotPasswordEmailRateLimiter,
+
     validateRequest({
         body: forgotPasswordSchema,
     }),
+
     forgotPassword,
 );
 

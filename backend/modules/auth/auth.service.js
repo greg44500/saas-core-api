@@ -1,7 +1,10 @@
 import mongoose from 'mongoose';
 import { env } from '../../config/env.js';
+import { performance } from 'node:perf_hooks';
 import { sendEmail } from '../../services/email.service.js';
-
+import {
+    ensureMinimumDuration,
+} from '../../utils/securityTiming.js';
 import {
     createPasswordResetToken,
 } from '../passwordResetTokens/passwordResetToken.service.js';
@@ -39,11 +42,26 @@ const EMAIL_ALREADY_USED_MESSAGE =
 
 const INVALID_CREDENTIALS_MESSAGE = 'Identifiants invalides';
 
+const INVALID_PASSWORD_RESET_TOKEN_MESSAGE =
+    'Lien de réinitialisation invalide ou expiré';
+
 const FORGOT_PASSWORD_RESPONSE_MESSAGE =
     'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.';
 
-const INVALID_PASSWORD_RESET_TOKEN_MESSAGE =
-    'Lien de réinitialisation invalide ou expiré';
+/*
+* Compensation temporelle du workflow forgot-password.
+*
+* Le but n'est PAS d'obtenir un temps d'exécution cryptographiquement
+* constant, mais de réduire l'écart observable entre :
+* - une adresse inconnue qui quitte rapidement le workflow ;
+* - un compte valide qui réalise plusieurs accès DB puis un envoi SMTP.
+*
+* Ces valeurs devront être réévaluées lorsque les emails seront
+* délégués à une file de tâches durable.
+*/
+const FORGOT_PASSWORD_MINIMUM_DURATION_MS = 700;
+const FORGOT_PASSWORD_JITTER_MS = 150;
+
 /**
  * Crée un compte utilisateur utilisant l'authentification locale.
  *
@@ -373,6 +391,33 @@ const changeUserPassword = async ({
 };
 
 /**
+ * Termine une demande forgot-password en appliquant systématiquement
+ * la compensation temporelle avant de retourner la réponse publique.
+ *
+ * Centraliser cette sortie évite qu'un nouveau cas métier ajouté plus tard
+ * oublie accidentellement la protection contre l'énumération temporelle.
+ *
+ * @param {number} startedAt Temps de départ issu de performance.now().
+ * @returns {Promise<{message: string}>}
+ */
+const completeForgotPasswordRequest = async (
+    startedAt,
+) => {
+    await ensureMinimumDuration({
+        startedAt,
+        minimumMs:
+            FORGOT_PASSWORD_MINIMUM_DURATION_MS,
+        jitterMs:
+            FORGOT_PASSWORD_JITTER_MS,
+    });
+
+    return {
+        message:
+            FORGOT_PASSWORD_RESPONSE_MESSAGE,
+    };
+};
+
+/**
  * Initialise une procédure de réinitialisation de mot de passe.
  *
  * Règle de sécurité principale :
@@ -396,6 +441,13 @@ const forgotUserPassword = async ({
     ipAddress = null,
     userAgent = null,
 }) => {
+    /*
+     * Le chronomètre démarre avant le premier accès aux données.
+     *
+     * Tous les chemins du workflow utiliseront cette même origine
+     * lorsqu'ils construiront la réponse publique.
+     */
+    const startedAt = performance.now();
     const emailCanonical = canonicalizeEmail(email);
 
     /*
@@ -412,9 +464,9 @@ const forgotUserPassword = async ({
      * n'existe. Une erreur 404 révélerait l'existence ou non d'un compte.
      */
     if (!user) {
-        return {
-            message: FORGOT_PASSWORD_RESPONSE_MESSAGE,
-        };
+        return completeForgotPasswordRequest(
+            startedAt,
+        );
     }
 
     /*
@@ -431,9 +483,9 @@ const forgotUserPassword = async ({
     });
 
     if (!localIdentity) {
-        return {
-            message: FORGOT_PASSWORD_RESPONSE_MESSAGE,
-        };
+        return completeForgotPasswordRequest(
+            startedAt,
+        );
     }
 
     /*
@@ -444,9 +496,9 @@ const forgotUserPassword = async ({
      * la protection contre l'énumération des comptes.
      */
     if (user.status === USER_STATUS.CLOSED) {
-        return {
-            message: FORGOT_PASSWORD_RESPONSE_MESSAGE,
-        };
+        return completeForgotPasswordRequest(
+            startedAt,
+        );
     }
 
     /*
@@ -500,9 +552,9 @@ const forgotUserPassword = async ({
      * Même réponse que pour une adresse inexistante ou un compte
      * sans identité locale : l'API ne révèle aucun état interne.
      */
-    return {
-        message: FORGOT_PASSWORD_RESPONSE_MESSAGE,
-    };
+    return completeForgotPasswordRequest(
+        startedAt,
+    );
 };
 
 /**
@@ -676,7 +728,7 @@ const resetUserPassword = async ({
                         returnDocument: 'after',
                         session,
                     },
-                );
+                )
 
             /*
              * Aucun document retourné signifie que l'état du token
@@ -691,7 +743,7 @@ const resetUserPassword = async ({
                     INVALID_PASSWORD_RESET_TOKEN_MESSAGE,
                     400,
                 );
-            };
+            }
 
             /*
              * passwordHash actuel fait partie du filtre.
