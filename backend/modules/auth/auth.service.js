@@ -670,7 +670,6 @@ const resetUserPassword = async ({
                     {
                         $set: {
                             usedAt: passwordChangedAt,
-                            updatedBy: null,
                         },
                     },
                     {
@@ -752,6 +751,7 @@ const resetUserPassword = async ({
                     {
                         $set: {
                             passwordChangedAt,
+                            updatedBy: null,
                         },
                     },
                     {
