@@ -10,6 +10,7 @@ import {
     forgotUserPassword,
     loginUser,
     registerUser,
+    resetUserPassword,
 } from './auth.service.js';
 
 import { signAccessToken } from '../../utils/jwt.js';
@@ -124,7 +125,50 @@ export const forgotPassword = async (req, res) => {
         message,
     });
 };
+/**
+ * Réinitialise le mot de passe à partir d'un token public valide.
+ *
+ * Toute la logique sensible reste dans resetUserPassword() :
+ * - validation métier du token ;
+ * - contrôle de son expiration et de son usage unique ;
+ * - vérification du User et de l'identité locale ;
+ * - changement atomique du passwordHash ;
+ * - mise à jour de passwordChangedAt ;
+ * - révocation des AuthSession existantes.
+ *
+ * Le controller reste uniquement responsable du contrat HTTP.
+ *
+ * Aucun access token ni nouvelle AuthSession ne sont créés ici :
+ * après un reset réussi, l'utilisateur doit se reconnecter.
+ */
+export const resetPassword = async (req, res) => {
+    await resetUserPassword({
+        token: req.validated.body.token,
+        newPassword:
+            req.validated.body.newPassword,
+    });
 
+    /*
+     * Un refresh cookie peut encore être présent dans le navigateur
+     * si l'utilisateur était connecté avant le reset.
+     *
+     * Les AuthSession correspondantes ont déjà été révoquées
+     * côté serveur par resetUserPassword().
+     *
+     * On supprime également le cookie côté navigateur afin
+     * d'éviter de conserver inutilement un credential devenu invalide.
+     */
+    res.clearCookie(
+        refreshCookieName,
+        refreshCookieOptions,
+    );
+
+    res.status(200).json({
+        status: 'success',
+        message:
+            'Mot de passe réinitialisé avec succès.',
+    });
+};
 
 /**
  * Renouvelle la session d'authentification.

@@ -5,7 +5,17 @@ import {
 } from '../../constants/authSession.constants.js';
 import { AUTH_PROVIDER } from '../../constants/authProvider.constants.js';
 import { AuthIdentity } from '../../modules/authIdentities/authIdentity.model.js';
-import { loginUser, registerUser, changeUserPassword, forgotUserPassword, } from '../../modules/auth/auth.service.js';
+import {
+    loginUser,
+    registerUser,
+    changeUserPassword,
+    forgotUserPassword,
+    resetUserPassword,
+} from '../../modules/auth/auth.service.js';
+import {
+    PasswordResetToken,
+} from '../../modules/passwordResetTokens/passwordResetToken.model.js';
+import { hashToken } from '../../utils/token.js';
 import {
     createInitialAuthSession, revokeAllUserAuthSessions,
 } from '../../modules/authSessions/authSession.service.js';
@@ -29,6 +39,7 @@ vi.mock('../../modules/users/user.model.js', () => ({
     User: {
         exists: vi.fn(),
         create: vi.fn(),
+        findById: vi.fn(),
         findOne: vi.fn(),
         updateOne: vi.fn(),
     },
@@ -42,6 +53,16 @@ vi.mock('../../modules/authIdentities/authIdentity.model.js', () => ({
         updateOne: vi.fn(),
     },
 }));
+
+vi.mock(
+    '../../modules/passwordResetTokens/passwordResetToken.model.js',
+    () => ({
+        PasswordResetToken: {
+            findOne: vi.fn(),
+            findOneAndUpdate: vi.fn(),
+        },
+    }),
+);
 
 vi.mock('../../modules/authSessions/authSession.service.js', () => ({
     createInitialAuthSession: vi.fn(),
@@ -689,7 +710,7 @@ describe('forgotUserPassword', () => {
 
         expect(
             buildPasswordResetUrl,
-            
+
         ).not.toHaveBeenCalled();
 
         expect(
@@ -706,5 +727,751 @@ describe('forgotUserPassword', () => {
             message:
                 'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.',
         });
+    });
+});
+
+describe('resetUserPassword', () => {
+    beforeEach(() => {
+        /*
+         * resetUserPassword orchestre plusieurs écritures sensibles.
+         * Chaque test doit donc repartir sans historique d'appels
+         * provenant d'un scénario précédent.
+         */
+        vi.clearAllMocks();
+    });
+
+    it('réinitialise le mot de passe et révoque les sessions dans une transaction', async () => {
+        const session = {
+            id: 'mongo-session',
+        };
+
+        const rawResetToken =
+            'opaque-reset-token';
+
+        const expectedTokenHash =
+            hashToken(rawResetToken);
+
+        const passwordResetToken = {
+            _id: 'password-reset-token-id',
+            user: 'user-id',
+            usedAt: null,
+            revokedAt: null,
+            expiresAt: new Date(
+                Date.now() + 30 * 60 * 1000,
+            ),
+        };
+
+        const user = {
+            _id: 'user-id',
+            status: 'active',
+        };
+
+        const authIdentity = {
+            _id: 'identity-id',
+            passwordHash:
+                'stored-password-hash',
+        };
+
+        /*
+         * Première lecture du token hors transaction.
+         * Le service prépare ainsi l'opération avant le calcul Argon2id.
+         */
+        PasswordResetToken.findOne.mockResolvedValue(
+            passwordResetToken,
+        );
+
+        User.findById.mockResolvedValue(user);
+
+        AuthIdentity.findOne.mockReturnValue({
+            select: vi
+                .fn()
+                .mockResolvedValue(
+                    authIdentity,
+                ),
+        });
+
+        /*
+         * false signifie que le nouveau mot de passe
+         * est différent du mot de passe actuellement enregistré.
+         */
+        verifyPassword.mockResolvedValue(false);
+
+        hashPassword.mockResolvedValue(
+            'new-password-hash',
+        );
+
+        /*
+         * La consommation définitive du token réussit.
+         *
+         * Une valeur non null signifie que le token satisfaisait encore
+         * toutes les conditions au moment de l'écriture transactionnelle.
+         */
+        PasswordResetToken.findOneAndUpdate
+            .mockResolvedValue({
+                ...passwordResetToken,
+                usedAt: new Date(),
+            });
+
+        AuthIdentity.updateOne.mockResolvedValue({
+            modifiedCount: 1,
+        });
+
+        User.updateOne.mockResolvedValue({
+            matchedCount: 1,
+        });
+
+        revokeAllUserAuthSessions.mockResolvedValue({
+            modifiedCount: 2,
+        });
+
+        vi.spyOn(
+            mongoose.connection,
+            'transaction',
+        ).mockImplementation(
+            async (callback) =>
+                callback(session),
+        );
+
+        const result =
+            await resetUserPassword({
+                token: rawResetToken,
+                newPassword:
+                    'nouveau mot de passe suffisamment long',
+            });
+
+        /*
+         * Le token brut n'est jamais recherché en base.
+         * Le service utilise uniquement son empreinte SHA-256.
+         */
+        expect(
+            PasswordResetToken.findOne,
+        ).toHaveBeenCalledWith(
+            expect.objectContaining({
+                tokenHash:
+                    expectedTokenHash,
+                usedAt: null,
+                revokedAt: null,
+            }),
+        );
+
+        expect(
+            User.findById,
+        ).toHaveBeenCalledWith(
+            'user-id',
+        );
+
+        expect(
+            AuthIdentity.findOne,
+        ).toHaveBeenCalledWith({
+            user: 'user-id',
+            provider:
+                AUTH_PROVIDER.LOCAL,
+        });
+
+        expect(
+            verifyPassword,
+        ).toHaveBeenCalledWith(
+            'nouveau mot de passe suffisamment long',
+            'stored-password-hash',
+        );
+
+        expect(
+            hashPassword,
+        ).toHaveBeenCalledWith(
+            'nouveau mot de passe suffisamment long',
+        );
+
+        /*
+         * La seconde opération sur PasswordResetToken
+         * constitue la consommation transactionnelle définitive.
+         */
+        expect(
+            PasswordResetToken
+                .findOneAndUpdate,
+        ).toHaveBeenCalledWith(
+            expect.objectContaining({
+                _id:
+                    'password-reset-token-id',
+                tokenHash:
+                    expectedTokenHash,
+                usedAt: null,
+                revokedAt: null,
+            }),
+            {
+                $set: {
+                    usedAt:
+                        expect.any(Date),
+                },
+            },
+            {
+                returnDocument: 'after',
+                session,
+            },
+        );
+
+        /*
+         * L'ancien hash fait partie du filtre :
+         * une modification concurrente ne doit pas être écrasée.
+         */
+        expect(
+            AuthIdentity.updateOne,
+        ).toHaveBeenCalledWith(
+            {
+                _id: 'identity-id',
+                passwordHash:
+                    'stored-password-hash',
+            },
+            {
+                $set: {
+                    passwordHash:
+                        'new-password-hash',
+                },
+            },
+            {
+                session,
+            },
+        );
+
+        expect(
+            User.updateOne,
+        ).toHaveBeenCalledWith(
+            expect.objectContaining({
+                _id: 'user-id',
+            }),
+            {
+                $set: {
+                    passwordChangedAt:
+                        expect.any(Date),
+                },
+            },
+            {
+                session,
+            },
+        );
+
+        /*
+         * Toutes les anciennes sessions sont révoquées
+         * avec la même raison que pour change-password.
+         */
+        expect(
+            revokeAllUserAuthSessions,
+        ).toHaveBeenCalledWith({
+            userId: 'user-id',
+            revokedReason:
+                AUTH_SESSION_REVOKED_REASON
+                    .PASSWORD_CHANGED,
+            session,
+        });
+
+        expect(result).toEqual({
+            passwordChangedAt:
+                expect.any(Date),
+        });
+    });
+    it('refuse un token de réinitialisation invalide ou inutilisable', async () => {
+        /*
+         * Aucun document ne correspond au token hashé avec les conditions :
+         *
+         * - usedAt: null ;
+         * - revokedAt: null ;
+         * - expiresAt > maintenant.
+         *
+         * Ce cas couvre publiquement :
+         * token inconnu, expiré, révoqué ou déjà utilisé.
+         */
+        PasswordResetToken.findOne.mockResolvedValue(
+            null,
+        );
+
+        await expect(
+            resetUserPassword({
+                token: 'invalid-reset-token',
+                newPassword:
+                    'nouveau mot de passe suffisamment long',
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 400,
+            message:
+                'Lien de réinitialisation invalide ou expiré',
+        });
+
+        /*
+         * Le workflow doit s'arrêter immédiatement.
+         * Aucune donnée liée au compte ne doit être consultée
+         * ni modifiée après l'échec de validation du token.
+         */
+        expect(User.findById).not.toHaveBeenCalled();
+
+        expect(
+            AuthIdentity.findOne,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            hashPassword,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            PasswordResetToken.findOneAndUpdate,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            revokeAllUserAuthSessions,
+        ).not.toHaveBeenCalled();
+    });
+    it('refuse la réinitialisation pour un compte clôturé', async () => {
+        const passwordResetToken = {
+            _id: 'password-reset-token-id',
+            user: 'user-id',
+            usedAt: null,
+            revokedAt: null,
+            expiresAt: new Date(
+                Date.now() + 30 * 60 * 1000,
+            ),
+        };
+
+        PasswordResetToken.findOne.mockResolvedValue(
+            passwordResetToken,
+        );
+
+        User.findById.mockResolvedValue({
+            _id: 'user-id',
+            status: 'closed',
+        });
+
+        await expect(
+            resetUserPassword({
+                token: 'opaque-reset-token',
+                newPassword:
+                    'nouveau mot de passe suffisamment long',
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 400,
+            message:
+                'Lien de réinitialisation invalide ou expiré',
+        });
+
+        /*
+         * CLOSED est un état terminal du compte.
+         *
+         * Le reset ne doit donc même pas poursuivre jusqu'à
+         * l'identité d'authentification.
+         */
+        expect(
+            AuthIdentity.findOne,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            hashPassword,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            PasswordResetToken.findOneAndUpdate,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            revokeAllUserAuthSessions,
+        ).not.toHaveBeenCalled();
+    });
+    it('refuse la réinitialisation si l’identité locale n’existe plus', async () => {
+        const passwordResetToken = {
+            _id: 'password-reset-token-id',
+            user: 'user-id',
+            usedAt: null,
+            revokedAt: null,
+            expiresAt: new Date(
+                Date.now() + 30 * 60 * 1000,
+            ),
+        };
+
+        PasswordResetToken.findOne.mockResolvedValue(
+            passwordResetToken,
+        );
+
+        User.findById.mockResolvedValue({
+            _id: 'user-id',
+            status: 'active',
+        });
+
+        /*
+         * findOne() retourne normalement une Query Mongoose
+         * sur laquelle le service applique .select('+passwordHash').
+         */
+        AuthIdentity.findOne.mockReturnValue({
+            select: vi.fn().mockResolvedValue(null),
+        });
+
+        await expect(
+            resetUserPassword({
+                token: 'opaque-reset-token',
+                newPassword:
+                    'nouveau mot de passe suffisamment long',
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 400,
+            message:
+                'Lien de réinitialisation invalide ou expiré',
+        });
+
+        expect(
+            AuthIdentity.findOne,
+        ).toHaveBeenCalledWith({
+            user: 'user-id',
+            provider: AUTH_PROVIDER.LOCAL,
+        });
+
+        /*
+         * reset-password ne doit jamais créer implicitement
+         * une identité LOCAL qui n'existe pas.
+         */
+        expect(
+            AuthIdentity.create,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            hashPassword,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            PasswordResetToken.findOneAndUpdate,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            revokeAllUserAuthSessions,
+        ).not.toHaveBeenCalled();
+    });
+    it('refuse de réutiliser le mot de passe actuel', async () => {
+        const passwordResetToken = {
+            _id: 'password-reset-token-id',
+            user: 'user-id',
+            usedAt: null,
+            revokedAt: null,
+            expiresAt: new Date(
+                Date.now() + 30 * 60 * 1000,
+            ),
+        };
+
+        PasswordResetToken.findOne.mockResolvedValue(
+            passwordResetToken,
+        );
+
+        User.findById.mockResolvedValue({
+            _id: 'user-id',
+            status: 'active',
+        });
+
+        AuthIdentity.findOne.mockReturnValue({
+            select: vi.fn().mockResolvedValue({
+                _id: 'identity-id',
+                passwordHash:
+                    'stored-password-hash',
+            }),
+        });
+
+        /*
+         * true signifie que le nouveau mot de passe
+         * correspond déjà au hash actuellement enregistré.
+         */
+        verifyPassword.mockResolvedValue(true);
+
+        await expect(
+            resetUserPassword({
+                token: 'opaque-reset-token',
+                newPassword:
+                    'mot de passe actuel suffisamment long',
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 400,
+            message:
+                'Le nouveau mot de passe doit être différent',
+        });
+
+        /*
+         * Aucun nouveau hash Argon2id ne doit être calculé
+         * puisque le mot de passe est déjà connu comme identique.
+         */
+        expect(
+            hashPassword,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            PasswordResetToken.findOneAndUpdate,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            AuthIdentity.updateOne,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            revokeAllUserAuthSessions,
+        ).not.toHaveBeenCalled();
+    });
+    it('refuse le reset si le token devient inutilisable avant sa consommation transactionnelle', async () => {
+        const session = {
+            id: 'mongo-session',
+        };
+
+        PasswordResetToken.findOne.mockResolvedValue({
+            _id: 'password-reset-token-id',
+            user: 'user-id',
+            usedAt: null,
+            revokedAt: null,
+            expiresAt: new Date(
+                Date.now() + 30 * 60 * 1000,
+            ),
+        });
+
+        User.findById.mockResolvedValue({
+            _id: 'user-id',
+            status: 'active',
+        });
+
+        AuthIdentity.findOne.mockReturnValue({
+            select: vi.fn().mockResolvedValue({
+                _id: 'identity-id',
+                passwordHash:
+                    'stored-password-hash',
+            }),
+        });
+
+        verifyPassword.mockResolvedValue(false);
+
+        hashPassword.mockResolvedValue(
+            'new-password-hash',
+        );
+
+        /*
+         * La première lecture avait réussi, mais la consommation
+         * transactionnelle ne trouve désormais plus le token.
+         *
+         * Cela simule notamment une seconde requête ayant gagné
+         * la course et consommé le token juste avant celle-ci.
+         */
+        PasswordResetToken.findOneAndUpdate
+            .mockResolvedValue(null);
+
+        vi.spyOn(
+            mongoose.connection,
+            'transaction',
+        ).mockImplementation(
+            async (callback) =>
+                callback(session),
+        );
+
+        await expect(
+            resetUserPassword({
+                token: 'opaque-reset-token',
+                newPassword:
+                    'nouveau mot de passe suffisamment long',
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 400,
+            message:
+                'Lien de réinitialisation invalide ou expiré',
+        });
+
+        /*
+         * Le token constitue le premier verrou de la transaction.
+         * Si sa consommation échoue, aucune donnée d'authentification
+         * ne doit être modifiée.
+         */
+        expect(
+            AuthIdentity.updateOne,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            User.updateOne,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            revokeAllUserAuthSessions,
+        ).not.toHaveBeenCalled();
+    });
+    it('refuse d’écraser un mot de passe modifié simultanément', async () => {
+        const session = {
+            id: 'mongo-session',
+        };
+
+        const passwordResetToken = {
+            _id: 'password-reset-token-id',
+            user: 'user-id',
+            usedAt: null,
+            revokedAt: null,
+            expiresAt: new Date(
+                Date.now() + 30 * 60 * 1000,
+            ),
+        };
+
+        PasswordResetToken.findOne.mockResolvedValue(
+            passwordResetToken,
+        );
+
+        User.findById.mockResolvedValue({
+            _id: 'user-id',
+            status: 'active',
+        });
+
+        AuthIdentity.findOne.mockReturnValue({
+            select: vi.fn().mockResolvedValue({
+                _id: 'identity-id',
+                passwordHash:
+                    'stored-password-hash',
+            }),
+        });
+
+        verifyPassword.mockResolvedValue(false);
+
+        hashPassword.mockResolvedValue(
+            'new-password-hash',
+        );
+
+        PasswordResetToken.findOneAndUpdate
+            .mockResolvedValue({
+                ...passwordResetToken,
+                usedAt: new Date(),
+            });
+
+        /*
+         * modifiedCount = 0 indique que le document existe,
+         * mais que l'ancien passwordHash du filtre ne correspond plus.
+         *
+         * Un autre workflow a donc changé le credential
+         * depuis notre lecture initiale.
+         */
+        AuthIdentity.updateOne.mockResolvedValue({
+            modifiedCount: 0,
+        });
+
+        vi.spyOn(
+            mongoose.connection,
+            'transaction',
+        ).mockImplementation(
+            async (callback) =>
+                callback(session),
+        );
+
+        await expect(
+            resetUserPassword({
+                token: 'opaque-reset-token',
+                newPassword:
+                    'nouveau mot de passe suffisamment long',
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 409,
+            message:
+                'Le mot de passe a été modifié simultanément',
+        });
+
+        /*
+         * Le User et les sessions ne doivent pas être traités
+         * après détection du conflit.
+         *
+         * En base réelle, la transaction rollbackera également
+         * la consommation du PasswordResetToken.
+         */
+        expect(
+            User.updateOne,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            revokeAllUserAuthSessions,
+        ).not.toHaveBeenCalled();
+    });
+    it('refuse le reset si le compte devient indisponible pendant la transaction', async () => {
+        const session = {
+            id: 'mongo-session',
+        };
+
+        const passwordResetToken = {
+            _id: 'password-reset-token-id',
+            user: 'user-id',
+            usedAt: null,
+            revokedAt: null,
+            expiresAt: new Date(
+                Date.now() + 30 * 60 * 1000,
+            ),
+        };
+
+        PasswordResetToken.findOne.mockResolvedValue(
+            passwordResetToken,
+        );
+
+        /*
+         * Au moment de la première lecture, le compte est encore actif.
+         */
+        User.findById.mockResolvedValue({
+            _id: 'user-id',
+            status: 'active',
+        });
+
+        AuthIdentity.findOne.mockReturnValue({
+            select: vi.fn().mockResolvedValue({
+                _id: 'identity-id',
+                passwordHash:
+                    'stored-password-hash',
+            }),
+        });
+
+        verifyPassword.mockResolvedValue(false);
+
+        hashPassword.mockResolvedValue(
+            'new-password-hash',
+        );
+
+        /*
+         * Le token est encore consommable lorsque la transaction commence.
+         */
+        PasswordResetToken.findOneAndUpdate
+            .mockResolvedValue({
+                ...passwordResetToken,
+                usedAt: new Date(),
+            });
+
+        AuthIdentity.updateOne.mockResolvedValue({
+            modifiedCount: 1,
+        });
+
+        /*
+         * matchedCount = 0 simule ici un changement d'état concurrent.
+         *
+         * Par exemple :
+         * le compte est passé de ACTIVE à CLOSED entre la lecture
+         * préliminaire et l'update transactionnel.
+         *
+         * Le filtre du service n'accepte alors plus le User.
+         */
+        User.updateOne.mockResolvedValue({
+            matchedCount: 0,
+        });
+
+        vi.spyOn(
+            mongoose.connection,
+            'transaction',
+        ).mockImplementation(
+            async (callback) =>
+                callback(session),
+        );
+
+        await expect(
+            resetUserPassword({
+                token: 'opaque-reset-token',
+                newPassword:
+                    'nouveau mot de passe suffisamment long',
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 400,
+            message:
+                'Lien de réinitialisation invalide ou expiré',
+        });
+
+        /*
+         * La révocation des sessions ne doit pas être poursuivie
+         * puisque l'état du User ne permet plus le reset.
+         *
+         * Avec une vraie transaction MongoDB, les écritures précédentes
+         * de cette transaction seront également rollbackées.
+         */
+        expect(
+            revokeAllUserAuthSessions,
+        ).not.toHaveBeenCalled();
     });
 });

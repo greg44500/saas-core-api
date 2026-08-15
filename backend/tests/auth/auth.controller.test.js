@@ -14,6 +14,7 @@ import {
   me,
   refresh,
   register,
+  resetPassword,
 } from '../../modules/auth/auth.controller.js';
 
 import {
@@ -21,6 +22,7 @@ import {
   forgotUserPassword,
   loginUser,
   registerUser,
+  resetUserPassword
 } from '../../modules/auth/auth.service.js';
 
 import {
@@ -37,6 +39,7 @@ vi.mock('../../modules/auth/auth.service.js', () => ({
   forgotUserPassword: vi.fn(),
   loginUser: vi.fn(),
   registerUser: vi.fn(),
+  resetUserPassword: vi.fn(),
 }));
 
 vi.mock('../../modules/authSessions/authSession.service.js', () => ({
@@ -256,7 +259,76 @@ describe('auth.controller', () => {
       message: genericMessage,
     });
   });
+  it('réinitialise le mot de passe, supprime le cookie refresh et retourne une confirmation', async () => {
+    /*
+     * La logique métier du reset est déjà testée dans auth.service.test.js.
+     *
+     * Ici, le service est donc mocké afin de vérifier uniquement :
+     * - les données qui lui sont transmises ;
+     * - le nettoyage du cookie refresh ;
+     * - le contrat HTTP public du controller.
+     */
+    resetUserPassword.mockResolvedValue({
+      passwordChangedAt:
+        new Date('2026-08-15T09:00:00.000Z'),
+    });
 
+    const req = {
+      validated: {
+        body: {
+          token: 'opaque-reset-token',
+          newPassword:
+            'nouveau mot de passe suffisamment long',
+        },
+      },
+    };
+
+    const json = vi.fn();
+
+    const res = {
+      clearCookie: vi.fn(),
+      status: vi.fn(() => ({
+        json,
+      })),
+    };
+
+    await resetPassword(req, res);
+
+    /*
+     * Le controller transmet uniquement les données validées
+     * nécessaires au service.
+     *
+     * Aucun userId, email, access token ou refresh token
+     * ne participe à l'identification du compte cible.
+     */
+    expect(
+      resetUserPassword,
+    ).toHaveBeenCalledWith({
+      token: 'opaque-reset-token',
+      newPassword:
+        'nouveau mot de passe suffisamment long',
+    });
+
+    /*
+     * Le service a déjà révoqué les AuthSession côté serveur.
+     *
+     * Le controller nettoie également le refresh cookie éventuellement
+     * encore présent dans le navigateur afin de ne pas conserver
+     * un credential devenu inutilisable.
+     */
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      refreshCookieName,
+      refreshCookieOptions,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(200);
+
+    expect(json).toHaveBeenCalledWith({
+      status: 'success',
+      message:
+        'Mot de passe réinitialisé avec succès.',
+    });
+  });
 
   it('renouvelle la session, remplace le cookie refresh et ne l’expose pas dans le JSON', async () => {
     const user = {

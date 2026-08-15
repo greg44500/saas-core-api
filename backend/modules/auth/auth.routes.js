@@ -11,12 +11,14 @@ import {
     me,
     refresh,
     register,
+    resetPassword,
 } from './auth.controller.js';
 import {
     changePasswordSchema,
     forgotPasswordSchema,
     loginSchema,
     registerSchema,
+    resetPasswordSchema,
 } from './auth.validation.js';
 
 const router = Router();
@@ -58,6 +60,25 @@ router.post(
         body: forgotPasswordSchema,
     }),
     forgotPassword,
+);
+
+/**
+ * Réinitialise le mot de passe à partir d'un token
+ * reçu via le workflow forgot-password.
+ *
+ * Route publique :
+ * le token de réinitialisation constitue ici la preuve
+ * temporaire autorisant le changement du credential.
+ *
+ * validateRequest protège le contrat HTTP avant que
+ * le controller puis le service ne soient exécutés.
+ */
+router.post(
+    '/reset-password',
+    validateRequest({
+        body: resetPasswordSchema,
+    }),
+    resetPassword,
 );
 
 /**

@@ -8,7 +8,7 @@ import {
 import {
     refreshCookieName,
 } from '../../config/cookie.config.js';
-import { registerUser, changeUserPassword, forgotUserPassword } from '../../modules/auth/auth.service.js';
+import { registerUser, changeUserPassword, forgotUserPassword, resetUserPassword } from '../../modules/auth/auth.service.js';
 import {
     revokeCurrentAuthSession,
     rotateAuthSession,
@@ -20,6 +20,7 @@ vi.mock('../../modules/auth/auth.service.js', () => ({
     changeUserPassword: vi.fn(),
     forgotUserPassword: vi.fn(),
     registerUser: vi.fn(),
+    resetUserPassword: vi.fn(),
 }));
 
 vi.mock('../../middlewares/authenticate.js', () => ({
@@ -120,7 +121,7 @@ describe('POST /api/auth/forgot-password', () => {
          * de l'email sont couverts par les tests du service.
          */
         forgotUserPassword.mockResolvedValue(
-            genericMessage,
+            { message: genericMessage, }
         );
 
         const response = await request(app)
@@ -293,5 +294,87 @@ describe('POST /api/auth/change-password', () => {
             newPassword:
                 'nouveau mot de passe suffisamment long',
         });
+    });
+});
+
+describe('POST /api/auth/reset-password', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('réinitialise le mot de passe pour une requête valide', async () => {
+        resetUserPassword.mockResolvedValue({
+            passwordChangedAt:
+                new Date('2026-08-15T09:00:00.000Z'),
+        });
+
+        const response = await request(app)
+            .post('/api/auth/reset-password')
+            .send({
+                token: 'opaque-reset-token',
+                newPassword:
+                    'nouveau mot de passe suffisamment long',
+            });
+
+        expect(response.status).toBe(200);
+
+        expect(response.body).toEqual({
+            status: 'success',
+            message:
+                'Mot de passe réinitialisé avec succès.',
+        });
+
+        /*
+         * La route doit transmettre au service uniquement
+         * les données validées du workflow reset-password.
+         */
+        expect(
+            resetUserPassword,
+        ).toHaveBeenCalledWith({
+            token: 'opaque-reset-token',
+            newPassword:
+                'nouveau mot de passe suffisamment long',
+        });
+    });
+
+    it('retourne 400 si le nouveau mot de passe est invalide', async () => {
+        const response = await request(app)
+            .post('/api/auth/reset-password')
+            .send({
+                token: 'opaque-reset-token',
+                newPassword: 'trop-court',
+            });
+
+        expect(response.status).toBe(400);
+
+        /*
+         * validateRequest doit bloquer la requête
+         * avant l'appel du controller puis du service.
+         */
+        expect(
+            resetUserPassword,
+        ).not.toHaveBeenCalled();
+    });
+
+    it('retourne 400 si le body contient un champ non autorisé', async () => {
+        const response = await request(app)
+            .post('/api/auth/reset-password')
+            .send({
+                token: 'opaque-reset-token',
+                newPassword:
+                    'nouveau mot de passe suffisamment long',
+                userId: 'user-id-interdit',
+            });
+
+        expect(response.status).toBe(400);
+
+        /*
+         * resetPasswordSchema utilise strictObject().
+         * Un champ supplémentaire ne doit donc jamais
+         * atteindre la couche métier.
+         */
+        expect(
+            resetUserPassword,
+        ).not.toHaveBeenCalled();
     });
 });

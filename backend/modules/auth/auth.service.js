@@ -9,7 +9,9 @@ import {
 import {
     buildPasswordResetEmail,
 } from '../../services/emailTemplates/passwordResetEmail.js';
-
+import {
+    PasswordResetToken,
+} from '../passwordResetTokens/passwordResetToken.model.js';
 import {
     buildPasswordResetUrl,
 } from './passwordResetUrl.js';
@@ -17,6 +19,7 @@ import { AUTH_PROVIDER } from '../../constants/authProvider.constants.js';
 import { AppError } from '../../utils/AppError.js';
 import { canonicalizeEmail } from '../../utils/canonicalizeEmail.js';
 import { hashPassword, verifyPassword } from '../../utils/password.js';
+import { hashToken } from '../../utils/token.js';
 import { AuthIdentity } from '../authIdentities/authIdentity.model.js';
 import { User } from '../users/user.model.js';
 import { createInitialAuthSession, revokeAllUserAuthSessions } from '../authSessions/authSession.service.js';
@@ -28,6 +31,7 @@ import {
     USER_STATUS,
 } from '../../constants/userStatus.constants.js';
 
+/*messages privés**/
 const EMAIL_ALREADY_USED_MESSAGE =
     'Un compte existe déjà avec cette adresse email';
 
@@ -36,6 +40,8 @@ const INVALID_CREDENTIALS_MESSAGE = 'Identifiants invalides';
 const FORGOT_PASSWORD_RESPONSE_MESSAGE =
     'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.';
 
+const INVALID_PASSWORD_RESET_TOKEN_MESSAGE =
+    'Lien de réinitialisation invalide ou expiré';
 /**
  * Crée un compte utilisateur utilisant l'authentification locale.
  *
@@ -509,9 +515,294 @@ const forgotUserPassword = async ({
     };
 };
 
+/**
+ * Réinitialise le mot de passe d'un utilisateur à partir
+ * d'un token de récupération valide.
+ *
+ * Le token brut reçu du client n'est jamais recherché directement
+ * en base : seul son hash SHA-256 est utilisé.
+ *
+ * Une première lecture hors transaction permet de vérifier
+ * l'état courant du workflow et de calculer le nouveau hash Argon2id
+ * avant d'ouvrir la transaction MongoDB.
+ *
+ * La transaction revalide ensuite atomiquement le token afin
+ * qu'une même demande de réinitialisation ne puisse réussir
+ * qu'une seule fois, même en cas de requêtes concurrentes.
+ *
+ * @param {object} input
+ * @param {string} input.token Token brut préalablement validé.
+ * @param {string} input.newPassword Nouveau mot de passe validé.
+ * @returns {Promise<{passwordChangedAt: Date}>}
+ */
+const resetUserPassword = async ({
+    token,
+    newPassword,
+}) => {
+    /*
+     * Le token brut ne doit jamais être persisté.
+     *
+     * PasswordResetToken.tokenHash contient uniquement
+     * son empreinte SHA-256.
+     */
+    const tokenHash = hashToken(token);
+
+    const now = new Date();
+
+    /*
+     * Première lecture hors transaction.
+     *
+     * Elle permet d'éviter d'ouvrir une transaction pour un token
+     * manifestement inutilisable.
+     *
+     * Cette lecture ne constitue PAS la validation définitive :
+     * le token sera reconsommé conditionnellement dans la transaction.
+     */
+    const passwordResetToken =
+        await PasswordResetToken.findOne({
+            tokenHash,
+            usedAt: null,
+            revokedAt: null,
+            expiresAt: mongoose.trusted({
+                $gt: now,
+            }),
+        })
+
+    if (!passwordResetToken) {
+        throw new AppError(
+            INVALID_PASSWORD_RESET_TOKEN_MESSAGE,
+            400,
+        );
+    }
+
+    /*
+     * Le User reste la source de vérité concernant
+     * l'état actuel du compte.
+     */
+    const user = await User.findById(
+        passwordResetToken.user,
+    );
+
+    if (!user) {
+        throw new AppError(
+            INVALID_PASSWORD_RESET_TOKEN_MESSAGE,
+            400,
+        );
+    }
+
+    /*
+     * Un compte clôturé est dans un état terminal :
+     * un reset de mot de passe ne doit jamais permettre
+     * de restaurer indirectement sa capacité d'authentification.
+     *
+     * Les autres statuts actuellement présents dans le projet
+     * peuvent conserver la possibilité de sécuriser leur credential.
+     */
+    if (user.status === USER_STATUS.CLOSED) {
+        throw new AppError(
+            INVALID_PASSWORD_RESET_TOKEN_MESSAGE,
+            400,
+        );
+    }
+
+    /*
+     * Le mot de passe appartient à AuthIdentity LOCAL,
+     * et non directement au User.
+     *
+     * passwordHash est select:false dans le modèle :
+     * il doit donc être demandé explicitement.
+     */
+    const authIdentity =
+        await AuthIdentity.findOne({
+            user: user._id,
+            provider: AUTH_PROVIDER.LOCAL,
+        }).select('+passwordHash');
+
+    if (!authIdentity) {
+        throw new AppError(
+            INVALID_PASSWORD_RESET_TOKEN_MESSAGE,
+            400,
+        );
+    }
+
+    /*
+     * Un nouveau salt produirait toujours un hash différent.
+     *
+     * Il faut donc vérifier le nouveau mot de passe
+     * contre le hash actuel avant de recalculer son Argon2id.
+     */
+    const newPasswordIsCurrentPassword =
+        await verifyPassword(
+            newPassword,
+            authIdentity.passwordHash,
+        );
+
+    if (newPasswordIsCurrentPassword) {
+        throw new AppError(
+            'Le nouveau mot de passe doit être différent',
+            400,
+        );
+    }
+
+    /*
+     * Argon2id est volontairement coûteux.
+     *
+     * Le calcul est effectué avant la transaction afin
+     * de réduire au maximum sa durée.
+     */
+    const newPasswordHash =
+        await hashPassword(newPassword);
+
+    const passwordChangedAt = new Date();
+
+    await mongoose.connection.transaction(
+        async (session) => {
+            /*
+             * Verrou logique principal du workflow.
+             *
+             * Le token doit être encore totalement utilisable
+             * AU MOMENT de l'écriture.
+             *
+             * Si deux requêtes concurrentes tentent de consommer
+             * le même token, une seule pourra satisfaire ce filtre.
+             */
+            const consumedPasswordResetToken =
+                await PasswordResetToken.findOneAndUpdate(
+                    {
+                        _id: passwordResetToken._id,
+                        tokenHash,
+                        usedAt: null,
+                        revokedAt: null,
+                        expiresAt: mongoose.trusted({
+                            $gt: passwordChangedAt,
+                        }),
+                    },
+                    {
+                        $set: {
+                            usedAt: passwordChangedAt,
+                        },
+                    },
+                    {
+                        returnDocument: 'after',
+                        session,
+                    },
+                );
+
+            /*
+             * Aucun document retourné signifie que l'état du token
+             * a changé depuis la première lecture :
+             *
+             * - expiration ;
+             * - révocation ;
+             * - consommation par une requête concurrente.
+             */
+            if (!consumedPasswordResetToken) {
+                throw new AppError(
+                    INVALID_PASSWORD_RESET_TOKEN_MESSAGE,
+                    400,
+                );
+            }
+
+            /*
+             * passwordHash actuel fait partie du filtre.
+             *
+             * Cette protection empêche d'écraser silencieusement
+             * un mot de passe modifié par un autre workflow
+             * entre notre lecture initiale et cette transaction.
+             */
+            const identityUpdateResult =
+                await AuthIdentity.updateOne(
+                    {
+                        _id: authIdentity._id,
+                        passwordHash:
+                            authIdentity.passwordHash,
+                    },
+                    {
+                        $set: {
+                            passwordHash:
+                                newPasswordHash,
+                        },
+                    },
+                    {
+                        session,
+                    },
+                );
+
+            if (
+                identityUpdateResult.modifiedCount !== 1
+            ) {
+                throw new AppError(
+                    'Le mot de passe a été modifié simultanément',
+                    409,
+                );
+            }
+
+            /*
+             * Le statut est également revérifié dans la transaction.
+             *
+             * Le compte peut avoir changé d'état depuis la lecture
+             * préliminaire. CLOSED doit rester impossible.
+             *
+             * Les seuls statuts actuellement implémentés et autorisés
+             * ici sont donc ACTIVE, DISABLED et DELETION_REQUESTED.
+             */
+            const userUpdateResult =
+                await User.updateOne(
+                    {
+                        _id: user._id,
+                        status: mongoose.trusted({
+                            $in: [
+                                USER_STATUS.ACTIVE,
+                                USER_STATUS.DISABLED,
+                                USER_STATUS.DELETION_REQUESTED,
+                            ],
+                        }),
+                    },
+                    {
+                        $set: {
+                            passwordChangedAt,
+                        },
+                    },
+                    {
+                        session,
+                    },
+                );
+
+            if (
+                userUpdateResult.matchedCount !== 1
+            ) {
+                throw new AppError(
+                    INVALID_PASSWORD_RESET_TOKEN_MESSAGE,
+                    400,
+                );
+            }
+
+            /*
+             * Toutes les sessions existantes sont révoquées.
+             *
+             * Un reset de mot de passe ne doit pas laisser
+             * fonctionner des refresh tokens créés avant
+             * la modification du credential.
+             */
+            await revokeAllUserAuthSessions({
+                userId: user._id,
+                revokedReason:
+                    AUTH_SESSION_REVOKED_REASON
+                        .PASSWORD_CHANGED,
+                session,
+            });
+        },
+    );
+
+    return {
+        passwordChangedAt,
+    };
+};
+
 export {
     changeUserPassword,
     forgotUserPassword,
     registerUser,
-    loginUser
+    loginUser,
+    resetUserPassword,
 };

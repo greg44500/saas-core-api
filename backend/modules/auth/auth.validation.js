@@ -67,3 +67,26 @@ export const changePasswordSchema = z.strictObject({
 export const forgotPasswordSchema = z.strictObject({
     email: z.email().max(254),
 });
+
+/**
+ * Contrat HTTP utilisé pour réinitialiser un mot de passe
+ * à partir d'un token de récupération.
+ *
+ * Le token est traité comme une valeur opaque :
+ * la validation HTTP contrôle uniquement qu'il s'agit
+ * d'une chaîne non vide de taille raisonnable.
+ *
+ * Sa validité réelle (existence, expiration, révocation,
+ * usage antérieur) appartient au service métier.
+ *
+ * Le nouveau mot de passe réutilise passwordSchema afin
+ * de conserver une politique unique pour register,
+ * change-password et reset-password.
+ *
+ * strictObject() interdit notamment qu'un client fournisse
+ * lui-même un userId, un email ou tout autre champ interne.
+ */
+export const resetPasswordSchema = z.strictObject({
+    token: z.string().min(1).max(256),
+    newPassword: passwordSchema,
+});

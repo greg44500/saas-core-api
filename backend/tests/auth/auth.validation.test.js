@@ -4,6 +4,7 @@ import {
     changePasswordSchema,
     loginSchema,
     registerSchema,
+    resetPasswordSchema,
 } from '../../modules/auth/auth.validation.js';
 
 describe('auth.validation', () => {
@@ -71,4 +72,34 @@ describe('auth.validation', () => {
 
         expect(result.success).toBe(false);
     });
+    it('accepte une demande de réinitialisation de mot de passe valide', () => {
+    const result = resetPasswordSchema.safeParse({
+        token: 'token-de-reinitialisation-opaque',
+        newPassword:
+            'nouveau mot de passe suffisamment long',
+    });
+
+    expect(result.success).toBe(true);
+});
+
+it('refuse une demande de réinitialisation sans token', () => {
+    const result = resetPasswordSchema.safeParse({
+        token: '',
+        newPassword:
+            'nouveau mot de passe suffisamment long',
+    });
+
+    expect(result.success).toBe(false);
+});
+
+it('refuse une demande de réinitialisation contenant un champ inconnu', () => {
+    const result = resetPasswordSchema.safeParse({
+        token: 'token-de-reinitialisation-opaque',
+        newPassword:
+            'nouveau mot de passe suffisamment long',
+        userId: 'user-id-interdit',
+    });
+
+    expect(result.success).toBe(false);
+});
 });
