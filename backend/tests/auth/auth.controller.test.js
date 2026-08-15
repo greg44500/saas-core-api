@@ -7,6 +7,7 @@ import {
 
 import {
   changePassword,
+  forgotPassword,
   login,
   logout,
   logoutAll,
@@ -17,6 +18,7 @@ import {
 
 import {
   changeUserPassword,
+  forgotUserPassword,
   loginUser,
   registerUser,
 } from '../../modules/auth/auth.service.js';
@@ -32,6 +34,7 @@ import { signAccessToken } from '../../utils/jwt.js';
 
 vi.mock('../../modules/auth/auth.service.js', () => ({
   changeUserPassword: vi.fn(),
+  forgotUserPassword: vi.fn(),
   loginUser: vi.fn(),
   registerUser: vi.fn(),
 }));
@@ -190,6 +193,68 @@ describe('auth.controller', () => {
     expect(
       responseBody.data.refreshToken,
     ).toBeUndefined();
+  });
+
+  it('traite une demande de réinitialisation avec une réponse publique générique', async () => {
+    const genericMessage =
+      'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.';
+
+    /*
+     * Le service est mocké car ce test porte uniquement
+     * sur la responsabilité HTTP du controller.
+     *
+     * La recherche du User, la création du token et l'envoi
+     * de l'email sont déjà testés dans auth.service.test.js.
+     */
+    forgotUserPassword.mockResolvedValue(
+      { message: genericMessage, }
+    );
+
+    const req = {
+      validated: {
+        body: {
+          email: 'greg@example.com',
+        },
+      },
+      context: {
+        ipAddress: '127.0.0.1',
+        userAgent: 'Mozilla/5.0 Test Browser',
+      },
+    };
+
+    const json = vi.fn();
+
+    const res = {
+      status: vi.fn(() => ({
+        json,
+      })),
+    };
+
+    await forgotPassword(req, res);
+
+    /*
+     * Le controller doit transmettre uniquement les données
+     * dont le service a besoin, sans lui transmettre req/res.
+     */
+    expect(
+      forgotUserPassword,
+    ).toHaveBeenCalledWith({
+      email: 'greg@example.com',
+      ipAddress: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 Test Browser',
+    });
+
+    expect(res.status).toHaveBeenCalledWith(200);
+
+    /*
+     * La réponse publique reste volontairement générique.
+     * Elle ne doit contenir aucune information sur l'existence
+     * réelle du compte ou sur la création d'un token.
+     */
+    expect(json).toHaveBeenCalledWith({
+      status: 'success',
+      message: genericMessage,
+    });
   });
 
 

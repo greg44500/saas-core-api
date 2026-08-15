@@ -7,6 +7,7 @@ import { revokeCurrentAuthSession, rotateAuthSession, revokeAllUserAuthSessions,
 
 import {
     changeUserPassword,
+    forgotUserPassword,
     loginUser,
     registerUser,
 } from './auth.service.js';
@@ -87,6 +88,40 @@ export const login = async (req, res) => {
             },
             accessToken,
         },
+    });
+};
+
+/**
+ * Traite une demande publique de réinitialisation du mot de passe.
+ *
+ * Toute la logique de sécurité reste volontairement dans
+ * forgotUserPassword() :
+ * - recherche du User ;
+ * - vérification de l'identité locale ;
+ * - contrôle du statut du compte ;
+ * - création du PasswordResetToken ;
+ * - construction du lien ;
+ * - envoi de l'email ;
+ * - protection contre l'énumération des comptes.
+ *
+ * Le controller se limite au contrat HTTP :
+ * - transmettre les données validées ;
+ * - transmettre le contexte technique utile à la sécurité ;
+ * - retourner la réponse publique générique fournie par le service.
+ *
+ * Aucune information permettant de déduire l'existence
+ * d'un compte ne doit être ajoutée à cette réponse.
+ */
+export const forgotPassword = async (req, res) => {
+    const { message } = await forgotUserPassword({
+        email: req.validated.body.email,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        message,
     });
 };
 

@@ -45,3 +45,25 @@ export const changePasswordSchema = z.strictObject({
     currentPassword: passwordSchema,
     newPassword: passwordSchema,
 });
+
+/**
+ * Contrat HTTP utilisé pour demander une réinitialisation
+ * de mot de passe.
+ *
+ * Cette validation vérifie uniquement la forme de l'adresse email
+ * fournie par le client.
+ *
+ * L'existence du compte, la présence d'une identité locale
+ * et l'état du User ne sont volontairement pas vérifiés ici :
+ * ces décisions appartiennent au service forgotUserPassword().
+ *
+ * Cette séparation est importante pour conserver une réponse publique
+ * identique qu'un compte existe ou non et éviter l'énumération
+ * des utilisateurs.
+ *
+ * strictObject() interdit également tout champ supplémentaire
+ * non prévu par le contrat HTTP.
+ */
+export const forgotPasswordSchema = z.strictObject({
+    email: z.email().max(254),
+});

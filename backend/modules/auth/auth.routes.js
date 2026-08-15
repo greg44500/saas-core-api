@@ -4,6 +4,7 @@ import { authenticate } from '../../middlewares/authenticate.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
     changePassword,
+    forgotPassword,
     login,
     logout,
     logoutAll,
@@ -13,6 +14,7 @@ import {
 } from './auth.controller.js';
 import {
     changePasswordSchema,
+    forgotPasswordSchema,
     loginSchema,
     registerSchema,
 } from './auth.validation.js';
@@ -38,6 +40,24 @@ router.post(
     '/login',
     validateRequest({ body: loginSchema }),
     login,
+);
+
+/**
+ * Demande l'envoi d'un lien de réinitialisation du mot de passe.
+ *
+ * Cette route reste publique : l'utilisateur qui a oublié
+ * son mot de passe ne peut pas être supposé authentifié.
+ *
+ * Le body est strictement validé avant d'atteindre le controller.
+ * La logique anti-énumération et l'éventuel envoi d'email
+ * restent entièrement pris en charge par forgotUserPassword().
+ */
+router.post(
+    '/forgot-password',
+    validateRequest({
+        body: forgotPasswordSchema,
+    }),
+    forgotPassword,
 );
 
 /**

@@ -8,7 +8,7 @@ import {
 import {
     refreshCookieName,
 } from '../../config/cookie.config.js';
-import { registerUser, changeUserPassword, } from '../../modules/auth/auth.service.js';
+import { registerUser, changeUserPassword, forgotUserPassword } from '../../modules/auth/auth.service.js';
 import {
     revokeCurrentAuthSession,
     rotateAuthSession,
@@ -18,6 +18,7 @@ import { signAccessToken } from '../../utils/jwt.js';
 
 vi.mock('../../modules/auth/auth.service.js', () => ({
     changeUserPassword: vi.fn(),
+    forgotUserPassword: vi.fn(),
     registerUser: vi.fn(),
 }));
 
@@ -102,7 +103,98 @@ describe('POST /api/auth/register', () => {
         expect(registerUser).not.toHaveBeenCalled();
     });
 });
+describe('POST /api/auth/forgot-password', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
 
+    it('retourne une réponse générique pour une demande valide', async () => {
+        const genericMessage =
+            'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.';
+
+        /*
+         * Le service est mocké ici car ce test vérifie uniquement
+         * le contrat HTTP de la route.
+         *
+         * La recherche du User, la création du token et l'envoi
+         * de l'email sont couverts par les tests du service.
+         */
+        forgotUserPassword.mockResolvedValue(
+            genericMessage,
+        );
+
+        const response = await request(app)
+            .post('/api/auth/forgot-password')
+            .set(
+                'User-Agent',
+                'Mozilla/5.0 Test Browser',
+            )
+            .send({
+                email: 'greg@example.com',
+            });
+
+        expect(response.status).toBe(200);
+
+        expect(response.body).toEqual({
+            status: 'success',
+            message: genericMessage,
+        });
+
+        /*
+         * Le controller reçoit l'email validé ainsi que le contexte
+         * technique préparé par requestContext.
+         *
+         * L'adresse IP dépend de l'environnement Supertest :
+         * on vérifie donc sa présence sans figer ici une valeur
+         * qui pourrait rendre le test inutilement fragile.
+         */
+        expect(
+            forgotUserPassword,
+        ).toHaveBeenCalledWith({
+            email: 'greg@example.com',
+            ipAddress: expect.any(String),
+            userAgent: 'Mozilla/5.0 Test Browser',
+        });
+    });
+
+    it('retourne 400 si l’adresse email est invalide', async () => {
+        const response = await request(app)
+            .post('/api/auth/forgot-password')
+            .send({
+                email: 'adresse-invalide',
+            });
+
+        expect(response.status).toBe(400);
+
+        /*
+         * Une entrée invalide doit être arrêtée par validateRequest
+         * avant d'atteindre le controller puis le service.
+         */
+        expect(
+            forgotUserPassword,
+        ).not.toHaveBeenCalled();
+    });
+
+    it('retourne 400 si le body contient un champ non autorisé', async () => {
+        const response = await request(app)
+            .post('/api/auth/forgot-password')
+            .send({
+                email: 'greg@example.com',
+                role: 'admin',
+            });
+
+        expect(response.status).toBe(400);
+
+        /*
+         * forgotPasswordSchema utilise strictObject().
+         * Les champs inconnus font donc partie du contrat de sécurité
+         * testé au niveau HTTP.
+         */
+        expect(
+            forgotUserPassword,
+        ).not.toHaveBeenCalled();
+    });
+});
 
 describe('POST /api/auth/refresh', () => {
     beforeEach(() => {
