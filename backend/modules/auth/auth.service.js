@@ -12,6 +12,10 @@ import {
 import {
     buildPasswordResetEmail,
 } from '../../services/emailTemplates/passwordResetEmail.js';
+
+import {
+    buildPasswordChangedEmail,
+} from '../../services/emailTemplates/passwordChangedEmail.js';
 import {
     PasswordResetToken,
 } from '../passwordResetTokens/passwordResetToken.model.js';
@@ -836,7 +840,60 @@ const resetUserPassword = async ({
             });
         },
     );
+    /*
+     * La notification est envoyée uniquement APRÈS la validation
+     * de la transaction MongoDB.
+     *
+     * Elle ne doit jamais participer à la transaction :
+     * un serveur SMTP lent ou indisponible ne doit pas conserver
+     * inutilement une transaction ouverte.
+     *
+     * À ce stade :
+     * - le token a été consommé ;
+     * - le mot de passe a été remplacé ;
+     * - passwordChangedAt a été enregistré ;
+     * - toutes les sessions ont été révoquées.
+     */
+    try {
+        const {
+            subject,
+            text,
+            html,
+        } = buildPasswordChangedEmail();
 
+        await sendEmail({
+            to: user.email,
+            subject,
+            text,
+            html,
+        });
+    } catch (error) {
+        /*
+         * Le changement de mot de passe est déjà définitivement validé.
+         *
+         * Une panne du canal de notification ne doit donc PAS faire
+         * croire au client que le reset a échoué.
+         *
+         * Aucune donnée sensible n'est journalisée :
+         * - pas d'adresse email ;
+         * - pas de token ;
+         * - pas de mot de passe.
+         *
+         * Cette journalisation devra être remplacée par le système
+         * applicatif de logs/monitoring lorsqu'il sera introduit.
+         */
+        console.error(
+            'Password changed notification email failed',
+            {
+                userId: String(user._id),
+                errorName: error?.name,
+            },
+        );
+    }
+
+    return {
+        passwordChangedAt,
+    };
     return {
         passwordChangedAt,
     };

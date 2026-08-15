@@ -30,6 +30,8 @@ import {
     buildPasswordResetEmail,
 } from '../../services/emailTemplates/passwordResetEmail.js';
 
+import { buildPasswordChangedEmail } from '../../services/emailTemplates/passwordChangedEmail.js';
+
 import {
     buildPasswordResetUrl,
 } from '../../modules/auth/passwordResetUrl.js';
@@ -89,6 +91,10 @@ vi.mock('../../services/emailTemplates/passwordResetEmail.js', () => ({
     buildPasswordResetEmail: vi.fn(),
 }));
 
+vi.mock('../../services/emailTemplates/passwordChangedEmail.js', () => ({
+    buildPasswordChangedEmail: vi.fn(),
+}));
+
 vi.mock('../../services/email.service.js', () => ({
     sendEmail: vi.fn(),
 }));
@@ -102,6 +108,7 @@ vi.mock('../../utils/securityTiming.js', () => ({
             waitedMs: 700,
         }),
 }));
+
 
 describe('registerUser', () => {
     beforeEach(() => {
@@ -515,7 +522,7 @@ describe('forgotUserPassword', () => {
         User.findOne.mockResolvedValue(user);
 
         /*
-         * AuthIdentity.exists() confirme ici que le compte possède
+         * AuthIdentity.exists() confirme que le compte possède
          * effectivement une identité locale avec mot de passe.
          */
         AuthIdentity.exists.mockResolvedValue({
@@ -525,7 +532,9 @@ describe('forgotUserPassword', () => {
         /*
          * Le service spécialisé retourne le token brut uniquement
          * pour permettre son transport vers l'utilisateur.
-         * Sa persistance sous forme hashée est testée ailleurs.
+         *
+         * Sa persistance sous forme hashée est testée
+         * dans passwordResetToken.service.test.js.
          */
         createPasswordResetToken.mockResolvedValue({
             passwordResetToken: {
@@ -539,47 +548,67 @@ describe('forgotUserPassword', () => {
         );
 
         buildPasswordResetEmail.mockReturnValue({
-            subject: 'Réinitialisation de votre mot de passe',
-            text: 'Version texte du message',
-            html: '<p>Version HTML du message</p>',
+            subject:
+                'Réinitialisation de votre mot de passe',
+            text:
+                'Version texte du message',
+            html:
+                '<p>Version HTML du message</p>',
         });
 
         sendEmail.mockResolvedValue({
             messageId: 'message-id',
         });
 
-        const result = await forgotUserPassword({
-            email: 'Greg@Example.com',
-            ipAddress: '127.0.0.1',
-            userAgent: 'Mozilla/5.0 Test Browser',
-        });
+        const result =
+            await forgotUserPassword({
+                email: 'Greg@Example.com',
+                ipAddress: '127.0.0.1',
+                userAgent:
+                    'Mozilla/5.0 Test Browser',
+            });
 
         /*
          * L'adresse est canonisée avant toute recherche afin que
          * forgot-password utilise exactement la même stratégie
          * d'identification que register et login.
          */
-        expect(User.findOne).toHaveBeenCalledWith({
-            emailCanonical: 'greg@example.com',
+        expect(
+            User.findOne,
+        ).toHaveBeenCalledWith({
+            emailCanonical:
+                'greg@example.com',
         });
 
-        expect(AuthIdentity.exists).toHaveBeenCalledWith({
+        /*
+         * Le workflow de reset ne doit être disponible
+         * que pour une identité locale.
+         */
+        expect(
+            AuthIdentity.exists,
+        ).toHaveBeenCalledWith({
             user: 'user-id',
             provider: AUTH_PROVIDER.LOCAL,
         });
 
+        /*
+         * Les informations techniques de contexte sont transmises
+         * au service responsable du PasswordResetToken.
+         */
         expect(
             createPasswordResetToken,
         ).toHaveBeenCalledWith({
             userId: 'user-id',
             ipAddress: '127.0.0.1',
-            userAgent: 'Mozilla/5.0 Test Browser',
+            userAgent:
+                'Mozilla/5.0 Test Browser',
         });
 
-
         /*
-         * Seul le token brut est transmis à la construction de l'URL.
-         * Aucun hash ou document MongoDB n'a à être exposé à cette couche.
+         * Seul le token brut est transmis au générateur d'URL.
+         *
+         * Aucun hash ni document MongoDB ne doit être exposé
+         * à cette couche.
          */
         expect(
             buildPasswordResetUrl,
@@ -587,6 +616,10 @@ describe('forgotUserPassword', () => {
             token: 'opaque-reset-token',
         });
 
+        /*
+         * Le template reçoit uniquement les informations
+         * nécessaires à la présentation de l'email.
+         */
         expect(
             buildPasswordResetEmail,
         ).toHaveBeenCalledWith({
@@ -595,49 +628,48 @@ describe('forgotUserPassword', () => {
             expiresInMinutes: 30,
         });
 
-        expect(sendEmail).toHaveBeenCalledWith({
+        /*
+         * Le service Auth délègue le transport effectif
+         * à email.service.js.
+         */
+        expect(
+            sendEmail,
+        ).toHaveBeenCalledWith({
             to: 'Greg@example.com',
             subject:
                 'Réinitialisation de votre mot de passe',
-            text: 'Version texte du message',
-            html: '<p>Version HTML du message</p>',
+            text:
+                'Version texte du message',
+            html:
+                '<p>Version HTML du message</p>',
         });
 
         /*
-         * La réponse publique ne contient aucune information sur
-         * le User, le token ou le résultat détaillé du transport SMTP.
+         * Même le chemin nominal doit passer par la compensation
+         * temporelle commune.
+         *
+         * Cela évite qu'un compte existant puisse être distingué
+         * uniquement par la durée du workflow.
+         */
+        expect(
+            ensureMinimumDuration,
+        ).toHaveBeenCalledWith({
+            startedAt: expect.any(Number),
+            minimumMs: 700,
+            jitterMs: 150,
+        });
+
+        /*
+         * La réponse publique reste volontairement générique.
+         *
+         * Elle ne doit contenir ni User, ni token,
+         * ni information détaillée sur SMTP.
          */
         expect(result).toEqual({
             message:
                 'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.',
         });
-
-        /*
- * Même le chemin nominal passe par la sortie temporelle commune.
- * Le service Auth ne doit jamais retourner directement après SMTP.
- */
-        expect(
-            ensureMinimumDuration,
-        ).toHaveBeenCalledWith({
-            startedAt: expect.any(Number),
-            minimumMs: 700,
-            jitterMs: 150,
-        });
-
-        /*
- * Une adresse inexistante doit subir la même compensation temporelle
- * qu'un compte éligible afin de réduire le signal d'énumération.
- */
-        expect(
-            ensureMinimumDuration,
-        ).toHaveBeenCalledWith({
-            startedAt: expect.any(Number),
-            minimumMs: 700,
-            jitterMs: 150,
-        });
     });
-
-
 
     it('renvoie la réponse générique si l’adresse email n’existe pas', async () => {
         User.findOne.mockResolvedValue(null);
@@ -675,110 +707,110 @@ describe('forgotUserPassword', () => {
                 'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.',
         });
     });
+});
 
-    it('renvoie la réponse générique pour un compte sans identité locale', async () => {
-        const user = {
-            _id: 'user-id',
-            email: 'greg@example.com',
-            status: 'active',
-        };
+it('renvoie la réponse générique pour un compte sans identité locale', async () => {
+    const user = {
+        _id: 'user-id',
+        email: 'greg@example.com',
+        status: 'active',
+    };
 
-        User.findOne.mockResolvedValue(user);
+    User.findOne.mockResolvedValue(user);
 
-        /*
-         * Un compte authentifié uniquement par Google, par exemple,
-         * ne doit pas recevoir un token de reset du credential local.
-         */
-        AuthIdentity.exists.mockResolvedValue(null);
+    /*
+     * Un compte authentifié uniquement par Google, par exemple,
+     * ne doit pas recevoir un token de reset du credential local.
+     */
+    AuthIdentity.exists.mockResolvedValue(null);
 
-        const result = await forgotUserPassword({
-            email: 'greg@example.com',
-            ipAddress: '127.0.0.1',
-            userAgent: 'Mozilla/5.0 Test Browser',
-        });
-
-        expect(
-            createPasswordResetToken,
-        ).not.toHaveBeenCalled();
-
-        expect(
-            buildPasswordResetUrl,
-        ).not.toHaveBeenCalled();
-
-        expect(
-            buildPasswordResetEmail,
-        ).not.toHaveBeenCalled();
-
-        expect(sendEmail).not.toHaveBeenCalled();
-
-        /*
-         * La réponse reste strictement identique à celle d'une adresse
-         * inexistante afin de ne pas exposer le fournisseur d'authentification.
-         */
-        expect(result).toEqual({
-            message:
-                'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.',
-        });
+    const result = await forgotUserPassword({
+        email: 'greg@example.com',
+        ipAddress: '127.0.0.1',
+        userAgent: 'Mozilla/5.0 Test Browser',
     });
 
-    it('renvoie la réponse générique pour un compte clôturé', async () => {
-        const user = {
-            _id: 'user-id',
-            email: 'greg@example.com',
-            status: 'closed',
-        };
+    expect(
+        createPasswordResetToken,
+    ).not.toHaveBeenCalled();
 
-        User.findOne.mockResolvedValue(user);
+    expect(
+        buildPasswordResetUrl,
+    ).not.toHaveBeenCalled();
 
-        AuthIdentity.exists.mockResolvedValue({
-            _id: 'identity-id',
-        });
+    expect(
+        buildPasswordResetEmail,
+    ).not.toHaveBeenCalled();
 
-        const result = await forgotUserPassword({
-            email: 'greg@example.com',
-            ipAddress: '127.0.0.1',
-            userAgent: 'Mozilla/5.0 Test Browser',
-        });
+    expect(sendEmail).not.toHaveBeenCalled();
 
-        /*
-         * Un compte CLOSED ne doit plus pouvoir initier un nouveau
-         * processus permettant de modifier ses credentials.
-         */
-        expect(
-            createPasswordResetToken,
-        ).not.toHaveBeenCalled();
+    /*
+     * La réponse reste strictement identique à celle d'une adresse
+     * inexistante afin de ne pas exposer le fournisseur d'authentification.
+     */
+    expect(result).toEqual({
+        message:
+            'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.',
+    });
+});
 
-        expect(
-            buildPasswordResetUrl,
+it('renvoie la réponse générique pour un compte clôturé', async () => {
+    const user = {
+        _id: 'user-id',
+        email: 'greg@example.com',
+        status: 'closed',
+    };
 
-        ).not.toHaveBeenCalled();
+    User.findOne.mockResolvedValue(user);
 
-        expect(
-            buildPasswordResetEmail,
-        ).not.toHaveBeenCalled();
+    AuthIdentity.exists.mockResolvedValue({
+        _id: 'identity-id',
+    });
 
-        expect(sendEmail).not.toHaveBeenCalled();
+    const result = await forgotUserPassword({
+        email: 'greg@example.com',
+        ipAddress: '127.0.0.1',
+        userAgent: 'Mozilla/5.0 Test Browser',
+    });
 
-        /*
-         * Le statut CLOSED ne doit surtout pas être révélé par
-         * la réponse de forgot-password.
-         */
-        expect(result).toEqual({
-            message:
-                'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.',
-        });
-        /*
+    /*
+     * Un compte CLOSED ne doit plus pouvoir initier un nouveau
+     * processus permettant de modifier ses credentials.
+     */
+    expect(
+        createPasswordResetToken,
+    ).not.toHaveBeenCalled();
+
+    expect(
+        buildPasswordResetUrl,
+
+    ).not.toHaveBeenCalled();
+
+    expect(
+        buildPasswordResetEmail,
+    ).not.toHaveBeenCalled();
+
+    expect(sendEmail).not.toHaveBeenCalled();
+
+    /*
+     * Le statut CLOSED ne doit surtout pas être révélé par
+     * la réponse de forgot-password.
+     */
+    expect(result).toEqual({
+        message:
+            'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.',
+    });
+    /*
 * Un compte CLOSED doit lui aussi passer par la sortie temporelle
 * commune afin que ce statut ne puisse pas être déduit
 * d'un temps de réponse plus court.
 */
-        expect(
-            ensureMinimumDuration,
-        ).toHaveBeenCalledWith({
-            startedAt: expect.any(Number),
-            minimumMs: 700,
-            jitterMs: 150,
-        });
+    expect(
+        ensureMinimumDuration,
+    ).toHaveBeenCalledWith({
+        startedAt: expect.any(Number),
+        minimumMs: 700,
+        jitterMs: 150,
     });
 });
 
@@ -815,6 +847,7 @@ describe('resetUserPassword', () => {
 
         const user = {
             _id: 'user-id',
+            email: 'greg@example.com',
             status: 'active',
         };
 
@@ -880,16 +913,52 @@ describe('resetUserPassword', () => {
             mongoose.connection,
             'transaction',
         ).mockImplementation(
-            async (callback) =>
-                callback(session),
-        );
+            async (callback) => {
+                const transactionResult =
+                    await callback(session);
 
+                /*
+                 * L'envoi SMTP ne doit jamais avoir lieu tant que
+                 * la transaction MongoDB est encore en cours.
+                 */
+                expect(
+                    sendEmail,
+                ).not.toHaveBeenCalled();
+
+                return transactionResult;
+            },
+        );
+        buildPasswordChangedEmail.mockReturnValue({
+            subject:
+                'Votre mot de passe a été modifié',
+            text:
+                'Notification texte',
+            html:
+                '<p>Notification HTML</p>',
+        });
+
+        sendEmail.mockResolvedValue({
+            messageId: 'message-id',
+        });
         const result =
             await resetUserPassword({
                 token: rawResetToken,
                 newPassword:
                     'nouveau mot de passe suffisamment long',
             });
+        expect(
+            buildPasswordChangedEmail,
+        ).toHaveBeenCalledTimes(1);
+
+        expect(sendEmail).toHaveBeenCalledWith({
+            to: user.email,
+            subject:
+                'Votre mot de passe a été modifié',
+            text:
+                'Notification texte',
+            html:
+                '<p>Notification HTML</p>',
+        });
 
         /*
          * Le token brut n'est jamais recherché en base.
@@ -1527,4 +1596,153 @@ describe('resetUserPassword', () => {
             revokeAllUserAuthSessions,
         ).not.toHaveBeenCalled();
     });
+    it('considère le reset comme réussi même si la notification email échoue', async () => {
+        const session = {
+            id: 'mongo-session',
+        };
+
+        const rawResetToken =
+            'opaque-reset-token';
+
+        const passwordResetToken = {
+            _id: 'password-reset-token-id',
+            user: 'user-id',
+            usedAt: null,
+            revokedAt: null,
+            expiresAt: new Date(
+                Date.now() + 30 * 60 * 1000,
+            ),
+        };
+
+        const user = {
+            _id: 'user-id',
+            email: 'greg@example.com',
+            status: 'active',
+        };
+
+        const authIdentity = {
+            _id: 'identity-id',
+            passwordHash:
+                'stored-password-hash',
+        };
+
+        PasswordResetToken.findOne
+            .mockResolvedValue(
+                passwordResetToken,
+            );
+
+        User.findById.mockResolvedValue(user);
+
+        AuthIdentity.findOne.mockReturnValue({
+            select: vi
+                .fn()
+                .mockResolvedValue(
+                    authIdentity,
+                ),
+        });
+
+        verifyPassword.mockResolvedValue(false);
+
+        hashPassword.mockResolvedValue(
+            'new-password-hash',
+        );
+
+        PasswordResetToken.findOneAndUpdate
+            .mockResolvedValue({
+                ...passwordResetToken,
+                usedAt: new Date(),
+            });
+
+        AuthIdentity.updateOne.mockResolvedValue({
+            modifiedCount: 1,
+        });
+
+        User.updateOne.mockResolvedValue({
+            matchedCount: 1,
+        });
+
+        revokeAllUserAuthSessions
+            .mockResolvedValue({
+                modifiedCount: 2,
+            });
+
+        vi.spyOn(
+            mongoose.connection,
+            'transaction',
+        ).mockImplementation(
+            async (callback) =>
+                callback(session),
+        );
+
+        buildPasswordChangedEmail
+            .mockReturnValue({
+                subject:
+                    'Votre mot de passe a été modifié',
+                text:
+                    'Notification texte',
+                html:
+                    '<p>Notification HTML</p>',
+            });
+
+        /*
+         * La modification du mot de passe a réussi,
+         * mais le canal SMTP devient indisponible.
+         */
+        sendEmail.mockRejectedValue(
+            new Error('SMTP unavailable'),
+        );
+
+        /*
+         * L'échec SMTP est volontairement journalisé côté serveur.
+         * On neutralise ici console.error pour ne pas polluer Vitest.
+         */
+        const consoleErrorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => { });
+
+        const result =
+            await resetUserPassword({
+                token: rawResetToken,
+                newPassword:
+                    'nouveau mot de passe suffisamment long',
+            });
+
+        /*
+         * L'échec de la notification ne doit jamais annuler
+         * un changement de mot de passe déjà validé en base.
+         */
+        expect(result).toEqual({
+            passwordChangedAt:
+                expect.any(Date),
+        });
+
+        expect(
+            buildPasswordChangedEmail,
+        ).toHaveBeenCalledTimes(1);
+
+        expect(sendEmail).toHaveBeenCalledWith({
+            to: 'greg@example.com',
+            subject:
+                'Votre mot de passe a été modifié',
+            text:
+                'Notification texte',
+            html:
+                '<p>Notification HTML</p>',
+        });
+
+        expect(
+            consoleErrorSpy,
+        ).toHaveBeenCalledWith(
+            'Password changed notification email failed',
+            {
+                userId: 'user-id',
+                errorName: 'Error',
+            },
+        );
+
+        consoleErrorSpy.mockRestore();
+    });
 });
+
+
+
