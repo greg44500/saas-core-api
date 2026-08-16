@@ -5,6 +5,10 @@ import {
 } from 'vitest';
 
 import {
+    USAGE_METRIC_PERIOD_TYPE,
+} from '../../constants/usageMetric.constants.js';
+
+import {
     CORE_PLAN_FEATURES,
     CORE_PLAN_METRICS,
     DEFAULT_PLAN_CAPABILITY_REGISTRY,
@@ -16,15 +20,46 @@ describe('Plan capability registry', () => {
     it('contient les features et métriques du socle dans le registre par défaut', () => {
         for (const feature of CORE_PLAN_FEATURES) {
             expect(
-                DEFAULT_PLAN_CAPABILITY_REGISTRY.features.has(feature),
+                DEFAULT_PLAN_CAPABILITY_REGISTRY.features.has(
+                    feature,
+                ),
             ).toBe(true);
         }
 
         for (const metric of CORE_PLAN_METRICS) {
             expect(
-                DEFAULT_PLAN_CAPABILITY_REGISTRY.metrics.has(metric),
+                DEFAULT_PLAN_CAPABILITY_REGISTRY.metrics.has(
+                    metric,
+                ),
             ).toBe(true);
         }
+    });
+
+
+    it('associe chaque métrique du socle à sa période de mesure', () => {
+        expect(
+            DEFAULT_PLAN_CAPABILITY_REGISTRY
+                .getMetricDefinition('members'),
+        ).toEqual({
+            periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
+        });
+
+        expect(
+            DEFAULT_PLAN_CAPABILITY_REGISTRY
+                .getMetricDefinition('storage_bytes'),
+        ).toEqual({
+            periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
+        });
+
+        expect(
+            DEFAULT_PLAN_CAPABILITY_REGISTRY
+                .getMetricDefinition(
+                    'file_uploads_monthly',
+                ),
+        ).toEqual({
+            periodType:
+                USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH,
+        });
     });
 
 
@@ -40,13 +75,64 @@ describe('Plan capability registry', () => {
         });
 
         expect(registry.features.has('file_upload')).toBe(true);
-        expect(registry.features.has('dpe_monitoring')).toBe(true);
+        expect(
+            registry.features.has('dpe_monitoring'),
+        ).toBe(true);
 
         expect(registry.metrics.has('members')).toBe(true);
         expect(registry.metrics.has('properties')).toBe(true);
         expect(
             registry.metrics.has('dpe_checks_monthly'),
         ).toBe(true);
+    });
+
+
+    it('enregistre une définition temporelle injectée par une application métier', () => {
+        const registry = createPlanCapabilityRegistry({
+            metricDefinitions: {
+                properties: {
+                    periodType:
+                        USAGE_METRIC_PERIOD_TYPE.CURRENT,
+                },
+
+                dpe_checks_monthly: {
+                    periodType:
+                        USAGE_METRIC_PERIOD_TYPE
+                            .CALENDAR_MONTH,
+                },
+            },
+        });
+
+        /*
+         * Une clé définie dans metricDefinitions est automatiquement déclarée
+         * comme métrique disponible dans le registre.
+         */
+        expect(
+            registry.metrics.has('properties'),
+        ).toBe(true);
+
+        expect(
+            registry.metrics.has('dpe_checks_monthly'),
+        ).toBe(true);
+
+        expect(
+            registry.getMetricDefinition('properties'),
+        ).toEqual({
+            periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
+        });
+
+        expect(
+            registry.getMetricDefinition(
+                'dpe_checks_monthly',
+            ),
+        ).toEqual({
+            periodType:
+                USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH,
+        });
+
+        expect(
+            registry.getMetricDefinition('unknown_metric'),
+        ).toBeNull();
     });
 
 
