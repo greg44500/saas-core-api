@@ -183,35 +183,38 @@ const planSchema = new Schema(
 
 
         /**
-         * Prix mensuel exprimé dans l'unité mineure de la devise.
-         *
-         * Exemple :
-         * 1990 avec EUR représente 19,90 €.
-         *
-         * Utiliser un entier évite les imprécisions liées aux nombres flottants
-         * pour les montants monétaires.
-         */
-        priceMonthlyMinor: {
+   * Prix mensuel hors taxes exprimé dans l'unité monétaire mineure.
+   *
+   * Exemple :
+   * 1990 avec EUR représente 19,90 € HT.
+   *
+   * Le montant TTC sera calculé au moment de la présentation ou de la
+   * facturation selon le taux de taxe réellement applicable au client.
+   */
+        priceMonthlyExclTaxMinor: {
             type: Number,
             required: true,
             validate: {
                 validator: isNonNegativeInteger,
                 message:
-                    'Le prix mensuel doit être un entier positif ou nul.',
+                    'Le prix mensuel HT doit être un entier positif ou nul.',
             },
         },
 
 
         /**
-         * Prix annuel exprimé dans l'unité mineure de la devise.
-         */
-        priceYearlyMinor: {
+   * Prix annuel hors taxes exprimé dans l'unité monétaire mineure.
+   *
+   * Le stockage du prix HT permet d'appliquer ultérieurement la fiscalité
+   * correspondant au client et à la date de facturation.
+   */
+        priceYearlyExclTaxMinor: {
             type: Number,
             required: true,
             validate: {
                 validator: isNonNegativeInteger,
                 message:
-                    'Le prix annuel doit être un entier positif ou nul.',
+                    'Le prix annuel HT doit être un entier positif ou nul.',
             },
         },
 

@@ -30,8 +30,8 @@ const INITIAL_PLAN_DEFINITIONS = Object.freeze([
 
         // Les prix sont stockés en unités monétaires mineures.
         currency: 'EUR',
-        priceMonthlyMinor: 0,
-        priceYearlyMinor: 0,
+        priceMonthlyExclTaxMinor: 0,
+        priceYearlyExclTaxMinor: 0,
 
         features: Object.freeze([
             'file_upload',

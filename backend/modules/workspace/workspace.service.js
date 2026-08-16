@@ -13,6 +13,9 @@ import {
 
 import { createSystemRolesForWorkspace } from '../role/role.service.js';
 import {
+    createFreeSubscriptionForWorkspace,
+} from '../subscriptions/subscription.service.js';
+import {
     USER_STATUS,
 } from '../../constants/userStatus.constants.js';
 import { WorkspaceMember } from '../workspaceMember/workspaceMember.model.js';
@@ -22,11 +25,11 @@ import { User } from '../users/user.model.js';
 
 
 /**
- * Crée un workspace complet et attribue automatiquement le rôle owner
- * à l'utilisateur qui en est à l'origine.
+ * Crée un workspace complet avec ses rôles système, son membre owner
+ * et sa souscription gratuite initiale.
  *
- * La création du workspace, des rôles système et du membership owner
- * constitue une seule opération atomique.
+ * Ces différentes écritures constituent une seule opération atomique :
+ * l'échec de l'une d'elles doit annuler toute la création du workspace.
  *
  * @param {object} params
  * @param {string} params.name
@@ -81,7 +84,6 @@ const createWorkspace = async ({
                 'Owner system role was not created for the workspace',
             );
         }
-
         await WorkspaceMember.create(
             [
                 {
@@ -96,7 +98,17 @@ const createWorkspace = async ({
                 session,
             },
         );
-
+        /*
+         * La souscription gratuite fait partie de la même transaction.
+         *
+         * Si le plan free actif est absent ou si la souscription ne peut pas être
+         * créée, la création du workspace, des rôles et du membership sera annulée.
+         */
+        await createFreeSubscriptionForWorkspace({
+            workspaceId: workspace._id,
+            actorId,
+            session,
+        });
         return workspace;
     });
 };

@@ -18,8 +18,8 @@ describe('Plan model', () => {
             isPublic: true,
             displayOrder: 10,
             currency: 'EUR',
-            priceMonthlyMinor: 1990,
-            priceYearlyMinor: 19900,
+            priceMonthlyExclTaxMinor: 1990,
+            priceYearlyExclTaxMinor: 19900,
             features: [
                 'file_upload',
                 'team_management',
@@ -44,8 +44,8 @@ describe('Plan model', () => {
         expect(plan.displayOrder).toBe(10);
 
         expect(plan.currency).toBe('EUR');
-        expect(plan.priceMonthlyMinor).toBe(1990);
-        expect(plan.priceYearlyMinor).toBe(19900);
+        expect(plan.priceMonthlyExclTaxMinor).toBe(1990);
+        expect(plan.priceYearlyExclTaxMinor).toBe(19900);
 
         expect(plan.features).toEqual([
             'file_upload',
@@ -67,8 +67,8 @@ describe('Plan model', () => {
             key: 'PREMIUM',
             name: 'Premium',
             currency: 'EUR',
-            priceMonthlyMinor: 2990,
-            priceYearlyMinor: 29900,
+            priceMonthlyExclTaxMinor: 2990,
+            priceYearlyExclTaxMinor: 29900,
         });
 
         await plan.validate();
@@ -82,8 +82,8 @@ describe('Plan model', () => {
             key: 'Premium Plan!',
             name: 'Premium',
             currency: 'EUR',
-            priceMonthlyMinor: 2990,
-            priceYearlyMinor: 29900,
+            priceMonthlyExclTaxMinor: 2990,
+            priceYearlyExclTaxMinor: 29900,
         });
 
         await expect(plan.validate()).rejects.toThrow();
@@ -95,8 +95,8 @@ describe('Plan model', () => {
             key: 'business',
             name: 'Business',
             currency: 'EUR',
-            priceMonthlyMinor: 4990,
-            priceYearlyMinor: 49900,
+            priceMonthlyExclTaxMinor: 4990,
+            priceYearlyExclTaxMinor: 49900,
         });
 
         await plan.validate();
@@ -121,8 +121,8 @@ describe('Plan model', () => {
             name: 'Enterprise',
             status: 'unknown',
             currency: 'EUR',
-            priceMonthlyMinor: 9990,
-            priceYearlyMinor: 99900,
+            priceMonthlyExclTaxMinor: 9990,
+            priceYearlyExclTaxMinor: 99900,
         });
 
         await expect(plan.validate()).rejects.toThrow();
@@ -134,8 +134,8 @@ describe('Plan model', () => {
             key: 'free',
             name: 'Free',
             currency: 'EUR',
-            priceMonthlyMinor: -1,
-            priceYearlyMinor: 0,
+            priceMonthlyExclTaxMinor: -1,
+            priceYearlyExclTaxMinor: 0,
         });
 
         await expect(plan.validate()).rejects.toThrow();
@@ -147,8 +147,8 @@ describe('Plan model', () => {
             key: 'starter',
             name: 'Starter',
             currency: 'EUR',
-            priceMonthlyMinor: 1000,
-            priceYearlyMinor: -1,
+            priceMonthlyExclTaxMinor: 1000,
+            priceYearlyExclTaxMinor: -1,
         });
 
         await expect(plan.validate()).rejects.toThrow();
@@ -160,8 +160,8 @@ describe('Plan model', () => {
             key: 'premium',
             name: 'Premium',
             currency: 'EUR',
-            priceMonthlyMinor: 1990.5,
-            priceYearlyMinor: 19900,
+            priceMonthlyExclTaxMinor: 1990.5,
+            priceYearlyExclTaxMinor: 19900,
         });
 
         await expect(plan.validate()).rejects.toThrow();
@@ -173,8 +173,8 @@ describe('Plan model', () => {
             key: 'business',
             name: 'Business',
             currency: 'EUR',
-            priceMonthlyMinor: 4990,
-            priceYearlyMinor: 49900,
+            priceMonthlyExclTaxMinor: 4990,
+            priceYearlyExclTaxMinor: 49900,
             features: [
                 'file_upload',
                 'Invalid Feature!',
@@ -190,8 +190,8 @@ describe('Plan model', () => {
             key: 'business',
             name: 'Business',
             currency: 'EUR',
-            priceMonthlyMinor: 4990,
-            priceYearlyMinor: 49900,
+            priceMonthlyExclTaxMinor: 4990,
+            priceYearlyExclTaxMinor: 49900,
             features: [
                 'file_upload',
                 'file_upload',
@@ -207,8 +207,8 @@ describe('Plan model', () => {
             key: 'enterprise',
             name: 'Enterprise',
             currency: 'EUR',
-            priceMonthlyMinor: 9990,
-            priceYearlyMinor: 99900,
+            priceMonthlyExclTaxMinor: 9990,
+            priceYearlyExclTaxMinor: 99900,
             limits: {
                 members: -1,
             },
@@ -223,8 +223,8 @@ describe('Plan model', () => {
             key: 'enterprise',
             name: 'Enterprise',
             currency: 'EUR',
-            priceMonthlyMinor: 9990,
-            priceYearlyMinor: 99900,
+            priceMonthlyExclTaxMinor: 9990,
+            priceYearlyExclTaxMinor: 99900,
             limits: {
                 members: 5.5,
             },
@@ -239,8 +239,8 @@ describe('Plan model', () => {
             key: 'enterprise',
             name: 'Enterprise',
             currency: 'EUR',
-            priceMonthlyMinor: 9990,
-            priceYearlyMinor: 99900,
+            priceMonthlyExclTaxMinor: 9990,
+            priceYearlyExclTaxMinor: 99900,
             limits: {
                 'Invalid Limit!': 10,
             },

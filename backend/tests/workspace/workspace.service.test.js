@@ -22,6 +22,9 @@ import {
 } from '../../constants/userStatus.constants.js';
 
 import { createSystemRolesForWorkspace } from '../../modules/role/role.service.js';
+import {
+    createFreeSubscriptionForWorkspace,
+} from '../../modules/subscriptions/subscription.service.js';
 import { Workspace } from '../../modules/workspace/workspace.model.js';
 
 import {
@@ -72,6 +75,13 @@ vi.mock('../../modules/role/role.service.js', () => ({
     createSystemRolesForWorkspace: vi.fn(),
 }));
 
+vi.mock(
+    '../../modules/subscriptions/subscription.service.js',
+    () => ({
+        createFreeSubscriptionForWorkspace: vi.fn(),
+    }),
+);
+
 vi.mock('../../modules/workspace/workspace.model.js', () => ({
     Workspace: {
         create: vi.fn(),
@@ -108,7 +118,7 @@ describe('createWorkspace', () => {
     });
 
 
-    it('crée le workspace, ses rôles et son owner dans la même transaction', async () => {
+    it('crée le workspace, ses rôles, son owner et sa souscription dans la même transaction', async () => {
         const workspace = {
             _id: 'workspace-id',
             name: 'Acme',
@@ -151,7 +161,7 @@ describe('createWorkspace', () => {
                 session,
             },
         );
-
+        expect(WorkspaceMember.create).toHaveBeenCalledOnce();
         expect(
             createSystemRolesForWorkspace,
         ).toHaveBeenCalledWith({
@@ -174,8 +184,19 @@ describe('createWorkspace', () => {
                 session,
             },
         );
+        expect(
+            createFreeSubscriptionForWorkspace,
+        ).toHaveBeenCalledOnce();
 
+        expect(
+            createFreeSubscriptionForWorkspace,
+        ).toHaveBeenCalledWith({
+            workspaceId: workspace._id,
+            actorId,
+            session,
+        });
         expect(result).toBe(workspace);
+
     });
 
 
@@ -204,6 +225,9 @@ describe('createWorkspace', () => {
         );
 
         expect(WorkspaceMember.create).not.toHaveBeenCalled();
+        expect(
+            createFreeSubscriptionForWorkspace,
+        ).not.toHaveBeenCalled();
     });
 });
 
