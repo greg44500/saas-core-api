@@ -2,7 +2,7 @@ import { Plan } from './plan.model.js';
 import {
     DEFAULT_PLAN_CAPABILITY_REGISTRY,
 } from './planCapability.registry.js';
-
+import { PLAN_STATUS } from '../../constants/plan.constants.js';
 import { AppError } from '../../utils/appError.js';
 
 
@@ -125,5 +125,45 @@ const createPlan = async ({
     return plan.save(saveOptions);
 };
 
+/**
+ * Retourne le catalogue des plans visibles publiquement.
+ *
+ * Seuls les plans actifs et explicitement publics sont exposés. Un plan
+ * inactif, archivé ou réservé à l'administration ne doit jamais apparaître
+ * simplement parce qu'il existe encore dans la base.
+ *
+ * La projection limite volontairement les données retournées aux informations
+ * nécessaires à la présentation commerciale. Les champs de traçabilité et
+ * d'administration restent internes à la plateforme.
+ *
+ * @returns {Promise<object[]>}
+ */
+const listPublicPlans = async () => {
+    return Plan.find({
+        status: PLAN_STATUS.ACTIVE,
+        isPublic: true,
+    })
+        .select([
+            'key',
+            'name',
+            'description',
+            'displayOrder',
+            'currency',
+            'priceMonthlyExclTaxMinor',
+            'priceYearlyExclTaxMinor',
+            'features',
+            'limits',
+        ].join(' '))
+        .sort({
+            displayOrder: 1,
+            name: 1,
+        })
+        .lean();
+};
 
-export { createPlan, validatePlanCapabilities };
+
+export {
+    createPlan,
+    listPublicPlans,
+    validatePlanCapabilities,
+};

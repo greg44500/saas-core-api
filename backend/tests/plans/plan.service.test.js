@@ -5,7 +5,7 @@ import {
     it,
     vi,
 } from 'vitest';
-
+import { PLAN_STATUS } from '../../constants/plan.constants.js';
 import { Plan } from '../../modules/plan/plan.model.js';
 
 import {
@@ -14,6 +14,7 @@ import {
 
 import {
     createPlan,
+    listPublicPlans,
     validatePlanCapabilities,
 } from '../../modules/plan/plan.service.js';
 
@@ -143,5 +144,77 @@ describe('Plan service', () => {
             // La validation fonctionnelle doit toujours précéder l'écriture.
             expect(saveSpy).not.toHaveBeenCalled();
         });
+    });
+});
+
+describe('listPublicPlans', () => {
+    it('retourne uniquement le catalogue actif et public dans l’ordre attendu', async () => {
+        const publicPlans = [
+            {
+                key: 'free',
+                name: 'Free',
+                displayOrder: 0,
+            },
+            {
+                key: 'starter',
+                name: 'Starter',
+                displayOrder: 10,
+            },
+        ];
+
+        /*
+         * Simule uniquement la chaîne Mongoose utilisée par le service :
+         * find → select → sort → lean.
+         */
+        const leanMock = vi
+            .fn()
+            .mockResolvedValue(publicPlans);
+
+        const sortMock = vi
+            .fn()
+            .mockReturnValue({
+                lean: leanMock,
+            });
+
+        const selectMock = vi
+            .fn()
+            .mockReturnValue({
+                sort: sortMock,
+            });
+
+        const findSpy = vi
+            .spyOn(Plan, 'find')
+            .mockReturnValue({
+                select: selectMock,
+            });
+
+        const result = await listPublicPlans();
+
+        expect(findSpy).toHaveBeenCalledWith({
+            status: PLAN_STATUS.ACTIVE,
+            isPublic: true,
+        });
+
+        expect(selectMock).toHaveBeenCalledWith(
+            [
+                'key',
+                'name',
+                'description',
+                'displayOrder',
+                'currency',
+                'priceMonthlyExclTaxMinor',
+                'priceYearlyExclTaxMinor',
+                'features',
+                'limits',
+            ].join(' '),
+        );
+
+        expect(sortMock).toHaveBeenCalledWith({
+            displayOrder: 1,
+            name: 1,
+        });
+
+        expect(leanMock).toHaveBeenCalledOnce();
+        expect(result).toBe(publicPlans);
     });
 });
