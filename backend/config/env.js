@@ -86,6 +86,16 @@ const envSchema = z.object({
         .trim()
         .min(1, 'SMTP_FROM_NAME est obligatoire'),
 
+    UPLOAD_MAX_FILE_SIZE_BYTES: z.coerce
+        .number()
+        .int()
+        .positive(),
+
+    FILE_RETENTION_DAYS: z.coerce
+        .number()
+        .int()
+        .positive(),
+
 });
 // Valider les variables d'environnement et les transformer en types appropriés
 const validationResult = envSchema.safeParse(process.env);
