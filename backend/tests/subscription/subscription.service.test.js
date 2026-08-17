@@ -27,6 +27,7 @@ import {
 
 import {
     createFreeSubscriptionForWorkspace,
+    getWorkspacePlanEntitlement,
 } from '../../modules/subscriptions/subscription.service.js';
 
 
@@ -183,5 +184,94 @@ describe('createFreeSubscriptionForWorkspace', () => {
         );
 
         expect(createSpy).not.toHaveBeenCalled();
+    });
+});
+
+describe('getWorkspacePlanEntitlement', () => {
+    afterEach(() => {
+        // Restaure la véritable méthode Mongoose après chaque test.
+        vi.restoreAllMocks();
+    });
+
+
+    it('retourne la souscription utilisable et son plan', async () => {
+        const workspaceId = new ObjectId();
+
+        const plan = {
+            _id: new ObjectId(),
+            key: PLAN_KEY.FREE,
+            limits: new Map([
+                ['members', 5],
+            ]),
+        };
+
+        const subscription = {
+            _id: new ObjectId(),
+            workspace: workspaceId,
+            status: SUBSCRIPTION_STATUS.ACTIVE,
+            plan,
+        };
+
+        /*
+         * Subscription.findOne retourne une Query Mongoose. Le mock reproduit
+         * uniquement la méthode populate() utilisée par le service.
+         */
+        const populateMock = vi
+            .fn()
+            .mockResolvedValue(subscription);
+
+        const findOneSpy = vi
+            .spyOn(Subscription, 'findOne')
+            .mockReturnValue({
+                populate: populateMock,
+            });
+
+        const result = await getWorkspacePlanEntitlement({
+            workspaceId,
+        });
+
+        expect(findOneSpy).toHaveBeenCalledOnce();
+
+        expect(findOneSpy).toHaveBeenCalledWith({
+            workspace: workspaceId,
+            status: {
+                $in: [
+                    SUBSCRIPTION_STATUS.TRIALING,
+                    SUBSCRIPTION_STATUS.ACTIVE,
+                ],
+            },
+        });
+
+        expect(populateMock).toHaveBeenCalledOnce();
+        expect(populateMock).toHaveBeenCalledWith({
+            path: 'plan',
+        });
+
+        expect(result).toEqual({
+            subscription,
+            plan,
+        });
+    });
+
+
+    it('refuse un workspace sans souscription utilisable', async () => {
+        const populateMock = vi
+            .fn()
+            .mockResolvedValue(null);
+
+        vi.spyOn(Subscription, 'findOne')
+            .mockReturnValue({
+                populate: populateMock,
+            });
+
+        await expect(
+            getWorkspacePlanEntitlement({
+                workspaceId: new ObjectId(),
+            }),
+        ).rejects.toMatchObject({
+            message:
+                'Aucune souscription utilisable n’est associée à ce workspace.',
+            statusCode: 403,
+        });
     });
 });

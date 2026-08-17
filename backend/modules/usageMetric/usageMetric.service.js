@@ -23,7 +23,18 @@ import {
 const isValidDate = (value) =>
     value instanceof Date
     && !Number.isNaN(value.getTime());
-
+/**
+ * Identifie une collision sur un index unique MongoDB.
+ *
+ * Lors de deux premières réservations concurrentes, les deux requêtes peuvent
+ * tenter de créer la même UsageMetric. Une seule création réussit ; l'autre
+ * reçoit le code MongoDB 11000 et doit retenter une mise à jour bornée.
+ *
+ * @param {unknown} error
+ * @returns {boolean}
+ */
+const isDuplicateKeyError = (error) =>
+    error?.code === 11000;
 
 /**
  * Détermine la fenêtre temporelle applicable à une métrique.
@@ -354,8 +365,191 @@ const incrementUsageMetric = async ({
         options,
     );
 };
+
+/**
+ * Réserve atomiquement une consommation sans dépasser la limite du plan.
+ *
+ * Pour une limite numérique, la condition est intégrée au filtre MongoDB :
+ *
+ * valeur actuelle <= limite - quantité demandée
+ *
+ * MongoDB vérifie cette condition et exécute $inc dans une même opération
+ * atomique sur le document. Deux requêtes concurrentes ne peuvent donc pas
+ * réserver la même capacité disponible.
+ *
+ * null représente une limite illimitée. Dans ce cas, l'incrément atomique
+ * normal suffit puisqu'aucun plafond ne doit être contrôlé.
+ *
+ * La fonction retourne :
+ * - le document mis à jour lorsque la réservation réussit ;
+ * - null lorsque la capacité disponible est insuffisante.
+ *
+ * @param {object} params
+ * @param {string|import('mongoose').Types.ObjectId} params.workspaceId
+ * @param {string} params.metricKey
+ * @param {number | null} params.limit
+ * @param {number} [params.amount]
+ * @param {Date} [params.at]
+ * @param {string|import('mongoose').Types.ObjectId|null} [params.actorId]
+ * @param {{
+ *     getMetricDefinition: (
+ *         metricKey: string
+ *     ) => { periodType: string } | null
+ * }} [params.registry]
+ * @param {import('mongoose').ClientSession|null} [params.session]
+ * @returns {Promise<import('mongoose').Document|null>}
+ */
+const reserveUsageMetricWithinLimit = async ({
+    workspaceId,
+    metricKey,
+    limit,
+    amount = 1,
+    at = new Date(),
+    actorId = null,
+    registry = DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    session = null,
+}) => {
+    if (!workspaceId) {
+        throw new TypeError(
+            'workspaceId is required to reserve a usage metric',
+        );
+    }
+
+    if (!Number.isInteger(amount) || amount <= 0) {
+        throw new TypeError(
+            'amount must be an integer greater than 0',
+        );
+    }
+
+    if (
+        limit !== null
+        && (!Number.isInteger(limit) || limit < 0)
+    ) {
+        throw new TypeError(
+            'limit must be null or a non-negative integer',
+        );
+    }
+
+    /*
+     * Une limite illimitée ne nécessite aucune condition supplémentaire.
+     * incrementUsageMetric conserve malgré tout l'atomicité de l'incrément.
+     */
+    if (limit === null) {
+        return incrementUsageMetric({
+            workspaceId,
+            metricKey,
+            amount,
+            at,
+            actorId,
+            registry,
+            session,
+        });
+    }
+
+    /*
+     * Si la demande dépasse à elle seule la limite, aucune valeur actuelle
+     * positive ou nulle ne peut rendre la réservation possible.
+     *
+     * Ce contrôle empêche aussi un upsert de créer accidentellement un compteur
+     * supérieur à la limite lorsque le document n'existe pas encore.
+     */
+    if (amount > limit) {
+        return null;
+    }
+
+    const {
+        periodType,
+        periodStart,
+        periodEnd,
+    } = resolveUsageMetricPeriod({
+        metricKey,
+        at,
+        registry,
+    });
+
+    const normalizedMetricKey =
+        metricKey.trim().toLowerCase();
+
+    const identityFilter = {
+        workspace: workspaceId,
+        metricKey: normalizedMetricKey,
+        periodType,
+        periodStart,
+    };
+
+    /*
+     * Exemple : limite 10 et réservation 3.
+     * La valeur actuelle doit être inférieure ou égale à 7.
+     */
+    const boundedFilter = {
+        ...identityFilter,
+        value: {
+            $lte: limit - amount,
+        },
+    };
+
+    const update = {
+        $inc: {
+            value: amount,
+        },
+        $set: {
+            updatedBy: actorId,
+        },
+        $setOnInsert: {
+            workspace: workspaceId,
+            metricKey: normalizedMetricKey,
+            periodType,
+            periodStart,
+            periodEnd,
+            createdBy: actorId,
+        },
+    };
+
+    const options = {
+        upsert: true,
+        returnDocument: 'after',
+        runValidators: true,
+        setDefaultsOnInsert: true,
+    };
+
+    if (session) {
+        options.session = session;
+    }
+
+    try {
+        return await UsageMetric.findOneAndUpdate(
+            boundedFilter,
+            update,
+            options,
+        );
+    } catch (error) {
+        if (!isDuplicateKeyError(error)) {
+            throw error;
+        }
+
+        /*
+         * Une collision peut avoir deux causes :
+         *
+         * 1. le compteur existe déjà mais ne respecte plus la limite ;
+         * 2. une requête concurrente vient de créer le compteur.
+         *
+         * Une seconde mise à jour sans upsert distingue ces situations :
+         * - document retourné : la capacité restait disponible ;
+         * - null : la limite est désormais atteinte ou dépassée.
+         */
+        return UsageMetric.findOneAndUpdate(
+            boundedFilter,
+            update,
+            {
+                ...options,
+                upsert: false,
+            },
+        );
+    }
+};
 export {
     getUsageMetricValue,
     incrementUsageMetric,
+    reserveUsageMetricWithinLimit,
     resolveUsageMetricPeriod,
 };

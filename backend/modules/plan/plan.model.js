@@ -47,6 +47,19 @@ const PLAN_CAPABILITY_KEY_PATTERN = /^[a-z][a-z0-9_]*$/;
 const isNonNegativeInteger = (value) =>
     Number.isInteger(value) && value >= 0;
 
+/**
+ * Vérifie qu'une valeur constitue une limite de plan valide.
+ *
+ * Convention :
+ * - null représente une limite explicitement illimitée ;
+ * - 0 interdit toute consommation ;
+ * - un entier positif définit un plafond quantitatif.
+ *
+ * L'absence d'une metricKey dans `limits` reste différente de null :
+ * elle signale une configuration absente ou une métrique non applicable.
+ */
+const isValidPlanLimit = (value) =>
+    value === null || isNonNegativeInteger(value);
 
 /**
  * Représente une offre commerciale disponible sur la plateforme.
@@ -266,7 +279,10 @@ const planSchema = new Schema(
          * {
          *     members: 5,
          *     storage_bytes: 1073741824
+         *     file_uploads_monthly: null
          * }
+         *  `null` signifie que la métrique est explicitement illimitée.
+        *   Une clé absente ne doit pas être interprétée comme illimitée
          *
          * La présence réelle d'une métrique dans le registre applicatif sera
          * contrôlée ultérieurement par le service.
@@ -276,7 +292,7 @@ const planSchema = new Schema(
             of: {
                 type: Number,
                 validate: {
-                    validator: isNonNegativeInteger,
+                    validator: isValidPlanLimit,
                     message:
                         'Une limite de plan doit être un entier positif ou nul.',
                 },
@@ -298,7 +314,7 @@ const planSchema = new Schema(
                     );
                 },
                 message:
-                    'Le format d’une clé de limite du plan est invalide.',
+                    'Le format de clé de limite du plan est invalide.',
             },
         },
 

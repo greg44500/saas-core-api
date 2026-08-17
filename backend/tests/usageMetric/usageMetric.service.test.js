@@ -18,6 +18,7 @@ import {
     getUsageMetricValue,
     incrementUsageMetric,
     resolveUsageMetricPeriod,
+    reserveUsageMetricWithinLimit,
 } from '../../modules/usageMetric/usageMetric.service.js';
 
 
@@ -267,5 +268,152 @@ describe('incrementUsageMetric', () => {
         expect(
             UsageMetric.findOneAndUpdate,
         ).not.toHaveBeenCalled();
+    });
+});
+
+describe('reserveUsageMetricWithinLimit', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+
+    it('réserve atomiquement une consommation dans la limite', async () => {
+        const workspaceId = 'workspace-id';
+        const actorId = 'actor-id';
+
+        const updatedUsageMetric = {
+            workspace: workspaceId,
+            metricKey: 'file_uploads_monthly',
+            value: 10,
+        };
+
+        UsageMetric.findOneAndUpdate.mockResolvedValue(
+            updatedUsageMetric,
+        );
+
+        const result = await reserveUsageMetricWithinLimit({
+            workspaceId,
+            metricKey: 'file_uploads_monthly',
+            limit: 10,
+            amount: 3,
+            at: new Date('2026-08-16T12:00:00.000Z'),
+            actorId,
+        });
+
+        const periodStart =
+            new Date('2026-08-01T00:00:00.000Z');
+
+        const periodEnd =
+            new Date('2026-09-01T00:00:00.000Z');
+
+        expect(
+            UsageMetric.findOneAndUpdate,
+        ).toHaveBeenCalledWith(
+            {
+                workspace: workspaceId,
+                metricKey: 'file_uploads_monthly',
+                periodType:
+                    USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH,
+                periodStart,
+
+                /*
+                 * Avec une limite de 10 et une demande de 3, la valeur
+                 * actuelle doit être inférieure ou égale à 7.
+                 */
+                value: {
+                    $lte: 7,
+                },
+            },
+            {
+                $inc: {
+                    value: 3,
+                },
+                $set: {
+                    updatedBy: actorId,
+                },
+                $setOnInsert: {
+                    workspace: workspaceId,
+                    metricKey: 'file_uploads_monthly',
+                    periodType:
+                        USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH,
+                    periodStart,
+                    periodEnd,
+                    createdBy: actorId,
+                },
+            },
+            {
+                upsert: true,
+                returnDocument: 'after',
+                runValidators: true,
+                setDefaultsOnInsert: true,
+            },
+        );
+
+        expect(result).toBe(updatedUsageMetric);
+    });
+
+
+    it('refuse sans requête une demande supérieure à la limite', async () => {
+        const result = await reserveUsageMetricWithinLimit({
+            workspaceId: 'workspace-id',
+            metricKey: 'members',
+            limit: 2,
+            amount: 3,
+        });
+
+        expect(result).toBeNull();
+
+        expect(
+            UsageMetric.findOneAndUpdate,
+        ).not.toHaveBeenCalled();
+    });
+
+
+    it('retente sans upsert après une création concurrente', async () => {
+        const duplicateKeyError = Object.assign(
+            new Error('Duplicate key'),
+            {
+                code: 11000,
+            },
+        );
+
+        /*
+         * La première tentative rencontre la création concurrente.
+         * La seconde ne trouve plus de capacité disponible et retourne null.
+         */
+        UsageMetric.findOneAndUpdate
+            .mockRejectedValueOnce(duplicateKeyError)
+            .mockResolvedValueOnce(null);
+
+        const result = await reserveUsageMetricWithinLimit({
+            workspaceId: 'workspace-id',
+            metricKey: 'members',
+            limit: 1,
+            amount: 1,
+        });
+
+        expect(
+            UsageMetric.findOneAndUpdate,
+        ).toHaveBeenCalledTimes(2);
+
+        expect(
+            UsageMetric.findOneAndUpdate,
+        ).toHaveBeenNthCalledWith(
+            2,
+            expect.objectContaining({
+                workspace: 'workspace-id',
+                metricKey: 'members',
+                value: {
+                    $lte: 0,
+                },
+            }),
+            expect.any(Object),
+            expect.objectContaining({
+                upsert: false,
+                returnDocument: 'after',
+            }),
+        );
+
+        expect(result).toBeNull();
     });
 });

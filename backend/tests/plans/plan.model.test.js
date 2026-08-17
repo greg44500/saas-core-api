@@ -127,7 +127,24 @@ describe('Plan model', () => {
 
         await expect(plan.validate()).rejects.toThrow();
     });
+    it('accepte null comme limite explicitement illimitée', async () => {
+        const plan = new Plan({
+            key: 'enterprise',
+            name: 'Enterprise',
+            currency: 'EUR',
+            priceMonthlyExclTaxMinor: 9990,
+            priceYearlyExclTaxMinor: 99900,
+            limits: {
+                members: null,
+            },
+        });
 
+        await plan.validate();
+
+        expect(plan.limits).toBeInstanceOf(Map);
+        expect(plan.limits.has('members')).toBe(true);
+        expect(plan.limits.get('members')).toBeNull();
+    });
 
     it('refuse un prix mensuel négatif', async () => {
         const plan = new Plan({

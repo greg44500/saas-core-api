@@ -14,6 +14,16 @@ import { Subscription } from './subscription.model.js';
 
 import { AppError } from '../../utils/appError.js';
 
+/**
+ * Statuts permettant actuellement de consommer les capacités d'un plan.
+ *
+ * `past_due` reste volontairement exclu tant que la politique de délai de
+ * grâce en cas d'impayé n'a pas été définie.
+ */
+const USABLE_SUBSCRIPTION_STATUSES = Object.freeze([
+    SUBSCRIPTION_STATUS.TRIALING,
+    SUBSCRIPTION_STATUS.ACTIVE,
+]);
 
 /**
  * Crée la souscription gratuite initiale d'un nouveau workspace.
@@ -33,6 +43,7 @@ import { AppError } from '../../utils/appError.js';
  * @param {import('mongoose').ClientSession} params.session
  * @returns {Promise<import('mongoose').Document>}
  */
+
 const createFreeSubscriptionForWorkspace = async ({
     workspaceId,
     actorId,
@@ -120,5 +131,79 @@ const createFreeSubscriptionForWorkspace = async ({
     return subscription;
 };
 
+/**
+ * Récupère la souscription utilisable et le plan effectif d'un workspace.
+ *
+ * Cette fonction constitue le point d'entrée commun des futurs contrôles de
+ * fonctionnalités et de quotas. Elle évite que chaque module consommateur
+ * reconstruise différemment la relation workspace → subscription → plan.
+ *
+ * Une session MongoDB facultative peut être transmise afin que la lecture
+ * participe ultérieurement à une transaction plus large.
+ *
+ * @param {object} params
+ * @param {import('mongoose').Types.ObjectId} params.workspaceId
+ * @param {import('mongoose').ClientSession} [params.session]
+ * @returns {Promise<{
+ *     subscription: import('mongoose').Document,
+ *     plan: import('mongoose').Document
+ * }>}
+ */
+const getWorkspacePlanEntitlement = async ({
+    workspaceId,
+    session,
+}) => {
+    if (!workspaceId) {
+        throw new TypeError(
+            'workspaceId is required to resolve a workspace plan entitlement',
+        );
+    }
 
-export { createFreeSubscriptionForWorkspace };
+    /*
+     * Seuls les statuts explicitement autorisés sont recherchés.
+     * Un statut inconnu ou commercialement bloqué ne peut donc pas ouvrir
+     * accidentellement l'accès aux capacités du plan.
+     */
+    let query = Subscription.findOne({
+        workspace: workspaceId,
+        status: {
+            $in: USABLE_SUBSCRIPTION_STATUSES,
+        },
+    }).populate({
+        path: 'plan',
+    });
+
+    if (session) {
+        query = query.session(session);
+    }
+
+    const subscription = await query;
+
+    if (!subscription) {
+        throw new AppError(
+            'Aucune souscription utilisable n’est associée à ce workspace.',
+            403,
+        );
+    }
+
+    /*
+     * Une référence de plan non résolue révèle une incohérence interne :
+     * la souscription existe, mais son offre commerciale est introuvable.
+     */
+    if (!subscription.plan) {
+        throw new AppError(
+            'Le plan associé à la souscription est introuvable.',
+            500,
+        );
+    }
+
+    return {
+        subscription,
+        plan: subscription.plan,
+    };
+};
+
+export {
+    createFreeSubscriptionForWorkspace,
+    getWorkspacePlanEntitlement,
+};
