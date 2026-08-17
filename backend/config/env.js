@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { z } from 'zod';
+import { FILE_STORAGE_PROVIDER } from '../constants/file.constants.js';
 
 //Schema de validation pour les variables d'environnement
 const envSchema = z.object({
@@ -95,6 +96,37 @@ const envSchema = z.object({
         .number()
         .int()
         .positive(),
+
+    FILE_STORAGE_PROVIDER: z.literal(
+        FILE_STORAGE_PROVIDER.LOCAL,
+    ),
+
+    LOCAL_STORAGE_ROOT_DIR: z
+        .string()
+        .trim()
+        .min(
+            1,
+            'LOCAL_STORAGE_ROOT_DIR est obligatoire',
+        ),
+
+    UPLOAD_TEMP_DIR: z
+        .string()
+        .trim()
+        .min(
+            1,
+            'UPLOAD_TEMP_DIR est obligatoire',
+        ),
+
+    CLAMAV_BINARY_PATH: z
+        .string()
+        .trim()
+        .min(1, "CLAMAV_BINARY_PATH est obligatoire"),
+
+    CLAMAV_SCAN_TIMEOUT_MS: z.coerce
+        .number()
+        .int()
+        .min(1000)
+        .max(120000),
 
 });
 // Valider les variables d'environnement et les transformer en types appropriés

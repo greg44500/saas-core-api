@@ -10,11 +10,26 @@ import {
 } from '../../modules/usageMetric/usageMetric.model.js';
 
 
+/**
+ * Exécute la validation asynchrone recommandée par Mongoose et retourne
+ * l'éventuelle erreur afin de pouvoir inspecter précisément ses champs.
+ */
+const getValidationError = async (document) => {
+    try {
+        await document.validate();
+
+        return undefined;
+    } catch (error) {
+        return error;
+    }
+};
+
+
 describe('UsageMetric model', () => {
     const workspaceId = new mongoose.Types.ObjectId();
 
 
-    it('valide une métrique représentant un état courant', () => {
+    it('valide une métrique représentant un état courant', async () => {
         const usageMetric = new UsageMetric({
             workspace: workspaceId,
             metricKey: 'members',
@@ -22,16 +37,16 @@ describe('UsageMetric model', () => {
             periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
         });
 
-        const validationError = usageMetric.validateSync();
+        const validationError =
+            await getValidationError(usageMetric);
 
         expect(validationError).toBeUndefined();
-
         expect(usageMetric.periodStart).toBeNull();
         expect(usageMetric.periodEnd).toBeNull();
     });
 
 
-    it('valide une métrique associée à un mois civil', () => {
+    it('valide une métrique associée à un mois civil', async () => {
         const periodStart =
             new Date('2026-08-01T00:00:00.000Z');
 
@@ -48,16 +63,16 @@ describe('UsageMetric model', () => {
             periodEnd,
         });
 
-        const validationError = usageMetric.validateSync();
+        const validationError =
+            await getValidationError(usageMetric);
 
         expect(validationError).toBeUndefined();
-
         expect(usageMetric.periodStart).toEqual(periodStart);
         expect(usageMetric.periodEnd).toEqual(periodEnd);
     });
 
 
-    it('rejette une valeur négative ou non entière', () => {
+    it('rejette une valeur négative ou non entière', async () => {
         const negativeMetric = new UsageMetric({
             workspace: workspaceId,
             metricKey: 'storage_bytes',
@@ -72,31 +87,38 @@ describe('UsageMetric model', () => {
             periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
         });
 
+        const [
+            negativeValidationError,
+            decimalValidationError,
+        ] = await Promise.all([
+            getValidationError(negativeMetric),
+            getValidationError(decimalMetric),
+        ]);
+
         expect(
-            negativeMetric.validateSync()?.errors.value,
+            negativeValidationError?.errors.value,
         ).toBeDefined();
 
         expect(
-            decimalMetric.validateSync()?.errors.value,
+            decimalValidationError?.errors.value,
         ).toBeDefined();
     });
 
 
-    it('impose des bornes cohérentes avec le type de période', () => {
-        /*
-         * Une métrique mensuelle sans dates ne permettrait pas de savoir
-         * à quel mois rattacher sa consommation.
-         */
-        const monthlyMetricWithoutPeriod = new UsageMetric({
-            workspace: workspaceId,
-            metricKey: 'file_uploads_monthly',
-            value: 1,
-            periodType:
-                USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH,
-        });
+    it('impose des bornes cohérentes avec le type de période', async () => {
+        const monthlyMetricWithoutPeriod =
+            new UsageMetric({
+                workspace: workspaceId,
+                metricKey: 'file_uploads_monthly',
+                value: 1,
+                periodType:
+                    USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH,
+            });
 
         const missingPeriodError =
-            monthlyMetricWithoutPeriod.validateSync();
+            await getValidationError(
+                monthlyMetricWithoutPeriod,
+            );
 
         expect(
             missingPeriodError?.errors.periodStart,
@@ -107,23 +129,23 @@ describe('UsageMetric model', () => {
         ).toBeDefined();
 
 
-        /*
-         * Une métrique courante ne doit posséder aucune borne temporelle,
-         * car elle représente toujours l'état actuel du workspace.
-         */
-        const currentMetricWithPeriod = new UsageMetric({
-            workspace: workspaceId,
-            metricKey: 'members',
-            value: 1,
-            periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
-            periodStart:
-                new Date('2026-08-01T00:00:00.000Z'),
-            periodEnd:
-                new Date('2026-09-01T00:00:00.000Z'),
-        });
+        const currentMetricWithPeriod =
+            new UsageMetric({
+                workspace: workspaceId,
+                metricKey: 'members',
+                value: 1,
+                periodType:
+                    USAGE_METRIC_PERIOD_TYPE.CURRENT,
+                periodStart:
+                    new Date('2026-08-01T00:00:00.000Z'),
+                periodEnd:
+                    new Date('2026-09-01T00:00:00.000Z'),
+            });
 
         const unexpectedPeriodError =
-            currentMetricWithPeriod.validateSync();
+            await getValidationError(
+                currentMetricWithPeriod,
+            );
 
         expect(
             unexpectedPeriodError?.errors.periodStart,
@@ -134,9 +156,6 @@ describe('UsageMetric model', () => {
         ).toBeDefined();
 
 
-        /*
-         * La borne finale doit toujours être postérieure à la borne initiale.
-         */
         const monthlyMetricWithInvalidPeriod =
             new UsageMetric({
                 workspace: workspaceId,
@@ -150,10 +169,13 @@ describe('UsageMetric model', () => {
                     new Date('2026-08-01T00:00:00.000Z'),
             });
 
+        const invalidPeriodError =
+            await getValidationError(
+                monthlyMetricWithInvalidPeriod,
+            );
+
         expect(
-            monthlyMetricWithInvalidPeriod
-                .validateSync()
-                ?.errors.periodEnd,
+            invalidPeriodError?.errors.periodEnd,
         ).toBeDefined();
     });
 });

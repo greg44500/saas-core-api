@@ -17,3 +17,6 @@ npm-debug.log*
 .DS_Store
 thumbs.db
 .vscode/
+
+# Fichiers téléversés et fichiers temporaires
+uploads/
