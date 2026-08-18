@@ -21,6 +21,15 @@ const CORE_PERMISSION = Object.freeze({
     ROLE_CREATE: 'role:create',
     ROLE_UPDATE: 'role:update',
     ROLE_DELETE: 'role:delete',
+
+    /*
+ * Création d'une ressource File à partir d'un upload.
+ *
+ * Cette permission reste distincte de workspace:update : administrer les
+ * paramètres du tenant et déposer un contenu sont deux actions différentes
+ * qui doivent pouvoir évoluer indépendamment.
+ */
+    FILE_UPLOAD: 'file:upload',
 });
 
 

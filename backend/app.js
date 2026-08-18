@@ -13,6 +13,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 
 import { authRouter } from './modules/auth/auth.routes.js';
+import { fileRouter } from './modules/file/file.routes.js';
 import { planRouter } from './modules/plan/plan.routes.js';
 import { workspaceRouter } from './modules/workspace/workspace.routes.js';
 
@@ -38,6 +39,15 @@ app.use(express.json());
  */
 app.use('/api/auth', authRouter);
 app.use('/api/plans', planRouter);
+/*
+ * Le chemin de montage porte la frontière multi-tenant. Le fileRouter utilise
+ * mergeParams afin de récupérer workspaceId et applique lui-même toute la
+ * chaîne authenticate -> autorisation -> upload -> validation -> controller.
+ */
+app.use(
+    '/api/workspaces/:workspaceId/files',
+    fileRouter,
+);
 app.use('/api/workspaces', workspaceRouter);
 
 
