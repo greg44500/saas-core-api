@@ -9,6 +9,7 @@ import {
 import {
     enforcePlanLimit,
     evaluatePlanLimit,
+    reservePlanLimitForEntitlement,
     resolvePlanMetricLimit,
 } from '../../modules/plan/planLimit.service.js';
 import {
@@ -250,5 +251,121 @@ describe('enforcePlanLimit', () => {
                 'La limite members du plan est atteinte.',
             statusCode: 403,
         });
+    });
+});
+describe('reservePlanLimitForEntitlement', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+
+    it('réserve une limite depuis un entitlement déjà résolu', async () => {
+        const workspaceId = 'workspace-id';
+        const actorId = 'actor-id';
+
+        const at =
+            new Date(
+                '2026-08-19T10:00:00.000Z',
+            );
+
+        const session = {
+            id: 'mongo-session',
+        };
+
+        const planEntitlement = {
+            subscription: {
+                _id: 'subscription-id',
+            },
+            plan: {
+                _id: 'plan-id',
+                limits: new Map([
+                    [
+                        'file_uploads_monthly',
+                        10,
+                    ],
+                ]),
+            },
+        };
+
+        const usageMetric = {
+            metricKey:
+                'file_uploads_monthly',
+            value: 4,
+        };
+
+        reserveUsageMetricWithinLimit
+            .mockResolvedValue(
+                usageMetric,
+            );
+
+        const result =
+            await reservePlanLimitForEntitlement({
+                workspaceId,
+                planEntitlement,
+                metricKey:
+                    'file_uploads_monthly',
+                amount: 1,
+                at,
+                actorId,
+                session,
+            });
+
+        /*
+         * L'entitlement fourni doit être utilisé directement. Aucune seconde
+         * lecture Subscription n'est autorisée dans cette variante.
+         */
+        expect(
+            getWorkspacePlanEntitlement,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            reserveUsageMetricWithinLimit,
+        ).toHaveBeenCalledWith({
+            workspaceId,
+            metricKey:
+                'file_uploads_monthly',
+            limit: 10,
+            amount: 1,
+            at,
+            actorId,
+            registry: expect.any(Object),
+            session,
+        });
+
+        expect(result).toEqual({
+            subscription:
+                planEntitlement.subscription,
+            plan:
+                planEntitlement.plan,
+            usageMetric,
+            metricKey:
+                'file_uploads_monthly',
+            limit: 10,
+        });
+    });
+
+
+    it('refuse un entitlement incomplet avant toute réservation', async () => {
+        await expect(
+            reservePlanLimitForEntitlement({
+                workspaceId:
+                    'workspace-id',
+                planEntitlement: {
+                    subscription: {
+                        _id:
+                            'subscription-id',
+                    },
+                    plan: null,
+                },
+                metricKey:
+                    'file_uploads_monthly',
+            }),
+        ).rejects.toThrow(
+            'A valid plan entitlement is required to reserve a plan limit',
+        );
+
+        expect(
+            reserveUsageMetricWithinLimit,
+        ).not.toHaveBeenCalled();
     });
 });

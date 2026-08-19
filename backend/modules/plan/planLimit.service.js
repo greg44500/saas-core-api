@@ -190,6 +190,107 @@ const evaluatePlanLimit = ({
     };
 };
 /**
+ * Réserve une consommation depuis un entitlement déjà résolu.
+ *
+ * Cette variante ne relit pas Subscription. Elle est destinée aux opérations
+ * qui ont déjà chargé la souscription et le plan dans une transaction MongoDB.
+ *
+ * Elle permet notamment au module File de :
+ * - relire une seule fois l'entitlement dans la transaction ;
+ * - revérifier la fonctionnalité file_upload ;
+ * - réserver plusieurs métriques sur le même plan ;
+ * - créer le document File dans le même snapshot transactionnel.
+ *
+ * @param {object} params
+ * @param {string|import('mongoose').Types.ObjectId} params.workspaceId
+ * @param {{
+ *     subscription: import('mongoose').Document,
+ *     plan: import('mongoose').Document
+ * }} params.planEntitlement
+ * @param {string} params.metricKey
+ * @param {number} [params.amount]
+ * @param {Date} [params.at]
+ * @param {string|import('mongoose').Types.ObjectId|null} [params.actorId]
+ * @param {object} [params.registry]
+ * @param {import('mongoose').ClientSession|null} [params.session]
+ * @returns {Promise<{
+ *     subscription: import('mongoose').Document,
+ *     plan: import('mongoose').Document,
+ *     usageMetric: import('mongoose').Document,
+ *     metricKey: string,
+ *     limit: number | null
+ * }>}
+ */
+const reservePlanLimitForEntitlement = async ({
+    workspaceId,
+    planEntitlement,
+    metricKey,
+    amount = 1,
+    at = new Date(),
+    actorId = null,
+    registry =
+    DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    session = null,
+}) => {
+    if (!workspaceId) {
+        throw new TypeError(
+            'workspaceId is required to reserve a plan limit',
+        );
+    }
+
+    if (
+        !planEntitlement?.subscription
+        || !planEntitlement?.plan
+    ) {
+        throw new TypeError(
+            'A valid plan entitlement is required to reserve a plan limit',
+        );
+    }
+
+    const {
+        subscription,
+        plan,
+    } = planEntitlement;
+
+    /*
+     * La limite est toujours relue depuis le plan présent dans le snapshot
+     * transactionnel. Une valeur précédemment mise en cache par un middleware
+     * HTTP ne constitue pas une autorité pour cette écriture.
+     */
+    const limit = resolvePlanMetricLimit({
+        plan,
+        metricKey,
+        registry,
+    });
+
+    const usageMetric =
+        await reserveUsageMetricWithinLimit({
+            workspaceId,
+            metricKey,
+            limit,
+            amount,
+            at,
+            actorId,
+            registry,
+            session,
+        });
+
+    if (!usageMetric) {
+        throw new AppError(
+            `La limite ${metricKey} du plan est atteinte.`,
+            403,
+        );
+    }
+
+    return {
+        subscription,
+        plan,
+        usageMetric,
+        metricKey,
+        limit,
+    };
+};
+/**
  * Vérifie le droit d'un workspace et réserve atomiquement une consommation.
  *
  * Cette fonction orchestre les responsabilités spécialisées :
@@ -228,7 +329,8 @@ const enforcePlanLimit = async ({
     amount = 1,
     at = new Date(),
     actorId = null,
-    registry = DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    registry =
+    DEFAULT_PLAN_CAPABILITY_REGISTRY,
     session = null,
 }) => {
     if (!workspaceId) {
@@ -238,59 +340,30 @@ const enforcePlanLimit = async ({
     }
 
     /*
-     * Le service Subscription vérifie que le workspace possède une
-     * souscription dont le statut autorise actuellement l'utilisation.
+     * Cette entrée publique résout elle-même l'entitlement lorsqu'aucune
+     * orchestration supérieure ne l'a encore chargé.
      */
-    const {
-        subscription,
-        plan,
-    } = await getWorkspacePlanEntitlement({
-        workspaceId,
-        session,
-    });
+    const planEntitlement =
+        await getWorkspacePlanEntitlement({
+            workspaceId,
+            session,
+        });
 
-    /*
-     * Cette résolution vérifie également que metricKey appartient au registre
-     * et qu'elle est réellement configurée dans le plan.
-     */
-    const limit = resolvePlanMetricLimit({
-        plan,
-        metricKey,
-        registry,
-    });
-
-    /*
-     * La réservation constitue la décision finale. Une simple lecture suivie
-     * d'un incrément laisserait deux requêtes concurrentes dépasser le quota.
-     */
-    const usageMetric = await reserveUsageMetricWithinLimit({
+    return reservePlanLimitForEntitlement({
         workspaceId,
+        planEntitlement,
         metricKey,
-        limit,
         amount,
         at,
         actorId,
         registry,
         session,
     });
-
-    if (!usageMetric) {
-        throw new AppError(
-            `La limite ${metricKey} du plan est atteinte.`,
-            403,
-        );
-    }
-
-    return {
-        subscription,
-        plan,
-        usageMetric,
-        metricKey,
-        limit,
-    };
 };
+
 export {
     enforcePlanLimit,
     evaluatePlanLimit,
+    reservePlanLimitForEntitlement,
     resolvePlanMetricLimit,
 };

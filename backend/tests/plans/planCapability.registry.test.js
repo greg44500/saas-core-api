@@ -9,6 +9,7 @@ import {
 } from '../../constants/usageMetric.constants.js';
 
 import {
+    CORE_PLAN_FEATURE,
     CORE_PLAN_FEATURES,
     CORE_PLAN_METRICS,
     DEFAULT_PLAN_CAPABILITY_REGISTRY,
@@ -159,5 +160,18 @@ describe('Plan capability registry', () => {
                 (metric) => metric === 'members',
             ),
         ).toHaveLength(1);
+    });
+    it('expose des clés nommées stables pour les fonctionnalités du socle', () => {
+        expect(CORE_PLAN_FEATURE).toEqual({
+            FILE_UPLOAD: 'file_upload',
+            TEAM_MANAGEMENT: 'team_management',
+            AUDIT_LOGS: 'audit_logs',
+        });
+
+        expect(CORE_PLAN_FEATURES).toEqual([
+            'file_upload',
+            'team_management',
+            'audit_logs',
+        ]);
     });
 });

@@ -13,6 +13,14 @@ import {
 } from '../../middlewares/authorizePermission.js';
 
 import {
+    CORE_PLAN_FEATURE,
+} from '../plan/planCapability.registry.js';
+
+import {
+    enforcePlanFeature,
+} from '../../middlewares/enforcePlanFeature.js';
+
+import {
     cleanupTemporaryUploadOnError,
 } from '../../middlewares/cleanupTemporaryUploadOnError.js';
 
@@ -60,13 +68,18 @@ const router = Router({
  * 1. identifier l'utilisateur ;
  * 2. valider l'identifiant du tenant ;
  * 3. charger son membership et ses permissions ;
- * 4. autoriser l'action file:upload ;
- * 5. seulement ensuite accepter le flux binaire en quarantaine ;
- * 6. valider les métadonnées textuelles extraites du multipart ;
- * 7. persister le résultat inspecté et créer le document File.
+ * 4. autoriser l'action file:upload pour son rôle ;
+ * 5. vérifier que le plan du workspace inclut file_upload ;
+ * 6. seulement ensuite accepter le flux binaire en quarantaine ;
+ * 7. valider les métadonnées textuelles extraites du multipart ;
+ * 8. persister le résultat inspecté et créer le document File.
  *
- * Cette séquence évite notamment d'écrire un fichier temporaire pour une
- * requête non authentifiée ou non autorisée.
+ * La permission répond à la question « cet utilisateur peut-il agir ? ».
+ * La fonctionnalité du plan répond à la question « ce workspace dispose-t-il
+ * de cette capacité ? ». Les deux conditions sont obligatoires.
+ *
+ * Cette séquence évite d'écrire un fichier temporaire pour une requête non
+ * authentifiée, non autorisée ou exclue de l'offre du workspace.
  */
 router.post(
     '/',
@@ -77,6 +90,9 @@ router.post(
     loadWorkspaceContext,
     authorizePermission(
         CORE_PERMISSION.FILE_UPLOAD,
+    ),
+    enforcePlanFeature(
+        CORE_PLAN_FEATURE.FILE_UPLOAD,
     ),
     uploadSingleFile('file'),
     validateRequest({

@@ -4,20 +4,28 @@ import {
 
 
 /**
- * Fonctionnalités génériques fournies directement par le socle SaaS.
+ * Clés stables des fonctionnalités génériques fournies par le socle.
  *
- * Une feature représente une capacité disponible ou non dans un plan.
- * Elle ne contient aucune notion de quantité : les plafonds appartiennent
- * au registre des métriques.
- *
- * Les applications métier pourront fournir leurs propres features sans
- * modifier le modèle Plan.
+ * L'objet nommé évite de répéter des chaînes libres dans les routes, les
+ * middlewares et les seeds. Une faute de frappe ne doit pas pouvoir modifier
+ * silencieusement la fonctionnalité contrôlée.
  */
-const CORE_PLAN_FEATURES = Object.freeze([
-    'file_upload',
-    'team_management',
-    'audit_logs',
-]);
+const CORE_PLAN_FEATURE = Object.freeze({
+    FILE_UPLOAD: 'file_upload',
+    TEAM_MANAGEMENT: 'team_management',
+    AUDIT_LOGS: 'audit_logs',
+});
+
+
+/**
+ * Liste dérivée des fonctionnalités du socle.
+ *
+ * Le registre et les consommateurs nommés partagent ainsi une seule source
+ * de vérité.
+ */
+const CORE_PLAN_FEATURES = Object.freeze(
+    Object.values(CORE_PLAN_FEATURE),
+);
 
 
 /**
@@ -166,6 +174,7 @@ const DEFAULT_PLAN_CAPABILITY_REGISTRY =
 
 
 export {
+    CORE_PLAN_FEATURE,
     CORE_PLAN_FEATURES,
     CORE_PLAN_METRIC_DEFINITIONS,
     CORE_PLAN_METRICS,

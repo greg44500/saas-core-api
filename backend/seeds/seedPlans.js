@@ -8,6 +8,9 @@ import {
     PLAN_KEY,
     PLAN_STATUS,
 } from '../constants/plan.constants.js';
+import {
+    CORE_PLAN_FEATURE,
+} from '../modules/plan/planCapability.registry.js';
 
 import { Plan } from '../modules/plan/plan.model.js';
 import { createPlan } from '../modules/plan/plan.service.js';
@@ -34,7 +37,7 @@ const INITIAL_PLAN_DEFINITIONS = Object.freeze([
         priceYearlyExclTaxMinor: 0,
 
         features: Object.freeze([
-            'file_upload',
+            CORE_PLAN_FEATURE.FILE_UPLOAD,
         ]),
 
         limits: Object.freeze({
