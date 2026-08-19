@@ -1,6 +1,18 @@
 import mongoose from 'mongoose';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    USER_STATUS,
+} from '../../constants/userStatus.constants.js';
+import {
+    AUDIT_ACTION,
+    AUDIT_ENTITY_TYPE,
+    AUDIT_STATUS,
+} from '../../constants/auditActions.constants.js';
+
+import {
+    createAuditLog,
+} from '../../modules/auditLog/auditLog.service.js';
+import {
     ensureMinimumDuration,
 } from '../../utils/securityTiming.js';
 import {
@@ -48,6 +60,10 @@ vi.mock('../../modules/users/user.model.js', () => ({
         findOne: vi.fn(),
         updateOne: vi.fn(),
     },
+}));
+
+vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
+    createAuditLog: vi.fn(),
 }));
 
 vi.mock('../../modules/authIdentities/authIdentity.model.js', () => ({
@@ -196,6 +212,7 @@ describe('registerUser', () => {
 describe('loginUser', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        createAuditLog.mockResolvedValue(undefined);
     });
 
     it('authentifie un utilisateur et crée son AuthSession', async () => {
@@ -259,6 +276,19 @@ describe('loginUser', () => {
         expect(user.lastLoginAt).toBeInstanceOf(Date);
         expect(user.save).toHaveBeenCalled();
 
+        expect(createAuditLog).toHaveBeenCalledWith({
+            actor: 'user-id',
+            action: AUDIT_ACTION.LOGIN_SUCCESS,
+            entityType: AUDIT_ENTITY_TYPE.AUTH_SESSION,
+            entityId: 'session-id',
+            status: AUDIT_STATUS.SUCCESS,
+            ipAddress: '127.0.0.1',
+            userAgent: 'Mozilla/5.0 Test Browser',
+            metadata: {
+                provider: AUTH_PROVIDER.LOCAL,
+            },
+        });
+
         expect(result).toEqual({
             user,
             refreshToken: 'refresh-token-test',
@@ -315,15 +345,141 @@ describe('loginUser', () => {
         await expect(
             loginUser({
                 email: 'greg@example.com',
-                password: 'une phrase de passe suffisamment longue',
+                password:
+                    'une phrase de passe suffisamment longue',
+                ipAddress: '127.0.0.1',
+                userAgent: 'Mozilla/5.0 Test Browser',
             }),
         ).rejects.toMatchObject({
             statusCode: 403,
             message: 'Compte désactivé',
         });
 
-        // Le statut du compte est contrôlé avant toute création de session.
+        /*
+         * Les credentials sont valides, mais l'état du compte interdit
+         * la connexion. Aucune session ne doit donc être créée.
+         */
+        expect(
+            createInitialAuthSession,
+        ).not.toHaveBeenCalled();
+
+        /*
+         * actor reste null car aucune authentification n'a abouti.
+         *
+         * Le compte connu est uniquement enregistré comme ressource
+         * ciblée par la tentative de connexion.
+         */
+        expect(createAuditLog).toHaveBeenCalledWith({
+            actor: null,
+            action: AUDIT_ACTION.LOGIN_FAILED,
+            entityType: AUDIT_ENTITY_TYPE.USER,
+            entityId: 'user-id',
+            status: AUDIT_STATUS.FAILED,
+            ipAddress: '127.0.0.1',
+            userAgent: 'Mozilla/5.0 Test Browser',
+            metadata: {
+                provider: AUTH_PROVIDER.LOCAL,
+                reasonCode: 'account_disabled',
+            },
+        });
+    });
+
+    it('audite sans acteur une tentative visant un email inconnu', async () => {
+        User.findOne.mockResolvedValue(null);
+
+        await expect(
+            loginUser({
+                email: 'unknown@example.com',
+                password:
+                    'mot de passe invalide suffisamment long',
+                ipAddress: '127.0.0.1',
+                userAgent: 'Mozilla/5.0 Test Browser',
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 401,
+            message: 'Identifiants invalides',
+        });
+
+        expect(AuthIdentity.findOne).not.toHaveBeenCalled();
+        expect(verifyPassword).not.toHaveBeenCalled();
         expect(createInitialAuthSession).not.toHaveBeenCalled();
+
+        expect(createAuditLog).toHaveBeenCalledWith({
+            actor: null,
+            action: AUDIT_ACTION.LOGIN_FAILED,
+            entityType: null,
+            entityId: null,
+            status: AUDIT_STATUS.FAILED,
+            ipAddress: '127.0.0.1',
+            userAgent: 'Mozilla/5.0 Test Browser',
+            metadata: {
+                provider: AUTH_PROVIDER.LOCAL,
+                reasonCode: 'invalid_credentials',
+            },
+        });
+
+        const auditData = createAuditLog.mock.calls[0][0];
+
+        expect(auditData.metadata.email).toBeUndefined();
+        expect(auditData.metadata.password).toBeUndefined();
+    });
+
+
+    it('maintient le login réussi si son audit échoue', async () => {
+        const user = {
+            _id: 'user-id',
+            status: USER_STATUS.ACTIVE,
+            lastLoginAt: null,
+            save: vi.fn().mockResolvedValue(undefined),
+        };
+
+        User.findOne.mockResolvedValue(user);
+
+        AuthIdentity.findOne.mockReturnValue({
+            select: vi.fn().mockResolvedValue({
+                passwordHash: 'stored-password-hash',
+            }),
+        });
+
+        verifyPassword.mockResolvedValue(true);
+
+        createInitialAuthSession.mockResolvedValue({
+            authSession: {
+                _id: 'session-id',
+            },
+            refreshToken: 'refresh-token-test',
+        });
+
+        createAuditLog.mockRejectedValueOnce(
+            new Error('MongoDB audit write failed'),
+        );
+
+        const consoleErrorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => { });
+
+        const result = await loginUser({
+            email: 'greg@example.com',
+            password:
+                'une phrase de passe suffisamment longue',
+            ipAddress: '127.0.0.1',
+            userAgent: 'Mozilla/5.0 Test Browser',
+        });
+
+        expect(result).toEqual({
+            user,
+            refreshToken: 'refresh-token-test',
+        });
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+            'Authentication audit log creation failed',
+            {
+                action: AUDIT_ACTION.LOGIN_SUCCESS,
+                errorName: 'Error',
+            },
+        );
+
+        consoleErrorSpy.mockRestore();
     });
 });
 

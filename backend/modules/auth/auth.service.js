@@ -3,6 +3,15 @@ import { env } from '../../config/env.js';
 import { performance } from 'node:perf_hooks';
 import { sendEmail } from '../../services/email.service.js';
 import {
+    AUDIT_ACTION,
+    AUDIT_ENTITY_TYPE,
+    AUDIT_STATUS,
+} from '../../constants/auditActions.constants.js';
+
+import {
+    createAuditLog,
+} from '../auditLog/auditLog.service.js';
+import {
     ensureMinimumDuration,
 } from '../../utils/securityTiming.js';
 import {
@@ -45,6 +54,19 @@ const EMAIL_ALREADY_USED_MESSAGE =
     'Un compte existe déjà avec cette adresse email';
 
 const INVALID_CREDENTIALS_MESSAGE = 'Identifiants invalides';
+
+/*
+ * Motifs techniques associés aux refus de connexion.
+ *
+ * Ces valeurs ne sont jamais retournées au client. Elles permettent
+ * uniquement d'exploiter les AuditLog sans y enregistrer l'email,
+ * le mot de passe fourni ou une information d'authentification brute.
+ */
+const LOGIN_FAILURE_REASON = Object.freeze({
+    INVALID_CREDENTIALS: 'invalid_credentials',
+    ACCOUNT_DISABLED: 'account_disabled',
+    ACCOUNT_CLOSED: 'account_closed',
+});
 
 const INVALID_PASSWORD_RESET_TOKEN_MESSAGE =
     'Lien de réinitialisation invalide ou expiré';
@@ -146,6 +168,86 @@ const registerUser = async ({
 };
 
 /**
+ * Tente d'enregistrer le résultat d'une connexion.
+ *
+ * Le login ne participe actuellement pas à une transaction MongoDB unique :
+ * l'AuthSession et lastLoginAt sont persistés avant l'AuditLog. Une panne de
+ * l'audit ne doit donc pas transformer une connexion déjà créée en échec HTTP.
+ *
+ * L'erreur reste signalée côté serveur avec un contexte strictement limité.
+ * Aucun email, mot de passe, token ou contenu de metadata n'est journalisé.
+ *
+ * @param {object} auditData
+ * @returns {Promise<void>}
+ */
+const writeLoginAuditLog = async (auditData) => {
+    try {
+        await createAuditLog(auditData);
+    } catch (error) {
+        /*
+         * Ce fallback est cohérent avec le traitement temporaire déjà utilisé
+         * pour les erreurs de notification du changement de mot de passe.
+         * Il devra rejoindre le futur système centralisé de monitoring.
+         */
+        console.error(
+            'Authentication audit log creation failed',
+            {
+                action: auditData.action,
+                errorName: error?.name,
+            },
+        );
+    }
+};
+
+
+/**
+ * Audite puis refuse une tentative de connexion.
+ *
+ * actor reste volontairement null : tant que le login n'est pas réussi,
+ * l'identité réelle de la personne à l'origine de la requête n'est pas
+ * établie. Attribuer l'action au compte ciblé fausserait l'historique
+ * lorsqu'un tiers tente d'utiliser ses identifiants.
+ *
+ * Lorsque le compte est connu, il est uniquement référencé comme ressource
+ * visée par la tentative.
+ *
+ * @param {object} input
+ * @param {mongoose.Types.ObjectId|string|null} [input.targetUserId]
+ * @param {string} input.reasonCode
+ * @param {string} [input.publicMessage]
+ * @param {number} [input.statusCode]
+ * @param {string|null} [input.ipAddress]
+ * @param {string|null} [input.userAgent]
+ * @returns {Promise<never>}
+ */
+const rejectLoginAttempt = async ({
+    targetUserId = null,
+    reasonCode,
+    publicMessage = INVALID_CREDENTIALS_MESSAGE,
+    statusCode = 401,
+    ipAddress = null,
+    userAgent = null,
+}) => {
+    await writeLoginAuditLog({
+        actor: null,
+        action: AUDIT_ACTION.LOGIN_FAILED,
+        entityType: targetUserId
+            ? AUDIT_ENTITY_TYPE.USER
+            : null,
+        entityId: targetUserId,
+        status: AUDIT_STATUS.FAILED,
+        ipAddress,
+        userAgent,
+        metadata: {
+            provider: AUTH_PROVIDER.LOCAL,
+            reasonCode,
+        },
+    });
+
+    throw new AppError(publicMessage, statusCode);
+};
+
+/**
  * Authentifie un utilisateur avec son identité locale.
  *
  * Le même message d'erreur est utilisé lorsque l'email, l'identité
@@ -155,6 +257,9 @@ const registerUser = async ({
  * Une fois l'authentification validée, une nouvelle AuthSession est créée.
  * Le refresh token brut est retourné uniquement afin que le controller
  * puisse ensuite le placer dans un cookie HttpOnly.
+ *
+ * Chaque résultat est transmis au domaine AuditLog. L'audit d'un échec
+ * ne contient jamais l'email ou le mot de passe fourni.
  *
  * @param {object} input Données préalablement validées par loginSchema.
  * @param {string} input.email
@@ -177,7 +282,12 @@ const loginUser = async ({
     const user = await User.findOne({ emailCanonical });
 
     if (!user) {
-        throw new AppError(INVALID_CREDENTIALS_MESSAGE, 401);
+        return rejectLoginAttempt({
+            reasonCode:
+                LOGIN_FAILURE_REASON.INVALID_CREDENTIALS,
+            ipAddress,
+            userAgent,
+        });
     }
 
     // passwordHash est select:false dans le modèle.
@@ -188,7 +298,13 @@ const loginUser = async ({
     }).select('+passwordHash');
 
     if (!authIdentity) {
-        throw new AppError(INVALID_CREDENTIALS_MESSAGE, 401);
+        return rejectLoginAttempt({
+            targetUserId: user._id,
+            reasonCode:
+                LOGIN_FAILURE_REASON.INVALID_CREDENTIALS,
+            ipAddress,
+            userAgent,
+        });
     }
 
     const passwordIsValid = await verifyPassword(
@@ -197,38 +313,79 @@ const loginUser = async ({
     );
 
     if (!passwordIsValid) {
-        throw new AppError(INVALID_CREDENTIALS_MESSAGE, 401);
+        return rejectLoginAttempt({
+            targetUserId: user._id,
+            reasonCode:
+                LOGIN_FAILURE_REASON.INVALID_CREDENTIALS,
+            ipAddress,
+            userAgent,
+        });
     }
 
-    // On contrôle l'état du compte seulement après avoir validé
-    // les credentials afin de ne pas exposer son existence.
-    if (user.status === 'disabled') {
-        throw new AppError('Compte désactivé', 403);
+    /*
+     * L'état du compte est contrôlé seulement après validation du mot
+     * de passe afin de ne pas exposer son existence au client.
+     */
+    if (user.status === USER_STATUS.DISABLED) {
+        return rejectLoginAttempt({
+            targetUserId: user._id,
+            reasonCode:
+                LOGIN_FAILURE_REASON.ACCOUNT_DISABLED,
+            publicMessage: 'Compte désactivé',
+            statusCode: 403,
+            ipAddress,
+            userAgent,
+        });
     }
 
-    if (user.status === 'closed') {
-        throw new AppError('Compte clôturé', 403);
+    if (user.status === USER_STATUS.CLOSED) {
+        return rejectLoginAttempt({
+            targetUserId: user._id,
+            reasonCode:
+                LOGIN_FAILURE_REASON.ACCOUNT_CLOSED,
+            publicMessage: 'Compte clôturé',
+            statusCode: 403,
+            ipAddress,
+            userAgent,
+        });
     }
 
     // deletion_requested reste volontairement authentifiable.
-    // Le blocage des écritures métier sera géré plus tard
+    // Le blocage des écritures métier sera géré ultérieurement
     // par un mécanisme transversal dédié.
 
-    // Création de la session durable associée à cette connexion.
-    //
-    // Le refresh token brut n'est jamais enregistré en base :
-    // createInitialAuthSession() ne persiste que son hash.
-    const { refreshToken } = await createInitialAuthSession({
+    /*
+     * L'AuthSession est conservée localement pour relier précisément
+     * LOGIN_SUCCESS à la session créée. Elle ne sera pas exposée dans
+     * la réponse HTTP produite par le controller.
+     */
+    const {
+        authSession,
+        refreshToken,
+    } = await createInitialAuthSession({
         userId: user._id,
         ipAddress,
         userAgent,
     });
 
     // lastLoginAt représente le dernier login réussi.
-    // AuthSession reste la source de vérité concernant les sessions actives.
+    // AuthSession reste la source de vérité des sessions actives.
     user.lastLoginAt = new Date();
 
     await user.save();
+
+    await writeLoginAuditLog({
+        actor: user._id,
+        action: AUDIT_ACTION.LOGIN_SUCCESS,
+        entityType: AUDIT_ENTITY_TYPE.AUTH_SESSION,
+        entityId: authSession._id,
+        status: AUDIT_STATUS.SUCCESS,
+        ipAddress,
+        userAgent,
+        metadata: {
+            provider: AUTH_PROVIDER.LOCAL,
+        },
+    });
 
     return {
         user,
