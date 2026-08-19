@@ -387,7 +387,7 @@ describe('authSession.service', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('révoque toutes les AuthSession actives d’un utilisateur lors du logout-all', async () => {
+  it('révoque et audite toutes les sessions actives lors du logout-all', async () => {
     const userId =
       new mongoose.Types.ObjectId();
 
@@ -403,6 +403,8 @@ describe('authSession.service', () => {
 
     const result = await revokeAllUserAuthSessions({
       userId,
+      ipAddress: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 Test Browser',
     });
 
     expect(
@@ -422,7 +424,21 @@ describe('authSession.service', () => {
     expect(revocationUpdate).toEqual({
       $set: {
         revokedAt: expect.any(Date),
-        revokedReason: 'logout_all',
+        revokedReason:
+          AUTH_SESSION_REVOKED_REASON.LOGOUT_ALL,
+      },
+    });
+
+    expect(createAuditLog).toHaveBeenCalledWith({
+      actor: userId,
+      action: AUDIT_ACTION.LOGOUT_ALL,
+      entityType: AUDIT_ENTITY_TYPE.USER,
+      entityId: userId,
+      status: AUDIT_STATUS.SUCCESS,
+      ipAddress: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 Test Browser',
+      metadata: {
+        revokedSessionCount: 3,
       },
     });
 
@@ -463,6 +479,11 @@ describe('authSession.service', () => {
         session,
       },
     );
+    /*
+ * La révocation appartient ici au workflow PASSWORD_CHANGED.
+ * Elle ne doit pas être présentée comme un logout-all.
+ */
+    expect(createAuditLog).not.toHaveBeenCalled();
   });
 
   it('refuse la rotation d’une AuthSession expirée', async () => {

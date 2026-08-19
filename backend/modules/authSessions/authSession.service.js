@@ -598,19 +598,22 @@ const rotateAuthSession = async ({
 };
 
 /**
- * Révoque toutes les AuthSession encore actives d’un utilisateur.
+ * Révoque toutes les AuthSession encore actives d'un utilisateur.
  *
- * Par défaut, cette opération correspond à logout-all.
- * Une autre raison interne peut être fournie lorsqu’elle est exécutée
- * dans un processus de sécurité, notamment un changement de mot de passe.
+ * Par défaut, cette opération correspond à logout-all. Une autre raison
+ * interne peut être fournie lorsqu'elle appartient à un workflow de
+ * sécurité, notamment un changement de mot de passe.
  *
- * La session MongoDB facultative permet d’intégrer la révocation
- * dans une transaction appartenant à un autre service.
+ * Seul le logout-all produit ici un événement LOGOUT_ALL. Les révocations
+ * provoquées par d'autres workflows seront auditées par le service métier
+ * qui connaît la cause complète de l'opération.
  *
  * @param {object} input
  * @param {string|import('mongoose').Types.ObjectId} input.userId
  * @param {string} [input.revokedReason]
  * @param {import('mongoose').ClientSession|null} [input.session]
+ * @param {string|null} [input.ipAddress]
+ * @param {string|null} [input.userAgent]
  * @returns {Promise<object>}
  */
 const revokeAllUserAuthSessions = async ({
@@ -618,6 +621,8 @@ const revokeAllUserAuthSessions = async ({
     revokedReason =
     AUTH_SESSION_REVOKED_REASON.LOGOUT_ALL,
     session = null,
+    ipAddress = null,
+    userAgent = null,
 }) => {
     if (!userId) {
         throw new TypeError(
@@ -649,18 +654,46 @@ const revokeAllUserAuthSessions = async ({
         },
     };
 
-    if (session) {
-        return AuthSession.updateMany(
+    /*
+     * La même opération MongoDB est utilisée avec ou sans transaction.
+     * Seule l'option session varie selon le workflow appelant.
+     */
+    const updateResult = session
+        ? await AuthSession.updateMany(
             filter,
             update,
             { session },
+        )
+        : await AuthSession.updateMany(
+            filter,
+            update,
         );
+
+    /*
+     * Une révocation déclenchée par un changement de mot de passe n'est
+     * pas un logout-all. Elle sera auditée avec son action métier propre,
+     * afin d'éviter deux événements décrivant incorrectement la même cause.
+     */
+    if (
+        revokedReason ===
+        AUTH_SESSION_REVOKED_REASON.LOGOUT_ALL
+    ) {
+        await writeAuthSessionAuditLog({
+            actor: userId,
+            action: AUDIT_ACTION.LOGOUT_ALL,
+            entityType: AUDIT_ENTITY_TYPE.USER,
+            entityId: userId,
+            status: AUDIT_STATUS.SUCCESS,
+            ipAddress,
+            userAgent,
+            metadata: {
+                revokedSessionCount:
+                    updateResult.modifiedCount,
+            },
+        });
     }
 
-    return AuthSession.updateMany(
-        filter,
-        update,
-    );
+    return updateResult;
 };
 
 

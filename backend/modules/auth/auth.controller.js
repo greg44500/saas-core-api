@@ -266,16 +266,27 @@ export const logout = async (req, res) => {
     res.status(204).send();
 };
 
+/**
+ * Révoque toutes les sessions actives de l'utilisateur authentifié.
+ *
+ * authenticate a déjà établi l'identité de l'acteur. Le controller
+ * transmet également le contexte HTTP nécessaire à l'AuditLog, puis
+ * supprime le refresh cookie éventuellement présent dans ce navigateur.
+ */
 export const logoutAll = async (req, res) => {
     await revokeAllUserAuthSessions({
         userId: req.user.id,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
     });
+
     res.clearCookie(
         refreshCookieName,
         refreshCookieOptions,
     );
-    res.status(204).send()
-}
+
+    res.status(204).send();
+};
 
 /**
  * Modifie le mot de passe de l'utilisateur authentifié.

@@ -473,7 +473,7 @@ describe('auth.controller', () => {
   });
 
 
-  it('révoque toutes les sessions de l’utilisateur et supprime le cookie refresh', async () => {
+  it('révoque toutes les sessions et supprime le cookie refresh', async () => {
     revokeAllUserAuthSessions.mockResolvedValue({
       acknowledged: true,
       matchedCount: 3,
@@ -483,6 +483,10 @@ describe('auth.controller', () => {
     const req = {
       user: {
         id: 'user-id',
+      },
+      context: {
+        ipAddress: '127.0.0.1',
+        userAgent: 'Mozilla/5.0 Test Browser',
       },
     };
 
@@ -501,6 +505,8 @@ describe('auth.controller', () => {
       revokeAllUserAuthSessions,
     ).toHaveBeenCalledWith({
       userId: 'user-id',
+      ipAddress: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 Test Browser',
     });
 
     expect(res.clearCookie).toHaveBeenCalledWith(
@@ -509,7 +515,6 @@ describe('auth.controller', () => {
     );
 
     expect(res.status).toHaveBeenCalledWith(204);
-
     expect(send).toHaveBeenCalledWith();
   });
 
