@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import {
     BILLING_INTERVAL,
     BILLING_PROVIDER,
@@ -166,9 +167,16 @@ const getWorkspacePlanEntitlement = async ({
      */
     let query = Subscription.findOne({
         workspace: workspaceId,
-        status: {
+        /*
+ * Les statuts proviennent exclusivement des constantes internes du backend.
+ *
+ * sanitizeFilter reste actif pour les filtres non fiables. trusted() autorise
+ * uniquement cet opérateur MongoDB construit par le service, sans désactiver
+ * la protection globale contre les injections de sélecteurs.
+ */
+        status: mongoose.trusted({
             $in: USABLE_SUBSCRIPTION_STATUSES,
-        },
+        }),
     }).populate({
         path: 'plan',
     });

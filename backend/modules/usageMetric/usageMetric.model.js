@@ -19,6 +19,53 @@ const isNonNegativeInteger = (value) =>
 
 
 /**
+ * Lit une valeur utilisée par les validateurs dans les deux contextes
+ * proposés par Mongoose :
+ *
+ * - lors de la validation d'un document, la valeur se trouve sur `this` ;
+ * - lors de la validation d'un update, `this` est une Query et les valeurs
+ *   se trouvent dans l'objet retourné par getUpdate().
+ *
+ * hasOwnProperty conserve volontairement null. Cette valeur représente
+ * l'absence de bornes pour une métrique de période CURRENT et ne doit donc pas
+ * être confondue avec un champ absent.
+ */
+const getValidationContextValue = (
+    context,
+    path,
+) => {
+    if (
+        !context
+        || typeof context.getUpdate !== 'function'
+    ) {
+        return context?.[path];
+    }
+
+    const update = context.getUpdate() ?? {};
+
+    const possibleSources = [
+        update.$set,
+        update.$setOnInsert,
+        update,
+    ];
+
+    for (const source of possibleSources) {
+        if (
+            source
+            && Object.prototype.hasOwnProperty.call(
+                source,
+                path,
+            )
+        ) {
+            return source[path];
+        }
+    }
+
+    return undefined;
+};
+
+
+/**
  * Expression régulière commune aux clés fonctionnelles génériques.
  *
  * Le modèle contrôle seulement leur format. La vérification qu'une metricKey
@@ -125,14 +172,23 @@ const usageMetricSchema = new Schema(
             immutable: true,
             required() {
                 return (
-                    this.periodType
+                    getValidationContextValue(
+                        this,
+                        'periodType',
+                    )
                     === USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH
                 );
             },
             validate: {
                 validator(value) {
+                    const periodType =
+                        getValidationContextValue(
+                            this,
+                            'periodType',
+                        );
+
                     if (
-                        this.periodType
+                        periodType
                         === USAGE_METRIC_PERIOD_TYPE.CURRENT
                     ) {
                         return value === null;
@@ -159,14 +215,29 @@ const usageMetricSchema = new Schema(
             immutable: true,
             required() {
                 return (
-                    this.periodType
+                    getValidationContextValue(
+                        this,
+                        'periodType',
+                    )
                     === USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH
                 );
             },
             validate: {
                 validator(value) {
+                    const periodType =
+                        getValidationContextValue(
+                            this,
+                            'periodType',
+                        );
+
+                    const periodStart =
+                        getValidationContextValue(
+                            this,
+                            'periodStart',
+                        );
+
                     if (
-                        this.periodType
+                        periodType
                         === USAGE_METRIC_PERIOD_TYPE.CURRENT
                     ) {
                         return value === null;
@@ -175,8 +246,11 @@ const usageMetricSchema = new Schema(
                     return (
                         value instanceof Date
                         && !Number.isNaN(value.getTime())
-                        && this.periodStart instanceof Date
-                        && value > this.periodStart
+                        && periodStart instanceof Date
+                        && !Number.isNaN(
+                            periodStart.getTime(),
+                        )
+                        && value > periodStart
                     );
                 },
                 message:

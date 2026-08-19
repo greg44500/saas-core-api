@@ -11,6 +11,8 @@ import {
 import {
     CORE_PLAN_FEATURE,
     CORE_PLAN_FEATURES,
+    CORE_PLAN_METRIC,
+    CORE_PLAN_METRIC_DEFINITIONS,
     CORE_PLAN_METRICS,
     DEFAULT_PLAN_CAPABILITY_REGISTRY,
     createPlanCapabilityRegistry,
@@ -18,6 +20,19 @@ import {
 
 
 describe('Plan capability registry', () => {
+    it('expose des clés nommées pour les métriques du socle', () => {
+    expect(CORE_PLAN_METRIC).toEqual({
+        MEMBERS: 'members',
+        STORAGE_BYTES: 'storage_bytes',
+        FILE_UPLOADS_MONTHLY: 'file_uploads_monthly',
+    });
+
+    expect(CORE_PLAN_METRICS).toEqual([
+        CORE_PLAN_METRIC.MEMBERS,
+        CORE_PLAN_METRIC.STORAGE_BYTES,
+        CORE_PLAN_METRIC.FILE_UPLOADS_MONTHLY,
+    ]);
+});
     it('contient les features et métriques du socle dans le registre par défaut', () => {
         for (const feature of CORE_PLAN_FEATURES) {
             expect(

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import {
     USAGE_METRIC_PERIOD_TYPE,
 } from '../../constants/usageMetric.constants.js';
@@ -26,9 +27,12 @@ const isValidDate = (value) =>
 /**
  * Identifie une collision sur un index unique MongoDB.
  *
- * Lors de deux premières réservations concurrentes, les deux requêtes peuvent
- * tenter de créer la même UsageMetric. Une seule création réussit ; l'autre
- * reçoit le code MongoDB 11000 et doit retenter une mise à jour bornée.
+ * Lors de deux initialisations concurrentes, les deux requêtes peuvent tenter
+ * de créer la même UsageMetric. Une seule création réussit ; hors transaction,
+ * l'autre peut relire le compteur créé par la requête concurrente.
+ *
+ * Dans une transaction, l'erreur ne doit pas être absorbée : une écriture en
+ * erreur invalide la transaction courante et doit remonter à son gestionnaire.
  *
  * @param {unknown} error
  * @returns {boolean}
@@ -478,14 +482,84 @@ const reserveUsageMetricWithinLimit = async ({
     };
 
     /*
+     * Le compteur est créé séparément de la condition de quota.
+     *
+     * Si la condition `value <= limite - quantité` était combinée avec
+     * `upsert: true`, un compteur existant mais saturé ne correspondrait plus
+     * au filtre. MongoDB tenterait alors d'insérer un second document portant
+     * la même identité et provoquerait une erreur de clé dupliquée.
+     */
+    const initializationUpdate = {
+        $setOnInsert: {
+            workspace: workspaceId,
+            metricKey: normalizedMetricKey,
+            value: 0,
+            periodType,
+            periodStart,
+            periodEnd,
+            createdBy: actorId,
+            updatedBy: actorId,
+        },
+    };
+
+    const initializationOptions = {
+        upsert: true,
+        returnDocument: 'after',
+        runValidators: true,
+        setDefaultsOnInsert: true,
+    };
+
+    if (session) {
+        initializationOptions.session = session;
+    }
+
+    try {
+        await UsageMetric.findOneAndUpdate(
+            identityFilter,
+            initializationUpdate,
+            initializationOptions,
+        );
+    } catch (error) {
+        if (
+            !isDuplicateKeyError(error)
+            || session
+        ) {
+            throw error;
+        }
+
+        /*
+         * Hors transaction, une création concurrente peut gagner entre la
+         * recherche et l'upsert. Une lecture sans upsert récupère alors le
+         * compteur désormais existant sans risquer une nouvelle insertion.
+         */
+        await UsageMetric.findOneAndUpdate(
+            identityFilter,
+            initializationUpdate,
+            {
+                ...initializationOptions,
+                upsert: false,
+            },
+        );
+    }
+
+    /*
      * Exemple : limite 10 et réservation 3.
      * La valeur actuelle doit être inférieure ou égale à 7.
      */
     const boundedFilter = {
         ...identityFilter,
-        value: {
+
+        /*
+         * Cette condition est entièrement construite depuis une limite de plan
+         * validée et une quantité entière validée par le backend.
+         *
+         * trusted() autorise uniquement ce sélecteur interne. sanitizeFilter reste
+         * actif pour tous les filtres susceptibles de contenir des données non
+         * fiables fournies par un client.
+         */
+        value: mongoose.trusted({
             $lte: limit - amount,
-        },
+        }),
     };
 
     const update = {
@@ -506,7 +580,11 @@ const reserveUsageMetricWithinLimit = async ({
     };
 
     const options = {
-        upsert: true,
+        /*
+         * Le compteur existe désormais. Une condition de quota non satisfaite
+         * doit retourner null, jamais déclencher une tentative d'insertion.
+         */
+        upsert: false,
         returnDocument: 'after',
         runValidators: true,
         setDefaultsOnInsert: true,
@@ -516,36 +594,11 @@ const reserveUsageMetricWithinLimit = async ({
         options.session = session;
     }
 
-    try {
-        return await UsageMetric.findOneAndUpdate(
-            boundedFilter,
-            update,
-            options,
-        );
-    } catch (error) {
-        if (!isDuplicateKeyError(error)) {
-            throw error;
-        }
-
-        /*
-         * Une collision peut avoir deux causes :
-         *
-         * 1. le compteur existe déjà mais ne respecte plus la limite ;
-         * 2. une requête concurrente vient de créer le compteur.
-         *
-         * Une seconde mise à jour sans upsert distingue ces situations :
-         * - document retourné : la capacité restait disponible ;
-         * - null : la limite est désormais atteinte ou dépassée.
-         */
-        return UsageMetric.findOneAndUpdate(
-            boundedFilter,
-            update,
-            {
-                ...options,
-                upsert: false,
-            },
-        );
-    }
+    return UsageMetric.findOneAndUpdate(
+        boundedFilter,
+        update,
+        options,
+    );
 };
 export {
     getUsageMetricValue,

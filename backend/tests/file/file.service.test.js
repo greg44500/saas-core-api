@@ -87,7 +87,7 @@ const createDependencies = () => ({
             discarded: true,
         }),
 
-    createFileDocument:
+    persistFileMetadataWithinPlanLimits:
         vi.fn().mockResolvedValue({
             id: 'created-file-id',
         }),
@@ -138,35 +138,38 @@ describe('File service', () => {
         });
 
         expect(
-            dependencies.createFileDocument,
+            dependencies.persistFileMetadataWithinPlanLimits,
         ).toHaveBeenCalledWith({
-            workspace: WORKSPACE_ID,
-            uploadedBy: USER_ID,
-            originalName:
-                '../../facture finale.pdf',
-            storedName:
-                `${STORAGE_IDENTIFIER}.pdf`,
-            mimeType: 'application/pdf',
-            extension: 'pdf',
-            sizeBytes: 1_024,
-            storageProvider:
-                FILE_STORAGE_PROVIDER.LOCAL,
-            storageKey: STORAGE_KEY,
-            checksumSha256: 'a'.repeat(64),
-            category: FILE_CATEGORY.DOCUMENT,
-            status: FILE_STATUS.ACTIVE,
-            malwareScan:
-                createInspectionResult()
-                    .malwareScan,
-            updatedBy: USER_ID,
+            fileData: {
+                workspace: WORKSPACE_ID,
+                uploadedBy: USER_ID,
+                originalName:
+                    '../../facture finale.pdf',
+                storedName:
+                    `${STORAGE_IDENTIFIER}.pdf`,
+                mimeType: 'application/pdf',
+                extension: 'pdf',
+                sizeBytes: 1_024,
+                storageProvider:
+                    FILE_STORAGE_PROVIDER.LOCAL,
+                storageKey: STORAGE_KEY,
+                checksumSha256: 'a'.repeat(64),
+                category: FILE_CATEGORY.DOCUMENT,
+                status: FILE_STATUS.ACTIVE,
+                malwareScan:
+                    createInspectionResult()
+                        .malwareScan,
+                updatedBy: USER_ID,
+            },
         });
 
         expect(
             dependencies.storeFile.mock
                 .invocationCallOrder[0],
         ).toBeLessThan(
-            dependencies.createFileDocument.mock
-                .invocationCallOrder[0],
+            dependencies
+                .persistFileMetadataWithinPlanLimits
+                .mock.invocationCallOrder[0],
         );
 
         expect(
@@ -194,8 +197,9 @@ describe('File service', () => {
         await persistFile({ service });
 
         const storedFileData =
-            dependencies.createFileDocument
-                .mock.calls[0][0];
+            dependencies
+                .persistFileMetadataWithinPlanLimits
+                .mock.calls[0][0].fileData;
 
         expect(storedFileData.storedName)
             .toBe(`${STORAGE_IDENTIFIER}.pdf`);
@@ -234,7 +238,7 @@ describe('File service', () => {
         ).not.toHaveBeenCalled();
 
         expect(
-            dependencies.createFileDocument,
+            dependencies.persistFileMetadataWithinPlanLimits,
         ).not.toHaveBeenCalled();
 
         expect(
@@ -279,7 +283,7 @@ describe('File service', () => {
         ).not.toHaveBeenCalled();
 
         expect(
-            dependencies.createFileDocument,
+            dependencies.persistFileMetadataWithinPlanLimits,
         ).not.toHaveBeenCalled();
     });
 
@@ -341,7 +345,7 @@ describe('File service', () => {
         );
 
         expect(
-            dependencies.createFileDocument,
+            dependencies.persistFileMetadataWithinPlanLimits,
         ).not.toHaveBeenCalled();
     });
 
@@ -401,7 +405,7 @@ describe('File service', () => {
                 storageKey: STORAGE_KEY,
             });
 
-        dependencies.createFileDocument
+        dependencies.persistFileMetadataWithinPlanLimits
             .mockRejectedValue(databaseError);
 
         const service = createFileService(
@@ -435,7 +439,7 @@ describe('File service', () => {
         const compensationError =
             new Error('Physical deletion failed');
 
-        dependencies.createFileDocument
+        dependencies.persistFileMetadataWithinPlanLimits
             .mockRejectedValue(databaseError);
 
         dependencies.deleteStoredFile

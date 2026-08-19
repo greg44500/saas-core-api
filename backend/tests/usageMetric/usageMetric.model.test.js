@@ -178,4 +178,41 @@ describe('UsageMetric model', () => {
             invalidPeriodError?.errors.periodEnd,
         ).toBeDefined();
     });
+    it('valide les bornes mensuelles depuis le contexte d’un update', () => {
+        const periodStart =
+            new Date('2026-08-01T00:00:00.000Z');
+
+        const periodEnd =
+            new Date('2026-09-01T00:00:00.000Z');
+
+        const periodEndValidator =
+            UsageMetric.schema
+                .path('periodEnd')
+                .validators
+                .find((validator) =>
+                    validator.message
+                    === 'La fin de période doit être postérieure au début de période.'
+                );
+
+        const queryContext = {
+            getUpdate: () => ({
+                $setOnInsert: {
+                    periodType:
+                        USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH,
+                    periodStart,
+                    periodEnd,
+                },
+            }),
+        };
+
+        expect(periodEndValidator)
+            .toBeDefined();
+
+        expect(
+            periodEndValidator.validator.call(
+                queryContext,
+                periodEnd,
+            ),
+        ).toBe(true);
+    });
 });

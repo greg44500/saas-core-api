@@ -27,6 +27,18 @@ const CORE_PLAN_FEATURES = Object.freeze(
     Object.values(CORE_PLAN_FEATURE),
 );
 
+/**
+ * Clés nommées des métriques génériques fournies par le socle.
+ *
+ * Les services consommateurs utilisent ces constantes plutôt que des chaînes
+ * écrites manuellement. Une faute de frappe ne peut ainsi pas créer une
+ * divergence silencieuse entre les plans, les quotas et UsageMetric.
+ */
+const CORE_PLAN_METRIC = Object.freeze({
+    MEMBERS: 'members',
+    STORAGE_BYTES: 'storage_bytes',
+    FILE_UPLOADS_MONTHLY: 'file_uploads_monthly',
+});
 
 /**
  * Définitions des métriques génériques fournies par le socle SaaS.
@@ -39,15 +51,15 @@ const CORE_PLAN_FEATURES = Object.freeze(
  * "_monthly" pour décider qu'une métrique est mensuelle.
  */
 const CORE_PLAN_METRIC_DEFINITIONS = Object.freeze({
-    members: Object.freeze({
+    [CORE_PLAN_METRIC.MEMBERS]: Object.freeze({
         periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
     }),
 
-    storage_bytes: Object.freeze({
+    [CORE_PLAN_METRIC.STORAGE_BYTES]: Object.freeze({
         periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
     }),
 
-    file_uploads_monthly: Object.freeze({
+    [CORE_PLAN_METRIC.FILE_UPLOADS_MONTHLY]: Object.freeze({
         periodType:
             USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH,
     }),
@@ -178,6 +190,7 @@ export {
     CORE_PLAN_FEATURES,
     CORE_PLAN_METRIC_DEFINITIONS,
     CORE_PLAN_METRICS,
+    CORE_PLAN_METRIC,
     DEFAULT_PLAN_CAPABILITY_REGISTRY,
     createPlanCapabilityRegistry,
 };

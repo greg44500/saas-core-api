@@ -234,12 +234,12 @@ describe('getWorkspacePlanEntitlement', () => {
 
         expect(findOneSpy).toHaveBeenCalledWith({
             workspace: workspaceId,
-            status: {
+            status: mongoose.trusted({
                 $in: [
                     SUBSCRIPTION_STATUS.TRIALING,
                     SUBSCRIPTION_STATUS.ACTIVE,
                 ],
-            },
+            }),
         });
 
         expect(populateMock).toHaveBeenCalledOnce();

@@ -5,6 +5,7 @@ import {
     it,
     vi,
 } from 'vitest';
+import mongoose from 'mongoose';
 
 import {
     USAGE_METRIC_PERIOD_TYPE,
@@ -308,7 +309,8 @@ describe('reserveUsageMetricWithinLimit', () => {
 
         expect(
             UsageMetric.findOneAndUpdate,
-        ).toHaveBeenCalledWith(
+        ).toHaveBeenNthCalledWith(
+            2,
             {
                 workspace: workspaceId,
                 metricKey: 'file_uploads_monthly',
@@ -320,9 +322,9 @@ describe('reserveUsageMetricWithinLimit', () => {
                  * Avec une limite de 10 et une demande de 3, la valeur
                  * actuelle doit être inférieure ou égale à 7.
                  */
-                value: {
+                value: mongoose.trusted({
                     $lte: 7,
-                },
+                }),
             },
             {
                 $inc: {
@@ -342,7 +344,7 @@ describe('reserveUsageMetricWithinLimit', () => {
                 },
             },
             {
-                upsert: true,
+                upsert: false,
                 returnDocument: 'after',
                 runValidators: true,
                 setDefaultsOnInsert: true,
@@ -369,7 +371,7 @@ describe('reserveUsageMetricWithinLimit', () => {
     });
 
 
-    it('retente sans upsert après une création concurrente', async () => {
+    it('récupère le compteur après une initialisation concurrente hors transaction', async () => {
         const duplicateKeyError = Object.assign(
             new Error('Duplicate key'),
             {
@@ -377,20 +379,73 @@ describe('reserveUsageMetricWithinLimit', () => {
             },
         );
 
+        UsageMetric.findOneAndUpdate
+            .mockRejectedValueOnce(
+                duplicateKeyError,
+            )
+            .mockResolvedValueOnce({
+                metricKey: 'members',
+                value: 0,
+            })
+            .mockResolvedValueOnce({
+                metricKey: 'members',
+                value: 1,
+            });
+
+        const result =
+            await reserveUsageMetricWithinLimit({
+                workspaceId: 'workspace-id',
+                metricKey: 'members',
+                limit: 1,
+                amount: 1,
+            });
+
+        expect(
+            UsageMetric.findOneAndUpdate,
+        ).toHaveBeenCalledTimes(3);
+
+        expect(
+            UsageMetric.findOneAndUpdate,
+        ).toHaveBeenNthCalledWith(
+            2,
+            expect.objectContaining({
+                workspace: 'workspace-id',
+                metricKey: 'members',
+            }),
+            expect.any(Object),
+            expect.objectContaining({
+                upsert: false,
+            }),
+        );
+
+        expect(result).toEqual({
+            metricKey: 'members',
+            value: 1,
+        });
+    });
+    it('retourne null sans upsert lorsque le compteur est saturé', async () => {
+        const existingMetric = {
+            metricKey: 'members',
+            value: 1,
+        };
+
         /*
-         * La première tentative rencontre la création concurrente.
-         * La seconde ne trouve plus de capacité disponible et retourne null.
+         * Le premier résultat confirme l'existence du compteur.
+         * La réservation bornée ne trouve ensuite aucune capacité disponible.
          */
         UsageMetric.findOneAndUpdate
-            .mockRejectedValueOnce(duplicateKeyError)
+            .mockResolvedValueOnce(existingMetric)
             .mockResolvedValueOnce(null);
 
-        const result = await reserveUsageMetricWithinLimit({
-            workspaceId: 'workspace-id',
-            metricKey: 'members',
-            limit: 1,
-            amount: 1,
-        });
+        const result =
+            await reserveUsageMetricWithinLimit({
+                workspaceId: 'workspace-id',
+                metricKey: 'members',
+                limit: 1,
+                amount: 1,
+            });
+
+        expect(result).toBeNull();
 
         expect(
             UsageMetric.findOneAndUpdate,
@@ -403,17 +458,14 @@ describe('reserveUsageMetricWithinLimit', () => {
             expect.objectContaining({
                 workspace: 'workspace-id',
                 metricKey: 'members',
-                value: {
+                value: mongoose.trusted({
                     $lte: 0,
-                },
+                }),
             }),
             expect.any(Object),
             expect.objectContaining({
                 upsert: false,
-                returnDocument: 'after',
             }),
         );
-
-        expect(result).toBeNull();
     });
 });

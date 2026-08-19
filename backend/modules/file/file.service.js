@@ -17,7 +17,9 @@ import {
 import {
     temporaryFileService,
 } from '../../services/storage/temporaryFile.service.js';
-import { File } from './file.model.js';
+import {
+    filePersistenceService,
+} from './filePersistence.service.js';
 
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
@@ -154,9 +156,8 @@ const compensateAndThrow = async ({
  * Construit l'orchestrateur qui rend un upload sain durable et crée ses
  * métadonnées MongoDB.
  *
- * Les dépendances injectées rendent la séquence testable sans accès au disque,
- * à ClamAV ou à MongoDB. Les routes, quotas et AuditLog restent volontairement
- * hors de cette responsabilité.
+ * Les routes et AuditLog restent hors de cette responsabilité. La réservation
+ * transactionnelle des quotas est déléguée au service de persistance File.
  */
 const createFileService = ({
     inspectUploadedFile,
@@ -164,7 +165,7 @@ const createFileService = ({
     storeFile,
     deleteStoredFile,
     discardTemporaryFile,
-    createFileDocument,
+    persistFileMetadataWithinPlanLimits,
 }) => {
     if (
         typeof inspectUploadedFile !== 'function'
@@ -173,7 +174,8 @@ const createFileService = ({
         || typeof storeFile !== 'function'
         || typeof deleteStoredFile !== 'function'
         || typeof discardTemporaryFile !== 'function'
-        || typeof createFileDocument !== 'function'
+        || typeof persistFileMetadataWithinPlanLimits
+        !== 'function'
     ) {
         throw new TypeError(
             'Les dépendances du service File sont invalides.',
@@ -341,25 +343,27 @@ const createFileService = ({
                 );
             }
 
-            return await createFileDocument({
-                workspace: workspaceId,
-                uploadedBy,
-                originalName:
-                    inspectedFile.originalName,
-                storedName,
-                mimeType: inspectedFile.mimeType,
-                extension: inspectedFile.extension,
-                sizeBytes: inspectedFile.sizeBytes,
-                storageProvider:
-                    storageResult.storageProvider,
-                storageKey: storageResult.storageKey,
-                checksumSha256:
-                    inspectedFile.checksumSha256,
-                category,
-                status: FILE_STATUS.ACTIVE,
-                malwareScan:
-                    inspectedFile.malwareScan,
-                updatedBy: uploadedBy,
+            return await persistFileMetadataWithinPlanLimits({
+                fileData: {
+                    workspace: workspaceId,
+                    uploadedBy,
+                    originalName:
+                        inspectedFile.originalName,
+                    storedName,
+                    mimeType: inspectedFile.mimeType,
+                    extension: inspectedFile.extension,
+                    sizeBytes: inspectedFile.sizeBytes,
+                    storageProvider:
+                        storageResult.storageProvider,
+                    storageKey: storageResult.storageKey,
+                    checksumSha256:
+                        inspectedFile.checksumSha256,
+                    category,
+                    status: FILE_STATUS.ACTIVE,
+                    malwareScan:
+                        inspectedFile.malwareScan,
+                    updatedBy: uploadedBy,
+                },
             });
         } catch (databaseError) {
             /*
@@ -414,8 +418,12 @@ const fileService = createFileService({
         temporaryFileService
             .discardTemporaryFile(filePath),
 
-    createFileDocument: (fileData) =>
-        File.create(fileData),
+    persistFileMetadataWithinPlanLimits:
+        (parameters) =>
+            filePersistenceService
+                .persistFileMetadataWithinPlanLimits(
+                    parameters,
+                ),
 });
 
 
