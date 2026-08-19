@@ -1,0 +1,91 @@
+/**
+ * Résultat fonctionnel de l'action auditée.
+ *
+ * Le statut décrit l'issue de l'action métier, pas la réussite technique de
+ * l'écriture du journal d'audit.
+ */
+const AUDIT_STATUS = Object.freeze({
+    SUCCESS: 'success',
+    FAILED: 'failed',
+});
+
+
+/**
+ * Types de ressources pouvant être visées par une action auditée.
+ *
+ * Centraliser ces valeurs évite les variations telles que "workspace",
+ * "Workspace" ou "workspaces", qui rendraient les recherches imprécises.
+ */
+const AUDIT_ENTITY_TYPE = Object.freeze({
+    AUTH_SESSION: 'AuthSession',
+    FILE: 'File',
+    ORGANIZATION: 'Organization',
+    PLAN: 'Plan',
+    ROLE: 'Role',
+    SUBSCRIPTION: 'Subscription',
+    USER: 'User',
+    WORKSPACE: 'Workspace',
+    WORKSPACE_MEMBER: 'WorkspaceMember',
+});
+
+
+/**
+ * Vocabulaire stable des actions sensibles de la plateforme.
+ *
+ * Une action explicite est préférable à une valeur générique comme
+ * "PLATFORM_ACTION" : elle permet de comprendre l'événement sans devoir
+ * interpréter librement metadata.
+ */
+const AUDIT_ACTION = Object.freeze({
+    LOGIN_SUCCESS: 'LOGIN_SUCCESS',
+    LOGIN_FAILED: 'LOGIN_FAILED',
+    LOGOUT: 'LOGOUT',
+    PASSWORD_CHANGED: 'PASSWORD_CHANGED',
+
+    USER_CREATED: 'USER_CREATED',
+    USER_DISABLED: 'USER_DISABLED',
+    USER_ENABLED: 'USER_ENABLED',
+
+    SESSION_REVOKED: 'SESSION_REVOKED',
+    SESSION_REUSE_DETECTED: 'SESSION_REUSE_DETECTED',
+
+    WORKSPACE_CREATED: 'WORKSPACE_CREATED',
+    WORKSPACE_UPDATED: 'WORKSPACE_UPDATED',
+    WORKSPACE_SUSPENDED: 'WORKSPACE_SUSPENDED',
+    WORKSPACE_REACTIVATED: 'WORKSPACE_REACTIVATED',
+    WORKSPACE_CLOSED: 'WORKSPACE_CLOSED',
+
+    MEMBER_INVITED: 'MEMBER_INVITED',
+    MEMBER_REMOVED: 'MEMBER_REMOVED',
+
+    ROLE_CREATED: 'ROLE_CREATED',
+    ROLE_UPDATED: 'ROLE_UPDATED',
+    ROLE_DELETED: 'ROLE_DELETED',
+
+    PLAN_CREATED: 'PLAN_CREATED',
+    PLAN_UPDATED: 'PLAN_UPDATED',
+    PLAN_ARCHIVED: 'PLAN_ARCHIVED',
+
+    SUBSCRIPTION_CREATED: 'SUBSCRIPTION_CREATED',
+    SUBSCRIPTION_UPDATED: 'SUBSCRIPTION_UPDATED',
+    SUBSCRIPTION_CANCELED: 'SUBSCRIPTION_CANCELED',
+    SUBSCRIPTION_PROMOTION_APPLIED:
+        'SUBSCRIPTION_PROMOTION_APPLIED',
+
+    FILE_UPLOADED: 'FILE_UPLOADED',
+    FILE_UPLOAD_REJECTED: 'FILE_UPLOAD_REJECTED',
+    FILE_DELETED: 'FILE_DELETED',
+    FILE_PURGED: 'FILE_PURGED',
+
+    ORGANIZATION_CREATED: 'ORGANIZATION_CREATED',
+    ORGANIZATION_UPDATED: 'ORGANIZATION_UPDATED',
+    ORGANIZATION_SUSPENDED: 'ORGANIZATION_SUSPENDED',
+    ORGANIZATION_REACTIVATED: 'ORGANIZATION_REACTIVATED',
+});
+
+
+export {
+    AUDIT_ACTION,
+    AUDIT_ENTITY_TYPE,
+    AUDIT_STATUS,
+};
