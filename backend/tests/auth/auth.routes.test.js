@@ -320,6 +320,8 @@ describe('POST /api/auth/logout', () => {
             revokeCurrentAuthSession,
         ).toHaveBeenCalledWith({
             refreshToken: 'current-refresh-token',
+            ipAddress: '::ffff:127.0.0.1',
+            userAgent: null,
         });
     });
 });

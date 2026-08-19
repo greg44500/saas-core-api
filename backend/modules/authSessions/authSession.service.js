@@ -4,6 +4,15 @@ import mongoose from 'mongoose';
 
 import { env } from '../../config/env.js';
 import { AUTH_SESSION_REVOKED_REASON } from '../../constants/authSession.constants.js';
+import {
+    AUDIT_ACTION,
+    AUDIT_ENTITY_TYPE,
+    AUDIT_STATUS,
+} from '../../constants/auditActions.constants.js';
+
+import {
+    createAuditLog,
+} from '../auditLog/auditLog.service.js';
 import { AppError } from '../../utils/AppError.js';
 import { addDays } from '../../utils/date.js';
 import {
@@ -17,6 +26,33 @@ import { AuthSession } from './authSession.model.js';
 const INVALID_REFRESH_SESSION_MESSAGE =
     'Session de rafraîchissement invalide';
 
+/**
+* Tente de journaliser un événement lié au cycle de vie d'une AuthSession.
+*
+* Une révocation déjà persistée ne peut pas être annulée si l'écriture de
+* l'AuditLog échoue ensuite. L'erreur d'audit est donc signalée sans modifier
+* le résultat fonctionnel de l'opération de sécurité déjà accomplie.
+*
+* @param {object} auditData
+* @returns {Promise<void>}
+*/
+const writeAuthSessionAuditLog = async (auditData) => {
+    try {
+        await createAuditLog(auditData);
+    } catch (error) {
+        /*
+         * Aucun refresh token, hash de token ou contenu de metadata
+         * n'est ajouté au fallback technique.
+         */
+        console.error(
+            'Auth session audit log creation failed',
+            {
+                action: auditData.action,
+                errorName: error?.name,
+            },
+        );
+    }
+};
 
 /**
  * Crée la première génération d'une session d'authentification.
@@ -82,8 +118,28 @@ const createInitialAuthSession = async ({
  * @param {string|null|undefined} input.refreshToken
  * @returns {Promise<import('mongoose').Document|null>}
  */
+/**
+ * Révoque la session correspondant au refresh token courant.
+ *
+ * Le logout reste volontairement idempotent :
+ *
+ * - token absent ;
+ * - token inconnu ;
+ * - session déjà révoquée.
+ *
+ * Ces situations retournent null sans créer un faux événement LOGOUT.
+ * Seule la révocation effective d'une session active est auditée.
+ *
+ * @param {object} input
+ * @param {string|null|undefined} input.refreshToken
+ * @param {string|null} [input.ipAddress]
+ * @param {string|null} [input.userAgent]
+ * @returns {Promise<import('mongoose').Document|null>}
+ */
 const revokeCurrentAuthSession = async ({
     refreshToken,
+    ipAddress = null,
+    userAgent = null,
 }) => {
     if (!refreshToken) {
         return null;
@@ -93,10 +149,10 @@ const revokeCurrentAuthSession = async ({
     const now = new Date();
 
     /*
-     * La condition revokedAt: null rend l'opération idempotente.
+     * revokedAt: null constitue le verrou d'idempotence.
      *
-     * Si la session est déjà révoquée, aucune nouvelle modification
-     * n'est effectuée et null est retourné.
+     * Deux demandes concurrentes utilisant le même refresh token ne peuvent
+     * pas toutes les deux révoquer la session et produire deux AuditLog.
      */
     const revokedAuthSession =
         await AuthSession.findOneAndUpdate(
@@ -115,6 +171,30 @@ const revokeCurrentAuthSession = async ({
                 returnDocument: 'after',
             },
         );
+
+    if (!revokedAuthSession) {
+        return null;
+    }
+
+    /*
+     * Le refresh token a permis d'identifier une session active valide.
+     * L'acteur correspond donc au User propriétaire de cette session.
+     *
+     * Le token brut et son hash restent exclusivement hors de l'AuditLog.
+     */
+    await writeAuthSessionAuditLog({
+        actor: revokedAuthSession.user,
+        action: AUDIT_ACTION.LOGOUT,
+        entityType: AUDIT_ENTITY_TYPE.AUTH_SESSION,
+        entityId: revokedAuthSession._id,
+        status: AUDIT_STATUS.SUCCESS,
+        ipAddress,
+        userAgent,
+        metadata: {
+            revokedReason:
+                AUTH_SESSION_REVOKED_REASON.LOGOUT,
+        },
+    });
 
     return revokedAuthSession;
 };

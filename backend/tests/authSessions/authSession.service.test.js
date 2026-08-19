@@ -4,6 +4,15 @@ import mongoose from 'mongoose';
 import {
   AUTH_SESSION_REVOKED_REASON,
 } from '../../constants/authSession.constants.js';
+import {
+  AUDIT_ACTION,
+  AUDIT_ENTITY_TYPE,
+  AUDIT_STATUS,
+} from '../../constants/auditActions.constants.js';
+
+import {
+  createAuditLog,
+} from '../../modules/auditLog/auditLog.service.js';
 import { AuthSession } from '../../modules/authSessions/authSession.model.js';
 import {
   createInitialAuthSession,
@@ -13,6 +22,9 @@ import {
 } from '../../modules/authSessions/authSession.service.js';
 import { User } from '../../modules/users/user.model.js';
 
+vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
+  createAuditLog: vi.fn(),
+}));
 
 vi.mock('mongoose', async () => {
   const actual = await vi.importActual('mongoose');
@@ -50,6 +62,7 @@ vi.mock('../../modules/users/user.model.js', () => ({
 describe('authSession.service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    createAuditLog.mockResolvedValue(undefined);
 
     /*
      * Le test unitaire ne reteste pas MongoDB.
@@ -249,11 +262,16 @@ describe('authSession.service', () => {
   });
 
 
-  it('révoque la session courante lors du logout', async () => {
+  it('révoque et audite la session courante lors du logout', async () => {
+    const userId =
+      new mongoose.Types.ObjectId();
+
     const revokedSession = {
       _id: new mongoose.Types.ObjectId(),
+      user: userId,
       revokedAt: new Date(),
-      revokedReason: 'logout',
+      revokedReason:
+        AUTH_SESSION_REVOKED_REASON.LOGOUT,
     };
 
     AuthSession.findOneAndUpdate.mockResolvedValue(
@@ -262,6 +280,8 @@ describe('authSession.service', () => {
 
     const result = await revokeCurrentAuthSession({
       refreshToken: 'current-refresh-token',
+      ipAddress: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 Test Browser',
     });
 
     expect(
@@ -283,7 +303,8 @@ describe('authSession.service', () => {
     expect(revocationUpdate).toEqual({
       $set: {
         revokedAt: expect.any(Date),
-        revokedReason: 'logout',
+        revokedReason:
+          AUTH_SESSION_REVOKED_REASON.LOGOUT,
       },
     });
 
@@ -291,6 +312,24 @@ describe('authSession.service', () => {
       returnDocument: 'after',
     });
 
+    expect(createAuditLog).toHaveBeenCalledWith({
+      actor: userId,
+      action: AUDIT_ACTION.LOGOUT,
+      entityType: AUDIT_ENTITY_TYPE.AUTH_SESSION,
+      entityId: revokedSession._id,
+      status: AUDIT_STATUS.SUCCESS,
+      ipAddress: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 Test Browser',
+      metadata: {
+        revokedReason:
+          AUTH_SESSION_REVOKED_REASON.LOGOUT,
+      },
+    });
+
+    /*
+     * Le service retourne toujours la session révoquée afin que ses futurs
+     * appelants puissent exploiter le résultat sans relire MongoDB.
+     */
     expect(result).toBe(revokedSession);
   });
 
@@ -305,8 +344,48 @@ describe('authSession.service', () => {
     expect(
       AuthSession.findOneAndUpdate,
     ).not.toHaveBeenCalled();
-  });
 
+    expect(createAuditLog).not.toHaveBeenCalled();
+  });
+  it('maintient le logout si son audit échoue', async () => {
+    const revokedSession = {
+      _id: new mongoose.Types.ObjectId(),
+      user: new mongoose.Types.ObjectId(),
+      revokedAt: new Date(),
+      revokedReason:
+        AUTH_SESSION_REVOKED_REASON.LOGOUT,
+    };
+
+    AuthSession.findOneAndUpdate.mockResolvedValue(
+      revokedSession,
+    );
+
+    createAuditLog.mockRejectedValueOnce(
+      new Error('MongoDB audit write failed'),
+    );
+
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => { });
+
+    const result = await revokeCurrentAuthSession({
+      refreshToken: 'current-refresh-token',
+      ipAddress: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 Test Browser',
+    });
+
+    expect(result).toBe(revokedSession);
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Auth session audit log creation failed',
+      {
+        action: AUDIT_ACTION.LOGOUT,
+        errorName: 'Error',
+      },
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
 
   it('révoque toutes les AuthSession actives d’un utilisateur lors du logout-all', async () => {
     const userId =

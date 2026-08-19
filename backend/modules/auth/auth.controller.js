@@ -249,6 +249,8 @@ export const logout = async (req, res) => {
 
     await revokeCurrentAuthSession({
         refreshToken: currentRefreshToken,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
     });
 
     /*

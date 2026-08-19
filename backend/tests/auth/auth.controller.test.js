@@ -434,7 +434,12 @@ describe('auth.controller', () => {
 
     const req = {
       cookies: {
-        [refreshCookieName]: 'refresh-token-current',
+        [refreshCookieName]:
+          'refresh-token-current',
+      },
+      context: {
+        ipAddress: '127.0.0.1',
+        userAgent: 'Mozilla/5.0 Test Browser',
       },
     };
 
@@ -453,6 +458,8 @@ describe('auth.controller', () => {
       revokeCurrentAuthSession,
     ).toHaveBeenCalledWith({
       refreshToken: 'refresh-token-current',
+      ipAddress: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 Test Browser',
     });
 
     expect(res.clearCookie).toHaveBeenCalledWith(
