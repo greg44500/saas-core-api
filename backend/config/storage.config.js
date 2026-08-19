@@ -60,6 +60,15 @@ const storageConfig = Object.freeze({
     local: Object.freeze({
         rootDirectory: localRootDirectory,
         temporaryDirectory: uploadTempDirectory,
+
+        /*
+         * La conversion est centralisée ici afin que les services manipulent
+         * toujours des millisecondes, unité utilisée par les timestamps Node.js.
+         */
+        temporaryFileMaximumAgeMs:
+            env.UPLOAD_TEMP_FILE_MAX_AGE_MINUTES
+            * 60
+            * 1000,
     }),
 });
 

@@ -128,6 +128,18 @@ const envSchema = z.object({
         .min(1000)
         .max(120000),
 
+    /*
+* Durée pendant laquelle un fichier temporaire est protégé contre la
+* purge. La valeur minimale de cinq minutes empêche une configuration
+* accidentelle de cibler des uploads encore actifs.
+*/
+    UPLOAD_TEMP_FILE_MAX_AGE_MINUTES: z.coerce
+        .number()
+        .int()
+        .min(5)
+        .max(10080)
+        .default(60),
+
 });
 // Valider les variables d'environnement et les transformer en types appropriés
 const validationResult = envSchema.safeParse(process.env);
