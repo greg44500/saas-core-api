@@ -486,6 +486,7 @@ describe('loginUser', () => {
 describe('changeUserPassword', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        createAuditLog.mockResolvedValue(undefined);
     });
 
     it('modifie le hash et révoque les sessions dans une transaction', async () => {
@@ -522,6 +523,12 @@ describe('changeUserPassword', () => {
             matchedCount: 1,
         });
 
+        revokeAllUserAuthSessions.mockResolvedValue({
+            acknowledged: true,
+            matchedCount: 2,
+            modifiedCount: 2,
+        });
+
         vi.spyOn(
             mongoose.connection,
             'transaction',
@@ -535,6 +542,8 @@ describe('changeUserPassword', () => {
                 'mot de passe actuel suffisamment long',
             newPassword:
                 'nouveau mot de passe suffisamment long',
+            ipAddress: '127.0.0.1',
+            userAgent: 'Mozilla/5.0 Test Browser',
         });
 
         expect(
@@ -581,7 +590,28 @@ describe('changeUserPassword', () => {
                     .PASSWORD_CHANGED,
             session,
         });
-
+        /*
+         * Le même objet session prouve que l'audit appartient à la transaction
+         * qui modifie le credential et révoque les sessions.
+         */
+        expect(createAuditLog).toHaveBeenCalledWith(
+            {
+                actor: 'user-id',
+                action: AUDIT_ACTION.PASSWORD_CHANGED,
+                entityType: AUDIT_ENTITY_TYPE.USER,
+                entityId: 'user-id',
+                status: AUDIT_STATUS.SUCCESS,
+                ipAddress: '127.0.0.1',
+                userAgent: 'Mozilla/5.0 Test Browser',
+                metadata: {
+                    changeMethod: 'authenticated',
+                    revokedSessionCount: 2,
+                },
+            },
+            {
+                session,
+            },
+        );
         expect(result).toEqual({
             passwordChangedAt:
                 expect.any(Date),

@@ -396,8 +396,9 @@ const loginUser = async ({
 /**
  * Modifie le mot de passe de l'utilisateur authentifié.
  *
- * Le hash, la date de changement et la révocation des sessions
- * sont modifiés dans une même transaction MongoDB.
+ * Le hash, passwordChangedAt, la révocation des sessions et l'AuditLog
+ * sont écrits dans une même transaction MongoDB. Aucun changement de
+ * sécurité critique ne peut ainsi être validé sans sa trace d'audit.
  *
  * Le nouveau hash est calculé avant la transaction afin de limiter
  * sa durée et d'éviter d'y effectuer un calcul Argon2id coûteux.
@@ -406,12 +407,16 @@ const loginUser = async ({
  * @param {string|import('mongoose').Types.ObjectId} input.userId
  * @param {string} input.currentPassword
  * @param {string} input.newPassword
+ * @param {string|null} [input.ipAddress]
+ * @param {string|null} [input.userAgent]
  * @returns {Promise<{passwordChangedAt: Date}>}
  */
 const changeUserPassword = async ({
     userId,
     currentPassword,
     newPassword,
+    ipAddress = null,
+    userAgent = null,
 }) => {
     const authIdentityQuery = AuthIdentity.findOne({
         user: userId,
@@ -424,8 +429,8 @@ const changeUserPassword = async ({
         );
 
     /*
-     * Le même refus est utilisé lorsque l'identité locale
-     * est absente ou que le mot de passe actuel est incorrect.
+     * Le même refus est utilisé lorsque l'identité locale est absente
+     * ou que le mot de passe actuel est incorrect.
      */
     if (!authIdentity) {
         throw new AppError(
@@ -448,9 +453,9 @@ const changeUserPassword = async ({
     }
 
     /*
-     * Un nouveau salt produirait un hash différent même si le mot
-     * de passe brut était identique. Il faut donc comparer le nouveau
-     * mot de passe avec le hash existant avant de le recalculer.
+     * Un nouveau salt produirait un hash différent même si le mot de
+     * passe brut était identique. La comparaison doit donc précéder
+     * le calcul du nouveau hash.
      */
     const newPasswordIsCurrentPassword =
         await verifyPassword(
@@ -465,6 +470,10 @@ const changeUserPassword = async ({
         );
     }
 
+    /*
+     * Argon2id est volontairement coûteux. Le calcul reste hors de la
+     * transaction afin de ne pas maintenir inutilement des verrous.
+     */
     const newPasswordHash =
         await hashPassword(newPassword);
 
@@ -473,8 +482,8 @@ const changeUserPassword = async ({
     await mongoose.connection.transaction(
         async (session) => {
             /*
-             * Le hash actuel fait partie du filtre afin de détecter
-             * une modification concurrente du mot de passe.
+             * Le hash lu précédemment fait partie du filtre pour détecter
+             * une modification concurrente du credential.
              */
             const identityUpdateResult =
                 await AuthIdentity.updateOne(
@@ -504,8 +513,8 @@ const changeUserPassword = async ({
             }
 
             /*
-             * Le compte peut être actif ou en demande de suppression :
-             * les opérations nécessaires à sa sécurité restent permises.
+             * Les opérations nécessaires à la sécurité restent autorisées
+             * pour un compte actif ou en demande de suppression.
              */
             const userUpdateResult =
                 await User.updateOne(
@@ -536,13 +545,48 @@ const changeUserPassword = async ({
                 );
             }
 
-            await revokeAllUserAuthSessions({
-                userId,
-                revokedReason:
-                    AUTH_SESSION_REVOKED_REASON
-                        .PASSWORD_CHANGED,
-                session,
-            });
+            /*
+             * Toute session créée avec l'ancien mot de passe doit devenir
+             * inutilisable dans la même transaction.
+             */
+            const revocationResult =
+                await revokeAllUserAuthSessions({
+                    userId,
+                    revokedReason:
+                        AUTH_SESSION_REVOKED_REASON
+                            .PASSWORD_CHANGED,
+                    session,
+                });
+
+            /*
+             * L'audit est volontairement strict et transactionnel.
+             *
+             * createAuditLog propage ses erreurs : une impossibilité
+             * d'écrire cet événement entraîne donc le rollback du hash,
+             * de passwordChangedAt et des révocations précédentes.
+             */
+            await createAuditLog(
+                {
+                    actor: userId,
+                    action:
+                        AUDIT_ACTION.PASSWORD_CHANGED,
+                    entityType:
+                        AUDIT_ENTITY_TYPE.USER,
+                    entityId: userId,
+                    status: AUDIT_STATUS.SUCCESS,
+                    ipAddress,
+                    userAgent,
+                    metadata: {
+                        changeMethod:
+                            'authenticated',
+                        revokedSessionCount:
+                            revocationResult.modifiedCount,
+                    },
+                },
+                {
+                    session,
+                },
+            );
         },
     );
 

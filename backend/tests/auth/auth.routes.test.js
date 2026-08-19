@@ -338,6 +338,10 @@ describe('POST /api/auth/change-password', () => {
 
         const response = await request(app)
             .post('/api/auth/change-password')
+            .set(
+                'User-Agent',
+                'Mozilla/5.0 Test Browser',
+            )
             .send({
                 currentPassword:
                     'mot de passe actuel suffisamment long',
@@ -357,6 +361,8 @@ describe('POST /api/auth/change-password', () => {
                 'mot de passe actuel suffisamment long',
             newPassword:
                 'nouveau mot de passe suffisamment long',
+            ipAddress: expect.any(String),
+            userAgent: 'Mozilla/5.0 Test Browser',
         });
     });
 });

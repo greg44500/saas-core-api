@@ -291,11 +291,11 @@ export const logoutAll = async (req, res) => {
 /**
  * Modifie le mot de passe de l'utilisateur authentifié.
  *
- * Le service vérifie le mot de passe actuel, modifie le hash
- * et révoque toutes les AuthSession dans une transaction.
+ * Le service réalise transactionnellement le changement du credential,
+ * la révocation des sessions et l'écriture de l'AuditLog.
  *
- * Le controller supprime ensuite le refresh token du navigateur.
- * Une nouvelle authentification sera nécessaire.
+ * Le controller transmet le contexte HTTP puis supprime le refresh cookie
+ * du navigateur. Une nouvelle authentification sera nécessaire.
  */
 export const changePassword = async (req, res) => {
     await changeUserPassword({
@@ -304,6 +304,8 @@ export const changePassword = async (req, res) => {
             req.validated.body.currentPassword,
         newPassword:
             req.validated.body.newPassword,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
     });
 
     res.clearCookie(
