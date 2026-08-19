@@ -1,7 +1,5 @@
 import mongoose from 'mongoose';
-import { env } from '../../config/env.js';
-import { performance } from 'node:perf_hooks';
-import { sendEmail } from '../../services/email.service.js';
+
 import {
     AUDIT_ACTION,
     AUDIT_ENTITY_TYPE,
@@ -14,22 +12,12 @@ import {
     resetUserPassword,
 } from './services/resetUserPassword.service.js';
 import {
+    forgotUserPassword,
+} from './services/forgotUserPassword.service.js';
+import {
     createAuditLog,
 } from '../auditLog/auditLog.service.js';
-import {
-    ensureMinimumDuration,
-} from '../../utils/securityTiming.js';
-import {
-    createPasswordResetToken,
-} from '../passwordResetTokens/passwordResetToken.service.js';
 
-import {
-    buildPasswordResetEmail,
-} from '../../services/emailTemplates/passwordResetEmail.js';
-
-import {
-    buildPasswordResetUrl,
-} from './passwordResetUrl.js';
 import { AUTH_PROVIDER } from '../../constants/authProvider.constants.js';
 import { AppError } from '../../utils/AppError.js';
 import { canonicalizeEmail } from '../../utils/canonicalizeEmail.js';
@@ -63,23 +51,6 @@ const LOGIN_FAILURE_REASON = Object.freeze({
     ACCOUNT_DISABLED: 'account_disabled',
     ACCOUNT_CLOSED: 'account_closed',
 });
-
-const FORGOT_PASSWORD_RESPONSE_MESSAGE =
-    'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.';
-
-/*
-* Compensation temporelle du workflow forgot-password.
-*
-* Le but n'est PAS d'obtenir un temps d'exécution cryptographiquement
-* constant, mais de réduire l'écart observable entre :
-* - une adresse inconnue qui quitte rapidement le workflow ;
-* - un compte valide qui réalise plusieurs accès DB puis un envoi SMTP.
-*
-* Ces valeurs devront être réévaluées lorsque les emails seront
-* délégués à une file de tâches durable.
-*/
-const FORGOT_PASSWORD_MINIMUM_DURATION_MS = 700;
-const FORGOT_PASSWORD_JITTER_MS = 150;
 
 /**
  * Crée un compte utilisateur utilisant l'authentification locale.
@@ -386,173 +357,6 @@ const loginUser = async ({
     };
 };
 
-
-/**
- * Termine une demande forgot-password en appliquant systématiquement
- * la compensation temporelle avant de retourner la réponse publique.
- *
- * Centraliser cette sortie évite qu'un nouveau cas métier ajouté plus tard
- * oublie accidentellement la protection contre l'énumération temporelle.
- *
- * @param {number} startedAt Temps de départ issu de performance.now().
- * @returns {Promise<{message: string}>}
- */
-const completeForgotPasswordRequest = async (
-    startedAt,
-) => {
-    await ensureMinimumDuration({
-        startedAt,
-        minimumMs:
-            FORGOT_PASSWORD_MINIMUM_DURATION_MS,
-        jitterMs:
-            FORGOT_PASSWORD_JITTER_MS,
-    });
-
-    return {
-        message:
-            FORGOT_PASSWORD_RESPONSE_MESSAGE,
-    };
-};
-
-/**
- * Initialise une procédure de réinitialisation de mot de passe.
- *
- * Règle de sécurité principale :
- * l'appelant ne doit pas pouvoir déterminer si l'adresse email existe.
- * L'absence d'utilisateur, l'absence d'identité locale ou un compte qui
- * ne peut pas utiliser ce workflow produisent donc la même réponse métier.
- *
- * Le token brut créé par createPasswordResetToken() n'est utilisé que pour
- * construire le lien envoyé par email. Il ne doit jamais être persisté,
- * retourné dans l'API ou écrit dans les logs.
- *
- * @param {object} input
- * @param {string} input.email Adresse préalablement validée.
- * @param {string|null} [input.ipAddress]
- * @param {string|null} [input.userAgent]
- *
- * @returns {Promise<{message: string}>}
- */
-const forgotUserPassword = async ({
-    email,
-    ipAddress = null,
-    userAgent = null,
-}) => {
-    /*
-     * Le chronomètre démarre avant le premier accès aux données.
-     *
-     * Tous les chemins du workflow utiliseront cette même origine
-     * lorsqu'ils construiront la réponse publique.
-     */
-    const startedAt = performance.now();
-    const emailCanonical = canonicalizeEmail(email);
-
-    /*
-     * On recherche le User par son email canonique afin de conserver
-     * exactement la même stratégie d'identification que register/login.
-     */
-    const user = await User.findOne({
-        emailCanonical,
-    });
-
-    /*
-     * IMPORTANT :
-     * on retourne volontairement la même réponse lorsqu'aucun utilisateur
-     * n'existe. Une erreur 404 révélerait l'existence ou non d'un compte.
-     */
-    if (!user) {
-        return completeForgotPasswordRequest(
-            startedAt,
-        );
-    }
-
-    /*
-     * Un reset password n'a de sens que si l'utilisateur possède une
-     * identité locale avec mot de passe.
-     *
-     * Exemple :
-     * un compte uniquement Google ne doit pas recevoir un token permettant
-     * de créer implicitement un credential local sans workflow explicite.
-     */
-    const localIdentity = await AuthIdentity.exists({
-        user: user._id,
-        provider: AUTH_PROVIDER.LOCAL,
-    });
-
-    if (!localIdentity) {
-        return completeForgotPasswordRequest(
-            startedAt,
-        );
-    }
-
-    /*
-     * Les comptes clôturés ne doivent pas pouvoir réactiver indirectement
-     * une capacité d'authentification par un reset password.
-     *
-     * On ne renvoie cependant aucune erreur spécifique afin de préserver
-     * la protection contre l'énumération des comptes.
-     */
-    if (user.status === USER_STATUS.CLOSED) {
-        return completeForgotPasswordRequest(
-            startedAt,
-        );
-    }
-
-    /*
-     * La création du token est déléguée au service spécialisé.
-     * Ce service :
-     * - révoque les demandes actives précédentes ;
-     * - ne persiste que le hash SHA-256 ;
-     * - retourne temporairement le token brut pour construire le lien.
-     */
-    const { resetToken } =
-        await createPasswordResetToken({
-            userId: user._id,
-            ipAddress,
-            userAgent,
-        });
-
-    /*
-     * L'origine de l'URL vient exclusivement de CLIENT_URL.
-     * Aucune donnée issue du Host HTTP de la requête n'intervient ici.
-     */
-    const resetUrl = buildPasswordResetUrl({
-        token: resetToken,
-    });
-
-    /*
-     * Le template ne connaît ni User ni la configuration globale.
-     * On lui transmet explicitement les données nécessaires à l'affichage.
-     */
-    const {
-        subject,
-        text,
-        html,
-    } = buildPasswordResetEmail({
-        resetUrl,
-        expiresInMinutes:
-            env.PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES,
-    });
-
-    /*
-     * Le transport SMTP reste derrière email.service.js.
-     * Le module Auth ne dépend donc pas directement de Nodemailer.
-     */
-    await sendEmail({
-        to: user.email,
-        subject,
-        text,
-        html,
-    });
-
-    /*
-     * Même réponse que pour une adresse inexistante ou un compte
-     * sans identité locale : l'API ne révèle aucun état interne.
-     */
-    return completeForgotPasswordRequest(
-        startedAt,
-    );
-};
 
 export {
     changeUserPassword,
