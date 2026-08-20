@@ -35,6 +35,8 @@ const upload = async (request, response) => {
             file: request.file,
             category:
                 request.validated.body.category,
+            ipAddress: request.context.ipAddress,
+            userAgent: request.context.userAgent,
         });
 
     response.status(201).json({

@@ -5,7 +5,7 @@ import { Role } from '../modules/role/role.model.js';
 import { Workspace } from '../modules/workspace/workspace.model.js';
 import { WorkspaceMember } from '../modules/workspaceMember/workspaceMember.model.js';
 
-import { AppError } from '../utils/AppError.js';
+import { AppError } from '../utils/appError.js';
 
 
 /**

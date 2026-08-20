@@ -103,6 +103,8 @@ const persistFile = ({
     file: createUpload(),
     category: FILE_CATEGORY.DOCUMENT,
     ...overrides,
+    ipAddress: '127.0.0.1',
+    userAgent: 'Mozilla/5.0 Test Browser',
 });
 
 
@@ -161,6 +163,8 @@ describe('File service', () => {
                         .malwareScan,
                 updatedBy: USER_ID,
             },
+            ipAddress: '127.0.0.1',
+            userAgent: 'Mozilla/5.0 Test Browser',
         });
 
         expect(

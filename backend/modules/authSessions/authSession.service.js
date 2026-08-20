@@ -13,7 +13,7 @@ import {
 import {
     createAuditLog,
 } from '../auditLog/auditLog.service.js';
-import { AppError } from '../../utils/AppError.js';
+import { AppError } from '../../utils/appError.js';
 import { addDays } from '../../utils/date.js';
 import {
     generateRefreshToken,
@@ -409,7 +409,30 @@ const rotateAuthSession = async ({
                 });
             },
         );
-
+        /*
+         * L'appelant du refresh token réutilisé ne peut pas être attribué
+         * avec certitude au User propriétaire de la session.
+         *
+         * L'audit intervient après le commit : une indisponibilité du journal
+         * ne doit jamais annuler la compromission de la famille.
+         */
+        await writeAuthSessionAuditLog({
+            actor: null,
+            action:
+                AUDIT_ACTION
+                    .SESSION_REUSE_DETECTED,
+            entityType:
+                AUDIT_ENTITY_TYPE.AUTH_SESSION,
+            entityId: currentAuthSession._id,
+            status: AUDIT_STATUS.FAILED,
+            ipAddress,
+            userAgent,
+            metadata: {
+                revokedReason:
+                    AUTH_SESSION_REVOKED_REASON
+                        .TOKEN_REUSE_DETECTED,
+            },
+        });
         /*
          * La transaction de compromission est maintenant commitée.
          * Nous pouvons refuser la requête.

@@ -14,7 +14,7 @@ import {
 import {
     USER_STATUS,
 } from '../../../constants/userStatus.constants.js';
-import { AppError } from '../../../utils/AppError.js';
+import { AppError } from '../../../utils/appError.js';
 import {
     hashPassword,
     verifyPassword,

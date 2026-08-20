@@ -9,7 +9,7 @@ import {
 import {
     USER_STATUS,
 } from '../../../constants/userStatus.constants.js';
-import { AppError } from '../../../utils/AppError.js';
+import { AppError } from '../../../utils/appError.js';
 import {
     canonicalizeEmail,
 } from '../../../utils/canonicalizeEmail.js';

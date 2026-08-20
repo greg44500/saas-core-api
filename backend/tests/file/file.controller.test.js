@@ -97,6 +97,10 @@ describe('File controller', () => {
                         FILE_CATEGORY.DOCUMENT,
                 },
             },
+            context: {
+                ipAddress: '127.0.0.1',
+                userAgent: 'Mozilla/5.0 Test Browser',
+            },
         };
 
         const response = {
@@ -113,6 +117,8 @@ describe('File controller', () => {
             uploadedBy: userId,
             file: uploadedFile,
             category: FILE_CATEGORY.DOCUMENT,
+            ipAddress: '127.0.0.1',
+            userAgent: 'Mozilla/5.0 Test Browser',
         });
 
         expect(response.status)

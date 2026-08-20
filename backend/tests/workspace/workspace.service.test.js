@@ -21,6 +21,10 @@ import {
     USER_STATUS,
 } from '../../constants/userStatus.constants.js';
 
+import {
+    createAuditLog,
+} from '../../modules/auditLog/auditLog.service.js';
+
 import { createSystemRolesForWorkspace } from '../../modules/role/role.service.js';
 import {
     createFreeSubscriptionForWorkspace,
@@ -36,6 +40,9 @@ import {
 
 import { WorkspaceMember } from '../../modules/workspaceMember/workspaceMember.model.js';
 
+vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
+    createAuditLog: vi.fn(),
+}));
 
 vi.mock('mongoose', () => {
     const ObjectId = vi.fn(function (value) {
@@ -107,6 +114,7 @@ describe('createWorkspace', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        createAuditLog.mockResolvedValue(undefined);
 
         /*
          * Simule l'exécution du callback fourni à la transaction

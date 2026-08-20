@@ -23,7 +23,7 @@ import {
 import {
     sendEmail,
 } from '../../../services/email.service.js';
-import { AppError } from '../../../utils/AppError.js';
+import { AppError } from '../../../utils/appError.js';
 import {
     hashPassword,
     verifyPassword,

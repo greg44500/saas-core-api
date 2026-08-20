@@ -1,4 +1,4 @@
-import { AppError } from '../../utils/AppError.js';
+import { AppError } from '../../utils/appError.js';
 
 import {
     createWorkspace,
@@ -19,6 +19,8 @@ export const create = async (req, res) => {
     const workspace = await createWorkspace({
         name: req.validated.body.name,
         actorId: req.user.id,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
     });
 
     res.status(201).json({

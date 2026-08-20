@@ -52,6 +52,10 @@ describe('workspace.controller', () => {
             user: {
                 id: 'user-id',
             },
+            context: {
+                ipAddress: '127.0.0.1',
+                userAgent: 'Mozilla/5.0 Test Browser',
+            },
         };
 
         const res = {
@@ -66,6 +70,8 @@ describe('workspace.controller', () => {
         expect(createWorkspace).toHaveBeenCalledWith({
             name: 'Acme',
             actorId: 'user-id',
+            ipAddress: '127.0.0.1',
+            userAgent: 'Mozilla/5.0 Test Browser',
         });
 
         expect(res.status).toHaveBeenCalledWith(201);

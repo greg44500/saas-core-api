@@ -1,6 +1,12 @@
 import mongoose from 'mongoose';
 
 import {
+    AUDIT_ACTION,
+    AUDIT_ENTITY_TYPE,
+    AUDIT_STATUS,
+} from '../../constants/auditActions.constants.js';
+
+import {
     CORE_PLAN_FEATURE,
     CORE_PLAN_METRIC,
 } from '../plan/planCapability.registry.js';
@@ -16,6 +22,10 @@ import {
 import {
     getWorkspacePlanEntitlement,
 } from '../subscriptions/subscription.service.js';
+
+import {
+    createAuditLog,
+} from '../auditLog/auditLog.service.js';
 
 import { File } from './file.model.js';
 
@@ -44,6 +54,7 @@ const createFilePersistenceService = ({
     assertFeatureAvailable,
     reservePlanLimit,
     createFileDocuments,
+    createAuditEvent,
 }) => {
     if (
         typeof runTransaction !== 'function'
@@ -51,6 +62,7 @@ const createFilePersistenceService = ({
         || typeof assertFeatureAvailable !== 'function'
         || typeof reservePlanLimit !== 'function'
         || typeof createFileDocuments !== 'function'
+        || typeof createAuditEvent !== 'function'
     ) {
         throw new TypeError(
             'Les dépendances du service de persistance File sont invalides.',
@@ -68,11 +80,15 @@ const createFilePersistenceService = ({
      * @param {object} parameters
      * @param {object} parameters.fileData
      * @param {Date} [parameters.at]
+     * @param {string|null} [parameters.ipAddress]
+     * @param {string|null} [parameters.userAgent]
      * @returns {Promise<import('mongoose').Document>}
      */
     const persistFileMetadataWithinPlanLimits = async ({
         fileData,
         at = new Date(),
+        ipAddress = null,
+        userAgent = null,
     }) => {
         if (
             !fileData
@@ -168,14 +184,38 @@ const createFilePersistenceService = ({
 
             if (
                 !Array.isArray(createdFiles)
-                || !createdFiles[0]
+                || !createdFiles[0]._id
             ) {
                 throw new TypeError(
                     'La création du document File a retourné un résultat invalide.',
                 );
             }
+            const createdFile = createdFiles[0];
 
-            return createdFiles[0];
+            /*
+             * Les quotas, le document File et sa trace doivent être validés
+             * ou annulés ensemble.
+             */
+            await createAuditEvent(
+                {
+                    actor: actorId,
+                    workspace: workspaceId,
+                    action: AUDIT_ACTION.FILE_UPLOADED,
+                    entityType: AUDIT_ENTITY_TYPE.FILE,
+                    entityId: createdFile._id,
+                    status: AUDIT_STATUS.SUCCESS,
+                    ipAddress,
+                    userAgent,
+                    metadata: {
+                        sizeBytes: fileData.sizeBytes,
+                    },
+                },
+                {
+                    session,
+                },
+            );
+
+            return createdFile;
         });
     };
 
@@ -208,6 +248,9 @@ const filePersistenceService =
 
         createFileDocuments: (documents, options) =>
             File.create(documents, options),
+
+        createAuditEvent: (auditData, options) =>
+            createAuditLog(auditData, options),
     });
 
 

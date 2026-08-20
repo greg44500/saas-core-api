@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { errorHandler } from "../../middlewares/errorHandler.js";
-import { AppError } from "../../utils/AppError.js";
+import { AppError } from "../../utils/appError.js";
 // Fonction utilitaire pour créer un objet de réponse simulé
 const createResponseMock = () => {
     const res = {};

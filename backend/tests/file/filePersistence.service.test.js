@@ -27,6 +27,7 @@ describe('filePersistence.service', () => {
     let assertFeatureAvailable;
     let reservePlanLimit;
     let createFileDocuments;
+    let createAuditEvent;
 
     let service;
 
@@ -55,7 +56,7 @@ describe('filePersistence.service', () => {
         };
 
         createdFile = {
-            id: 'file-id',
+            _id: 'file-id',
             ...fileData,
         };
 
@@ -83,12 +84,16 @@ describe('filePersistence.service', () => {
         createFileDocuments = vi.fn()
             .mockResolvedValue([createdFile]);
 
+        createAuditEvent = vi.fn()
+            .mockResolvedValue(undefined);
+
         service = createFilePersistenceService({
             runTransaction,
             resolvePlanEntitlement,
             assertFeatureAvailable,
             reservePlanLimit,
             createFileDocuments,
+            createAuditEvent,
         });
     });
 

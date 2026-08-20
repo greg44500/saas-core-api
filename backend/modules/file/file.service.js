@@ -156,8 +156,8 @@ const compensateAndThrow = async ({
  * Construit l'orchestrateur qui rend un upload sain durable et crée ses
  * métadonnées MongoDB.
  *
- * Les routes et AuditLog restent hors de cette responsabilité. La réservation
- * transactionnelle des quotas est déléguée au service de persistance File.
+ * L'audit transactionnel et la réservation des quotas sont délégués au service de persistance File. 
+ * La réservation transactionnelle des quotas est déléguée au service de persistance File.
  */
 const createFileService = ({
     inspectUploadedFile,
@@ -195,6 +195,8 @@ const createFileService = ({
         uploadedBy,
         file,
         category = FILE_CATEGORY.OTHER,
+        ipAddress = null,
+        userAgent = null,
     }) => {
         if (
             !file
@@ -364,6 +366,8 @@ const createFileService = ({
                         inspectedFile.malwareScan,
                     updatedBy: uploadedBy,
                 },
+                ipAddress,
+                userAgent,
             });
         } catch (databaseError) {
             /*

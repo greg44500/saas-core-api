@@ -10,14 +10,24 @@ import {
 import {
     WORKSPACE_MEMBER_STATUS,
 } from '../../constants/workspaceMember.constants.js';
+import {
+    AUDIT_ACTION,
+    AUDIT_ENTITY_TYPE,
+    AUDIT_STATUS,
+} from '../../constants/auditActions.constants.js';
+import {
+    USER_STATUS,
+} from '../../constants/userStatus.constants.js';
 
 import { createSystemRolesForWorkspace } from '../role/role.service.js';
 import {
     createFreeSubscriptionForWorkspace,
 } from '../subscriptions/subscription.service.js';
+
 import {
-    USER_STATUS,
-} from '../../constants/userStatus.constants.js';
+    createAuditLog,
+} from '../auditLog/auditLog.service.js';
+
 import { WorkspaceMember } from '../workspaceMember/workspaceMember.model.js';
 import { Workspace } from './workspace.model.js';
 import { Role } from '../role/role.model.js';
@@ -34,11 +44,15 @@ import { User } from '../users/user.model.js';
  * @param {object} params
  * @param {string} params.name
  * @param {import('mongoose').Types.ObjectId} params.actorId
+ * @param {string|null} [params.ipAddress]
+ * @param {string|null} [params.userAgent]
  * @returns {Promise<import('mongoose').Document>}
  */
 const createWorkspace = async ({
     name,
     actorId,
+    ipAddress = null,
+    userAgent = null,
 }) => {
     if (!name || !actorId) {
         throw new TypeError(
@@ -109,6 +123,28 @@ const createWorkspace = async ({
             actorId,
             session,
         });
+
+        /*
+ * La création du tenant et sa trace constituent une seule opération :
+ * aucune structure partielle ne doit survivre à un échec d'audit.
+ */
+        await createAuditLog(
+            {
+                actor: actorId,
+                workspace: workspace._id,
+                action:
+                    AUDIT_ACTION.WORKSPACE_CREATED,
+                entityType:
+                    AUDIT_ENTITY_TYPE.WORKSPACE,
+                entityId: workspace._id,
+                status: AUDIT_STATUS.SUCCESS,
+                ipAddress,
+                userAgent,
+            },
+            {
+                session,
+            },
+        );
         return workspace;
     });
 };
