@@ -4,6 +4,11 @@ import {
     AUTH_PROVIDER,
 } from '../../../constants/authProvider.constants.js';
 import {
+    AUDIT_ACTION,
+    AUDIT_ENTITY_TYPE,
+    AUDIT_STATUS,
+} from '../../../constants/auditActions.constants.js';
+import {
     AUTH_SESSION_REVOKED_REASON,
 } from '../../../constants/authSession.constants.js';
 import {
@@ -12,6 +17,9 @@ import {
 import {
     buildPasswordChangedEmail,
 } from '../../../services/emailTemplates/passwordChangedEmail.js';
+import {
+    createAuditLog,
+} from '../../auditLog/auditLog.service.js';
 import {
     sendEmail,
 } from '../../../services/email.service.js';
@@ -53,11 +61,15 @@ const INVALID_PASSWORD_RESET_TOKEN_MESSAGE =
  * @param {object} input
  * @param {string} input.token Token brut préalablement validé.
  * @param {string} input.newPassword Nouveau mot de passe validé.
- * @returns {Promise<{passwordChangedAt: Date}>}
+ * @param {string|null} [input.ipAddress]
+ * @param {string|null} [input.userAgent]
+ * returns {Promise<{passwordChangedAt: Date}>}
  */
 const resetUserPassword = async ({
     token,
     newPassword,
+    ipAddress = null,
+    userAgent = null,
 }) => {
     /*
      * Le token brut ne doit jamais être persisté.
@@ -269,13 +281,42 @@ const resetUserPassword = async ({
              * Toutes les sessions existantes sont révoquées dans la
              * transaction afin d'invalider les anciens refresh tokens.
              */
-            await revokeAllUserAuthSessions({
-                userId: user._id,
-                revokedReason:
-                    AUTH_SESSION_REVOKED_REASON
-                        .PASSWORD_CHANGED,
-                session,
-            });
+            const revokedSessionsResult =
+                await revokeAllUserAuthSessions({
+                    userId: user._id,
+                    revokedReason:
+                        AUTH_SESSION_REVOKED_REASON
+                            .PASSWORD_CHANGED,
+                    session,
+                });
+
+            /*
+* Le token autorise l'opération sans authentifier personnellement
+* son détenteur. Le User est donc la cible, jamais l'acteur.
+*/
+            await createAuditLog(
+                {
+                    actor: null,
+                    action:
+                        AUDIT_ACTION
+                            .PASSWORD_RESET_COMPLETED,
+                    entityType:
+                        AUDIT_ENTITY_TYPE.USER,
+                    entityId: user._id,
+                    status: AUDIT_STATUS.SUCCESS,
+                    ipAddress,
+                    userAgent,
+                    metadata: {
+                        provider: AUTH_PROVIDER.LOCAL,
+                        revokedSessionCount:
+                            revokedSessionsResult
+                                .modifiedCount,
+                    },
+                },
+                {
+                    session,
+                },
+            );
         },
     );
 

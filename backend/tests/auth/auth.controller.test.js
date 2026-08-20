@@ -281,6 +281,10 @@ describe('auth.controller', () => {
             'nouveau mot de passe suffisamment long',
         },
       },
+      context: {
+        ipAddress: '127.0.0.1',
+        userAgent: 'Mozilla/5.0 Test Browser',
+      },
     };
 
     const json = vi.fn();
@@ -307,6 +311,8 @@ describe('auth.controller', () => {
       token: 'opaque-reset-token',
       newPassword:
         'nouveau mot de passe suffisamment long',
+      ipAddress: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 Test Browser',
     });
 
     /*

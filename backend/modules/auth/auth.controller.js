@@ -146,6 +146,8 @@ export const resetPassword = async (req, res) => {
         token: req.validated.body.token,
         newPassword:
             req.validated.body.newPassword,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
     });
 
     /*

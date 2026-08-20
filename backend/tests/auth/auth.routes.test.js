@@ -380,6 +380,10 @@ describe('POST /api/auth/reset-password', () => {
 
         const response = await request(app)
             .post('/api/auth/reset-password')
+            .set(
+                'User-Agent',
+                'Vitest Test Client',
+            )
             .send({
                 token: 'opaque-reset-token',
                 newPassword:
@@ -404,6 +408,8 @@ describe('POST /api/auth/reset-password', () => {
             token: 'opaque-reset-token',
             newPassword:
                 'nouveau mot de passe suffisamment long',
+            ipAddress: expect.any(String),
+            userAgent: 'Vitest Test Client',
         });
     });
 
