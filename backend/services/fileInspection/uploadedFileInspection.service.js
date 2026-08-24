@@ -3,8 +3,16 @@ import {
 } from "../../constants/file.constants.js";
 
 import {
+    FILE_UPLOAD_REJECTION_REASON,
+} from "../../constants/fileAudit.constants.js";
+
+import {
     AppError,
 } from "../../utils/appError.js";
+
+import {
+    fileUploadRejectedError,
+} from "../../modules/file/fileUploadRejected.error.js";
 
 import {
     malwareScanService,
@@ -21,6 +29,7 @@ import {
 import {
     inspectUploadedFileType,
 } from "./fileType.service.js";
+
 
 /**
  * Construit le service chargé d'enchaîner les contrôles de sécurité.
@@ -149,9 +158,11 @@ const createUploadedFileInspectionService = ({
                 scanResult.status
                 === FILE_SCAN_STATUS.INFECTED
             ) {
-                throw new AppError(
+                throw new fileUploadRejectedError(
                     "Le fichier n’a pas pu être accepté. Le téléversement a été annulé.",
                     422,
+                    FILE_UPLOAD_REJECTION_REASON
+                        .MALWARE_DETECTED,
                 );
             }
 
@@ -163,9 +174,11 @@ const createUploadedFileInspectionService = ({
                 scanResult.status
                 !== FILE_SCAN_STATUS.CLEAN
             ) {
-                throw new AppError(
+                throw new fileUploadRejectedError(
                     "Le fichier ne peut pas être traité pour le moment. Veuillez réessayer ultérieurement.",
                     503,
+                    FILE_UPLOAD_REJECTION_REASON
+                        .FILE_INSPECTION_FAILED,
                 );
             }
 
@@ -196,6 +209,7 @@ const createUploadedFileInspectionService = ({
     });
 };
 
+
 /**
  * Assemble l'instance utilisée par l'application.
  *
@@ -219,6 +233,7 @@ const uploadedFileInspectionService =
             temporaryFileService
                 .discardTemporaryFile(filePath),
     });
+
 
 export {
     createUploadedFileInspectionService,

@@ -9,6 +9,19 @@ import {
 } from '../../constants/file.constants.js';
 
 import {
+    AUDIT_ACTION,
+    AUDIT_STATUS,
+} from '../../constants/auditActions.constants.js';
+
+import {
+    createAuditLog,
+} from '../auditLog/auditLog.service.js';
+
+import {
+    fileUploadRejectedError,
+} from './fileUploadRejected.error.js';
+
+import {
     uploadedFileInspectionService,
 } from '../../services/fileInspection/uploadedFileInspection.service.js';
 import {
@@ -156,8 +169,11 @@ const compensateAndThrow = async ({
  * Construit l'orchestrateur qui rend un upload sain durable et crée ses
  * métadonnées MongoDB.
  *
- * L'audit transactionnel et la réservation des quotas sont délégués au service de persistance File. 
- * La réservation transactionnelle des quotas est déléguée au service de persistance File.
+ * La réservation transactionnelle des quotas et l'audit d'un upload réussi
+ * sont délégués au service de persistance File.
+ *
+ * Un rejet intervenant avant la persistance est audité ici car aucun document
+ * File ni aucune transaction métier n'existent encore à ce stade.
  */
 const createFileService = ({
     inspectUploadedFile,
@@ -166,6 +182,7 @@ const createFileService = ({
     deleteStoredFile,
     discardTemporaryFile,
     persistFileMetadataWithinPlanLimits,
+    createAuditEvent,
 }) => {
     if (
         typeof inspectUploadedFile !== 'function'
@@ -176,6 +193,7 @@ const createFileService = ({
         || typeof discardTemporaryFile !== 'function'
         || typeof persistFileMetadataWithinPlanLimits
         !== 'function'
+        || typeof createAuditEvent !== 'function'
     ) {
         throw new TypeError(
             'Les dépendances du service File sont invalides.',
@@ -214,13 +232,71 @@ const createFileService = ({
          * ses branches d'échec. L'orchestrateur ne lance donc aucune seconde
          * compensation tant qu'il ne reçoit pas un résultat sain.
          */
-        const inspectedFile =
-            await inspectUploadedFile({
-                filePath: file.path,
-                originalName: file.originalname,
-                declaredMimeType: file.mimetype,
-                sizeBytes: file.size,
-            });
+        let inspectedFile;
+
+        try {
+            inspectedFile =
+                await inspectUploadedFile({
+                    filePath: file.path,
+                    originalName: file.originalname,
+                    declaredMimeType: file.mimetype,
+                    sizeBytes: file.size,
+                });
+        } catch (inspectionError) {
+            /*
+             * Seuls les rejets explicitement qualifiés par le pipeline File
+             * représentent un événement métier FILE_UPLOAD_REJECTED.
+             *
+             * Une erreur technique inattendue est propagée telle quelle afin
+             * de ne jamais la présenter artificiellement comme un refus
+             * fonctionnel ou de sécurité.
+             */
+            if (
+                !(
+                    inspectionError
+                    instanceof fileUploadRejectedError
+                )
+            ) {
+                throw inspectionError;
+            }
+
+            /*
+             * Aucun document File n'existe encore lors d'un rejet
+             * d'inspection. L'audit est donc rattaché uniquement à l'acteur
+             * et au workspace, sans entityType ni entityId.
+             *
+             * Les métadonnées restent volontairement minimales : la raison
+             * normalisée du rejet et la taille du contenu suffisent à la
+             * traçabilité sans exposer le nom du fichier ni son contenu.
+             */
+            try {
+                await createAuditEvent({
+                    actor: uploadedBy,
+                    workspace: workspaceId,
+                    action:
+                        AUDIT_ACTION.FILE_UPLOAD_REJECTED,
+                    status:
+                        AUDIT_STATUS.FAILED,
+                    ipAddress,
+                    userAgent,
+                    metadata: {
+                        reason:
+                            inspectionError
+                                .rejectionReason,
+                        sizeBytes: file.size,
+                    },
+                });
+            } catch {
+                /*
+                 * La décision de sécurité reste prioritaire sur sa
+                 * journalisation. Une indisponibilité de l'AuditLog ne doit
+                 * jamais transformer un fichier rejeté en upload acceptable
+                 * ni masquer l'erreur originale.
+                 */
+            }
+
+            throw inspectionError;
+        }
 
         let storedName;
         let requestedStorageKey;
@@ -428,6 +504,9 @@ const fileService = createFileService({
                 .persistFileMetadataWithinPlanLimits(
                     parameters,
                 ),
+
+    createAuditEvent: (auditData) =>
+        createAuditLog(auditData),
 });
 
 

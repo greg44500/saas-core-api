@@ -3,7 +3,8 @@ import path from "node:path";
 import { fileTypeFromFile } from "file-type";
 
 import { ALLOWED_FILE_TYPES } from "../../constants/file.constants.js";
-import { AppError } from "../../utils/appError.js";
+import { FILE_UPLOAD_REJECTION_REASON } from "../../constants/fileAudit.constants.js";
+import { fileUploadRejectedError } from "../../modules/file/fileUploadRejected.error.js";
 
 /**
  * Recherche la définition autorisée correspondant au type réellement détecté.
@@ -33,18 +34,20 @@ export const inspectUploadedFileType = async ({
     const detectedFileType = await fileTypeFromFile(filePath);
 
     if (!detectedFileType) {
-        throw new AppError(
+        throw new fileUploadRejectedError(
             "Le type réel du fichier n'a pas pu être identifié.",
             415,
+            FILE_UPLOAD_REJECTION_REASON.FILE_CORRUPTED,
         );
     }
 
     const allowedFileType = findAllowedFileType(detectedFileType);
 
     if (!allowedFileType) {
-        throw new AppError(
+        throw new fileUploadRejectedError(
             "Le type réel du fichier n'est pas autorisé.",
             415,
+            FILE_UPLOAD_REJECTION_REASON.FILE_TYPE_NOT_ALLOWED,
         );
     }
 
@@ -53,9 +56,10 @@ export const inspectUploadedFileType = async ({
      * mal nommé, une erreur du client ou une tentative de contournement.
      */
     if (declaredMimeType !== detectedFileType.mime) {
-        throw new AppError(
+        throw new fileUploadRejectedError(
             "Le type déclaré du fichier ne correspond pas à son contenu.",
             415,
+            FILE_UPLOAD_REJECTION_REASON.FILE_TYPE_NOT_ALLOWED,
         );
     }
 
@@ -70,9 +74,10 @@ export const inspectUploadedFileType = async ({
      * à la définition autorisée.
      */
     if (!allowedFileType.extensions.includes(originalExtension)) {
-        throw new AppError(
+        throw new fileUploadRejectedError(
             "L'extension du fichier ne correspond pas à son contenu.",
             415,
+            FILE_UPLOAD_REJECTION_REASON.FILE_TYPE_NOT_ALLOWED,
         );
     }
 
