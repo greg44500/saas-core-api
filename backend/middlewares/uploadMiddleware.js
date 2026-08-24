@@ -1,6 +1,20 @@
 import multer from 'multer';
 
+import {
+    AUDIT_ACTION,
+    AUDIT_STATUS,
+} from '../constants/auditActions.constants.js';
+
+import {
+    FILE_UPLOAD_REJECTION_REASON,
+} from '../constants/fileAudit.constants.js';
+
 import { multerUpload } from '../config/multer.config.js';
+
+import {
+    createAuditLog,
+} from '../modules/auditLog/auditLog.service.js';
+
 import { AppError } from '../utils/appError.js';
 
 
@@ -52,64 +66,156 @@ const convertMulterError = (error) => {
 
 
 /**
- * Crée un middleware acceptant exactement un fichier dans le champ indiqué.
+ * Construit le middleware d'upload avec des dépendances injectables.
  *
- * Multer reste limité aux routes qui en ont explicitement besoin ; il ne doit
- * jamais être monté comme middleware global de l'application.
+ * L'injection permet de tester séparément la traduction des erreurs multipart
+ * et leur audit sans dépendre d'une écriture réelle sur disque ou en base.
  */
-const uploadSingleFile = (fieldName = 'file') => {
+const createUploadSingleFile = ({
+    upload,
+    createAuditEvent,
+}) => {
     if (
-        typeof fieldName !== 'string'
-        || !/^[a-z][a-zA-Z0-9_]*$/.test(fieldName)
+        !upload
+        || typeof upload.single !== 'function'
+        || typeof createAuditEvent !== 'function'
     ) {
         throw new TypeError(
-            'Le nom du champ de fichier est invalide.',
+            'Les dépendances du middleware d’upload sont invalides.',
         );
     }
 
-    const multerMiddleware =
-        multerUpload.single(fieldName);
+    return (fieldName = 'file') => {
+        if (
+            typeof fieldName !== 'string'
+            || !/^[a-z][a-zA-Z0-9_]*$/.test(fieldName)
+        ) {
+            throw new TypeError(
+                'Le nom du champ de fichier est invalide.',
+            );
+        }
 
-    return (request, response, next) => {
-        multerMiddleware(
-            request,
-            response,
-            (error) => {
-                if (error instanceof AppError) {
-                    next(error);
-                    return;
-                }
+        const multerMiddleware =
+            upload.single(fieldName);
 
-                if (error instanceof multer.MulterError) {
-                    next(convertMulterError(error));
-                    return;
-                }
+        return (request, response, next) => {
+            multerMiddleware(
+                request,
+                response,
+                async (error) => {
+                    if (error instanceof AppError) {
+                        next(error);
+                        return;
+                    }
 
-                if (error) {
-                    /**
-                     * Une erreur inconnue peut provenir du système de fichiers.
-                     * Elle reste technique et doit être traitée comme telle par
-                     * le gestionnaire d'erreurs centralisé.
-                     */
-                    next(error);
-                    return;
-                }
+                    if (
+                        error
+                        instanceof multer.MulterError
+                    ) {
+                        const convertedError =
+                            convertMulterError(error);
 
-                if (!request.file) {
-                    next(
-                        new AppError(
-                            'Aucun fichier valide n’a été fourni.',
-                            400,
-                        ),
-                    );
-                    return;
-                }
+                        if (
+                            error.code
+                            === 'LIMIT_FILE_SIZE'
+                        ) {
+                            /*
+                             * Le rejet intervient avant la création d'un
+                             * document File. L'audit est donc rattaché à
+                             * l'acteur et au workspace uniquement, sans
+                             * entityType ni entityId.
+                             *
+                             * Multer interrompt le flux à la limite configurée.
+                             * La taille complète du fichier n'est donc pas
+                             * considérée comme suffisamment fiable pour être
+                             * journalisée ici.
+                             */
+                            try {
+                                await createAuditEvent({
+                                    actor:
+                                        request.user?._id
+                                        ?? null,
 
-                next();
-            },
-        );
+                                    workspace:
+                                        request.workspace?._id
+                                        ?? null,
+
+                                    action:
+                                        AUDIT_ACTION
+                                            .FILE_UPLOAD_REJECTED,
+
+                                    status:
+                                        AUDIT_STATUS.FAILED,
+
+                                    ipAddress:
+                                        request.context
+                                            ?.ipAddress
+                                        ?? null,
+
+                                    userAgent:
+                                        request.context
+                                            ?.userAgent
+                                        ?? null,
+
+                                    metadata: {
+                                        reason:
+                                            FILE_UPLOAD_REJECTION_REASON
+                                                .FILE_TOO_LARGE,
+                                    },
+                                });
+                            } catch {
+                                /*
+                                 * La décision de rejet reste prioritaire sur
+                                 * sa journalisation. Une panne de l'AuditLog
+                                 * ne doit jamais masquer le 413 initial ni
+                                 * transformer l'upload en succès.
+                                 */
+                            }
+                        }
+
+                        next(convertedError);
+                        return;
+                    }
+
+                    if (error) {
+                        /*
+                         * Une erreur inconnue peut provenir du système de
+                         * fichiers. Elle reste technique et doit être traitée
+                         * comme telle par le gestionnaire centralisé.
+                         */
+                        next(error);
+                        return;
+                    }
+
+                    if (!request.file) {
+                        next(
+                            new AppError(
+                                'Aucun fichier valide n’a été fourni.',
+                                400,
+                            ),
+                        );
+                        return;
+                    }
+
+                    next();
+                },
+            );
+        };
     };
 };
 
 
-export { uploadSingleFile };
+/**
+ * Instance applicative utilisant les dépendances réelles.
+ */
+const uploadSingleFile =
+    createUploadSingleFile({
+        upload: multerUpload,
+        createAuditEvent: createAuditLog,
+    });
+
+
+export {
+    createUploadSingleFile,
+    uploadSingleFile,
+};
