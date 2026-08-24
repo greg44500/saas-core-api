@@ -12,6 +12,10 @@ import {
     reserveUsageMetricWithinLimit,
 } from '../usageMetric/usageMetric.service.js';
 
+import {
+    PlanLimitExceededError,
+} from './planLimitExceeded.error.js';
+
 /**
  * Vérifie qu'une valeur représente un compteur de consommation valide.
  *
@@ -276,9 +280,9 @@ const reservePlanLimitForEntitlement = async ({
         });
 
     if (!usageMetric) {
-        throw new AppError(
+        throw new PlanLimitExceededError(
             `La limite ${metricKey} du plan est atteinte.`,
-            403,
+            metricKey,
         );
     }
 

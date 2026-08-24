@@ -29,6 +29,10 @@ import {
     fileUploadRejectedError,
 } from '../../modules/file/fileUploadRejected.error.js';
 
+import {
+    PlanLimitExceededError,
+} from '../../modules/plan/planLimitExceeded.error.js';
+
 
 const WORKSPACE_ID =
     '64b64c0f2f4b1a0012345678';
@@ -792,6 +796,190 @@ describe('File service', () => {
             expect(
                 dependencies.createAuditEvent,
             ).not.toHaveBeenCalled();
+        },
+    );
+
+    it(
+        'compense le stockage puis audite le rejet lorsque la limite du plan est atteinte',
+        async () => {
+            const dependencies =
+                createDependencies();
+
+            const planLimitError =
+                new PlanLimitExceededError(
+                    'La limite storage_bytes du plan est atteinte.',
+                    'storage_bytes',
+                );
+
+            dependencies
+                .persistFileMetadataWithinPlanLimits
+                .mockRejectedValue(
+                    planLimitError,
+                );
+
+            const service = createFileService(
+                dependencies,
+            );
+
+            await expect(
+                persistFile({
+                    service,
+                }),
+            ).rejects.toBe(
+                planLimitError,
+            );
+
+            expect(
+                dependencies.deleteStoredFile,
+            ).toHaveBeenCalledWith({
+                provider:
+                    FILE_STORAGE_PROVIDER.LOCAL,
+                storageKey:
+                    STORAGE_KEY,
+            });
+
+            expect(
+                dependencies.createAuditEvent,
+            ).toHaveBeenCalledWith({
+                actor: USER_ID,
+                workspace: WORKSPACE_ID,
+                action:
+                    AUDIT_ACTION.FILE_UPLOAD_REJECTED,
+                status:
+                    AUDIT_STATUS.FAILED,
+                ipAddress: IP_ADDRESS,
+                userAgent: USER_AGENT,
+                metadata: {
+                    reason:
+                        FILE_UPLOAD_REJECTION_REASON
+                            .PLAN_LIMIT_REACHED,
+                    sizeBytes: 1_024,
+                },
+            });
+
+            /*
+             * Le rejet ne peut être audité qu'après confirmation de la
+             * compensation physique.
+             */
+            expect(
+                dependencies.deleteStoredFile
+                    .mock.invocationCallOrder[0],
+            ).toBeLessThan(
+                dependencies.createAuditEvent
+                    .mock.invocationCallOrder[0],
+            );
+
+            expect(
+                dependencies.discardTemporaryFile,
+            ).not.toHaveBeenCalled();
+        },
+    );
+
+    it(
+        "n'audite pas le rejet de quota si la compensation physique échoue",
+        async () => {
+            const dependencies =
+                createDependencies();
+
+            const planLimitError =
+                new PlanLimitExceededError(
+                    'La limite storage_bytes du plan est atteinte.',
+                    'storage_bytes',
+                );
+
+            const compensationError =
+                new Error(
+                    'Physical deletion failed',
+                );
+
+            dependencies
+                .persistFileMetadataWithinPlanLimits
+                .mockRejectedValue(
+                    planLimitError,
+                );
+
+            dependencies.deleteStoredFile
+                .mockRejectedValue(
+                    compensationError,
+                );
+
+            const service = createFileService(
+                dependencies,
+            );
+
+            try {
+                await persistFile({
+                    service,
+                });
+
+                throw new Error(
+                    'Le service aurait dû rejeter la promesse.',
+                );
+            } catch (error) {
+                expect(error)
+                    .toBeInstanceOf(
+                        AggregateError,
+                    );
+
+                expect(error.errors).toEqual([
+                    planLimitError,
+                    compensationError,
+                ]);
+
+                expect(error.cause)
+                    .toBe(planLimitError);
+            }
+
+            expect(
+                dependencies.createAuditEvent,
+            ).not.toHaveBeenCalled();
+        },
+    );
+
+    it(
+        "conserve le rejet de quota lorsque l'écriture de l'AuditLog échoue",
+        async () => {
+            const dependencies =
+                createDependencies();
+
+            const planLimitError =
+                new PlanLimitExceededError(
+                    'La limite file_uploads_monthly du plan est atteinte.',
+                    'file_uploads_monthly',
+                );
+
+            dependencies
+                .persistFileMetadataWithinPlanLimits
+                .mockRejectedValue(
+                    planLimitError,
+                );
+
+            dependencies.createAuditEvent
+                .mockRejectedValue(
+                    new Error(
+                        'AuditLog unavailable',
+                    ),
+                );
+
+            const service = createFileService(
+                dependencies,
+            );
+
+            await expect(
+                persistFile({
+                    service,
+                }),
+            ).rejects.toBe(
+                planLimitError,
+            );
+
+            expect(
+                dependencies.deleteStoredFile,
+            ).toHaveBeenCalledTimes(1);
+
+            expect(
+                dependencies.createAuditEvent,
+            ).toHaveBeenCalledTimes(1);
         },
     );
 });

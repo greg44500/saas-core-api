@@ -38,7 +38,7 @@ describe('fileUploadRejectedError', () => {
         );
 
         expect(error.name).toBe(
-            'fileUploadRejectedError',
+            'FileUploadRejectedError',
         );
     });
 

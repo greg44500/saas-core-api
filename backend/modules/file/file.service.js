@@ -14,6 +14,10 @@ import {
 } from '../../constants/auditActions.constants.js';
 
 import {
+    FILE_UPLOAD_REJECTION_REASON,
+} from '../../constants/fileAudit.constants.js';
+
+import {
     createAuditLog,
 } from '../auditLog/auditLog.service.js';
 
@@ -33,6 +37,10 @@ import {
 import {
     filePersistenceService,
 } from './filePersistence.service.js';
+
+import {
+    PlanLimitExceededError,
+} from '../plan/planLimitExceeded.error.js';
 
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
@@ -451,6 +459,76 @@ const createFileService = ({
              * sont la seule identité fiable pour la compensation. On ne les
              * reconstruit pas depuis les paramètres initiaux.
              */
+            if (
+                databaseError
+                instanceof PlanLimitExceededError
+            ) {
+                /*
+                 * Le dépassement de quota intervient après le stockage
+                 * physique mais avant la création durable du document File.
+                 *
+                 * La suppression du contenu définitif doit donc réussir avant
+                 * que le rejet soit considéré comme complètement traité.
+                 */
+                try {
+                    await deleteStoredFile({
+                        provider:
+                            storageResult.storageProvider,
+                        storageKey:
+                            storageResult.storageKey,
+                    });
+                } catch (compensationError) {
+                    /*
+                     * Si la compensation échoue, on conserve les deux causes.
+                     * Aucun FILE_UPLOAD_REJECTED n'est écrit à ce stade car
+                     * le contenu physique n'a pas été confirmé comme supprimé.
+                     */
+                    throw new AggregateError(
+                        [
+                            databaseError,
+                            compensationError,
+                        ],
+                        'Le dépassement de limite du plan et la compensation du stockage ont échoué.',
+                        {
+                            cause: databaseError,
+                        },
+                    );
+                }
+
+                /*
+                 * La transaction MongoDB a été annulée et le contenu physique
+                 * a été supprimé. Le rejet peut maintenant être journalisé
+                 * sans laisser croire qu'un fichier durable existe encore.
+                 */
+                try {
+                    await createAuditEvent({
+                        actor: uploadedBy,
+                        workspace: workspaceId,
+                        action:
+                            AUDIT_ACTION.FILE_UPLOAD_REJECTED,
+                        status:
+                            AUDIT_STATUS.FAILED,
+                        ipAddress,
+                        userAgent,
+                        metadata: {
+                            reason:
+                                FILE_UPLOAD_REJECTION_REASON
+                                    .PLAN_LIMIT_REACHED,
+                            sizeBytes:
+                                inspectedFile.sizeBytes,
+                        },
+                    });
+                } catch {
+                    /*
+                     * Le refus imposé par le plan reste prioritaire sur sa
+                     * journalisation. Une indisponibilité de l'AuditLog ne
+                     * doit jamais permettre l'upload ni masquer le 403 initial.
+                     */
+                }
+
+                throw databaseError;
+            }
+
             return compensateAndThrow({
                 processingError: databaseError,
                 compensate: () =>

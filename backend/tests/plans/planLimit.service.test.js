@@ -20,6 +20,10 @@ import {
     reserveUsageMetricWithinLimit,
 } from '../../modules/usageMetric/usageMetric.service.js';
 
+import {
+    PlanLimitExceededError,
+} from '../../modules/plan/planLimitExceeded.error.js';
+
 vi.mock(
     '../../modules/subscriptions/subscription.service.js',
     () => ({
@@ -238,18 +242,28 @@ describe('enforcePlanLimit', () => {
          * null signifie que la condition atomique n'a trouvé aucune capacité
          * suffisante au moment exact de la réservation.
          */
-        reserveUsageMetricWithinLimit.mockResolvedValue(null);
+        reserveUsageMetricWithinLimit.mockResolvedValue(
+            null,
+        );
 
-        await expect(
-            enforcePlanLimit({
-                workspaceId: 'workspace-id',
-                metricKey: 'members',
-                amount: 1,
-            }),
-        ).rejects.toMatchObject({
+        const error = await enforcePlanLimit({
+            workspaceId: 'workspace-id',
+            metricKey: 'members',
+            amount: 1,
+        }).catch(
+            (caughtError) => caughtError,
+        );
+
+        expect(error).toBeInstanceOf(
+            PlanLimitExceededError,
+        );
+
+        expect(error).toMatchObject({
+            name: 'PlanLimitExceededError',
             message:
                 'La limite members du plan est atteinte.',
             statusCode: 403,
+            metricKey: 'members',
         });
     });
 });
