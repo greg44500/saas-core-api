@@ -28,3 +28,19 @@ export {
 export {
     revokePlatformUserSessions,
 } from './services/revokePlatformUserSessions.service.js';
+
+export {
+    listPlatformWorkspaces,
+} from './services/listPlatformWorkspaces.service.js';
+
+export {
+    getPlatformWorkspace,
+} from './services/getPlatformWorkspace.service.js';
+
+export {
+    suspendPlatformWorkspace,
+} from './services/suspendPlatformWorkspace.service.js';
+
+export {
+    reactivatePlatformWorkspace,
+} from './services/reactivatePlatformWorkspace.service.js';

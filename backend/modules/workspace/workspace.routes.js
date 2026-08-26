@@ -17,9 +17,13 @@ import {
 import {
     createWorkspaceSchema,
     updateWorkspaceSchema,
-    listWorkspaceMembersQuerySchema,
     workspaceIdParamsSchema,
 } from './workspace.validation.js';
+
+import {
+    paginationQuerySchema,
+} from '../../utils/validations/pagination.validation.js';
+
 
 
 const router = Router();
@@ -58,7 +62,7 @@ router.get(
     authenticate,
     validateRequest({
         params: workspaceIdParamsSchema,
-        query: listWorkspaceMembersQuerySchema,
+        query: paginationQuerySchema,
     }),
     loadWorkspaceContext,
     authorizePermission(
@@ -106,6 +110,5 @@ router.patch(
     ),
     update,
 );
-
 
 export { router as workspaceRouter };

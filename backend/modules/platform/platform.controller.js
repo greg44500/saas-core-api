@@ -5,6 +5,10 @@ import {
     listPlatformUsers,
     updatePlatformUserRole,
     revokePlatformUserSessions,
+    listPlatformWorkspaces,
+    getPlatformWorkspace,
+    suspendPlatformWorkspace,
+    reactivatePlatformWorkspace,
 } from './platform.service.js';
 
 import { AppError } from '../../utils/appError.js';
@@ -157,6 +161,128 @@ const revokeUserSessions = async (req, res) => {
     });
 };
 
+const listWorkspaces = async (req, res) => {
+    const {
+        workspaces,
+        pagination,
+    } = await listPlatformWorkspaces({
+        page: req.validated.query.page,
+        limit: req.validated.query.limit,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            workspaces,
+        },
+        meta: pagination,
+    });
+};
+
+/**
+ * Retourne le détail administratif d'un workspace.
+ *
+ * Le service retourne null lorsque le workspace n'existe pas afin de rester
+ * indépendant du protocole HTTP. Le controller traduit ici cette absence en
+ * réponse 404, ce qui appartient à sa responsabilité de couche HTTP.
+ *
+ * L'autorisation Platform et la validation du workspaceId sont appliquées
+ * en amont par la route.
+ */
+
+const getWorkspaceById = async (req, res) => {
+    const workspace = await getPlatformWorkspace({
+        workspaceId:
+            req.validated.params.workspaceId,
+    });
+
+    if (!workspace) {
+        return res.status(404).json({
+            status: 'fail',
+            message: 'Workspace introuvable',
+        });
+    }
+
+    return res.status(200).json({
+        status: 'success',
+        data: {
+            workspace,
+        },
+    });
+};
+
+/**
+ * Suspend administrativement un workspace.
+ *
+ * La validation du workspaceId et du motif de suspension est réalisée
+ * en amont par la route. Le controller se limite donc à traduire
+ * la requête HTTP en appel de service puis à formater la réponse.
+ *
+ * Les informations de contexte de requête sont transmises au service
+ * afin que l'action soit correctement attribuée dans l'AuditLog.
+ */
+const suspendWorkspace = async (req, res) => {
+    const workspace =
+        await suspendPlatformWorkspace({
+            workspaceId:
+                req.validated.params.workspaceId,
+            actorId:
+                req.user.id,
+            statusReason:
+                req.validated.body.statusReason,
+            statusReasonDetails:
+                req.validated.body
+                    .statusReasonDetails
+                ?? null,
+            ipAddress:
+                req.context?.ipAddress
+                ?? null,
+            userAgent:
+                req.context?.userAgent
+                ?? null,
+        });
+
+    return res.status(200).json({
+        status: 'success',
+        data: {
+            workspace,
+        },
+    });
+};
+
+/**
+ * Réactive administrativement un workspace suspendu.
+ *
+ * Le workspaceId est validé en amont par la route.
+ * Le controller transmet également le contexte de requête afin que
+ * l'action soit correctement attribuée dans l'AuditLog.
+ *
+ * La logique métier de transition SUSPENDED → ACTIVE reste entièrement
+ * dans le service.
+ */
+const reactivateWorkspace = async (req, res) => {
+    const workspace =
+        await reactivatePlatformWorkspace({
+            workspaceId:
+                req.validated.params.workspaceId,
+            actorId:
+                req.user.id,
+            ipAddress:
+                req.context?.ipAddress
+                ?? null,
+            userAgent:
+                req.context?.userAgent
+                ?? null,
+        });
+
+    return res.status(200).json({
+        status: 'success',
+        data: {
+            workspace,
+        },
+    });
+};
+
 
 export {
     disableUser,
@@ -165,4 +291,8 @@ export {
     listUsers,
     updateUserRole,
     revokeUserSessions,
+    listWorkspaces,
+    getWorkspaceById,
+    suspendWorkspace,
+    reactivateWorkspace
 };

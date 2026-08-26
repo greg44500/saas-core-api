@@ -32,6 +32,10 @@ import {
     listUsers,
     revokeUserSessions,
     updateUserRole,
+    listWorkspaces,
+    getWorkspaceById,
+    suspendWorkspace,
+    reactivateWorkspace,
 } from '../../modules/platform/platform.controller.js';
 
 import {
@@ -40,10 +44,15 @@ import {
 
 import {
     disablePlatformUserBodySchema,
-    listPlatformUsersQuerySchema,
     platformUserIdParamsSchema,
+    platformWorkspaceIdParamsSchema,
     updatePlatformUserRoleBodySchema,
+    suspendPlatformWorkspaceBodySchema,
 } from '../../modules/platform/platform.validation.js';
+
+import {
+    paginationQuerySchema,
+} from '../../utils/validations/pagination.validation.js';
 
 
 const {
@@ -144,6 +153,34 @@ vi.mock(
                 status: 'success',
             });
         }),
+        listWorkspaces: vi.fn(
+            (req, res) => {
+                res.status(200).json({
+                    status: 'success',
+                });
+            },
+        ),
+        getWorkspaceById: vi.fn(
+            (req, res) => {
+                res.status(200).json({
+                    status: 'success',
+                });
+            },
+        ),
+        suspendWorkspace: vi.fn(
+            (req, res) => {
+                res.status(200).json({
+                    status: 'success',
+                });
+            },
+        ),
+        reactivateWorkspace: vi.fn(
+            (req, res) => {
+                res.status(200).json({
+                    status: 'success',
+                });
+            },
+        ),
     }),
 );
 
@@ -158,6 +195,10 @@ beforeEach(() => {
     enableUser.mockClear();
     updateUserRole.mockClear();
     revokeUserSessions.mockClear();
+    listWorkspaces.mockClear();
+    getWorkspaceById.mockClear();
+    suspendWorkspace.mockClear();
+    reactivateWorkspace.mockClear();
 });
 
 
@@ -189,7 +230,7 @@ describe('platform.routes', () => {
             validateRequest,
         ).toHaveBeenCalledWith({
             query:
-                listPlatformUsersQuerySchema,
+                paginationQuerySchema,
         });
 
         expect(
@@ -623,6 +664,253 @@ describe('platform.routes', () => {
                 .invocationCallOrder[0],
         ).toBeLessThan(
             revokeUserSessions
+                .mock
+                .invocationCallOrder[0],
+        );
+    });
+
+    it('protège et valide la liste des workspaces avant d’appeler le controller', async () => {
+        const app = express();
+
+        app.use(express.json());
+
+        app.use(
+            '/platform',
+            platformRouter,
+        );
+
+        const response = await request(app)
+            .get(
+                '/platform/workspaces?page=1&limit=20',
+            );
+
+        expect(response.status).toBe(200);
+
+        expect(
+            authorizePlatformRole,
+        ).toHaveBeenCalledWith(
+            PLATFORM_ROLE.SUPER_ADMIN,
+        );
+
+        expect(
+            validateRequest,
+        ).toHaveBeenCalledWith({
+            query: paginationQuerySchema,
+        });
+
+        expect(
+            authenticate,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            platformRoleMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            validationMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            listWorkspaces,
+        ).toHaveBeenCalledOnce();
+
+        /*
+         * Une route Platform ne doit jamais atteindre
+         * son controller avant les barrières de sécurité
+         * et de validation.
+         */
+        expect(
+            authenticate
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            platformRoleMiddleware
+                .mock
+                .invocationCallOrder[0],
+        );
+
+        expect(
+            platformRoleMiddleware
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            validationMiddleware
+                .mock
+                .invocationCallOrder[0],
+        );
+
+        expect(
+            validationMiddleware
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            listWorkspaces
+                .mock
+                .invocationCallOrder[0],
+        );
+    });
+    it('protège et valide la suspension d’un workspace avant d’appeler le controller', async () => {
+        const app = express();
+
+        app.use(express.json());
+
+        app.use(
+            '/platform',
+            platformRouter,
+        );
+
+        const response = await request(app)
+            .patch(
+                '/platform/workspaces/507f1f77bcf86cd799439011/suspend',
+            )
+            .send({
+                statusReason:
+                    'administrative_review',
+            });
+
+        expect(response.status).toBe(200);
+
+        expect(
+            authorizePlatformRole,
+        ).toHaveBeenCalledWith(
+            PLATFORM_ROLE.SUPER_ADMIN,
+        );
+
+        expect(
+            validateRequest,
+        ).toHaveBeenCalledWith({
+            params:
+                platformWorkspaceIdParamsSchema,
+            body:
+                suspendPlatformWorkspaceBodySchema,
+        });
+
+        expect(
+            authenticate,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            platformRoleMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            validationMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            suspendWorkspace,
+        ).toHaveBeenCalledOnce();
+
+        /*
+         * La mutation ne doit atteindre le controller qu'après
+         * authentification, autorisation Platform et validation.
+         */
+        expect(
+            authenticate
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            platformRoleMiddleware
+                .mock
+                .invocationCallOrder[0],
+        );
+
+        expect(
+            platformRoleMiddleware
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            validationMiddleware
+                .mock
+                .invocationCallOrder[0],
+        );
+
+        expect(
+            validationMiddleware
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            suspendWorkspace
+                .mock
+                .invocationCallOrder[0],
+        );
+    });
+    it('protège et valide la réactivation d’un workspace avant d’appeler le controller', async () => {
+        const app = express();
+
+        app.use(express.json());
+
+        app.use(
+            '/platform',
+            platformRouter,
+        );
+
+        const response = await request(app)
+            .patch(
+                '/platform/workspaces/507f1f77bcf86cd799439011/reactivate',
+            );
+
+        expect(response.status).toBe(200);
+
+        expect(
+            authorizePlatformRole,
+        ).toHaveBeenCalledWith(
+            PLATFORM_ROLE.SUPER_ADMIN,
+        );
+
+        expect(
+            validateRequest,
+        ).toHaveBeenCalledWith({
+            params:
+                platformWorkspaceIdParamsSchema,
+        });
+
+        expect(
+            authenticate,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            platformRoleMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            validationMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            reactivateWorkspace,
+        ).toHaveBeenCalledOnce();
+
+        /*
+         * Le controller ne doit être atteint qu'après authentification,
+         * autorisation Platform et validation du workspaceId.
+         */
+        expect(
+            authenticate
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            platformRoleMiddleware
+                .mock
+                .invocationCallOrder[0],
+        );
+
+        expect(
+            platformRoleMiddleware
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            validationMiddleware
+                .mock
+                .invocationCallOrder[0],
+        );
+
+        expect(
+            validationMiddleware
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            reactivateWorkspace
                 .mock
                 .invocationCallOrder[0],
         );

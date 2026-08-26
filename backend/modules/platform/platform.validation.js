@@ -2,28 +2,9 @@ import { z } from 'zod';
 import {
     PLATFORM_ROLE,
 } from '../../constants/platformRoles.constants.js';
-
-/**
- * Valide la pagination de la liste des utilisateurs plateforme.
- *
- * Les paramètres provenant de req.query sont des chaînes.
- * coerce permet donc de les convertir explicitement en nombres
- * avant leur transmission au service.
- */
-const listPlatformUsersQuerySchema = z.strictObject({
-    page: z.coerce
-        .number()
-        .int()
-        .min(1)
-        .default(1),
-
-    limit: z.coerce
-        .number()
-        .int()
-        .min(1)
-        .max(100)
-        .default(20),
-});
+import {
+    WORKSPACE_STATUS_REASON,
+} from '../../constants/workspace.constants.js';
 
 const platformUserIdParamsSchema = z.strictObject({
     userId: z
@@ -54,10 +35,74 @@ const updatePlatformUserRoleBodySchema = z.strictObject({
     ),
 });
 
+/**
+ * Valide l'identifiant technique d'un workspace ciblé
+ * depuis les routes d'administration Platform.
+ *
+ * La validation est volontairement locale au module Platform afin
+ * d'éviter de coupler les routes administratives au module tenant.
+ */
+const platformWorkspaceIdParamsSchema = z.strictObject({
+    workspaceId: z
+        .string()
+        .regex(
+            /^[a-f\d]{24}$/i,
+            'workspaceId invalide',
+        ),
+});
+
+/**
+ * Valide les informations nécessaires à la suspension
+ * administrative d'un workspace.
+ *
+ * Un motif structuré est obligatoire afin que les décisions Platform
+ * restent exploitables dans l'administration et dans l'AuditLog.
+ *
+ * Le motif OTHER impose une justification textuelle car sa valeur
+ * structurée ne suffit pas à expliquer la décision.
+ */
+const suspendPlatformWorkspaceBodySchema = z
+    .strictObject({
+        statusReason: z.enum(
+            Object.values(
+                WORKSPACE_STATUS_REASON,
+            ),
+        ),
+
+        statusReasonDetails: z
+            .string()
+            .trim()
+            .min(3)
+            .max(500)
+            .optional(),
+    })
+    .superRefine(
+        (
+            data,
+            context,
+        ) => {
+            if (
+                data.statusReason
+                === WORKSPACE_STATUS_REASON.OTHER
+                && !data.statusReasonDetails
+            ) {
+                context.addIssue({
+                    code: 'custom',
+                    path: [
+                        'statusReasonDetails',
+                    ],
+                    message:
+                        'statusReasonDetails est requis lorsque statusReason vaut other',
+                });
+            }
+        },
+    );
+
 
 export {
-    listPlatformUsersQuerySchema,
     disablePlatformUserBodySchema,
     platformUserIdParamsSchema,
+    platformWorkspaceIdParamsSchema,
     updatePlatformUserRoleBodySchema,
+    suspendPlatformWorkspaceBodySchema,
 };

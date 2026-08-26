@@ -32,30 +32,10 @@ const workspaceIdParamsSchema = z.strictObject({
         ),
 });
 
-/**
- * Valide la pagination de la liste des membres.
- *
- * Les valeurs provenant de req.query sont des chaînes :
- * coerce les convertit donc explicitement en nombres.
- */
-const listWorkspaceMembersQuerySchema = z.strictObject({
-    page: z.coerce
-        .number()
-        .int()
-        .min(1)
-        .default(1),
 
-    limit: z.coerce
-        .number()
-        .int()
-        .min(1)
-        .max(100)
-        .default(20),
-});
 
 export {
     createWorkspaceSchema,
-    listWorkspaceMembersQuerySchema,
     workspaceIdParamsSchema,
     updateWorkspaceSchema,
 };
