@@ -17,7 +17,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "seed:plans": "node backend/seeds/seedPlans.js"
+    "seed:plans": "node backend/seeds/seedPlans.js",
+    "seed:super-admin": "node backend/seeds/seedSuperAdmin.js"
   },
   "license": "UNLICENSED",
   "dependencies": {
