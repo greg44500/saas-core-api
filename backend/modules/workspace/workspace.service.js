@@ -427,6 +427,8 @@ const updateWorkspace = async ({
     workspaceId,
     name,
     actorId,
+    ipAddress = null,
+    userAgent = null,
 }) => {
     if (!workspaceId || !name || !actorId) {
         throw new TypeError(
@@ -434,21 +436,76 @@ const updateWorkspace = async ({
         );
     }
 
-    return Workspace.findOneAndUpdate(
-        {
-            _id: workspaceId,
-            status: WORKSPACE_STATUS.ACTIVE,
+    return mongoose.connection.transaction(
+        async (session) => {
+            const workspace =
+                await Workspace.findOneAndUpdate(
+                    {
+                        _id: workspaceId,
+                        status:
+                            WORKSPACE_STATUS.ACTIVE,
+                    },
+                    {
+                        $set: {
+                            name,
+                            updatedBy: actorId,
+                        },
+                    },
+                    {
+                        returnDocument: 'after',
+                        runValidators: true,
+                        session,
+                    },
+                );
+
+            /*
+             * Le workspace peut avoir été suspendu entre
+             * loadWorkspaceContext et cette écriture.
+             *
+             * Aucun AuditLog de succès ne doit être créé
+             * lorsqu'aucune modification n'a eu lieu.
+             */
+            if (!workspace) {
+                return null;
+            }
+
+            /*
+             * La modification et sa trace constituent une
+             * seule opération durable. Un échec de l'audit
+             * annule donc également la mutation du workspace.
+             */
+            await createAuditLog(
+                {
+                    actor: actorId,
+                    workspace: workspace._id,
+
+                    action:
+                        AUDIT_ACTION.WORKSPACE_UPDATED,
+
+                    entityType:
+                        AUDIT_ENTITY_TYPE.WORKSPACE,
+
+                    entityId: workspace._id,
+
+                    status:
+                        AUDIT_STATUS.SUCCESS,
+
+                    ipAddress,
+                    userAgent,
+
+                    metadata: {
+                        changedFields: [
+                            'name',
+                        ],
+                    },
+                },
+                {
+                    session,
+                },
+            );
+
+            return workspace;
         },
-        {
-            $set: {
-                name,
-                updatedBy: actorId,
-            },
-        },
-        {
-            returnDocument: 'after',
-            runValidators: true,
-        }
     );
 };
 

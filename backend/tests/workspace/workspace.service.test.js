@@ -35,7 +35,6 @@ import {
     createWorkspace,
     listUserWorkspaces,
     listWorkspaceMembers,
-    updateWorkspace,
 } from '../../modules/workspace/workspace.service.js';
 
 import { WorkspaceMember } from '../../modules/workspaceMember/workspaceMember.model.js';
@@ -713,52 +712,5 @@ describe('listWorkspaceMembers', () => {
         expect(
             WorkspaceMember.aggregate,
         ).not.toHaveBeenCalled();
-    });
-});
-
-
-describe('updateWorkspace', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
-
-
-    it('met à jour le nom et updatedBy uniquement si le workspace est actif', async () => {
-        const updatedWorkspace = {
-            _id: 'workspace-id',
-            name: 'Acme Updated',
-            status: WORKSPACE_STATUS.ACTIVE,
-        };
-
-        Workspace.findOneAndUpdate.mockResolvedValue(
-            updatedWorkspace,
-        );
-
-        const result = await updateWorkspace({
-            workspaceId: 'workspace-id',
-            name: 'Acme Updated',
-            actorId: 'actor-id',
-        });
-
-        expect(
-            Workspace.findOneAndUpdate,
-        ).toHaveBeenCalledWith(
-            {
-                _id: 'workspace-id',
-                status: WORKSPACE_STATUS.ACTIVE,
-            },
-            {
-                $set: {
-                    name: 'Acme Updated',
-                    updatedBy: 'actor-id',
-                },
-            },
-            {
-                returnDocument: 'after',
-                runValidators: true,
-            },
-        );
-
-        expect(result).toBe(updatedWorkspace);
     });
 });

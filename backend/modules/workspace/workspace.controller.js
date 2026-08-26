@@ -126,6 +126,10 @@ export const update = async (req, res) => {
         workspaceId: req.workspace._id,
         name: req.validated.body.name,
         actorId: req.user.id,
+        ipAddress:
+            req.context.ipAddress,
+        userAgent:
+            req.context.userAgent,
     });
 
     /**

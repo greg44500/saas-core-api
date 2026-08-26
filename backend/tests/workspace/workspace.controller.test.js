@@ -157,6 +157,10 @@ describe('workspace.controller', () => {
             user: {
                 id: 'user-id',
             },
+            context: {
+                ipAddress: '127.0.0.1',
+                userAgent: 'vitest-agent',
+            },
         };
 
         const res = {
@@ -172,6 +176,8 @@ describe('workspace.controller', () => {
             workspaceId: 'workspace-id',
             name: 'Acme Updated',
             actorId: 'user-id',
+            ipAddress: '127.0.0.1',
+            userAgent: 'vitest-agent',
         });
 
         expect(res.status).toHaveBeenCalledWith(200);
@@ -206,6 +212,10 @@ describe('workspace.controller', () => {
             user: {
                 id: 'user-id',
             },
+            context: {
+                ipAddress: '127.0.0.1',
+                userAgent: 'vitest-agent',
+            },
         };
 
         const res = {
@@ -223,6 +233,8 @@ describe('workspace.controller', () => {
             workspaceId: 'workspace-id',
             name: 'Acme Updated',
             actorId: 'user-id',
+            ipAddress: '127.0.0.1',
+            userAgent: 'vitest-agent',
         });
 
         expect(res.status).not.toHaveBeenCalled();
