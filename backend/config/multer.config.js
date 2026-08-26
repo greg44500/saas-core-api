@@ -9,7 +9,13 @@ import {
 import { storageConfig } from './storage.config.js';
 import { env } from './env.js';
 
-import { AppError } from '../utils/appError.js';
+import {
+    FILE_UPLOAD_REJECTION_REASON,
+} from '../constants/fileAudit.constants.js';
+
+import {
+    fileUploadRejectedError,
+} from '../modules/file/fileUploadRejected.error.js';
 
 
 /**
@@ -48,9 +54,11 @@ const preliminaryMimeTypeFilter = (
         )
     ) {
         callback(
-            new AppError(
+            new fileUploadRejectedError(
                 'Le type de fichier déclaré n’est pas autorisé.',
                 415,
+                FILE_UPLOAD_REJECTION_REASON
+                    .FILE_TYPE_NOT_ALLOWED,
             ),
         );
 

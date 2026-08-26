@@ -17,6 +17,10 @@ import {
 
 import { AppError } from '../utils/appError.js';
 
+import {
+    fileUploadRejectedError,
+} from '../modules/file/fileUploadRejected.error.js';
+
 
 /**
  * Traduit une erreur Multer en erreur HTTP opérationnelle.
@@ -103,6 +107,61 @@ const createUploadSingleFile = ({
                 request,
                 response,
                 async (error) => {
+                    if (
+                        error
+                        instanceof fileUploadRejectedError
+                    ) {
+                        /*
+                         * Le rejet intervient avant la création du document File.
+                         * L'audit est donc rattaché uniquement à l'acteur et
+                         * au workspace.
+                         *
+                         * La raison structurée portée par l'erreur permet de
+                         * journaliser le rejet sans dépendre du message HTTP.
+                         */
+                        try {
+                            await createAuditEvent({
+                                actor:
+                                    request.user?._id
+                                    ?? null,
+
+                                workspace:
+                                    request.workspace?._id
+                                    ?? null,
+
+                                action:
+                                    AUDIT_ACTION
+                                        .FILE_UPLOAD_REJECTED,
+
+                                status:
+                                    AUDIT_STATUS.FAILED,
+
+                                ipAddress:
+                                    request.context
+                                        ?.ipAddress
+                                    ?? null,
+
+                                userAgent:
+                                    request.context
+                                        ?.userAgent
+                                    ?? null,
+
+                                metadata: {
+                                    reason:
+                                        error.rejectionReason,
+                                },
+                            });
+                        } catch {
+                            /*
+                             * L'échec de l'audit ne doit jamais masquer
+                             * la décision initiale de rejet du fichier.
+                             */
+                        }
+
+                        next(error);
+                        return;
+                    }
+
                     if (error instanceof AppError) {
                         next(error);
                         return;

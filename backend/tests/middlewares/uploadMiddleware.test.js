@@ -175,6 +175,25 @@ describe('Upload middleware', () => {
             message:
                 'Le type de fichier déclaré n’est pas autorisé.',
         });
+        expect(createAuditEvent)
+            .toHaveBeenCalledOnce();
+
+        expect(createAuditEvent)
+            .toHaveBeenCalledWith({
+                actor: 'user-id',
+                workspace: 'workspace-id',
+                action:
+                    AUDIT_ACTION.FILE_UPLOAD_REJECTED,
+                status:
+                    AUDIT_STATUS.FAILED,
+                ipAddress: '127.0.0.1',
+                userAgent: 'vitest-agent',
+                metadata: {
+                    reason:
+                        FILE_UPLOAD_REJECTION_REASON
+                            .FILE_TYPE_NOT_ALLOWED,
+                },
+            });
     });
 
 
@@ -252,4 +271,34 @@ describe('Upload middleware', () => {
                 'Le fichier dépasse la taille maximale autorisée.',
         });
     });
+    it(
+        'conserve le rejet MIME lorsque son audit échoue',
+        async () => {
+            createAuditEvent.mockRejectedValueOnce(
+                new Error('Audit indisponible'),
+            );
+
+            const response = await supertest(createTestApp())
+                .post('/upload')
+                .attach(
+                    'file',
+                    Buffer.from('contenu texte'),
+                    {
+                        filename: 'document.txt',
+                        contentType: 'text/plain',
+                    },
+                );
+
+            expect(createAuditEvent)
+                .toHaveBeenCalledOnce();
+
+            expect(response.status).toBe(415);
+
+            expect(response.body).toEqual({
+                status: 'fail',
+                message:
+                    'Le type de fichier déclaré n’est pas autorisé.',
+            });
+        },
+    );
 });
