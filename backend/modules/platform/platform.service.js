@@ -24,3 +24,7 @@ export {
 export {
     updatePlatformUserRole,
 } from './services/updatePlatformUserRole.service.js';
+
+export {
+    revokePlatformUserSessions,
+} from './services/revokePlatformUserSessions.service.js';

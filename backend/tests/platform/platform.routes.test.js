@@ -30,6 +30,7 @@ import {
     enableUser,
     getUserById,
     listUsers,
+    revokeUserSessions,
     updateUserRole,
 } from '../../modules/platform/platform.controller.js';
 
@@ -138,6 +139,11 @@ vi.mock(
                 status: 'success',
             });
         }),
+        revokeUserSessions: vi.fn((req, res) => {
+            res.status(200).json({
+                status: 'success',
+            });
+        }),
     }),
 );
 
@@ -151,6 +157,7 @@ beforeEach(() => {
     disableUser.mockClear();
     enableUser.mockClear();
     updateUserRole.mockClear();
+    revokeUserSessions.mockClear();
 });
 
 
@@ -467,82 +474,157 @@ describe('platform.routes', () => {
         );
     });
     it('protège et valide le changement de rôle plateforme avant d’appeler le controller', async () => {
-    const app = express();
+        const app = express();
 
-    app.use(express.json());
+        app.use(express.json());
 
-    app.use(
-        '/platform',
-        platformRouter,
-    );
+        app.use(
+            '/platform',
+            platformRouter,
+        );
 
-    const response = await request(app)
-        .patch(
-            '/platform/users/507f1f77bcf86cd799439011/role',
-        )
-        .send({
-            platformRole: PLATFORM_ROLE.ADMIN,
+        const response = await request(app)
+            .patch(
+                '/platform/users/507f1f77bcf86cd799439011/role',
+            )
+            .send({
+                platformRole: PLATFORM_ROLE.ADMIN,
+            });
+
+        expect(response.status).toBe(200);
+
+        expect(
+            authorizePlatformRole,
+        ).toHaveBeenCalledWith(
+            PLATFORM_ROLE.SUPER_ADMIN,
+        );
+
+        expect(
+            validateRequest,
+        ).toHaveBeenCalledWith({
+            params: platformUserIdParamsSchema,
+            body: updatePlatformUserRoleBodySchema,
         });
 
-    expect(response.status).toBe(200);
+        expect(
+            authenticate,
+        ).toHaveBeenCalledOnce();
 
-    expect(
-        authorizePlatformRole,
-    ).toHaveBeenCalledWith(
-        PLATFORM_ROLE.SUPER_ADMIN,
-    );
+        expect(
+            platformRoleMiddleware,
+        ).toHaveBeenCalledOnce();
 
-    expect(
-        validateRequest,
-    ).toHaveBeenCalledWith({
-        params: platformUserIdParamsSchema,
-        body: updatePlatformUserRoleBodySchema,
+        expect(
+            validationMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            updateUserRole,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            authenticate
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            platformRoleMiddleware
+                .mock
+                .invocationCallOrder[0],
+        );
+
+        expect(
+            platformRoleMiddleware
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            validationMiddleware
+                .mock
+                .invocationCallOrder[0],
+        );
+
+        expect(
+            validationMiddleware
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            updateUserRole
+                .mock
+                .invocationCallOrder[0],
+        );
     });
+    it('protège et valide la révocation des sessions avant d’appeler le controller', async () => {
+        const app = express();
 
-    expect(
-        authenticate,
-    ).toHaveBeenCalledOnce();
+        app.use(express.json());
 
-    expect(
-        platformRoleMiddleware,
-    ).toHaveBeenCalledOnce();
+        app.use(
+            '/platform',
+            platformRouter,
+        );
 
-    expect(
-        validationMiddleware,
-    ).toHaveBeenCalledOnce();
+        const response = await request(app)
+            .post(
+                '/platform/users/507f1f77bcf86cd799439011/revoke-sessions',
+            );
 
-    expect(
-        updateUserRole,
-    ).toHaveBeenCalledOnce();
+        expect(response.status).toBe(200);
 
-    expect(
-        authenticate
-            .mock
-            .invocationCallOrder[0],
-    ).toBeLessThan(
-        platformRoleMiddleware
-            .mock
-            .invocationCallOrder[0],
-    );
+        expect(
+            authorizePlatformRole,
+        ).toHaveBeenCalledWith(
+            PLATFORM_ROLE.SUPER_ADMIN,
+        );
 
-    expect(
-        platformRoleMiddleware
-            .mock
-            .invocationCallOrder[0],
-    ).toBeLessThan(
-        validationMiddleware
-            .mock
-            .invocationCallOrder[0],
-    );
+        expect(
+            validateRequest,
+        ).toHaveBeenCalledWith({
+            params: platformUserIdParamsSchema,
+        });
 
-    expect(
-        validationMiddleware
-            .mock
-            .invocationCallOrder[0],
-    ).toBeLessThan(
-        updateUserRole
-            .mock
-            .invocationCallOrder[0],
-    );
-});
+        expect(
+            authenticate,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            platformRoleMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            validationMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            revokeUserSessions,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            authenticate
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            platformRoleMiddleware
+                .mock
+                .invocationCallOrder[0],
+        );
+
+        expect(
+            platformRoleMiddleware
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            validationMiddleware
+                .mock
+                .invocationCallOrder[0],
+        );
+
+        expect(
+            validationMiddleware
+                .mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            revokeUserSessions
+                .mock
+                .invocationCallOrder[0],
+        );
+    });
 });

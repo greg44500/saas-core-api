@@ -24,6 +24,7 @@ import {
     enableUser,
     getUserById,
     listUsers,
+    revokeUserSessions,
     updateUserRole,
 } from './platform.controller.js';
 
@@ -106,6 +107,24 @@ platformRouter.patch(
     }),
     enableUser,
 );
+
+/**
+ * Révoque toutes les sessions actives d'un utilisateur.
+ *
+ * Cette action de sécurité est réservée au super-admin.
+ * L'utilisateur ciblé devra se reconnecter sur tous ses appareils.
+ */
+platformRouter.post(
+    '/users/:userId/revoke-sessions',
+    authorizePlatformRole(
+        PLATFORM_ROLE.SUPER_ADMIN,
+    ),
+    validateRequest({
+        params: platformUserIdParamsSchema,
+    }),
+    revokeUserSessions,
+);
+
 /**
  * Modifie le rôle global d'un utilisateur.
  *

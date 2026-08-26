@@ -4,6 +4,7 @@ import {
     getPlatformUser,
     listPlatformUsers,
     updatePlatformUserRole,
+    revokePlatformUserSessions,
 } from './platform.service.js';
 
 import { AppError } from '../../utils/appError.js';
@@ -134,6 +135,28 @@ const updateUserRole = async (req, res) => {
     });
 };
 
+/**
+ * Révoque administrativement toutes les sessions actives
+ * d'un utilisateur de la plateforme.
+ *
+ * L'authentification, l'autorisation et la validation de userId
+ * sont déjà prises en charge par les middlewares Platform.
+ */
+const revokeUserSessions = async (req, res) => {
+    const result = await revokePlatformUserSessions({
+        userId: req.validated.params.userId,
+        actorId: req.user._id,
+        ipAddress: req.ip ?? null,
+        userAgent:
+            req.get('user-agent') ?? null,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: result,
+    });
+};
+
 
 export {
     disableUser,
@@ -141,4 +164,5 @@ export {
     getUserById,
     listUsers,
     updateUserRole,
+    revokeUserSessions,
 };
