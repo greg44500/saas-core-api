@@ -20,3 +20,7 @@ export {
 export {
     enablePlatformUser,
 } from './services/enablePlatformUser.service.js';
+
+export {
+    updatePlatformUserRole,
+} from './services/updatePlatformUserRole.service.js';

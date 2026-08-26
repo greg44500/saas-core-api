@@ -3,6 +3,7 @@ import {
     enablePlatformUser,
     getPlatformUser,
     listPlatformUsers,
+    updatePlatformUserRole,
 } from './platform.service.js';
 
 import { AppError } from '../../utils/appError.js';
@@ -108,10 +109,36 @@ const enableUser = async (req, res) => {
     });
 };
 
+/**
+ * Modifie le rôle global d'un utilisateur de la plateforme.
+ *
+ * L'authentification, l'autorisation et la validation des données
+ * sont déjà effectuées par les middlewares Platform.
+ */
+const updateUserRole = async (req, res) => {
+    const user = await updatePlatformUserRole({
+        userId: req.validated.params.userId,
+        actorId: req.user._id,
+        platformRole:
+            req.validated.body.platformRole,
+        ipAddress: req.ip ?? null,
+        userAgent:
+            req.get('user-agent') ?? null,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            user,
+        },
+    });
+};
+
 
 export {
     disableUser,
     enableUser,
     getUserById,
     listUsers,
+    updateUserRole,
 };

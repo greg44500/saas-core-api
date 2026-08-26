@@ -1,5 +1,7 @@
 import { z } from 'zod';
-
+import {
+    PLATFORM_ROLE,
+} from '../../constants/platformRoles.constants.js';
 
 /**
  * Valide la pagination de la liste des utilisateurs plateforme.
@@ -46,9 +48,16 @@ const disablePlatformUserBodySchema = z.strictObject({
         ),
 });
 
+const updatePlatformUserRoleBodySchema = z.strictObject({
+    platformRole: z.enum(
+        Object.values(PLATFORM_ROLE),
+    ),
+});
+
 
 export {
     listPlatformUsersQuerySchema,
     disablePlatformUserBodySchema,
     platformUserIdParamsSchema,
+    updatePlatformUserRoleBodySchema,
 };

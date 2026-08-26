@@ -30,6 +30,7 @@ import {
     enableUser,
     getUserById,
     listUsers,
+    updateUserRole,
 } from '../../modules/platform/platform.controller.js';
 
 import {
@@ -40,6 +41,7 @@ import {
     disablePlatformUserBodySchema,
     listPlatformUsersQuerySchema,
     platformUserIdParamsSchema,
+    updatePlatformUserRoleBodySchema,
 } from '../../modules/platform/platform.validation.js';
 
 
@@ -131,6 +133,11 @@ vi.mock(
                 status: 'success',
             });
         }),
+        updateUserRole: vi.fn((req, res) => {
+            res.status(200).json({
+                status: 'success',
+            });
+        }),
     }),
 );
 
@@ -143,6 +150,7 @@ beforeEach(() => {
     getUserById.mockClear();
     disableUser.mockClear();
     enableUser.mockClear();
+    updateUserRole.mockClear();
 });
 
 
@@ -458,4 +466,83 @@ describe('platform.routes', () => {
                 .invocationCallOrder[0],
         );
     });
+    it('protège et valide le changement de rôle plateforme avant d’appeler le controller', async () => {
+    const app = express();
+
+    app.use(express.json());
+
+    app.use(
+        '/platform',
+        platformRouter,
+    );
+
+    const response = await request(app)
+        .patch(
+            '/platform/users/507f1f77bcf86cd799439011/role',
+        )
+        .send({
+            platformRole: PLATFORM_ROLE.ADMIN,
+        });
+
+    expect(response.status).toBe(200);
+
+    expect(
+        authorizePlatformRole,
+    ).toHaveBeenCalledWith(
+        PLATFORM_ROLE.SUPER_ADMIN,
+    );
+
+    expect(
+        validateRequest,
+    ).toHaveBeenCalledWith({
+        params: platformUserIdParamsSchema,
+        body: updatePlatformUserRoleBodySchema,
+    });
+
+    expect(
+        authenticate,
+    ).toHaveBeenCalledOnce();
+
+    expect(
+        platformRoleMiddleware,
+    ).toHaveBeenCalledOnce();
+
+    expect(
+        validationMiddleware,
+    ).toHaveBeenCalledOnce();
+
+    expect(
+        updateUserRole,
+    ).toHaveBeenCalledOnce();
+
+    expect(
+        authenticate
+            .mock
+            .invocationCallOrder[0],
+    ).toBeLessThan(
+        platformRoleMiddleware
+            .mock
+            .invocationCallOrder[0],
+    );
+
+    expect(
+        platformRoleMiddleware
+            .mock
+            .invocationCallOrder[0],
+    ).toBeLessThan(
+        validationMiddleware
+            .mock
+            .invocationCallOrder[0],
+    );
+
+    expect(
+        validationMiddleware
+            .mock
+            .invocationCallOrder[0],
+    ).toBeLessThan(
+        updateUserRole
+            .mock
+            .invocationCallOrder[0],
+    );
+});
 });

@@ -16,6 +16,7 @@ import {
     disablePlatformUserBodySchema,
     listPlatformUsersQuerySchema,
     platformUserIdParamsSchema,
+    updatePlatformUserRoleBodySchema,
 } from './platform.validation.js';
 
 import {
@@ -23,6 +24,7 @@ import {
     enableUser,
     getUserById,
     listUsers,
+    updateUserRole,
 } from './platform.controller.js';
 
 
@@ -103,6 +105,24 @@ platformRouter.patch(
         params: platformUserIdParamsSchema,
     }),
     enableUser,
+);
+/**
+ * Modifie le rôle global d'un utilisateur.
+ *
+ * Cette opération est réservée au super-admin car elle modifie
+ * les privilèges globaux et invalide toutes les sessions actives
+ * de l'utilisateur ciblé.
+ */
+platformRouter.patch(
+    '/users/:userId/role',
+    authorizePlatformRole(
+        PLATFORM_ROLE.SUPER_ADMIN,
+    ),
+    validateRequest({
+        params: platformUserIdParamsSchema,
+        body: updatePlatformUserRoleBodySchema,
+    }),
+    updateUserRole,
 );
 
 
