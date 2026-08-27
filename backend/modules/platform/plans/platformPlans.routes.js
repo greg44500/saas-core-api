@@ -17,12 +17,16 @@ import {
 } from '../../../utils/validations/pagination.validation.js';
 
 import {
+    archivePlan,
     createPlan,
     listPlans,
+    updatePlan,
 } from './platformPlans.controller.js';
 
 import {
     createPlatformPlanBodySchema,
+    platformPlanIdParamsSchema,
+    updatePlatformPlanBodySchema
 } from './platformPlans.validation.js';
 
 
@@ -70,6 +74,35 @@ platformPlansRouter.post(
         body: createPlatformPlanBodySchema,
     }),
     createPlan,
+);
+
+/**
+ * Met à jour partiellement un plan existant.
+ *
+ * L'identifiant et le payload sont validés séparément afin de conserver
+ * un contrat HTTP explicite sur chaque source de données.
+ */
+platformPlansRouter.patch(
+    '/:planId',
+    validateRequest({
+        params: platformPlanIdParamsSchema,
+        body: updatePlatformPlanBodySchema,
+    }),
+    updatePlan,
+);
+
+/**
+ * Archive un plan existant.
+ *
+ * L'archivage est exposé comme une action dédiée afin de conserver
+ * une transition métier explicite et auditée séparément.
+ */
+platformPlansRouter.patch(
+    '/:planId/archive',
+    validateRequest({
+        params: platformPlanIdParamsSchema,
+    }),
+    archivePlan,
 );
 
 

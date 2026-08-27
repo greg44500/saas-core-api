@@ -179,6 +179,154 @@ const createPlatformPlanBodySchema = z.strictObject({
 });
 
 
+/**
+ * Valide l'identifiant MongoDB d'un plan administré via Platform.
+ */
+const platformPlanIdParamsSchema = z.strictObject({
+    planId: z
+        .string()
+        .regex(
+            /^[a-f\d]{24}$/i,
+            'planId invalide',
+        ),
+});
+
+
+/**
+ * Valide une modification administrative partielle d'un plan.
+ *
+ * `key` est volontairement absent : l'identité fonctionnelle d'un plan
+ * est immutable après sa création.
+ *
+ * Le statut `archived` est également exclu ici afin que l'archivage reste
+ * une action métier explicite, auditée séparément via PLAN_ARCHIVED.
+ */
+const updatePlatformPlanBodySchema = z
+    .strictObject({
+        name: z
+            .string()
+            .trim()
+            .min(
+                2,
+                'name doit contenir au minimum 2 caractères',
+            )
+            .max(
+                120,
+                'name ne peut pas dépasser 120 caractères',
+            )
+            .optional(),
+
+        description: z
+            .string()
+            .trim()
+            .max(
+                1000,
+                'description ne peut pas dépasser 1000 caractères',
+            )
+            .nullable()
+            .optional(),
+
+        status: z
+            .enum([
+                PLAN_STATUS.ACTIVE,
+                PLAN_STATUS.INACTIVE,
+            ])
+            .optional(),
+
+        isPublic: z
+            .boolean()
+            .optional(),
+
+        displayOrder: z
+            .number()
+            .int(
+                'displayOrder doit être un entier',
+            )
+            .nonnegative(
+                'displayOrder doit être positif ou nul',
+            )
+            .optional(),
+
+        currency: z
+            .string()
+            .trim()
+            .length(
+                3,
+                'currency doit contenir exactement 3 caractères',
+            )
+            .regex(
+                /^[A-Za-z]{3}$/,
+                'Le format de currency est invalide',
+            )
+            .transform(
+                (value) => value.toUpperCase(),
+            )
+            .optional(),
+
+        priceMonthlyExclTaxMinor: z
+            .number()
+            .int(
+                'priceMonthlyExclTaxMinor doit être un entier',
+            )
+            .nonnegative(
+                'priceMonthlyExclTaxMinor doit être positif ou nul',
+            )
+            .optional(),
+
+        priceYearlyExclTaxMinor: z
+            .number()
+            .int(
+                'priceYearlyExclTaxMinor doit être un entier',
+            )
+            .nonnegative(
+                'priceYearlyExclTaxMinor doit être positif ou nul',
+            )
+            .optional(),
+
+        features: z
+            .array(
+                z
+                    .string()
+                    .trim()
+                    .regex(
+                        PLAN_CAPABILITY_KEY_PATTERN,
+                        'Le format d’une feature est invalide',
+                    ),
+            )
+            .refine(
+                (features) =>
+                    new Set(features).size
+                    === features.length,
+                {
+                    message:
+                        'Les features ne doivent pas contenir de doublons',
+                },
+            )
+            .optional(),
+
+        limits: z
+            .record(
+                z
+                    .string()
+                    .regex(
+                        PLAN_CAPABILITY_KEY_PATTERN,
+                        'Le format d’une clé de limite est invalide',
+                    ),
+                planLimitValueSchema,
+            )
+            .optional(),
+    })
+    .refine(
+        (data) => Object.keys(data).length > 0,
+        {
+            message:
+                'Au moins un champ doit être fourni pour modifier le plan',
+        },
+    );
+
+
 export {
     createPlatformPlanBodySchema,
+    platformPlanIdParamsSchema,
+    updatePlatformPlanBodySchema,
 };

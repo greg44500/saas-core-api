@@ -30,6 +30,8 @@ import {
 
 import {
     createPlatformPlanBodySchema,
+    platformPlanIdParamsSchema,
+    updatePlatformPlanBodySchema,
 } from '../../../modules/platform/plans/platformPlans.validation.js';
 
 import {
@@ -59,6 +61,18 @@ const {
         ),
 
         listPlans: vi.fn(
+            (req, res) =>
+                res.status(200).json({
+                    status: 'success',
+                }),
+        ),
+        updatePlan: vi.fn(
+            (req, res) =>
+                res.status(200).json({
+                    status: 'success',
+                }),
+        ),
+        archivePlan: vi.fn(
             (req, res) =>
                 res.status(200).json({
                     status: 'success',
@@ -220,6 +234,110 @@ describe('platformPlans.routes', () => {
 
         expect(
             handlers.listPlans,
+        ).not.toHaveBeenCalled();
+    });
+    it('protège et valide la mise à jour d’un plan avant le controller', async () => {
+        const planId =
+            '507f1f77bcf86cd799439011';
+
+        const response = await request(app)
+            .patch(
+                `/platform/plans/${planId}`,
+            )
+            .send({
+                name: 'Starter Plus',
+                isPublic: true,
+            });
+
+        expect(response.status).toBe(200);
+
+        expect(
+            authorizePlatformRole,
+        ).toHaveBeenCalledWith(
+            PLATFORM_ROLE.SUPER_ADMIN,
+        );
+
+        expect(
+            validateRequest,
+        ).toHaveBeenCalledWith({
+            params: platformPlanIdParamsSchema,
+            body: updatePlatformPlanBodySchema,
+        });
+
+        expect(
+            authenticate,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            platformRoleMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            validationMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.updatePlan,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.listPlans,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            handlers.createPlan,
+        ).not.toHaveBeenCalled();
+    });
+
+    it('protège et valide l’archivage d’un plan avant le controller', async () => {
+        const planId =
+            '507f1f77bcf86cd799439011';
+
+        const response = await request(app)
+            .patch(
+                `/platform/plans/${planId}/archive`,
+            );
+
+        expect(response.status).toBe(200);
+
+        expect(
+            authorizePlatformRole,
+        ).toHaveBeenCalledWith(
+            PLATFORM_ROLE.SUPER_ADMIN,
+        );
+
+        expect(
+            validateRequest,
+        ).toHaveBeenCalledWith({
+            params: platformPlanIdParamsSchema,
+        });
+
+        expect(
+            authenticate,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            platformRoleMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            validationMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.archivePlan,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.listPlans,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            handlers.createPlan,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            handlers.updatePlan,
         ).not.toHaveBeenCalled();
     });
 });

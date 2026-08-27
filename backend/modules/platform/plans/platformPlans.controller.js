@@ -1,7 +1,12 @@
 import {
     createPlatformPlan,
 } from './services/createPlatformPlan.service.js';
-
+import {
+    updatePlatformPlan,
+} from './services/updatePlatformPlan.service.js';
+import {
+    archivePlatformPlan,
+} from './services/archivePlatformPlan.service.js';
 import {
     listPlatformPlans,
 } from './services/listPlatformPlans.service.js';
@@ -80,8 +85,55 @@ const listPlans = async (req, res) => {
     });
 };
 
+/**
+ * Met à jour un plan depuis l'administration Platform.
+ *
+ * Le contrôleur reste limité à l'orchestration HTTP :
+ * validation et règles métier sont déjà prises en charge en amont.
+ */
+const updatePlan = async (req, res) => {
+    const plan = await updatePlatformPlan({
+        planId: req.validated.params.planId,
+        planData: req.validated.body,
+        actorId: req.user._id,
+        ipAddress: req.context?.ipAddress ?? null,
+        userAgent: req.context?.userAgent ?? null,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            plan,
+        },
+    });
+};
+
+/**
+ * Archive un plan depuis l'administration Platform.
+ *
+ * L'archivage est une action métier dédiée et reste donc séparé
+ * de la mise à jour partielle classique.
+ */
+const archivePlan = async (req, res) => {
+    const plan = await archivePlatformPlan({
+        planId: req.validated.params.planId,
+        actorId: req.user._id,
+        ipAddress: req.context?.ipAddress ?? null,
+        userAgent: req.context?.userAgent ?? null,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            plan,
+        },
+    });
+};
+
 
 export {
     createPlan,
+    updatePlan,
+    archivePlan,
     listPlans,
 };

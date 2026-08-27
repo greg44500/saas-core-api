@@ -6,6 +6,8 @@ import {
 
 import {
     createPlatformPlanBodySchema,
+    platformPlanIdParamsSchema,
+    updatePlatformPlanBodySchema,
 } from '../../../modules/platform/plans/platformPlans.validation.js';
 
 
@@ -197,5 +199,134 @@ describe('createPlatformPlanBodySchema', () => {
             });
 
         expect(result.success).toBe(true);
+    });
+});
+
+describe('platformPlanIdParamsSchema', () => {
+    it('accepte un planId MongoDB valide', () => {
+        const result =
+            platformPlanIdParamsSchema.safeParse({
+                planId: '507f1f77bcf86cd799439011',
+            });
+
+        expect(result.success).toBe(true);
+    });
+
+
+    it('refuse un planId invalide', () => {
+        const result =
+            platformPlanIdParamsSchema.safeParse({
+                planId: 'invalid-plan-id',
+            });
+
+        expect(result.success).toBe(false);
+    });
+});
+
+
+describe('updatePlatformPlanBodySchema', () => {
+    it('accepte une modification partielle valide', () => {
+        const result =
+            updatePlatformPlanBodySchema.safeParse({
+                name: 'Starter Plus',
+                isPublic: false,
+            });
+
+        expect(result.success).toBe(true);
+    });
+
+
+    it('normalise la devise en majuscules', () => {
+        const result =
+            updatePlatformPlanBodySchema.parse({
+                currency: 'eur',
+            });
+
+        expect(result.currency).toBe('EUR');
+    });
+
+
+    it('accepte le passage du plan au statut inactive', () => {
+        const result =
+            updatePlatformPlanBodySchema.safeParse({
+                status: 'inactive',
+            });
+
+        expect(result.success).toBe(true);
+    });
+
+
+    it('refuse le statut archived', () => {
+        const result =
+            updatePlatformPlanBodySchema.safeParse({
+                status: 'archived',
+            });
+
+        expect(result.success).toBe(false);
+    });
+
+
+    it('refuse la modification de key', () => {
+        const result =
+            updatePlatformPlanBodySchema.safeParse({
+                key: 'starter_v2',
+            });
+
+        expect(result.success).toBe(false);
+    });
+
+
+    it('refuse un payload vide', () => {
+        const result =
+            updatePlatformPlanBodySchema.safeParse({});
+
+        expect(result.success).toBe(false);
+    });
+
+
+    it('refuse les features dupliquées', () => {
+        const result =
+            updatePlatformPlanBodySchema.safeParse({
+                features: [
+                    'file_upload',
+                    'file_upload',
+                ],
+            });
+
+        expect(result.success).toBe(false);
+    });
+
+
+    it('accepte null pour une limite explicitement illimitée', () => {
+        const result =
+            updatePlatformPlanBodySchema.safeParse({
+                limits: {
+                    storage_bytes: null,
+                },
+            });
+
+        expect(result.success).toBe(true);
+    });
+
+
+    it('refuse une limite négative', () => {
+        const result =
+            updatePlatformPlanBodySchema.safeParse({
+                limits: {
+                    storage_bytes: -1,
+                },
+            });
+
+        expect(result.success).toBe(false);
+    });
+
+
+    it('refuse une propriété inconnue', () => {
+        const result =
+            updatePlatformPlanBodySchema.safeParse({
+                unknownField: true,
+            });
+
+        expect(result.success).toBe(false);
     });
 });
