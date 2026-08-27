@@ -1,4 +1,8 @@
 import {
+    createPlatformPlan,
+} from './services/createPlatformPlan.service.js';
+
+import {
     listPlatformPlans,
 } from './services/listPlatformPlans.service.js';
 
@@ -9,6 +13,30 @@ const serializePlanLimits = (limits) => {
     }
 
     return limits ?? {};
+};
+
+
+/**
+ * Crée un nouveau plan depuis l'administration Platform.
+ *
+ * La requête a déjà été validée par le middleware Zod avant d'atteindre
+ * le contrôleur. Celui-ci reste donc volontairement limité à l'orchestration
+ * HTTP et délègue toute logique métier au service Platform.
+ */
+const createPlan = async (req, res) => {
+    const plan = await createPlatformPlan({
+        planData: req.validated.body,
+        actorId: req.user._id,
+        ipAddress: req.context?.ipAddress ?? null,
+        userAgent: req.context?.userAgent ?? null,
+    });
+
+    res.status(201).json({
+        status: 'success',
+        data: {
+            plan,
+        },
+    });
 };
 
 
@@ -53,4 +81,7 @@ const listPlans = async (req, res) => {
 };
 
 
-export { listPlans };
+export {
+    createPlan,
+    listPlans,
+};
