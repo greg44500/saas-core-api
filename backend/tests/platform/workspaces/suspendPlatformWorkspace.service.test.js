@@ -25,7 +25,7 @@ import {
 
 import {
     suspendPlatformWorkspace,
-} from '../../../modules/platform/services/suspendPlatformWorkspace.service.js';
+} from '../../../modules/platform/workspaces/services/suspendPlatformWorkspace.service.js';
 
 import {
     Workspace,

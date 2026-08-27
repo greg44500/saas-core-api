@@ -31,7 +31,7 @@ import {
 
 import {
     disablePlatformUser,
-} from '../../../modules/platform/services/disablePlatformUser.service.js';
+} from '../../../modules/platform/users/services/disablePlatformUser.service.js';
 
 import { User } from '../../../modules/users/user.model.js';
 

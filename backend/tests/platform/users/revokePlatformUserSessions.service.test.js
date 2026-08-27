@@ -26,7 +26,7 @@ import {
 
 import {
     revokePlatformUserSessions,
-} from '../../../modules/platform/services/revokePlatformUserSessions.service.js';
+} from '../../../modules/platform/users/services/revokePlatformUserSessions.service.js';
 
 import { User } from '../../../modules/users/user.model.js';
 

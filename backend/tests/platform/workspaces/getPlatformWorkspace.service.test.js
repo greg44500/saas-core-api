@@ -12,7 +12,7 @@ import {
 
 import {
     getPlatformWorkspace,
-} from '../../../modules/platform/services/getPlatformWorkspace.service.js';
+} from '../../../modules/platform/workspaces/services/getPlatformWorkspace.service.js';
 
 
 vi.mock(

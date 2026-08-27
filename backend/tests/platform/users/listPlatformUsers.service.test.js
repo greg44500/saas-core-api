@@ -10,7 +10,7 @@ import { User } from '../../../modules/users/user.model.js';
 
 import {
     listPlatformUsers,
-} from '../../../modules/platform/services/listPlatformUsers.service.js';
+} from '../../../modules/platform/users/services/listPlatformUsers.service.js';
 
 
 vi.mock(

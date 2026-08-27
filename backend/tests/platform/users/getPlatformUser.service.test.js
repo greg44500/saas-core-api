@@ -10,7 +10,7 @@ import { User } from '../../../modules/users/user.model.js';
 
 import {
     getPlatformUser,
-} from '../../../modules/platform/services/getPlatformUser.service.js';
+} from '../../../modules/platform/users/services/getPlatformUser.service.js';
 
 
 vi.mock(

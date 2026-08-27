@@ -31,7 +31,7 @@ import {
 
 import {
     updatePlatformUserRole,
-} from '../../../modules/platform/services/updatePlatformUserRole.service.js';
+} from '../../../modules/platform/users/services/updatePlatformUserRole.service.js';
 
 import { User } from '../../../modules/users/user.model.js';
 

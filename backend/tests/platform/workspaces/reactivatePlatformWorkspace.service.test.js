@@ -24,7 +24,7 @@ import {
 
 import {
     reactivatePlatformWorkspace,
-} from '../../../modules/platform/services/reactivatePlatformWorkspace.service.js';
+} from '../../../modules/platform/workspaces/services/reactivatePlatformWorkspace.service.js';
 
 import {
     Workspace,

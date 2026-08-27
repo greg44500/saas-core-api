@@ -23,7 +23,7 @@ import {
 
 import {
     enablePlatformUser,
-} from '../../../modules/platform/services/enablePlatformUser.service.js';
+} from '../../../modules/platform/users/services/enablePlatformUser.service.js';
 
 import { User } from '../../../modules/users/user.model.js';
 
