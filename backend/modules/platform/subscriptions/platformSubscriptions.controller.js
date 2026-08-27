@@ -10,6 +10,9 @@ import {
     updatePlatformSubscription,
 } from './services/updatePlatformSubscription.service.js';
 
+import {
+    cancelPlatformSubscription,
+} from './services/cancelPlatformSubscription.service.js';
 
 /**
  * Retourne la liste administrative paginée des souscriptions.
@@ -82,10 +85,39 @@ const updateSubscription = async (req, res) => {
     });
 };
 
+/**
+ * Annule une souscription immédiatement ou en fin de période.
+ */
+const cancelSubscription = async (req, res) => {
+    const subscription =
+        await cancelPlatformSubscription({
+            subscriptionId:
+                req.validated.params.subscriptionId,
+            mode:
+                req.validated.body.mode,
+            reason:
+                req.validated.body.reason,
+            actorId:
+                req.user._id,
+            ipAddress:
+                req.context?.ipAddress ?? null,
+            userAgent:
+                req.context?.userAgent ?? null,
+        });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            subscription,
+        },
+    });
+};
+
 
 export {
     listSubscriptions,
     getSubscriptionById,
     getPlatformSubscriptionById,
     updateSubscription,
+    cancelSubscription,
 };

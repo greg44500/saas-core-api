@@ -33,6 +33,7 @@ import {
 } from '../../../utils/validations/pagination.validation.js';
 
 import {
+    cancelPlatformSubscriptionBodySchema,
     platformSubscriptionIdParamsSchema,
     updatePlatformSubscriptionBodySchema,
 } from '../../../modules/platform/subscriptions/platformSubscriptions.validation.js';
@@ -65,6 +66,12 @@ const {
                 }),
         ),
         updateSubscription: vi.fn(
+            (req, res) =>
+                res.status(200).json({
+                    status: 'success',
+                }),
+        ),
+        cancelSubscription: vi.fn(
             (req, res) =>
                 res.status(200).json({
                     status: 'success',
@@ -273,6 +280,57 @@ describe('platformSubscriptions.routes', () => {
 
         expect(
             handlers.listSubscriptions,
+        ).not.toHaveBeenCalled();
+    });
+
+    it('protège et valide l’annulation d’une souscription avant le controller', async () => {
+        const subscriptionId =
+            '507f1f77bcf86cd799439011';
+
+        const response = await request(app)
+            .patch(
+                `/platform/subscriptions/${subscriptionId}/cancel`,
+            )
+            .send({
+                mode: 'period_end',
+                reason: 'Résiliation à échéance',
+            });
+
+        expect(response.status).toBe(200);
+
+        expect(
+            authorizePlatformRole,
+        ).toHaveBeenCalledWith(
+            PLATFORM_ROLE.SUPER_ADMIN,
+        );
+
+        expect(
+            validateRequest,
+        ).toHaveBeenCalledWith({
+            params:
+                platformSubscriptionIdParamsSchema,
+            body:
+                cancelPlatformSubscriptionBodySchema,
+        });
+
+        expect(
+            authenticate,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            platformRoleMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            validationMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.cancelSubscription,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.updateSubscription,
         ).not.toHaveBeenCalled();
     });
 });

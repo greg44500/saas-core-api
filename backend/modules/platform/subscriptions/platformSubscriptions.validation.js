@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
     BILLING_INTERVAL,
     DISCOUNT_TYPE,
+    SUBSCRIPTION_CANCELLATION_MODE,
 } from '../../../constants/subscription.constants.js';
 
 
@@ -147,8 +148,29 @@ const updatePlatformSubscriptionBodySchema = z
         }
     });
 
+/**
+* Valide une demande explicite d'annulation administrative.
+*/
+const cancelPlatformSubscriptionBodySchema = z.strictObject({
+    mode: z.enum(
+        Object.values(
+            SUBSCRIPTION_CANCELLATION_MODE,
+        ),
+    ),
+
+    reason: z
+        .string()
+        .trim()
+        .min(
+            1,
+            'Le motif de l’annulation est obligatoire',
+        )
+        .max(500),
+});
+
 
 export {
     platformSubscriptionIdParamsSchema,
     updatePlatformSubscriptionBodySchema,
+    cancelPlatformSubscriptionBodySchema,
 };

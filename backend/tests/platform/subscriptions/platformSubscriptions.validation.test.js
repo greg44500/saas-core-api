@@ -6,6 +6,7 @@ import {
 
 import {
     updatePlatformSubscriptionBodySchema,
+    cancelPlatformSubscriptionBodySchema,
 } from '../../../modules/platform/subscriptions/platformSubscriptions.validation.js';
 
 
@@ -62,6 +63,36 @@ describe('updatePlatformSubscriptionBodySchema', () => {
         const result =
             updatePlatformSubscriptionBodySchema.safeParse({
                 manualOverride: true,
+            });
+
+        expect(result.success).toBe(false);
+    });
+
+    it('accepte une annulation immédiate valide', () => {
+        const result =
+            cancelPlatformSubscriptionBodySchema.safeParse({
+                mode: 'immediate',
+                reason: 'Résiliation administrative',
+            });
+
+        expect(result.success).toBe(true);
+    });
+
+    it('refuse un mode d’annulation inconnu', () => {
+        const result =
+            cancelPlatformSubscriptionBodySchema.safeParse({
+                mode: 'later',
+                reason: 'Résiliation administrative',
+            });
+
+        expect(result.success).toBe(false);
+    });
+
+    it('refuse une annulation sans motif', () => {
+        const result =
+            cancelPlatformSubscriptionBodySchema.safeParse({
+                mode: 'period_end',
+                reason: '',
             });
 
         expect(result.success).toBe(false);

@@ -20,9 +20,11 @@ import {
     listSubscriptions,
     getSubscriptionById,
     updateSubscription,
+    cancelSubscription,
 } from './platformSubscriptions.controller.js';
 
 import {
+    cancelPlatformSubscriptionBodySchema,
     platformSubscriptionIdParamsSchema,
     updatePlatformSubscriptionBodySchema,
 } from './platformSubscriptions.validation.js';
@@ -76,6 +78,20 @@ platformSubscriptionsRouter.patch(
             updatePlatformSubscriptionBodySchema,
     }),
     updateSubscription,
+);
+
+/**
+ * Annule une souscription immédiatement ou à la fin de sa période courante.
+ */
+platformSubscriptionsRouter.patch(
+    '/:subscriptionId/cancel',
+    validateRequest({
+        params:
+            platformSubscriptionIdParamsSchema,
+        body:
+            cancelPlatformSubscriptionBodySchema,
+    }),
+    cancelSubscription,
 );
 
 

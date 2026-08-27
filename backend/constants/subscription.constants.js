@@ -97,10 +97,19 @@ const DISCOUNT_TYPE = Object.freeze({
     FIXED_AMOUNT: 'fixed_amount',
 });
 
+/**
+ * Modes d'annulation administrativement disponibles.
+ */
+const SUBSCRIPTION_CANCELLATION_MODE = Object.freeze({
+    IMMEDIATE: 'immediate',
+    PERIOD_END: 'period_end',
+});
+
 
 export {
     BILLING_INTERVAL,
     BILLING_PROVIDER,
     DISCOUNT_TYPE,
+    SUBSCRIPTION_CANCELLATION_MODE,
     SUBSCRIPTION_STATUS,
 };
