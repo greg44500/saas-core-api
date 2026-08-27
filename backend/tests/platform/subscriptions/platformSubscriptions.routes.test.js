@@ -77,6 +77,12 @@ const {
                     status: 'success',
                 }),
         ),
+        resumeSubscription: vi.fn(
+            (req, res) =>
+                res.status(200).json({
+                    status: 'success',
+                }),
+        ),
     },
 }));
 
@@ -328,6 +334,54 @@ describe('platformSubscriptions.routes', () => {
         expect(
             handlers.cancelSubscription,
         ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.updateSubscription,
+        ).not.toHaveBeenCalled();
+    });
+    it('protège et valide la reprise d’une souscription avant le controller', async () => {
+        const subscriptionId =
+            '507f1f77bcf86cd799439011';
+
+        const response = await request(app)
+            .patch(
+                `/platform/subscriptions/${subscriptionId}/resume`,
+            );
+
+        expect(response.status).toBe(200);
+
+        expect(
+            authorizePlatformRole,
+        ).toHaveBeenCalledWith(
+            PLATFORM_ROLE.SUPER_ADMIN,
+        );
+
+        expect(
+            validateRequest,
+        ).toHaveBeenCalledWith({
+            params:
+                platformSubscriptionIdParamsSchema,
+        });
+
+        expect(
+            authenticate,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            platformRoleMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            validationMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.resumeSubscription,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.cancelSubscription,
+        ).not.toHaveBeenCalled();
 
         expect(
             handlers.updateSubscription,

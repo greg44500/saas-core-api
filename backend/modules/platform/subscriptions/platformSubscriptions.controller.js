@@ -14,6 +14,9 @@ import {
     cancelPlatformSubscription,
 } from './services/cancelPlatformSubscription.service.js';
 
+import {
+    resumePlatformSubscription,
+} from './services/resumePlatformSubscription.service.js';
 /**
  * Retourne la liste administrative paginée des souscriptions.
  *
@@ -113,6 +116,30 @@ const cancelSubscription = async (req, res) => {
     });
 };
 
+/**
+ * Retire une annulation programmée en fin de période.
+ */
+const resumeSubscription = async (req, res) => {
+    const subscription =
+        await resumePlatformSubscription({
+            subscriptionId:
+                req.validated.params.subscriptionId,
+            actorId:
+                req.user._id,
+            ipAddress:
+                req.context?.ipAddress ?? null,
+            userAgent:
+                req.context?.userAgent ?? null,
+        });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            subscription,
+        },
+    });
+};
+
 
 export {
     listSubscriptions,
@@ -120,4 +147,5 @@ export {
     getPlatformSubscriptionById,
     updateSubscription,
     cancelSubscription,
+    resumeSubscription,
 };

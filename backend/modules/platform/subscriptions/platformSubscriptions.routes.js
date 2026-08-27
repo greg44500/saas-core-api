@@ -21,6 +21,7 @@ import {
     getSubscriptionById,
     updateSubscription,
     cancelSubscription,
+    resumeSubscription,
 } from './platformSubscriptions.controller.js';
 
 import {
@@ -92,6 +93,18 @@ platformSubscriptionsRouter.patch(
             cancelPlatformSubscriptionBodySchema,
     }),
     cancelSubscription,
+);
+
+/**
+ * Retire une annulation programmée en fin de période.
+ */
+platformSubscriptionsRouter.patch(
+    '/:subscriptionId/resume',
+    validateRequest({
+        params:
+            platformSubscriptionIdParamsSchema,
+    }),
+    resumeSubscription,
 );
 
 

@@ -139,8 +139,20 @@ const envSchema = z.object({
         .min(5)
         .max(10080)
         .default(60),
+    /* 
+    *Secret dédié à la génération des empreintes HMAC utilisées pour
+    *identifier durablement une identité ayant déjà consommé un trial.
+    */
+    TRIAL_IDENTITY_SECRET: z
+        .string()
+        .min(
+            32,
+            'TRIAL_IDENTITY_SECRET doit contenir au minimum 32 caractères',
+        ),
 
 });
+
+
 // Valider les variables d'environnement et les transformer en types appropriés
 const validationResult = envSchema.safeParse(process.env);
 
