@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../../middlewares/authenticate.js';
+import { platformPlansRouter } from './plans/platformPlans.routes.js';
 import { platformUsersRouter } from './users/platformUsers.routes.js';
 import { platformWorkspacesRouter } from './workspaces/platformWorkspaces.routes.js';
 
@@ -13,5 +14,6 @@ platformRouter.use(authenticate);
 
 platformRouter.use('/users', platformUsersRouter);
 platformRouter.use('/workspaces', platformWorkspacesRouter);
+platformRouter.use('/plans', platformPlansRouter);
 
 export { platformRouter };
