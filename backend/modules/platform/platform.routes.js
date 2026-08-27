@@ -17,3 +17,12 @@ platformRouter.use('/workspaces', platformWorkspacesRouter);
 platformRouter.use('/plans', platformPlansRouter);
 
 export { platformRouter };
+
+import {
+    platformSubscriptionsRouter,
+} from './subscriptions/platformSubscriptions.routes.js';
+
+platformRouter.use(
+    '/subscriptions',
+    platformSubscriptionsRouter,
+);
