@@ -10,7 +10,7 @@ import {
     listUsers,
     revokeUserSessions,
     updateUserRole,
-} from './platformUsers.controller.js';
+} from '../platform.controller.js';
 import {
     disablePlatformUserBodySchema,
     platformUserIdParamsSchema,

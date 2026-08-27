@@ -8,7 +8,7 @@ import {
     listWorkspaces,
     reactivateWorkspace,
     suspendWorkspace,
-} from './platformWorkspaces.controller.js';
+} from '../platform.controller.js';
 import {
     platformWorkspaceIdParamsSchema,
     suspendPlatformWorkspaceBodySchema,
