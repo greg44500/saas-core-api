@@ -32,6 +32,10 @@ import {
     paginationQuerySchema,
 } from '../../../utils/validations/pagination.validation.js';
 
+import {
+    platformSubscriptionIdParamsSchema,
+} from '../../../modules/platform/subscriptions/platformSubscriptions.validation.js';
+
 
 const {
     platformRoleMiddleware,
@@ -48,6 +52,12 @@ const {
 
     handlers: {
         listSubscriptions: vi.fn(
+            (req, res) =>
+                res.status(200).json({
+                    status: 'success',
+                }),
+        ),
+        getSubscriptionById: vi.fn(
             (req, res) =>
                 res.status(200).json({
                     status: 'success',
@@ -159,5 +169,49 @@ describe('platformSubscriptions.routes', () => {
         expect(
             handlers.listSubscriptions,
         ).toHaveBeenCalledOnce();
+    });
+    it('protège et valide le détail d’une souscription avant le controller', async () => {
+        const subscriptionId =
+            '507f1f77bcf86cd799439011';
+
+        const response = await request(app)
+            .get(
+                `/platform/subscriptions/${subscriptionId}`,
+            );
+
+        expect(response.status).toBe(200);
+
+        expect(
+            authorizePlatformRole,
+        ).toHaveBeenCalledWith(
+            PLATFORM_ROLE.SUPER_ADMIN,
+        );
+
+        expect(
+            validateRequest,
+        ).toHaveBeenCalledWith({
+            params:
+                platformSubscriptionIdParamsSchema,
+        });
+
+        expect(
+            authenticate,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            platformRoleMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            validationMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.getSubscriptionById,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.listSubscriptions,
+        ).not.toHaveBeenCalled();
     });
 });

@@ -18,7 +18,12 @@ import {
 
 import {
     listSubscriptions,
+    getSubscriptionById
 } from './platformSubscriptions.controller.js';
+
+import {
+    platformSubscriptionIdParamsSchema,
+} from './platformSubscriptions.validation.js';
 
 
 const platformSubscriptionsRouter = Router();
@@ -44,6 +49,17 @@ platformSubscriptionsRouter.get(
         query: paginationQuerySchema,
     }),
     listSubscriptions,
+);
+
+/**
+ * Retourne le détail administratif d'une souscription.
+ */
+platformSubscriptionsRouter.get(
+    '/:subscriptionId',
+    validateRequest({
+        params: platformSubscriptionIdParamsSchema,
+    }),
+    getSubscriptionById,
 );
 
 
