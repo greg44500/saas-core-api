@@ -34,6 +34,7 @@ import {
 
 import {
     platformSubscriptionIdParamsSchema,
+    updatePlatformSubscriptionBodySchema,
 } from '../../../modules/platform/subscriptions/platformSubscriptions.validation.js';
 
 
@@ -58,6 +59,12 @@ const {
                 }),
         ),
         getSubscriptionById: vi.fn(
+            (req, res) =>
+                res.status(200).json({
+                    status: 'success',
+                }),
+        ),
+        updateSubscription: vi.fn(
             (req, res) =>
                 res.status(200).json({
                     status: 'success',
@@ -209,6 +216,60 @@ describe('platformSubscriptions.routes', () => {
         expect(
             handlers.getSubscriptionById,
         ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.listSubscriptions,
+        ).not.toHaveBeenCalled();
+    });
+
+    it('protège et valide la mise à jour d’une souscription avant le controller', async () => {
+        const subscriptionId =
+            '507f1f77bcf86cd799439011';
+
+        const response = await request(app)
+            .patch(
+                `/platform/subscriptions/${subscriptionId}`,
+            )
+            .send({
+                cancelAtPeriodEnd: true,
+            });
+
+        expect(response.status).toBe(200);
+
+        expect(
+            authorizePlatformRole,
+        ).toHaveBeenCalledWith(
+            PLATFORM_ROLE.SUPER_ADMIN,
+        );
+
+        expect(
+            validateRequest,
+        ).toHaveBeenCalledWith({
+            params:
+                platformSubscriptionIdParamsSchema,
+            body:
+                updatePlatformSubscriptionBodySchema,
+        });
+
+        expect(
+            authenticate,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            platformRoleMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            validationMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.updateSubscription,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.getSubscriptionById,
+        ).not.toHaveBeenCalled();
 
         expect(
             handlers.listSubscriptions,

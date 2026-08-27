@@ -5,39 +5,63 @@ import {
 } from 'vitest';
 
 import {
-    platformSubscriptionIdParamsSchema,
+    updatePlatformSubscriptionBodySchema,
 } from '../../../modules/platform/subscriptions/platformSubscriptions.validation.js';
 
 
-describe('platformSubscriptionIdParamsSchema', () => {
-    it('accepte un subscriptionId MongoDB valide', () => {
+describe('updatePlatformSubscriptionBodySchema', () => {
+    it('accepte une modification administrative valide', () => {
         const result =
-            platformSubscriptionIdParamsSchema.safeParse({
-                subscriptionId:
-                    '507f1f77bcf86cd799439011',
+            updatePlatformSubscriptionBodySchema.safeParse({
+                discountType: 'percentage',
+                discountValue: 20,
+                discountReason: 'Offre commerciale',
             });
 
         expect(result.success).toBe(true);
     });
 
-
-    it('refuse un subscriptionId invalide', () => {
+    it('refuse un body vide', () => {
         const result =
-            platformSubscriptionIdParamsSchema.safeParse({
-                subscriptionId:
-                    'invalid-subscription-id',
+            updatePlatformSubscriptionBodySchema.safeParse({});
+
+        expect(result.success).toBe(false);
+    });
+
+    it('refuse un champ non autorisé', () => {
+        const result =
+            updatePlatformSubscriptionBodySchema.safeParse({
+                status: 'active',
             });
 
         expect(result.success).toBe(false);
     });
 
-
-    it('refuse une propriété inconnue', () => {
+    it('refuse un pourcentage supérieur à 100', () => {
         const result =
-            platformSubscriptionIdParamsSchema.safeParse({
-                subscriptionId:
-                    '507f1f77bcf86cd799439011',
-                unexpected: true,
+            updatePlatformSubscriptionBodySchema.safeParse({
+                discountType: 'percentage',
+                discountValue: 101,
+                discountReason: 'Offre commerciale',
+            });
+
+        expect(result.success).toBe(false);
+    });
+
+    it('exige un motif lorsqu’une remise est appliquée', () => {
+        const result =
+            updatePlatformSubscriptionBodySchema.safeParse({
+                discountType: 'fixed_amount',
+                discountValue: 500,
+            });
+
+        expect(result.success).toBe(false);
+    });
+
+    it('exige un motif lorsqu’une dérogation manuelle est activée', () => {
+        const result =
+            updatePlatformSubscriptionBodySchema.safeParse({
+                manualOverride: true,
             });
 
         expect(result.success).toBe(false);

@@ -18,11 +18,13 @@ import {
 
 import {
     listSubscriptions,
-    getSubscriptionById
+    getSubscriptionById,
+    updateSubscription,
 } from './platformSubscriptions.controller.js';
 
 import {
     platformSubscriptionIdParamsSchema,
+    updatePlatformSubscriptionBodySchema,
 } from './platformSubscriptions.validation.js';
 
 
@@ -60,6 +62,20 @@ platformSubscriptionsRouter.get(
         params: platformSubscriptionIdParamsSchema,
     }),
     getSubscriptionById,
+);
+
+/**
+ * Met à jour les propriétés administratives autorisées d'une souscription.
+ */
+platformSubscriptionsRouter.patch(
+    '/:subscriptionId',
+    validateRequest({
+        params:
+            platformSubscriptionIdParamsSchema,
+        body:
+            updatePlatformSubscriptionBodySchema,
+    }),
+    updateSubscription,
 );
 
 

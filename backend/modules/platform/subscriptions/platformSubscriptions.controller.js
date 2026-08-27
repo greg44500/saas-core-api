@@ -2,7 +2,13 @@ import {
     listPlatformSubscriptions,
 } from './services/listPlatformSubscriptions.service.js';
 
-import { getPlatformSubscriptionById } from './services/getPlatformSubscriptionById.service.js';
+import {
+    getPlatformSubscriptionById
+} from './services/getPlatformSubscriptionById.service.js';
+
+import {
+    updatePlatformSubscription,
+} from './services/updatePlatformSubscription.service.js';
 
 
 /**
@@ -50,9 +56,36 @@ const getSubscriptionById = async (req, res) => {
     });
 };
 
+/**
+ * Met à jour les propriétés administratives autorisées d'une souscription.
+ */
+const updateSubscription = async (req, res) => {
+    const subscription =
+        await updatePlatformSubscription({
+            subscriptionId:
+                req.validated.params.subscriptionId,
+            subscriptionData:
+                req.validated.body,
+            actorId:
+                req.user._id,
+            ipAddress:
+                req.context?.ipAddress ?? null,
+            userAgent:
+                req.context?.userAgent ?? null,
+        });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            subscription,
+        },
+    });
+};
+
 
 export {
     listSubscriptions,
     getSubscriptionById,
     getPlatformSubscriptionById,
+    updateSubscription,
 };
