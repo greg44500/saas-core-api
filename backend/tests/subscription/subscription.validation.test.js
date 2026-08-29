@@ -38,6 +38,13 @@ describe('subscription.validation', () => {
         }).success).toBe(false);
     });
 
+    it('autorise une annulation programmée sans body', () => {
+        const result = scheduleCancellationBodySchema.safeParse(undefined);
+
+        expect(result.success).toBe(true);
+        expect(result.data).toEqual({});
+    });
+
     it('refuse les champs inconnus dans les commandes', () => {
         expect(scheduleCancellationBodySchema.safeParse({
             reason: 'Fin de besoin',
