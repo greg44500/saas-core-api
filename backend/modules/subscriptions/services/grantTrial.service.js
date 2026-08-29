@@ -12,19 +12,10 @@ import {
 } from '../../../constants/plan.constants.js';
 
 import {
-    SYSTEM_ROLE_KEY,
-} from '../../../constants/role.constants.js';
-
-import {
-    BILLING_INTERVAL,
     BILLING_PROVIDER,
     SUBSCRIPTION_KIND,
     SUBSCRIPTION_STATUS,
 } from '../../../constants/subscription.constants.js';
-
-import {
-    WORKSPACE_MEMBER_STATUS,
-} from '../../../constants/workspaceMember.constants.js';
 
 import {
     AppError,
@@ -39,127 +30,22 @@ import {
 } from '../../plan/plan.model.js';
 
 import {
-    Role,
-} from '../../role/role.model.js';
-
-import {
     hasConsumedTrial,
     recordTrialConsumption,
 } from '../../trialEligibility/trialEligibility.service.js';
 
 import {
-    User,
-} from '../../users/user.model.js';
-
-import {
-    WorkspaceMember,
-} from '../../workspaceMember/workspaceMember.model.js';
-
-import {
     Subscription,
 } from '../subscription.model.js';
 
+import {
+    buildTrialSubscriptionDto,
+    resolveCurrentWorkspaceOwner,
+    resolveTrialPrice,
+} from './grantTrial.helpers.js';
+
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
-
-
-/**
- * Résout le tarif à figer dans la souscription commerciale.
- *
- * Un trial n'exige pas de moyen de paiement, mais la souscription conserve
- * malgré tout l'offre et la périodicité choisies afin que son contexte
- * commercial soit déterministe pendant toute sa durée.
- */
-const resolveTrialPrice = (plan, billingInterval) => {
-    if (billingInterval === BILLING_INTERVAL.MONTHLY) {
-        return plan.priceMonthlyExclTaxMinor;
-    }
-
-    if (billingInterval === BILLING_INTERVAL.YEARLY) {
-        return plan.priceYearlyExclTaxMinor;
-    }
-
-    throw new AppError(
-        'Un trial sur un plan payant doit utiliser une périodicité mensuelle ou annuelle',
-        409,
-    );
-};
-
-
-/**
- * Retrouve l'identité commerciale portée par l'owner actuel du workspace.
- *
- * Le créateur historique du workspace ne peut pas être utilisé ici : un
- * transfert d'ownership doit faire hériter le nouvel owner du reliquat d'un
- * trial existant sans recréer ni réinitialiser l'essai.
- */
-const resolveCurrentWorkspaceOwner = async ({
-    workspaceId,
-    session,
-}) => {
-    const ownerRole = await Role.findOne({
-        workspace: workspaceId,
-        key: SYSTEM_ROLE_KEY.OWNER,
-    }).session(session);
-
-    if (!ownerRole) {
-        throw new AppError(
-            'Le rôle owner du workspace est introuvable',
-            409,
-        );
-    }
-
-    const ownerMembership = await WorkspaceMember.findOne({
-        workspace: workspaceId,
-        role: ownerRole._id,
-        status: WORKSPACE_MEMBER_STATUS.ACTIVE,
-    }).session(session);
-
-    if (!ownerMembership) {
-        throw new AppError(
-            'Aucun owner actif n’est associé à ce workspace',
-            409,
-        );
-    }
-
-    const owner = await User.findById(
-        ownerMembership.user,
-    ).session(session);
-
-    if (!owner?.emailCanonical) {
-        throw new AppError(
-            'L’identité de l’owner du workspace est introuvable',
-            409,
-        );
-    }
-
-    return owner;
-};
-
-
-const buildTrialSubscriptionDto = (subscription) => ({
-    id: subscription._id.toString(),
-    workspace:
-        subscription.workspace?.toString() ?? null,
-    plan:
-        subscription.plan?.toString() ?? null,
-    kind: subscription.kind,
-    status: subscription.status,
-    currentPeriodStart:
-        subscription.currentPeriodStart,
-    currentPeriodEnd:
-        subscription.currentPeriodEnd,
-    trialEndsAt:
-        subscription.trialEndsAt,
-    billingInterval:
-        subscription.billingInterval,
-    currency: subscription.currency,
-    priceExclTaxMinor:
-        subscription.priceExclTaxMinor,
-    provider: subscription.provider,
-    createdAt: subscription.createdAt,
-    updatedAt: subscription.updatedAt,
-});
 
 
 /**
@@ -239,6 +125,10 @@ const grantTrial = async ({
             status: SUBSCRIPTION_STATUS.TRIALING,
         }).session(session);
 
+        /*
+         * Un changement de plan pendant un trial réutilise la même
+         * Subscription commerciale. L'horloge du trial reste donc intacte.
+         */
         if (existingTrial) {
             if (
                 !existingTrial.trialEndsAt
@@ -370,6 +260,11 @@ const grantTrial = async ({
                 { session },
             );
 
+        /*
+         * La consommation d'éligibilité fait partie de la même transaction :
+         * une Subscription ne doit pas survivre si ce verrou ne peut pas être
+         * enregistré, et inversement.
+         */
         await recordTrialConsumption({
             emailCanonical: owner.emailCanonical,
             userId: owner._id,
