@@ -18,7 +18,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "seed:plans": "node backend/seeds/seedPlans.js",
-    "seed:super-admin": "node backend/seeds/seedSuperAdmin.js"
+    "seed:super-admin": "node backend/seeds/seedSuperAdmin.js",
+    "job:expire-trials": "node backend/jobs/subscriptions/runExpireTrialsJob.js"
   },
   "license": "UNLICENSED",
   "dependencies": {
