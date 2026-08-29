@@ -9,12 +9,8 @@ const AUDIT_STATUS = Object.freeze({
     FAILED: 'failed',
 });
 
-
 /**
  * Types de ressources pouvant être visées par une action auditée.
- *
- * Centraliser ces valeurs évite les variations telles que "workspace",
- * "Workspace" ou "workspaces", qui rendraient les recherches imprécises.
  */
 const AUDIT_ENTITY_TYPE = Object.freeze({
     AUTH_SESSION: 'AuthSession',
@@ -28,13 +24,8 @@ const AUDIT_ENTITY_TYPE = Object.freeze({
     WORKSPACE_MEMBER: 'WorkspaceMember',
 });
 
-
 /**
  * Vocabulaire stable des actions sensibles de la plateforme.
- *
- * Une action explicite est préférable à une valeur générique comme
- * "PLATFORM_ACTION" : elle permet de comprendre l'événement sans devoir
- * interpréter librement metadata.
  */
 const AUDIT_ACTION = Object.freeze({
     LOGIN_SUCCESS: 'LOGIN_SUCCESS',
@@ -42,15 +33,12 @@ const AUDIT_ACTION = Object.freeze({
     LOGOUT: 'LOGOUT',
     LOGOUT_ALL: 'LOGOUT_ALL',
     PASSWORD_CHANGED: 'PASSWORD_CHANGED',
-    PASSWORD_RESET_COMPLETED:
-        'PASSWORD_RESET_COMPLETED',
+    PASSWORD_RESET_COMPLETED: 'PASSWORD_RESET_COMPLETED',
 
     USER_CREATED: 'USER_CREATED',
     USER_DISABLED: 'USER_DISABLED',
     USER_ENABLED: 'USER_ENABLED',
-
-    USER_PLATFORM_ROLE_UPDATED:
-        'USER_PLATFORM_ROLE_UPDATED',
+    USER_PLATFORM_ROLE_UPDATED: 'USER_PLATFORM_ROLE_UPDATED',
 
     SESSION_REVOKED: 'SESSION_REVOKED',
     SESSION_REUSE_DETECTED: 'SESSION_REUSE_DETECTED',
@@ -83,6 +71,10 @@ const AUDIT_ACTION = Object.freeze({
     SUBSCRIPTION_PROMOTION_APPLIED:
         'SUBSCRIPTION_PROMOTION_APPLIED',
     SUBSCRIPTION_RESUMED: 'SUBSCRIPTION_RESUMED',
+    SUBSCRIPTION_DOWNGRADE_SCHEDULED:
+        'SUBSCRIPTION_DOWNGRADE_SCHEDULED',
+    SUBSCRIPTION_DOWNGRADE_REVOKED:
+        'SUBSCRIPTION_DOWNGRADE_REVOKED',
 
     FILE_UPLOADED: 'FILE_UPLOADED',
     FILE_UPLOAD_REJECTED: 'FILE_UPLOAD_REJECTED',
@@ -94,7 +86,6 @@ const AUDIT_ACTION = Object.freeze({
     ORGANIZATION_SUSPENDED: 'ORGANIZATION_SUSPENDED',
     ORGANIZATION_REACTIVATED: 'ORGANIZATION_REACTIVATED',
 });
-
 
 export {
     AUDIT_ACTION,
