@@ -7,16 +7,36 @@ import {
 } from '../../../constants/subscription.constants.js';
 
 
+const objectIdSchema = z
+    .string()
+    .regex(
+        /^[a-f\d]{24}$/i,
+        'Identifiant MongoDB invalide',
+    );
+
+
 /**
  * Valide l'identifiant MongoDB d'une souscription administrée via Platform.
  */
 const platformSubscriptionIdParamsSchema = z.strictObject({
-    subscriptionId: z
-        .string()
-        .regex(
-            /^[a-f\d]{24}$/i,
-            'subscriptionId invalide',
-        ),
+    subscriptionId: objectIdSchema,
+});
+
+
+/**
+ * Valide une attribution administrative de trial.
+ *
+ * `none` est volontairement exclu : un trial porte nécessairement sur une
+ * offre payante mensuelle ou annuelle, même si aucun moyen de paiement n'est
+ * requis pendant l'essai.
+ */
+const grantTrialBodySchema = z.strictObject({
+    workspaceId: objectIdSchema,
+    planId: objectIdSchema,
+    billingInterval: z.enum([
+        BILLING_INTERVAL.MONTHLY,
+        BILLING_INTERVAL.YEARLY,
+    ]),
 });
 
 
@@ -28,13 +48,7 @@ const platformSubscriptionIdParamsSchema = z.strictObject({
  */
 const updatePlatformSubscriptionBodySchema = z
     .strictObject({
-        plan: z
-            .string()
-            .regex(
-                /^[a-f\d]{24}$/i,
-                'plan invalide',
-            )
-            .optional(),
+        plan: objectIdSchema.optional(),
 
         billingInterval: z
             .enum(Object.values(BILLING_INTERVAL))
@@ -148,9 +162,10 @@ const updatePlatformSubscriptionBodySchema = z
         }
     });
 
+
 /**
-* Valide une demande explicite d'annulation administrative.
-*/
+ * Valide une demande explicite d'annulation administrative.
+ */
 const cancelPlatformSubscriptionBodySchema = z.strictObject({
     mode: z.enum(
         Object.values(
@@ -171,6 +186,7 @@ const cancelPlatformSubscriptionBodySchema = z.strictObject({
 
 export {
     platformSubscriptionIdParamsSchema,
+    grantTrialBodySchema,
     updatePlatformSubscriptionBodySchema,
     cancelPlatformSubscriptionBodySchema,
 };
