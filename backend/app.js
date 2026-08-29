@@ -18,6 +18,9 @@ import {
 } from './modules/platform/platform.routes.js';
 import { fileRouter } from './modules/file/file.routes.js';
 import { planRouter } from './modules/plan/plan.routes.js';
+import {
+    subscriptionRouter,
+} from './modules/subscriptions/subscription.routes.js';
 import { workspaceRouter } from './modules/workspace/workspace.routes.js';
 
 import { healthRouter } from './routes/health.routes.js';
@@ -44,13 +47,16 @@ app.use('/api/auth', authRouter);
 app.use('/api/platform', platformRouter);
 app.use('/api/plans', planRouter);
 /*
- * Le chemin de montage porte la frontière multi-tenant. Le fileRouter utilise
- * mergeParams afin de récupérer workspaceId et applique lui-même toute la
- * chaîne authenticate -> autorisation -> upload -> validation -> controller.
+ * Les routers enfants utilisent mergeParams afin de recevoir workspaceId tout
+ * en conservant une frontière multi-tenant explicite dans le chemin de montage.
  */
 app.use(
     '/api/workspaces/:workspaceId/files',
     fileRouter,
+);
+app.use(
+    '/api/workspaces/:workspaceId/subscription',
+    subscriptionRouter,
 );
 app.use('/api/workspaces', workspaceRouter);
 
