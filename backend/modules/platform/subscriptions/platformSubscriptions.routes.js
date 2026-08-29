@@ -18,6 +18,7 @@ import {
 
 import {
     listSubscriptions,
+    grantSubscriptionTrial,
     getSubscriptionById,
     updateSubscription,
     cancelSubscription,
@@ -26,6 +27,7 @@ import {
 
 import {
     cancelPlatformSubscriptionBodySchema,
+    grantTrialBodySchema,
     platformSubscriptionIdParamsSchema,
     updatePlatformSubscriptionBodySchema,
 } from './platformSubscriptions.validation.js';
@@ -56,6 +58,22 @@ platformSubscriptionsRouter.get(
     listSubscriptions,
 );
 
+
+/**
+ * Accorde un trial commercial ou change le plan d'un trial déjà actif.
+ *
+ * Cette route est déclarée avant `/:subscriptionId` afin que `grant-trial`
+ * ne puisse jamais être interprété comme un identifiant de souscription.
+ */
+platformSubscriptionsRouter.post(
+    '/grant-trial',
+    validateRequest({
+        body: grantTrialBodySchema,
+    }),
+    grantSubscriptionTrial,
+);
+
+
 /**
  * Retourne le détail administratif d'une souscription.
  */
@@ -66,6 +84,7 @@ platformSubscriptionsRouter.get(
     }),
     getSubscriptionById,
 );
+
 
 /**
  * Met à jour les propriétés administratives autorisées d'une souscription.
@@ -81,6 +100,7 @@ platformSubscriptionsRouter.patch(
     updateSubscription,
 );
 
+
 /**
  * Annule une souscription immédiatement ou à la fin de sa période courante.
  */
@@ -94,6 +114,7 @@ platformSubscriptionsRouter.patch(
     }),
     cancelSubscription,
 );
+
 
 /**
  * Retire une annulation programmée en fin de période.
