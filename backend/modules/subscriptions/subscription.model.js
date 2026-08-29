@@ -72,13 +72,17 @@ const subscriptionSchema = new Schema(
          * workspace. Une souscription commercial représente une offre payante
          * ou en essai pouvant fournir les droits effectifs du workspace.
          *
+         * Ce champ ne possède volontairement aucun default : chaque chemin de
+         * création doit déclarer explicitement son intention métier afin qu'une
+         * future souscription commerciale ne puisse pas devenir baseline par
+         * omission.
+         *
          * Ce champ ne décrit pas le cycle de vie de la souscription :
          * cette responsabilité appartient exclusivement à status.
          */
         kind: {
             type: String,
             enum: Object.values(SUBSCRIPTION_KIND),
-            default: SUBSCRIPTION_KIND.BASELINE,
             required: true,
         },
 
@@ -384,16 +388,15 @@ const subscriptionSchema = new Schema(
 
 
 /**
- * Garantit qu'un workspace ne possède qu'une seule souscription courante.
+ * Garantit qu'un workspace ne possède qu'une seule souscription courante de
+ * chaque rôle fonctionnel.
+ *
+ * La paire workspace + kind permet de conserver une baseline Free active en
+ * parallèle d'une souscription commerciale payante ou en trial.
  *
  * trialing, active et past_due représentent des souscriptions encore
  * opérationnelles ou contractuellement en cours.
- *
- * canceled et expired restent conservées pour l'historique, mais ne bloquent
- * pas la création d'une nouvelle souscription.
- *
- * Une souscription active avec cancelAtPeriodEnd=true reste courante jusqu'à
- * ce que son annulation devienne réellement effective.
+ * canceled et expired restent conservées pour l'historique.
  */
 subscriptionSchema.index(
     {
