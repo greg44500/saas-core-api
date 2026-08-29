@@ -30,6 +30,8 @@ const INITIAL_PLAN_DEFINITIONS = Object.freeze([
         status: PLAN_STATUS.ACTIVE,
         isPublic: true,
         displayOrder: 0,
+        trialEnabled: false,
+        trialDurationDays: null,
 
         // Les prix sont stockés en unités monétaires mineures.
         currency: 'EUR',

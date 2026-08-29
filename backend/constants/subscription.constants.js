@@ -105,6 +105,25 @@ const SUBSCRIPTION_CANCELLATION_MODE = Object.freeze({
     PERIOD_END: 'period_end',
 });
 
+/**
+ * Rôle fonctionnel d'une souscription dans le workspace.
+ *
+ * `baseline` représente l'offre de référence qui reste disponible lorsque
+ * aucune souscription commerciale ne fournit temporairement les droits
+ * effectifs du workspace.
+ *
+ * `commercial` représente une souscription payante ou en période d'essai
+ * susceptible de devenir l'offre effectivement utilisée par le workspace.
+ *
+ * Cette notion est volontairement distincte du statut :
+ * - kind décrit le rôle de la souscription ;
+ * - status décrit son état dans son cycle de vie.
+ */
+const SUBSCRIPTION_KIND = Object.freeze({
+    BASELINE: 'baseline',
+    COMMERCIAL: 'commercial',
+});
+
 
 export {
     BILLING_INTERVAL,
@@ -112,4 +131,5 @@ export {
     DISCOUNT_TYPE,
     SUBSCRIPTION_CANCELLATION_MODE,
     SUBSCRIPTION_STATUS,
+    SUBSCRIPTION_KIND,
 };

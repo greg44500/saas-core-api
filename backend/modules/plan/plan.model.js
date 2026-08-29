@@ -173,6 +173,33 @@ const planSchema = new Schema(
             },
         },
 
+        /**
+ * Indique si cette offre commerciale peut être essayée.
+ *
+ * Cette propriété décrit uniquement l'éligibilité du plan au trial.
+ * L'éligibilité d'une identité utilisateur et l'état concret d'un essai
+ * appartiennent respectivement à TrialEligibility et Subscription.
+ */
+        trialEnabled: {
+            type: Boolean,
+            default: false,
+            required: true,
+        },
+
+
+        /**
+         * Durée commerciale du trial exprimée en jours.
+         *
+         * null signifie que le plan ne propose aucun trial.
+         * Lorsqu'un trial est accordé, cette durée sert uniquement à calculer
+         * le `trialEndsAt` initial de la Subscription. Une modification future
+         * de cette valeur ne doit donc jamais modifier un trial déjà commencé.
+         */
+        trialDurationDays: {
+            type: Number,
+            default: null,
+        },
+
 
         /**
          * Devise utilisée par les prix du plan.
@@ -350,6 +377,34 @@ const planSchema = new Schema(
     },
 );
 
+/**
+ * Garantit la cohérence de la configuration commerciale du trial.
+ *
+ * Un plan sans trial ne doit conserver aucune durée résiduelle.
+ * Un plan avec trial doit définir une durée entière strictement positive.
+ */
+planSchema.pre('validate', function validateTrialConfiguration() {
+    if (!this.trialEnabled) {
+        if (this.trialDurationDays !== null) {
+            this.invalidate(
+                'trialDurationDays',
+                'La durée du trial doit être nulle lorsque le trial est désactivé.',
+            );
+        }
+
+        return;
+    }
+
+    if (
+        !Number.isInteger(this.trialDurationDays)
+        || this.trialDurationDays <= 0
+    ) {
+        this.invalidate(
+            'trialDurationDays',
+            'La durée du trial doit être un entier strictement positif lorsque le trial est activé.',
+        );
+    }
+});
 
 /**
  * Garantit l'identité fonctionnelle unique d'un plan.

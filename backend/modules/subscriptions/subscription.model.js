@@ -5,6 +5,7 @@ import {
     BILLING_PROVIDER,
     DISCOUNT_TYPE,
     SUBSCRIPTION_STATUS,
+    SUBSCRIPTION_KIND,
 } from '../../constants/subscription.constants.js';
 
 
@@ -61,6 +62,23 @@ const subscriptionSchema = new Schema(
         plan: {
             type: Schema.Types.ObjectId,
             ref: 'Plan',
+            required: true,
+        },
+
+        /**
+         * Rôle fonctionnel de la souscription dans le workspace.
+         *
+         * Une souscription baseline représente l'offre de référence du
+         * workspace. Une souscription commercial représente une offre payante
+         * ou en essai pouvant fournir les droits effectifs du workspace.
+         *
+         * Ce champ ne décrit pas le cycle de vie de la souscription :
+         * cette responsabilité appartient exclusivement à status.
+         */
+        kind: {
+            type: String,
+            enum: Object.values(SUBSCRIPTION_KIND),
+            default: SUBSCRIPTION_KIND.BASELINE,
             required: true,
         },
 
@@ -380,6 +398,7 @@ const subscriptionSchema = new Schema(
 subscriptionSchema.index(
     {
         workspace: 1,
+        kind: 1,
     },
     {
         unique: true,

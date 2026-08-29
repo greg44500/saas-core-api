@@ -104,6 +104,8 @@ describe('Plan model', () => {
         expect(plan.status).toBe(PLAN_STATUS.ACTIVE);
         expect(plan.isPublic).toBe(false);
         expect(plan.displayOrder).toBe(0);
+        expect(plan.trialEnabled).toBe(false);
+        expect(plan.trialDurationDays).toBeNull();
 
         expect(plan.features).toEqual([]);
 
@@ -265,4 +267,62 @@ describe('Plan model', () => {
 
         await expect(plan.validate()).rejects.toThrow();
     });
+    it('accepte une configuration de trial valide', async () => {
+        const plan = new Plan({
+            key: 'premium',
+            name: 'Premium',
+            currency: 'EUR',
+            priceMonthlyExclTaxMinor: 2990,
+            priceYearlyExclTaxMinor: 29900,
+            trialEnabled: true,
+            trialDurationDays: 14,
+        });
+
+        await plan.validate();
+
+        expect(plan.trialEnabled).toBe(true);
+        expect(plan.trialDurationDays).toBe(14);
+    });
+
+
+    it('refuse une durée lorsque le trial est désactivé', async () => {
+        const plan = new Plan({
+            key: 'free',
+            name: 'Free',
+            currency: 'EUR',
+            priceMonthlyExclTaxMinor: 0,
+            priceYearlyExclTaxMinor: 0,
+            trialEnabled: false,
+            trialDurationDays: 14,
+        });
+
+        await expect(plan.validate()).rejects.toThrow(
+            'La durée du trial doit être nulle lorsque le trial est désactivé.',
+        );
+    });
+
+
+    it.each([
+        null,
+        0,
+        -1,
+        14.5,
+    ])(
+        'refuse une durée de trial invalide lorsque le trial est activé : %s',
+        async (trialDurationDays) => {
+            const plan = new Plan({
+                key: 'starter',
+                name: 'Starter',
+                currency: 'EUR',
+                priceMonthlyExclTaxMinor: 1990,
+                priceYearlyExclTaxMinor: 19900,
+                trialEnabled: true,
+                trialDurationDays,
+            });
+
+            await expect(plan.validate()).rejects.toThrow(
+                'La durée du trial doit être un entier strictement positif lorsque le trial est activé.',
+            );
+        },
+    );
 });

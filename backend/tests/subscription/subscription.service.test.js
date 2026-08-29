@@ -12,6 +12,7 @@ import {
     BILLING_INTERVAL,
     BILLING_PROVIDER,
     SUBSCRIPTION_STATUS,
+    SUBSCRIPTION_KIND,
 } from '../../constants/subscription.constants.js';
 
 import {
@@ -108,6 +109,7 @@ describe('createFreeSubscriptionForWorkspace', () => {
                     workspace: workspaceId,
                     plan: planId,
 
+                    kind: SUBSCRIPTION_KIND.BASELINE,
                     status: SUBSCRIPTION_STATUS.ACTIVE,
 
                     currentPeriodStart: expect.any(Date),
@@ -189,42 +191,34 @@ describe('createFreeSubscriptionForWorkspace', () => {
 
 describe('getWorkspacePlanEntitlement', () => {
     afterEach(() => {
-        // Restaure la véritable méthode Mongoose après chaque test.
         vi.restoreAllMocks();
     });
 
+    const createQueryMock = (result) => ({
+        populate: vi.fn().mockResolvedValue(result),
+    });
 
-    it('retourne la souscription utilisable et son plan', async () => {
+    it('priorise une souscription commerciale en trial sur la baseline', async () => {
         const workspaceId = new ObjectId();
 
-        const plan = {
+        const commercialPlan = {
             _id: new ObjectId(),
-            key: PLAN_KEY.FREE,
-            limits: new Map([
-                ['members', 5],
-            ]),
+            key: 'pro',
         };
 
-        const subscription = {
+        const commercialSubscription = {
             _id: new ObjectId(),
             workspace: workspaceId,
-            status: SUBSCRIPTION_STATUS.ACTIVE,
-            plan,
+            kind: SUBSCRIPTION_KIND.COMMERCIAL,
+            status: SUBSCRIPTION_STATUS.TRIALING,
+            plan: commercialPlan,
         };
-
-        /*
-         * Subscription.findOne retourne une Query Mongoose. Le mock reproduit
-         * uniquement la méthode populate() utilisée par le service.
-         */
-        const populateMock = vi
-            .fn()
-            .mockResolvedValue(subscription);
 
         const findOneSpy = vi
             .spyOn(Subscription, 'findOne')
-            .mockReturnValue({
-                populate: populateMock,
-            });
+            .mockReturnValue(
+                createQueryMock(commercialSubscription),
+            );
 
         const result = await getWorkspacePlanEntitlement({
             workspaceId,
@@ -234,6 +228,7 @@ describe('getWorkspacePlanEntitlement', () => {
 
         expect(findOneSpy).toHaveBeenCalledWith({
             workspace: workspaceId,
+            kind: SUBSCRIPTION_KIND.COMMERCIAL,
             status: mongoose.trusted({
                 $in: [
                     SUBSCRIPTION_STATUS.TRIALING,
@@ -242,27 +237,102 @@ describe('getWorkspacePlanEntitlement', () => {
             }),
         });
 
-        expect(populateMock).toHaveBeenCalledOnce();
-        expect(populateMock).toHaveBeenCalledWith({
-            path: 'plan',
-        });
-
         expect(result).toEqual({
-            subscription,
-            plan,
+            subscription: commercialSubscription,
+            plan: commercialPlan,
         });
     });
 
+    it('priorise une souscription commerciale active sur la baseline', async () => {
+        const workspaceId = new ObjectId();
 
-    it('refuse un workspace sans souscription utilisable', async () => {
-        const populateMock = vi
-            .fn()
-            .mockResolvedValue(null);
+        const commercialPlan = {
+            _id: new ObjectId(),
+            key: 'pro',
+        };
+
+        const commercialSubscription = {
+            _id: new ObjectId(),
+            workspace: workspaceId,
+            kind: SUBSCRIPTION_KIND.COMMERCIAL,
+            status: SUBSCRIPTION_STATUS.ACTIVE,
+            plan: commercialPlan,
+        };
 
         vi.spyOn(Subscription, 'findOne')
-            .mockReturnValue({
-                populate: populateMock,
-            });
+            .mockReturnValue(
+                createQueryMock(commercialSubscription),
+            );
+
+        const result = await getWorkspacePlanEntitlement({
+            workspaceId,
+        });
+
+        expect(result.subscription).toBe(
+            commercialSubscription,
+        );
+        expect(result.plan).toBe(commercialPlan);
+    });
+
+    it('utilise la baseline lorsqu’aucune souscription commerciale utilisable n’existe', async () => {
+        const workspaceId = new ObjectId();
+
+        const baselinePlan = {
+            _id: new ObjectId(),
+            key: PLAN_KEY.FREE,
+        };
+
+        const baselineSubscription = {
+            _id: new ObjectId(),
+            workspace: workspaceId,
+            kind: SUBSCRIPTION_KIND.BASELINE,
+            status: SUBSCRIPTION_STATUS.ACTIVE,
+            plan: baselinePlan,
+        };
+
+        const findOneSpy = vi
+            .spyOn(Subscription, 'findOne')
+            .mockReturnValueOnce(
+                createQueryMock(null),
+            )
+            .mockReturnValueOnce(
+                createQueryMock(baselineSubscription),
+            );
+
+        const result = await getWorkspacePlanEntitlement({
+            workspaceId,
+        });
+
+        expect(findOneSpy).toHaveBeenCalledTimes(2);
+
+        expect(findOneSpy).toHaveBeenNthCalledWith(
+            2,
+            {
+                workspace: workspaceId,
+                kind: SUBSCRIPTION_KIND.BASELINE,
+                status: mongoose.trusted({
+                    $in: [
+                        SUBSCRIPTION_STATUS.TRIALING,
+                        SUBSCRIPTION_STATUS.ACTIVE,
+                    ],
+                }),
+            },
+        );
+
+        expect(result).toEqual({
+            subscription: baselineSubscription,
+            plan: baselinePlan,
+        });
+    });
+
+    it('refuse un workspace sans souscription utilisable', async () => {
+        vi.spyOn(Subscription, 'findOne')
+            .mockReturnValueOnce(
+                createQueryMock(null),
+            )
+            .mockReturnValueOnce(
+                createQueryMock(null),
+            );
 
         await expect(
             getWorkspacePlanEntitlement({

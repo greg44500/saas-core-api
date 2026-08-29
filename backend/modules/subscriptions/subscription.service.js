@@ -3,6 +3,7 @@ import {
     BILLING_INTERVAL,
     BILLING_PROVIDER,
     SUBSCRIPTION_STATUS,
+    SUBSCRIPTION_KIND,
 } from '../../constants/subscription.constants.js';
 
 import {
@@ -95,7 +96,7 @@ const createFreeSubscriptionForWorkspace = async ({
             {
                 workspace: workspaceId,
                 plan: freePlan._id,
-
+                kind: SUBSCRIPTION_KIND.BASELINE,
                 status: SUBSCRIPTION_STATUS.ACTIVE,
 
                 currentPeriodStart,
@@ -165,27 +166,32 @@ const getWorkspacePlanEntitlement = async ({
      * Un statut inconnu ou commercialement bloqué ne peut donc pas ouvrir
      * accidentellement l'accès aux capacités du plan.
      */
-    let query = Subscription.findOne({
-        workspace: workspaceId,
-        /*
- * Les statuts proviennent exclusivement des constantes internes du backend.
- *
- * sanitizeFilter reste actif pour les filtres non fiables. trusted() autorise
- * uniquement cet opérateur MongoDB construit par le service, sans désactiver
- * la protection globale contre les injections de sélecteurs.
- */
-        status: mongoose.trusted({
-            $in: USABLE_SUBSCRIPTION_STATUSES,
-        }),
-    }).populate({
-        path: 'plan',
-    });
+    const buildSubscriptionQuery = (kind) => {
+        let query = Subscription.findOne({
+            workspace: workspaceId,
+            kind,
+            status: mongoose.trusted({
+                $in: USABLE_SUBSCRIPTION_STATUSES,
+            }),
+        }).populate({
+            path: 'plan',
+        });
 
-    if (session) {
-        query = query.session(session);
-    }
+        if (session) {
+            query = query.session(session);
+        }
 
-    const subscription = await query;
+        return query;
+    };
+
+    const commercialSubscription = await buildSubscriptionQuery(
+        SUBSCRIPTION_KIND.COMMERCIAL,
+    );
+
+    const subscription = commercialSubscription
+        ?? await buildSubscriptionQuery(
+            SUBSCRIPTION_KIND.BASELINE,
+        );
 
     if (!subscription) {
         throw new AppError(
