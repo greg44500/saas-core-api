@@ -22,6 +22,10 @@ import {
 } from '../../middlewares/enforcePlanFeature.js';
 
 import {
+    enforceWorkspaceAccessMode,
+} from '../../middlewares/enforceWorkspaceAccessMode.js';
+
+import {
     uploadSingleFile,
 } from '../../middlewares/uploadMiddleware.js';
 
@@ -49,13 +53,13 @@ import {
     workspaceIdParamsSchema,
 } from '../../modules/workspace/workspace.validation.js';
 
-
 const {
     executionOrder,
     routeState,
     paramsValidationMiddleware,
     bodyValidationMiddleware,
     permissionMiddleware,
+    workspaceAccessMiddleware,
     planFeatureMiddleware,
     multerMiddleware,
     cleanupErrorMiddleware,
@@ -64,6 +68,7 @@ const {
 
     const routeState = {
         controllerError: null,
+        workspaceAccessError: null,
         planFeatureError: null,
     };
 
@@ -80,13 +85,11 @@ const {
         bodyValidationMiddleware:
             vi.fn((request, response, next) => {
                 executionOrder.push('validate-body');
-
                 request.validated = {
                     body: {
                         category: 'document',
                     },
                 };
-
                 next();
             }),
 
@@ -96,14 +99,27 @@ const {
                 next();
             }),
 
+        workspaceAccessMiddleware:
+            vi.fn((request, response, next) => {
+                executionOrder.push('workspace-access');
+
+                if (routeState.workspaceAccessError) {
+                    next(routeState.workspaceAccessError);
+                    return;
+                }
+
+                request.workspaceAccess = {
+                    accessMode: 'normal',
+                };
+                next();
+            }),
+
         planFeatureMiddleware:
             vi.fn((request, response, next) => {
                 executionOrder.push('plan-feature');
 
                 if (routeState.planFeatureError) {
-                    next(
-                        routeState.planFeatureError,
-                    );
+                    next(routeState.planFeatureError);
                     return;
                 }
 
@@ -125,11 +141,9 @@ const {
         multerMiddleware:
             vi.fn((request, response, next) => {
                 executionOrder.push('multer');
-
                 request.file = {
                     path: '/temporary/upload',
                 };
-
                 next();
             }),
 
@@ -146,25 +160,19 @@ const {
     };
 });
 
-
 vi.mock(
     '../../middlewares/authenticate.js',
     () => ({
         authenticate:
             vi.fn((request, response, next) => {
-                executionOrder.push(
-                    'authenticate',
-                );
-
+                executionOrder.push('authenticate');
                 request.user = {
                     _id: 'user-id',
                 };
-
                 next();
             }),
     }),
 );
-
 
 vi.mock(
     '../../middlewares/validateRequest.js',
@@ -179,30 +187,22 @@ vi.mock(
     }),
 );
 
-
 vi.mock(
     '../../middlewares/loadWorkspaceContext.js',
     () => ({
         loadWorkspaceContext:
             vi.fn((request, response, next) => {
-                executionOrder.push(
-                    'workspace-context',
-                );
-
+                executionOrder.push('workspace-context');
                 request.workspace = {
-                    _id:
-                        request.params.workspaceId,
+                    _id: request.params.workspaceId,
                 };
-
                 request.permissions = [
                     CORE_PERMISSION.FILE_UPLOAD,
                 ];
-
                 next();
             }),
     }),
 );
-
 
 vi.mock(
     '../../middlewares/authorizePermission.js',
@@ -212,6 +212,13 @@ vi.mock(
     }),
 );
 
+vi.mock(
+    '../../middlewares/enforceWorkspaceAccessMode.js',
+    () => ({
+        enforceWorkspaceAccessMode:
+            vi.fn(() => workspaceAccessMiddleware),
+    }),
+);
 
 vi.mock(
     '../../middlewares/enforcePlanFeature.js',
@@ -221,7 +228,6 @@ vi.mock(
     }),
 );
 
-
 vi.mock(
     '../../middlewares/uploadMiddleware.js',
     () => ({
@@ -229,7 +235,6 @@ vi.mock(
             vi.fn(() => multerMiddleware),
     }),
 );
-
 
 vi.mock(
     '../../middlewares/cleanupTemporaryUploadOnError.js',
@@ -239,22 +244,15 @@ vi.mock(
     }),
 );
 
-
 vi.mock(
     '../../modules/file/file.controller.js',
     () => ({
         upload:
             vi.fn((request, response, next) => {
-                executionOrder.push(
-                    'controller',
-                );
+                executionOrder.push('controller');
 
-                if (
-                    routeState.controllerError
-                ) {
-                    next(
-                        routeState.controllerError,
-                    );
+                if (routeState.controllerError) {
+                    next(routeState.controllerError);
                     return;
                 }
 
@@ -265,22 +263,22 @@ vi.mock(
     }),
 );
 
-
 beforeEach(() => {
     executionOrder.length = 0;
     routeState.controllerError = null;
+    routeState.workspaceAccessError = null;
     routeState.planFeatureError = null;
 
     paramsValidationMiddleware.mockClear();
     bodyValidationMiddleware.mockClear();
     permissionMiddleware.mockClear();
+    workspaceAccessMiddleware.mockClear();
     planFeatureMiddleware.mockClear();
     multerMiddleware.mockClear();
     cleanupErrorMiddleware.mockClear();
 
     upload.mockClear();
 });
-
 
 const createTestApp = () => {
     const app = express();
@@ -301,7 +299,6 @@ const createTestApp = () => {
     return app;
 };
 
-
 describe('file.routes', () => {
     it('applique les barrières dans l’ordre avant le controller', async () => {
         const app = createTestApp();
@@ -315,14 +312,16 @@ describe('file.routes', () => {
 
         expect(validateRequest)
             .toHaveBeenNthCalledWith(1, {
-                params:
-                    workspaceIdParamsSchema,
+                params: workspaceIdParamsSchema,
             });
 
         expect(authorizePermission)
             .toHaveBeenCalledWith(
                 CORE_PERMISSION.FILE_UPLOAD,
             );
+
+        expect(enforceWorkspaceAccessMode)
+            .toHaveBeenCalledWith();
 
         expect(enforcePlanFeature)
             .toHaveBeenCalledWith(
@@ -342,6 +341,7 @@ describe('file.routes', () => {
             'validate-params',
             'workspace-context',
             'authorize',
+            'workspace-access',
             'plan-feature',
             'multer',
             'validate-body',
@@ -352,6 +352,30 @@ describe('file.routes', () => {
             .not.toHaveBeenCalled();
     });
 
+    it('n’appelle pas les contrôles de plan ni Multer lorsque le workspace est en remédiation', async () => {
+        const app = createTestApp();
+
+        routeState.workspaceAccessError =
+            new Error('Mise en conformité requise');
+
+        const response = await request(app)
+            .post(
+                '/workspaces/507f1f77bcf86cd799439011/files',
+            );
+
+        expect(response.status).toBe(500);
+        expect(executionOrder).toEqual([
+            'authenticate',
+            'validate-params',
+            'workspace-context',
+            'authorize',
+            'workspace-access',
+            'cleanup',
+        ]);
+        expect(planFeatureMiddleware).not.toHaveBeenCalled();
+        expect(multerMiddleware).not.toHaveBeenCalled();
+        expect(upload).not.toHaveBeenCalled();
+    });
 
     it('n’appelle pas Multer lorsque le plan refuse la fonctionnalité', async () => {
         const app = createTestApp();
@@ -378,31 +402,20 @@ describe('file.routes', () => {
             'validate-params',
             'workspace-context',
             'authorize',
+            'workspace-access',
             'plan-feature',
             'cleanup',
         ]);
 
-        /*
-         * Cette assertion démontre qu'aucun flux binaire ne peut être écrit
-         * en quarantaine lorsque le plan n'autorise pas la fonctionnalité.
-         */
         expect(multerMiddleware)
             .not.toHaveBeenCalled();
-
         expect(bodyValidationMiddleware)
             .not.toHaveBeenCalled();
-
         expect(upload)
             .not.toHaveBeenCalled();
-
-        /*
-         * Le middleware d'erreur traverse tout de même la requête. Il ne
-         * trouvera aucun req.file et transmettra simplement l'erreur.
-         */
         expect(cleanupErrorMiddleware)
             .toHaveBeenCalledOnce();
     });
-
 
     it('transmet une erreur du controller au nettoyage de l’upload', async () => {
         const app = createTestApp();
@@ -429,6 +442,7 @@ describe('file.routes', () => {
             'validate-params',
             'workspace-context',
             'authorize',
+            'workspace-access',
             'plan-feature',
             'multer',
             'validate-body',
