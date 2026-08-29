@@ -34,6 +34,7 @@ import {
 
 import {
     cancelPlatformSubscriptionBodySchema,
+    grantTrialBodySchema,
     platformSubscriptionIdParamsSchema,
     updatePlatformSubscriptionBodySchema,
 } from '../../../modules/platform/subscriptions/platformSubscriptions.validation.js';
@@ -54,6 +55,12 @@ const {
 
     handlers: {
         listSubscriptions: vi.fn(
+            (req, res) =>
+                res.status(200).json({
+                    status: 'success',
+                }),
+        ),
+        grantSubscriptionTrial: vi.fn(
             (req, res) =>
                 res.status(200).json({
                     status: 'success',
@@ -190,6 +197,57 @@ describe('platformSubscriptions.routes', () => {
             handlers.listSubscriptions,
         ).toHaveBeenCalledOnce();
     });
+
+
+    it('protège et valide l’attribution d’un trial avant le controller', async () => {
+        const response = await request(app)
+            .post(
+                '/platform/subscriptions/grant-trial',
+            )
+            .send({
+                workspaceId:
+                    '507f1f77bcf86cd799439011',
+                planId:
+                    '507f191e810c19729de860ea',
+                billingInterval: 'monthly',
+            });
+
+        expect(response.status).toBe(200);
+
+        expect(
+            authorizePlatformRole,
+        ).toHaveBeenCalledWith(
+            PLATFORM_ROLE.SUPER_ADMIN,
+        );
+
+        expect(
+            validateRequest,
+        ).toHaveBeenCalledWith({
+            body: grantTrialBodySchema,
+        });
+
+        expect(
+            authenticate,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            platformRoleMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            validationMiddleware,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.grantSubscriptionTrial,
+        ).toHaveBeenCalledOnce();
+
+        expect(
+            handlers.getSubscriptionById,
+        ).not.toHaveBeenCalled();
+    });
+
+
     it('protège et valide le détail d’une souscription avant le controller', async () => {
         const subscriptionId =
             '507f1f77bcf86cd799439011';
@@ -234,6 +292,7 @@ describe('platformSubscriptions.routes', () => {
             handlers.listSubscriptions,
         ).not.toHaveBeenCalled();
     });
+
 
     it('protège et valide la mise à jour d’une souscription avant le controller', async () => {
         const subscriptionId =
@@ -289,6 +348,7 @@ describe('platformSubscriptions.routes', () => {
         ).not.toHaveBeenCalled();
     });
 
+
     it('protège et valide l’annulation d’une souscription avant le controller', async () => {
         const subscriptionId =
             '507f1f77bcf86cd799439011';
@@ -339,6 +399,8 @@ describe('platformSubscriptions.routes', () => {
             handlers.updateSubscription,
         ).not.toHaveBeenCalled();
     });
+
+
     it('protège et valide la reprise d’une souscription avant le controller', async () => {
         const subscriptionId =
             '507f1f77bcf86cd799439011';
