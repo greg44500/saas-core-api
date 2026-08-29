@@ -8,6 +8,9 @@ import {
 } from '../../middlewares/enforceWorkspaceAccessMode.js';
 import { loadWorkspaceContext } from '../../middlewares/loadWorkspaceContext.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
+import {
+    subscriptionRouter,
+} from '../subscriptions/subscription.routes.js';
 
 import {
     create,
@@ -42,6 +45,15 @@ router.get(
     '/',
     authenticate,
     list,
+);
+
+/**
+ * Le module Subscription reste responsable de sa propre chaîne HTTP. Le
+ * workspaceRouter ne fait ici que porter la frontière multi-tenant commune.
+ */
+router.use(
+    '/:workspaceId/subscription',
+    subscriptionRouter,
 );
 
 /**
