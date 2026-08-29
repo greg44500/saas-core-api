@@ -12,6 +12,9 @@ import {
 } from '../../../constants/subscription.constants.js';
 import { createAuditLog } from '../../auditLog/auditLog.service.js';
 import { Subscription } from '../subscription.model.js';
+import {
+    calculatePaidPeriodEnd,
+} from './activatePaidSubscriptionFromTrial.helpers.js';
 
 const isValidDate = (value) =>
     value instanceof Date && !Number.isNaN(value.getTime());
@@ -23,6 +26,9 @@ const isValidDate = (value) =>
  * nouvelle référence de la Subscription. Le service ne recalcule jamais le
  * prix depuis Plan : une modification ultérieure du catalogue ne doit pas
  * réécrire rétroactivement l'intention déjà acceptée.
+ *
+ * La nouvelle période démarre exactement à `effectiveAt` et conserve les
+ * règles calendaires monthly/yearly déjà utilisées par le domaine payant.
  *
  * Chaque candidat utilise sa propre transaction afin qu'un échec isolé
  * n'annule pas les transitions déjà valides d'autres workspaces.
@@ -48,6 +54,10 @@ const applyScheduledDowngrades = async ({ now = new Date() } = {}) => {
     for (const candidate of candidates) {
         await mongoose.connection.transaction(async (session) => {
             const scheduledChange = candidate.scheduledChange;
+            const nextPeriodEnd = calculatePaidPeriodEnd(
+                scheduledChange.effectiveAt,
+                scheduledChange.targetBillingInterval,
+            );
 
             const updated = await Subscription.findOneAndUpdate(
                 {
@@ -71,6 +81,7 @@ const applyScheduledDowngrades = async ({ now = new Date() } = {}) => {
                         priceExclTaxMinor:
                             scheduledChange.targetPriceExclTaxMinor,
                         currentPeriodStart: scheduledChange.effectiveAt,
+                        currentPeriodEnd: nextPeriodEnd,
                         scheduledChange: null,
                         updatedBy: null,
                     },
@@ -103,6 +114,7 @@ const applyScheduledDowngrades = async ({ now = new Date() } = {}) => {
                         priceExclTaxMinor:
                             scheduledChange.targetPriceExclTaxMinor,
                         effectiveAt: scheduledChange.effectiveAt,
+                        nextPeriodEnd,
                         processedAt: now,
                     },
                 },
