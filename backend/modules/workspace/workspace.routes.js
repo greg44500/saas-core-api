@@ -3,6 +3,9 @@ import { Router } from 'express';
 import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
+import {
+    enforceWorkspaceAccessMode,
+} from '../../middlewares/enforceWorkspaceAccessMode.js';
 import { loadWorkspaceContext } from '../../middlewares/loadWorkspaceContext.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 
@@ -24,16 +27,8 @@ import {
     paginationQuerySchema,
 } from '../../utils/validations/pagination.validation.js';
 
-
-
 const router = Router();
 
-/**
- * Crée un workspace pour l'utilisateur authentifié.
- *
- * authenticate est exécuté avant la validation afin que seuls
- * les utilisateurs authentifiés puissent atteindre cette opération.
- */
 router.post(
     '/',
     authenticate,
@@ -42,9 +37,7 @@ router.post(
     }),
     create,
 );
-/** 
-* Liste les workspaces actuellement accessibles à l'utilisateur à partir de ses memberships actifs.
-*/
+
 router.get(
     '/',
     authenticate,
@@ -52,10 +45,8 @@ router.get(
 );
 
 /**
- * Liste les membres actuels d’un workspace.
- *
- * Le workspace et le membership du demandeur doivent être actifs.
- * La consultation exige explicitement la permission member:read.
+ * Les lectures restent accessibles en remédiation afin que l'interface puisse
+ * expliquer la situation et présenter les ressources à mettre en conformité.
  */
 router.get(
     '/:workspaceId/members',
@@ -71,12 +62,6 @@ router.get(
     listMembers,
 );
 
-/**
- * Retourne un workspace accessible à l'utilisateur connecté.
- *
- * L'identifiant est validé avant le chargement du contexte multi-tenant.
- * La permission de lecture du workspace est ensuite vérifiée explicitement.
- */
 router.get(
     '/:workspaceId',
     authenticate,
@@ -90,12 +75,11 @@ router.get(
     getById,
 );
 
-
 /**
- * Modifie le nom d'un workspace accessible à l'utilisateur connecté.
- *
- * Le workspace doit être actif et le membre doit posséder
- * explicitement la permission workspace:update.
+ * Une modification générale du workspace n'est pas une action de remédiation.
+ * Elle reste donc indisponible tant que des capacités bloquantes dépassent le
+ * plan effectif. Les futures routes de correction déclareront explicitement
+ * leur autorisation en remédiation.
  */
 router.patch(
     '/:workspaceId',
@@ -108,6 +92,7 @@ router.patch(
     authorizePermission(
         CORE_PERMISSION.WORKSPACE_UPDATE,
     ),
+    enforceWorkspaceAccessMode(),
     update,
 );
 
