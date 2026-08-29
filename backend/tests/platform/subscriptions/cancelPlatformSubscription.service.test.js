@@ -53,6 +53,24 @@ describe('cancelPlatformSubscription', () => {
             .not.toHaveBeenCalled();
     });
 
+    it('refuse un mode inconnu avant le domaine métier', async () => {
+        await expect(
+            cancelPlatformSubscription({
+                subscriptionId,
+                mode: 'unknown',
+                reason: 'Résiliation administrative',
+                actorId,
+            }),
+        ).rejects.toThrow(
+            'mode must be immediate or period_end to cancel a platform subscription',
+        );
+
+        expect(cancelActiveSubscriptionImmediately)
+            .not.toHaveBeenCalled();
+        expect(scheduleActiveSubscriptionCancellation)
+            .not.toHaveBeenCalled();
+    });
+
     it('délègue une annulation immédiate au domaine Subscription', async () => {
         const updatedAt = new Date();
 
