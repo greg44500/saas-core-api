@@ -23,12 +23,22 @@ const CORE_PERMISSION = Object.freeze({
     ROLE_DELETE: 'role:delete',
 
     /*
- * Création d'une ressource File à partir d'un upload.
- *
- * Cette permission reste distincte de workspace:update : administrer les
- * paramètres du tenant et déposer un contenu sont deux actions différentes
- * qui doivent pouvoir évoluer indépendamment.
- */
+     * Consultation de l'état contractuel opérationnel du workspace.
+     *
+     * Cette permission ne couvre volontairement ni les moyens de paiement,
+     * ni l'identité de facturation, ni les identifiants du prestataire de
+     * paiement. Ces données appartiendront au futur domaine Billing et seront
+     * protégées par une règle propriétaire-only distincte.
+     */
+    SUBSCRIPTION_READ: 'subscription:read',
+
+    /*
+     * Création d'une ressource File à partir d'un upload.
+     *
+     * Cette permission reste distincte de workspace:update : administrer les
+     * paramètres du tenant et déposer un contenu sont deux actions différentes
+     * qui doivent pouvoir évoluer indépendamment.
+     */
     FILE_UPLOAD: 'file:upload',
 });
 
