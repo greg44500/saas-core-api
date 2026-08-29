@@ -3,7 +3,7 @@ import {
 } from './services/listPlatformSubscriptions.service.js';
 
 import {
-    getPlatformSubscriptionById
+    getPlatformSubscriptionById,
 } from './services/getPlatformSubscriptionById.service.js';
 
 import {
@@ -17,6 +17,12 @@ import {
 import {
     resumePlatformSubscription,
 } from './services/resumePlatformSubscription.service.js';
+
+import {
+    grantTrial,
+} from '../../subscriptions/services/grantTrial.service.js';
+
+
 /**
  * Retourne la liste administrative paginée des souscriptions.
  *
@@ -41,6 +47,40 @@ const listSubscriptions = async (req, res) => {
     });
 };
 
+
+/**
+ * Accorde un trial commercial à un workspace ou change le plan d'un trial
+ * déjà actif sans modifier son horloge.
+ */
+const grantSubscriptionTrial = async (req, res) => {
+    const subscription = await grantTrial({
+        workspaceId:
+            req.validated.body.workspaceId,
+        planId:
+            req.validated.body.planId,
+        billingInterval:
+            req.validated.body.billingInterval,
+        actorId:
+            req.user._id,
+        ipAddress:
+            req.context?.ipAddress ?? null,
+        userAgent:
+            req.context?.userAgent ?? null,
+    });
+
+    /*
+     * 200 est utilisé plutôt que 201 car la même opération peut soit créer
+     * le premier trial, soit faire évoluer le plan d'un trial déjà en cours.
+     */
+    res.status(200).json({
+        status: 'success',
+        data: {
+            subscription,
+        },
+    });
+};
+
+
 /**
  * Retourne le détail administratif d'une souscription.
  *
@@ -61,6 +101,7 @@ const getSubscriptionById = async (req, res) => {
         },
     });
 };
+
 
 /**
  * Met à jour les propriétés administratives autorisées d'une souscription.
@@ -87,6 +128,7 @@ const updateSubscription = async (req, res) => {
         },
     });
 };
+
 
 /**
  * Annule une souscription immédiatement ou en fin de période.
@@ -116,6 +158,7 @@ const cancelSubscription = async (req, res) => {
     });
 };
 
+
 /**
  * Retire une annulation programmée en fin de période.
  */
@@ -143,6 +186,7 @@ const resumeSubscription = async (req, res) => {
 
 export {
     listSubscriptions,
+    grantSubscriptionTrial,
     getSubscriptionById,
     getPlatformSubscriptionById,
     updateSubscription,
