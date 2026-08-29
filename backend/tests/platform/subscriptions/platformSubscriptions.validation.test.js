@@ -5,9 +5,70 @@ import {
 } from 'vitest';
 
 import {
-    updatePlatformSubscriptionBodySchema,
     cancelPlatformSubscriptionBodySchema,
+    grantTrialBodySchema,
+    updatePlatformSubscriptionBodySchema,
 } from '../../../modules/platform/subscriptions/platformSubscriptions.validation.js';
+
+
+describe('grantTrialBodySchema', () => {
+    const validPayload = {
+        workspaceId:
+            '507f1f77bcf86cd799439011',
+        planId:
+            '507f191e810c19729de860ea',
+        billingInterval: 'monthly',
+    };
+
+    it('accepte une attribution de trial mensuelle valide', () => {
+        const result =
+            grantTrialBodySchema.safeParse(
+                validPayload,
+            );
+
+        expect(result.success).toBe(true);
+    });
+
+    it('accepte une attribution de trial annuelle valide', () => {
+        const result =
+            grantTrialBodySchema.safeParse({
+                ...validPayload,
+                billingInterval: 'yearly',
+            });
+
+        expect(result.success).toBe(true);
+    });
+
+    it('refuse la périodicité none', () => {
+        const result =
+            grantTrialBodySchema.safeParse({
+                ...validPayload,
+                billingInterval: 'none',
+            });
+
+        expect(result.success).toBe(false);
+    });
+
+    it('refuse un identifiant de workspace invalide', () => {
+        const result =
+            grantTrialBodySchema.safeParse({
+                ...validPayload,
+                workspaceId: 'invalid',
+            });
+
+        expect(result.success).toBe(false);
+    });
+
+    it('refuse les champs non autorisés', () => {
+        const result =
+            grantTrialBodySchema.safeParse({
+                ...validPayload,
+                trialDurationDays: 30,
+            });
+
+        expect(result.success).toBe(false);
+    });
+});
 
 
 describe('updatePlatformSubscriptionBodySchema', () => {
