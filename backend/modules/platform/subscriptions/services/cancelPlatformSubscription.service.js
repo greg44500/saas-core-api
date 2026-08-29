@@ -36,6 +36,15 @@ const cancelPlatformSubscription = async ({
         );
     }
 
+    if (
+        mode !== SUBSCRIPTION_CANCELLATION_MODE.IMMEDIATE
+        && mode !== SUBSCRIPTION_CANCELLATION_MODE.PERIOD_END
+    ) {
+        throw new TypeError(
+            'mode must be immediate or period_end to cancel a platform subscription',
+        );
+    }
+
     const commonParams = {
         subscriptionId,
         actorId,
