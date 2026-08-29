@@ -20,6 +20,7 @@
     "seed:plans": "node backend/seeds/seedPlans.js",
     "seed:super-admin": "node backend/seeds/seedSuperAdmin.js",
     "migration:subscription-lifecycle-indexes": "node backend/migrations/runAddSubscriptionLifecycleIndexesMigration.js",
+    "migration:subscription-read-permission": "node backend/migrations/runAddSubscriptionReadPermissionToSystemRolesMigration.js",
     "job:expire-trials": "node backend/jobs/subscriptions/runExpireTrialsJob.js",
     "job:finalize-subscription-cancellations": "node backend/jobs/subscriptions/runFinalizeScheduledCancellationsJob.js",
     "job:apply-scheduled-downgrades": "node backend/jobs/subscriptions/runApplyScheduledDowngradesJob.js"
