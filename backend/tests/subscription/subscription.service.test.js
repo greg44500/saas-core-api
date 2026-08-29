@@ -150,10 +150,6 @@ describe('createFreeSubscriptionForWorkspace', () => {
             'workspaceId, actorId and session are required to create a free subscription',
         );
 
-        /*
-         * Le service doit refuser immédiatement l'opération avant toute
-         * lecture ou écriture MongoDB.
-         */
         expect(findOneSpy).not.toHaveBeenCalled();
         expect(createSpy).not.toHaveBeenCalled();
     });
@@ -191,6 +187,7 @@ describe('createFreeSubscriptionForWorkspace', () => {
 
 describe('getWorkspacePlanEntitlement', () => {
     afterEach(() => {
+        vi.useRealTimers();
         vi.restoreAllMocks();
     });
 
@@ -198,7 +195,10 @@ describe('getWorkspacePlanEntitlement', () => {
         populate: vi.fn().mockResolvedValue(result),
     });
 
-    it('priorise une souscription commerciale en trial sur la baseline', async () => {
+    it('priorise une souscription commerciale en trial encore valide sur la baseline', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-08-29T12:00:00.000Z'));
+
         const workspaceId = new ObjectId();
 
         const commercialPlan = {
@@ -211,12 +211,14 @@ describe('getWorkspacePlanEntitlement', () => {
             workspace: workspaceId,
             kind: SUBSCRIPTION_KIND.COMMERCIAL,
             status: SUBSCRIPTION_STATUS.TRIALING,
+            trialEndsAt: new Date('2026-08-30T12:00:00.000Z'),
             plan: commercialPlan,
         };
 
         const findOneSpy = vi
             .spyOn(Subscription, 'findOne')
-            .mockReturnValue(
+            .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(
                 createQueryMock(commercialSubscription),
             );
 
@@ -224,18 +226,28 @@ describe('getWorkspacePlanEntitlement', () => {
             workspaceId,
         });
 
-        expect(findOneSpy).toHaveBeenCalledOnce();
+        expect(findOneSpy).toHaveBeenCalledTimes(2);
+        expect(findOneSpy).toHaveBeenNthCalledWith(
+            1,
+            {
+                workspace: workspaceId,
+                kind: SUBSCRIPTION_KIND.COMMERCIAL,
+                status: SUBSCRIPTION_STATUS.ACTIVE,
+            },
+        );
 
-        expect(findOneSpy).toHaveBeenCalledWith({
-            workspace: workspaceId,
-            kind: SUBSCRIPTION_KIND.COMMERCIAL,
-            status: mongoose.trusted({
-                $in: [
-                    SUBSCRIPTION_STATUS.TRIALING,
-                    SUBSCRIPTION_STATUS.ACTIVE,
-                ],
-            }),
-        });
+        expect(findOneSpy).toHaveBeenNthCalledWith(
+            2,
+            {
+                workspace: workspaceId,
+                kind: SUBSCRIPTION_KIND.COMMERCIAL,
+                status: SUBSCRIPTION_STATUS.TRIALING,
+                trialEndsAt: mongoose.trusted({
+                    $type: 'date',
+                    $gt: new Date('2026-08-29T12:00:00.000Z'),
+                }),
+            },
+        );
 
         expect(result).toEqual({
             subscription: commercialSubscription,
@@ -259,7 +271,8 @@ describe('getWorkspacePlanEntitlement', () => {
             plan: commercialPlan,
         };
 
-        vi.spyOn(Subscription, 'findOne')
+        const findOneSpy = vi
+            .spyOn(Subscription, 'findOne')
             .mockReturnValue(
                 createQueryMock(commercialSubscription),
             );
@@ -268,10 +281,60 @@ describe('getWorkspacePlanEntitlement', () => {
             workspaceId,
         });
 
+        expect(findOneSpy).toHaveBeenCalledOnce();
         expect(result.subscription).toBe(
             commercialSubscription,
         );
         expect(result.plan).toBe(commercialPlan);
+    });
+
+    it('retombe immédiatement sur la baseline lorsqu’un trial a dépassé trialEndsAt', async () => {
+        const workspaceId = new ObjectId();
+
+        const baselinePlan = {
+            _id: new ObjectId(),
+            key: PLAN_KEY.FREE,
+        };
+
+        const baselineSubscription = {
+            _id: new ObjectId(),
+            workspace: workspaceId,
+            kind: SUBSCRIPTION_KIND.BASELINE,
+            status: SUBSCRIPTION_STATUS.ACTIVE,
+            plan: baselinePlan,
+        };
+
+        /*
+         * MongoDB ne renverrait pas le trial expiré car la requête exige
+         * trialEndsAt > now. Le statut peut donc rester momentanément trialing
+         * en base sans prolonger les droits commerciaux.
+         */
+        const findOneSpy = vi
+            .spyOn(Subscription, 'findOne')
+            .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(
+                createQueryMock(baselineSubscription),
+            );
+
+        const result = await getWorkspacePlanEntitlement({
+            workspaceId,
+        });
+
+        expect(findOneSpy).toHaveBeenCalledTimes(3);
+        expect(findOneSpy).toHaveBeenNthCalledWith(
+            3,
+            {
+                workspace: workspaceId,
+                kind: SUBSCRIPTION_KIND.BASELINE,
+                status: SUBSCRIPTION_STATUS.ACTIVE,
+            },
+        );
+
+        expect(result).toEqual({
+            subscription: baselineSubscription,
+            plan: baselinePlan,
+        });
     });
 
     it('utilise la baseline lorsqu’aucune souscription commerciale utilisable n’existe', async () => {
@@ -292,9 +355,8 @@ describe('getWorkspacePlanEntitlement', () => {
 
         const findOneSpy = vi
             .spyOn(Subscription, 'findOne')
-            .mockReturnValueOnce(
-                createQueryMock(null),
-            )
+            .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(createQueryMock(null))
             .mockReturnValueOnce(
                 createQueryMock(baselineSubscription),
             );
@@ -303,21 +365,7 @@ describe('getWorkspacePlanEntitlement', () => {
             workspaceId,
         });
 
-        expect(findOneSpy).toHaveBeenCalledTimes(2);
-
-        expect(findOneSpy).toHaveBeenNthCalledWith(
-            2,
-            {
-                workspace: workspaceId,
-                kind: SUBSCRIPTION_KIND.BASELINE,
-                status: mongoose.trusted({
-                    $in: [
-                        SUBSCRIPTION_STATUS.TRIALING,
-                        SUBSCRIPTION_STATUS.ACTIVE,
-                    ],
-                }),
-            },
-        );
+        expect(findOneSpy).toHaveBeenCalledTimes(3);
 
         expect(result).toEqual({
             subscription: baselineSubscription,
@@ -327,12 +375,9 @@ describe('getWorkspacePlanEntitlement', () => {
 
     it('refuse un workspace sans souscription utilisable', async () => {
         vi.spyOn(Subscription, 'findOne')
-            .mockReturnValueOnce(
-                createQueryMock(null),
-            )
-            .mockReturnValueOnce(
-                createQueryMock(null),
-            );
+            .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(createQueryMock(null));
 
         await expect(
             getWorkspacePlanEntitlement({
