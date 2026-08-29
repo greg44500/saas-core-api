@@ -28,15 +28,17 @@ const grantTrialBodySchema = z.strictObject({
     ]),
 });
 
-const scheduleCancellationBodySchema = z.strictObject({
-    reason: z
-        .string()
-        .trim()
-        .min(1)
-        .max(500)
-        .nullable()
-        .optional(),
-});
+const scheduleCancellationBodySchema = z
+    .strictObject({
+        reason: z
+            .string()
+            .trim()
+            .min(1)
+            .max(500)
+            .nullable()
+            .optional(),
+    })
+    .default({});
 
 const scheduleDowngradeBodySchema = z.strictObject({
     targetPlanId: objectIdSchema('targetPlanId'),
