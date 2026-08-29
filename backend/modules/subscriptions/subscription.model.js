@@ -429,6 +429,20 @@ subscriptionSchema.index({
 
 
 /**
+ * Cible efficacement les seuls trials commerciaux arrivés à échéance.
+ *
+ * Le job de maintenance filtre d'abord par rôle et statut puis applique une
+ * borne sur trialEndsAt. Cet ordre d'index évite de parcourir les trials encore
+ * valides uniquement pour constater qu'ils ne sont pas expirés.
+ */
+subscriptionSchema.index({
+    kind: 1,
+    status: 1,
+    trialEndsAt: 1,
+});
+
+
+/**
  * Facilite la synchronisation avec un fournisseur de paiement.
  */
 subscriptionSchema.index({
