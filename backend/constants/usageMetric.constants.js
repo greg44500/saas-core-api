@@ -28,5 +28,20 @@ const USAGE_METRIC_PERIOD_TYPE = Object.freeze({
     CALENDAR_MONTH: 'calendar_month',
 });
 
+/**
+ * Nature métier d'une métrique de plan.
+ *
+ * `capacity` décrit un état courant que l'administrateur peut réduire afin de
+ * revenir sous une limite de plan. `consumption` décrit une consommation déjà
+ * réalisée sur une période et qui ne peut pas être annulée rétroactivement.
+ */
+const USAGE_METRIC_BEHAVIOR = Object.freeze({
+    CAPACITY: 'capacity',
+    CONSUMPTION: 'consumption',
+});
 
-export { USAGE_METRIC_PERIOD_TYPE };
+
+export {
+    USAGE_METRIC_BEHAVIOR,
+    USAGE_METRIC_PERIOD_TYPE,
+};
