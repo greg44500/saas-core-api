@@ -5,6 +5,7 @@ import {
 } from 'vitest';
 
 import {
+    USAGE_METRIC_BEHAVIOR,
     USAGE_METRIC_PERIOD_TYPE,
 } from '../../constants/usageMetric.constants.js';
 
@@ -21,18 +22,19 @@ import {
 
 describe('Plan capability registry', () => {
     it('expose des clés nommées pour les métriques du socle', () => {
-    expect(CORE_PLAN_METRIC).toEqual({
-        MEMBERS: 'members',
-        STORAGE_BYTES: 'storage_bytes',
-        FILE_UPLOADS_MONTHLY: 'file_uploads_monthly',
+        expect(CORE_PLAN_METRIC).toEqual({
+            MEMBERS: 'members',
+            STORAGE_BYTES: 'storage_bytes',
+            FILE_UPLOADS_MONTHLY: 'file_uploads_monthly',
+        });
+
+        expect(CORE_PLAN_METRICS).toEqual([
+            CORE_PLAN_METRIC.MEMBERS,
+            CORE_PLAN_METRIC.STORAGE_BYTES,
+            CORE_PLAN_METRIC.FILE_UPLOADS_MONTHLY,
+        ]);
     });
 
-    expect(CORE_PLAN_METRICS).toEqual([
-        CORE_PLAN_METRIC.MEMBERS,
-        CORE_PLAN_METRIC.STORAGE_BYTES,
-        CORE_PLAN_METRIC.FILE_UPLOADS_MONTHLY,
-    ]);
-});
     it('contient les features et métriques du socle dans le registre par défaut', () => {
         for (const feature of CORE_PLAN_FEATURES) {
             expect(
@@ -51,13 +53,14 @@ describe('Plan capability registry', () => {
         }
     });
 
-
-    it('associe chaque métrique du socle à sa période de mesure', () => {
+    it('décrit la période et la stratégie de remédiation de chaque métrique du socle', () => {
         expect(
             DEFAULT_PLAN_CAPABILITY_REGISTRY
                 .getMetricDefinition('members'),
         ).toEqual({
             periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
+            behavior: USAGE_METRIC_BEHAVIOR.CAPACITY,
+            remediationRequired: true,
         });
 
         expect(
@@ -65,6 +68,8 @@ describe('Plan capability registry', () => {
                 .getMetricDefinition('storage_bytes'),
         ).toEqual({
             periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
+            behavior: USAGE_METRIC_BEHAVIOR.CAPACITY,
+            remediationRequired: true,
         });
 
         expect(
@@ -75,9 +80,10 @@ describe('Plan capability registry', () => {
         ).toEqual({
             periodType:
                 USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH,
+            behavior: USAGE_METRIC_BEHAVIOR.CONSUMPTION,
+            remediationRequired: false,
         });
     });
-
 
     it('permet d’ajouter des capabilities métier sans modifier celles du socle', () => {
         const registry = createPlanCapabilityRegistry({
@@ -102,19 +108,24 @@ describe('Plan capability registry', () => {
         ).toBe(true);
     });
 
-
-    it('enregistre une définition temporelle injectée par une application métier', () => {
+    it('enregistre une définition injectée par une application métier', () => {
         const registry = createPlanCapabilityRegistry({
             metricDefinitions: {
                 properties: {
                     periodType:
                         USAGE_METRIC_PERIOD_TYPE.CURRENT,
+                    behavior:
+                        USAGE_METRIC_BEHAVIOR.CAPACITY,
+                    remediationRequired: true,
                 },
 
                 dpe_checks_monthly: {
                     periodType:
                         USAGE_METRIC_PERIOD_TYPE
                             .CALENDAR_MONTH,
+                    behavior:
+                        USAGE_METRIC_BEHAVIOR.CONSUMPTION,
+                    remediationRequired: false,
                 },
             },
         });
@@ -135,6 +146,8 @@ describe('Plan capability registry', () => {
             registry.getMetricDefinition('properties'),
         ).toEqual({
             periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
+            behavior: USAGE_METRIC_BEHAVIOR.CAPACITY,
+            remediationRequired: true,
         });
 
         expect(
@@ -144,13 +157,14 @@ describe('Plan capability registry', () => {
         ).toEqual({
             periodType:
                 USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH,
+            behavior: USAGE_METRIC_BEHAVIOR.CONSUMPTION,
+            remediationRequired: false,
         });
 
         expect(
             registry.getMetricDefinition('unknown_metric'),
         ).toBeNull();
     });
-
 
     it('élimine naturellement les doublons grâce aux Set', () => {
         const registry = createPlanCapabilityRegistry({
@@ -176,6 +190,7 @@ describe('Plan capability registry', () => {
             ),
         ).toHaveLength(1);
     });
+
     it('expose des clés nommées stables pour les fonctionnalités du socle', () => {
         expect(CORE_PLAN_FEATURE).toEqual({
             FILE_UPLOAD: 'file_upload',
@@ -188,5 +203,13 @@ describe('Plan capability registry', () => {
             'team_management',
             'audit_logs',
         ]);
+    });
+
+    it('conserve les définitions internes gelées', () => {
+        expect(
+            Object.isFrozen(
+                CORE_PLAN_METRIC_DEFINITIONS.members,
+            ),
+        ).toBe(true);
     });
 });
