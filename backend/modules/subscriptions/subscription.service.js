@@ -34,10 +34,10 @@ const USABLE_SUBSCRIPTION_STATUSES = Object.freeze([
  * La session MongoDB est donc obligatoire : le workspace ne doit pas être
  * conservé si sa souscription initiale ne peut pas être créée.
  *
- * Dans l'état actuel du développement, le plan free est attribué sans date
- * d'expiration. La future politique commerciale pourra remplacer ce
- * comportement par une période d'essai sans modifier la responsabilité
- * fondamentale de Subscription.
+ * Le plan Free constitue la baseline durable du workspace. Un futur trial ou
+ * abonnement payant est représenté par une souscription `commercial` séparée :
+ * la baseline Free n'est donc ni remplacée ni supprimée lorsqu'un trial est
+ * accordé.
  *
  * @param {object} params
  * @param {import('mongoose').Types.ObjectId} params.workspaceId
@@ -102,8 +102,8 @@ const createFreeSubscriptionForWorkspace = async ({
                 currentPeriodStart,
 
                 /*
-                 * Le plan free de développement ne possède actuellement
-                 * aucune échéance ni période d'essai.
+                 * La baseline Free ne possède aucune échéance ni période
+                 * d'essai. Les trials vivent sur une Subscription commerciale.
                  */
                 currentPeriodEnd: null,
                 trialEndsAt: null,
