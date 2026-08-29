@@ -73,10 +73,8 @@ vi.mock(
 
 beforeEach(() => {
     authenticate.mockClear();
-    validateRequest.mockClear();
     validationMiddleware.mockClear();
     workspaceContextMiddleware.mockClear();
-    authorizePermission.mockClear();
     permissionMiddleware.mockClear();
     getWorkspaceOverview.mockClear();
 });
@@ -97,13 +95,23 @@ describe('subscription.routes', () => {
 
         expect(response.status).toBe(200);
         expect(authenticate).toHaveBeenCalledOnce();
+
+        /*
+         * validateRequest et authorizePermission sont des factories exécutées
+         * lors de la construction du router, donc à l'import du module. On ne
+         * les efface pas dans beforeEach : la requête exécute ensuite les
+         * middlewares déjà construits, pas les factories elles-mêmes.
+         */
         expect(validateRequest).toHaveBeenCalledWith({
             params: workspaceIdParamsSchema,
         });
-        expect(loadWorkspaceContext).toHaveBeenCalledOnce();
         expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.SUBSCRIPTION_READ,
         );
+
+        expect(validationMiddleware).toHaveBeenCalledOnce();
+        expect(loadWorkspaceContext).toHaveBeenCalledOnce();
+        expect(permissionMiddleware).toHaveBeenCalledOnce();
         expect(getWorkspaceOverview).toHaveBeenCalledOnce();
         expect(
             permissionMiddleware.mock.invocationCallOrder[0],
