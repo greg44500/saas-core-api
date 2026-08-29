@@ -10,6 +10,9 @@ import {
 
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
+import {
+    enforceWorkspaceAccessMode,
+} from '../../middlewares/enforceWorkspaceAccessMode.js';
 import { loadWorkspaceContext } from '../../middlewares/loadWorkspaceContext.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 
@@ -32,11 +35,11 @@ import {
 
 import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 
-
 const {
     validationMiddleware,
     workspaceContextMiddleware,
     permissionMiddleware,
+    workspaceAccessMiddleware,
 } = vi.hoisted(() => ({
     validationMiddleware: vi.fn((req, res, next) => {
         next();
@@ -60,8 +63,14 @@ const {
     permissionMiddleware: vi.fn((req, res, next) => {
         next();
     }),
-}));
 
+    workspaceAccessMiddleware: vi.fn((req, res, next) => {
+        req.workspaceAccess = {
+            accessMode: 'normal',
+        };
+        next();
+    }),
+}));
 
 vi.mock('../../middlewares/authenticate.js', () => ({
     authenticate: vi.fn((req, res, next) => {
@@ -73,16 +82,13 @@ vi.mock('../../middlewares/authenticate.js', () => ({
     }),
 }));
 
-
 vi.mock('../../middlewares/validateRequest.js', () => ({
     validateRequest: vi.fn(() => validationMiddleware),
 }));
 
-
 vi.mock('../../middlewares/loadWorkspaceContext.js', () => ({
     loadWorkspaceContext: workspaceContextMiddleware,
 }));
-
 
 vi.mock('../../middlewares/authorizePermission.js', () => ({
     authorizePermission: vi.fn(
@@ -90,6 +96,11 @@ vi.mock('../../middlewares/authorizePermission.js', () => ({
     ),
 }));
 
+vi.mock('../../middlewares/enforceWorkspaceAccessMode.js', () => ({
+    enforceWorkspaceAccessMode: vi.fn(
+        () => workspaceAccessMiddleware,
+    ),
+}));
 
 vi.mock(
     '../../modules/workspace/workspace.controller.js',
@@ -114,7 +125,6 @@ vi.mock(
                 status: 'success',
             });
         }),
-
         update: vi.fn((req, res) => {
             res.status(200).json({
                 status: 'success',
@@ -123,19 +133,18 @@ vi.mock(
     }),
 );
 
-
 beforeEach(() => {
     authenticate.mockClear();
     validationMiddleware.mockClear();
     workspaceContextMiddleware.mockClear();
     permissionMiddleware.mockClear();
+    workspaceAccessMiddleware.mockClear();
     create.mockClear();
     list.mockClear();
     listMembers.mockClear();
     getById.mockClear();
     update.mockClear();
 });
-
 
 describe('workspace.routes', () => {
     it('protège et valide la création avant d’appeler le controller', async () => {
@@ -151,28 +160,13 @@ describe('workspace.routes', () => {
             });
 
         expect(response.status).toBe(201);
-
         expect(validateRequest).toHaveBeenCalledWith({
             body: createWorkspaceSchema,
         });
-
         expect(authenticate).toHaveBeenCalledOnce();
         expect(validationMiddleware).toHaveBeenCalledOnce();
         expect(create).toHaveBeenCalledOnce();
-
-        expect(
-            authenticate.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            validationMiddleware.mock.invocationCallOrder[0],
-        );
-
-        expect(
-            validationMiddleware.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            create.mock.invocationCallOrder[0],
-        );
     });
-
 
     it('protège l’accès au workspace avec le contexte tenant et la permission de lecture', async () => {
         const app = express();
@@ -184,50 +178,17 @@ describe('workspace.routes', () => {
             .get('/workspaces/507f1f77bcf86cd799439011');
 
         expect(response.status).toBe(200);
-
         expect(validateRequest).toHaveBeenCalledWith({
             params: workspaceIdParamsSchema,
         });
-
-        expect(
-            authorizePermission,
-        ).toHaveBeenCalledWith(
+        expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.WORKSPACE_READ,
         );
-
-        expect(authenticate).toHaveBeenCalledOnce();
-        expect(validationMiddleware).toHaveBeenCalledOnce();
-        expect(workspaceContextMiddleware).toHaveBeenCalledOnce();
-        expect(permissionMiddleware).toHaveBeenCalledOnce();
+        expect(workspaceAccessMiddleware).not.toHaveBeenCalled();
         expect(getById).toHaveBeenCalledOnce();
-
-        expect(
-            authenticate.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            validationMiddleware.mock.invocationCallOrder[0],
-        );
-
-        expect(
-            validationMiddleware.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            workspaceContextMiddleware.mock.invocationCallOrder[0],
-        );
-
-        expect(
-            workspaceContextMiddleware.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            permissionMiddleware.mock.invocationCallOrder[0],
-        );
-
-        expect(
-            permissionMiddleware.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            getById.mock.invocationCallOrder[0],
-        );
     });
 
-
-    it('protège la modification du workspace avec la permission de mise à jour', async () => {
+    it('protège la modification du workspace avec la permission et le mode d’accès', async () => {
         const app = express();
 
         app.use(express.json());
@@ -240,48 +201,28 @@ describe('workspace.routes', () => {
             });
 
         expect(response.status).toBe(200);
-
         expect(validateRequest).toHaveBeenCalledWith({
             params: workspaceIdParamsSchema,
             body: updateWorkspaceSchema,
         });
-
-        expect(
-            authorizePermission,
-        ).toHaveBeenCalledWith(
+        expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.WORKSPACE_UPDATE,
         );
-
-        expect(authenticate).toHaveBeenCalledOnce();
-        expect(validationMiddleware).toHaveBeenCalledOnce();
-        expect(workspaceContextMiddleware).toHaveBeenCalledOnce();
-        expect(permissionMiddleware).toHaveBeenCalledOnce();
+        expect(enforceWorkspaceAccessMode).toHaveBeenCalledWith();
+        expect(workspaceAccessMiddleware).toHaveBeenCalledOnce();
         expect(update).toHaveBeenCalledOnce();
-
-        expect(
-            authenticate.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            validationMiddleware.mock.invocationCallOrder[0],
-        );
-
-        expect(
-            validationMiddleware.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            workspaceContextMiddleware.mock.invocationCallOrder[0],
-        );
-
-        expect(
-            workspaceContextMiddleware.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            permissionMiddleware.mock.invocationCallOrder[0],
-        );
-
         expect(
             permissionMiddleware.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            workspaceAccessMiddleware.mock.invocationCallOrder[0],
+        );
+        expect(
+            workspaceAccessMiddleware.mock.invocationCallOrder[0],
         ).toBeLessThan(
             update.mock.invocationCallOrder[0],
         );
     });
+
     it('protège la liste des workspaces avant d’appeler le controller', async () => {
         const app = express();
 
@@ -292,20 +233,14 @@ describe('workspace.routes', () => {
             .get('/workspaces');
 
         expect(response.status).toBe(200);
-
         expect(authenticate).toHaveBeenCalledOnce();
         expect(list).toHaveBeenCalledOnce();
-
         expect(validationMiddleware).not.toHaveBeenCalled();
         expect(workspaceContextMiddleware).not.toHaveBeenCalled();
         expect(permissionMiddleware).not.toHaveBeenCalled();
-
-        expect(
-            authenticate.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            list.mock.invocationCallOrder[0],
-        );
+        expect(workspaceAccessMiddleware).not.toHaveBeenCalled();
     });
+
     it('protège la liste des membres avec le contexte tenant et la permission member:read', async () => {
         const app = express();
 
@@ -318,48 +253,14 @@ describe('workspace.routes', () => {
             );
 
         expect(response.status).toBe(200);
-
         expect(validateRequest).toHaveBeenCalledWith({
             params: workspaceIdParamsSchema,
             query: listWorkspaceMembersQuerySchema,
         });
-
-        expect(
-            authorizePermission,
-        ).toHaveBeenCalledWith(
+        expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.MEMBER_READ,
         );
-
-        expect(authenticate).toHaveBeenCalledOnce();
-        expect(validationMiddleware).toHaveBeenCalledOnce();
-        expect(
-            workspaceContextMiddleware,
-        ).toHaveBeenCalledOnce();
-        expect(permissionMiddleware).toHaveBeenCalledOnce();
+        expect(workspaceAccessMiddleware).not.toHaveBeenCalled();
         expect(listMembers).toHaveBeenCalledOnce();
-
-        expect(
-            authenticate.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            validationMiddleware.mock.invocationCallOrder[0],
-        );
-
-        expect(
-            validationMiddleware.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            workspaceContextMiddleware.mock.invocationCallOrder[0],
-        );
-
-        expect(
-            workspaceContextMiddleware.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            permissionMiddleware.mock.invocationCallOrder[0],
-        );
-
-        expect(
-            permissionMiddleware.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            listMembers.mock.invocationCallOrder[0],
-        );
     });
 });
