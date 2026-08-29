@@ -10,6 +10,7 @@ import {
     BILLING_INTERVAL,
     BILLING_PROVIDER,
     DISCOUNT_TYPE,
+    SUBSCRIPTION_KIND,
     SUBSCRIPTION_STATUS,
 } from '../../constants/subscription.constants.js';
 
@@ -24,12 +25,13 @@ const { ObjectId } = mongoose.Types;
 /**
  * Construit les données minimales d'une souscription gratuite valide.
  *
- * Chaque appel crée de nouveaux ObjectId afin qu'un test ne partage pas
- * accidentellement ses données avec un autre.
+ * `kind` est volontairement explicite : le modèle ne doit jamais déduire le
+ * rôle métier d'une souscription à partir d'un default silencieux.
  */
 const buildValidFreeSubscriptionData = () => ({
     workspace: new ObjectId(),
     plan: new ObjectId(),
+    kind: SUBSCRIPTION_KIND.BASELINE,
     currency: 'EUR',
     priceExclTaxMinor: 0,
 });
@@ -45,6 +47,9 @@ describe('Subscription model', () => {
 
         expect(subscription.workspace).toBeInstanceOf(ObjectId);
         expect(subscription.plan).toBeInstanceOf(ObjectId);
+        expect(subscription.kind).toBe(
+            SUBSCRIPTION_KIND.BASELINE,
+        );
 
         expect(subscription.status).toBe(
             SUBSCRIPTION_STATUS.ACTIVE,
@@ -83,6 +88,18 @@ describe('Subscription model', () => {
 
         expect(subscription.createdBy).toBeNull();
         expect(subscription.updatedBy).toBeNull();
+    });
+
+
+    it('refuse une souscription sans kind explicite', async () => {
+        const data = buildValidFreeSubscriptionData();
+        delete data.kind;
+
+        const subscription = new Subscription(data);
+
+        await expect(
+            subscription.validate(),
+        ).rejects.toThrow();
     });
 
 
