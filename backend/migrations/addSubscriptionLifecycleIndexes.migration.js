@@ -1,6 +1,5 @@
 import { Subscription } from '../modules/subscriptions/subscription.model.js';
 
-
 const hasExactIndex = (indexes, expectedKey) => indexes.some((index) => {
     const keys = Object.keys(index.key ?? {});
     const expectedKeys = Object.keys(expectedKey);
@@ -11,13 +10,12 @@ const hasExactIndex = (indexes, expectedKey) => indexes.some((index) => {
         );
 });
 
-
 /**
  * Provisionne explicitement les index utilisés par les jobs de cycle de vie.
  *
  * Une production ne doit pas dépendre de `autoIndex` de Mongoose pour créer
- * des index opérationnels. Cette migration est idempotente et couvre aussi
- * l'index d'expiration des trials introduit avant ce lot.
+ * des index opérationnels. Cette migration reste idempotente et peut donc être
+ * rejouée après l'ajout d'un nouveau job de maintenance.
  */
 const migrateSubscriptionLifecycleIndexes = async () => {
     const indexes = await Subscription.collection.indexes();
@@ -35,15 +33,16 @@ const migrateSubscriptionLifecycleIndexes = async () => {
         currentPeriodEnd: 1,
     };
 
-    const trialExpirationExists = hasExactIndex(
-        indexes,
-        trialExpirationKey,
-    );
+    const scheduledDowngradeKey = {
+        kind: 1,
+        status: 1,
+        'scheduledChange.type': 1,
+        'scheduledChange.effectiveAt': 1,
+    };
 
-    const scheduledCancellationExists = hasExactIndex(
-        indexes,
-        scheduledCancellationKey,
-    );
+    const trialExpirationExists = hasExactIndex(indexes, trialExpirationKey);
+    const scheduledCancellationExists = hasExactIndex(indexes, scheduledCancellationKey);
+    const scheduledDowngradeExists = hasExactIndex(indexes, scheduledDowngradeKey);
 
     if (!trialExpirationExists) {
         await Subscription.collection.createIndex(
@@ -59,12 +58,18 @@ const migrateSubscriptionLifecycleIndexes = async () => {
         );
     }
 
+    if (!scheduledDowngradeExists) {
+        await Subscription.collection.createIndex(
+            scheduledDowngradeKey,
+            { name: 'subscription_scheduled_downgrade_lookup' },
+        );
+    }
+
     return {
         trialExpirationIndexCreated: !trialExpirationExists,
-        scheduledCancellationIndexCreated:
-            !scheduledCancellationExists,
+        scheduledCancellationIndexCreated: !scheduledCancellationExists,
+        scheduledDowngradeIndexCreated: !scheduledDowngradeExists,
     };
 };
-
 
 export { migrateSubscriptionLifecycleIndexes };
