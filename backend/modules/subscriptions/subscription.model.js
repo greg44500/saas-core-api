@@ -14,6 +14,64 @@ const { Schema, model } = mongoose;
 const isNonNegativeInteger = (value) =>
     Number.isInteger(value) && value >= 0;
 
+const CURRENT_PERIOD_END_VALIDATION_MESSAGE =
+    'La fin de période doit être postérieure au début de période.';
+const TRIAL_END_VALIDATION_MESSAGE =
+    'La fin de l’essai doit être postérieure au début de période.';
+
+const TEMPORAL_PATHS = Object.freeze([
+    'currentPeriodStart',
+    'currentPeriodEnd',
+    'trialEndsAt',
+]);
+
+const hasOwn = (object, key) =>
+    Object.prototype.hasOwnProperty.call(object ?? {}, key);
+
+/**
+ * Retourne le début de période visible par le contexte de validation.
+ *
+ * Un document Mongoose et une Query exposent tous deux `get()`, mais une Query
+ * ne connaît que les valeurs présentes dans l'update. L'absence de valeur est
+ * donc volontairement acceptée ici : le middleware `findOneAndUpdate` ci-dessous
+ * complète ensuite l'invariant avec l'état réellement persisté.
+ */
+const getValidationCurrentPeriodStart = (context) => {
+    if (typeof context?.get === 'function') {
+        return context.get('currentPeriodStart');
+    }
+
+    return context?.currentPeriodStart;
+};
+
+const updateTouchesPath = (update, path) =>
+    hasOwn(update, path)
+    || hasOwn(update?.$set, path)
+    || hasOwn(update?.$unset, path);
+
+const getMergedUpdateValue = ({ query, update, path, persistedValue }) => {
+    if (hasOwn(update?.$unset, path)) {
+        return null;
+    }
+
+    if (hasOwn(update, path) || hasOwn(update?.$set, path)) {
+        return query.get(path);
+    }
+
+    return persistedValue;
+};
+
+const addValidatorError = ({ validationError, path, value, message }) => {
+    validationError.addError(
+        path,
+        new mongoose.Error.ValidatorError({
+            path,
+            value,
+            message,
+        }),
+    );
+};
+
 /**
  * Décrit une modification commerciale déjà demandée mais qui ne doit devenir
  * effective qu'à une échéance future.
@@ -117,13 +175,16 @@ const subscriptionSchema = new Schema(
             default: null,
             validate: {
                 validator: function validateCurrentPeriodEnd(value) {
+                    const currentPeriodStart =
+                        getValidationCurrentPeriodStart(this);
+
                     return (
                         value === null
-                        || value > this.currentPeriodStart
+                        || currentPeriodStart == null
+                        || value > currentPeriodStart
                     );
                 },
-                message:
-                    'La fin de période doit être postérieure au début de période.',
+                message: CURRENT_PERIOD_END_VALIDATION_MESSAGE,
             },
         },
         trialEndsAt: {
@@ -131,13 +192,16 @@ const subscriptionSchema = new Schema(
             default: null,
             validate: {
                 validator: function validateTrialEnd(value) {
+                    const currentPeriodStart =
+                        getValidationCurrentPeriodStart(this);
+
                     return (
                         value === null
-                        || value > this.currentPeriodStart
+                        || currentPeriodStart == null
+                        || value > currentPeriodStart
                     );
                 },
-                message:
-                    'La fin de l’essai doit être postérieure au début de période.',
+                message: TRIAL_END_VALIDATION_MESSAGE,
             },
         },
         cancelAtPeriodEnd: {
@@ -262,6 +326,100 @@ const subscriptionSchema = new Schema(
         timestamps: true,
     },
 );
+
+/**
+ * Les update validators Mongoose ne s'exécutent que sur les chemins modifiés et
+ * `this` y représente une Query. Une comparaison inter-champs portée seulement
+ * par `currentPeriodEnd` ou `trialEndsAt` ne peut donc pas voir de façon fiable
+ * un `currentPeriodStart` déjà stocké.
+ *
+ * Ce garde complète uniquement les opérations ayant explicitement demandé
+ * `runValidators: true`. Il recharge les trois dates quand l'une d'elles change,
+ * fusionne l'état persisté avec l'update puis vérifie l'invariant complet. Les
+ * services conservent ainsi leurs mises à jour atomiques sans transformer les
+ * bornes contractuelles en validation partielle.
+ */
+subscriptionSchema.pre('findOneAndUpdate', async function validateTemporalUpdate() {
+    if (this.getOptions().runValidators !== true) {
+        return;
+    }
+
+    const update = this.getUpdate() ?? {};
+    const touchesTemporalInvariant = TEMPORAL_PATHS.some((path) =>
+        updateTouchesPath(update, path));
+
+    if (!touchesTemporalInvariant) {
+        return;
+    }
+
+    let persistedQuery = this.model
+        .findOne(this.getQuery())
+        .select('currentPeriodStart currentPeriodEnd trialEndsAt');
+
+    const session = this.getOptions().session;
+    if (session) {
+        persistedQuery = persistedQuery.session(session);
+    }
+
+    const persisted = await persistedQuery.lean();
+
+    // Une query sans document correspondant n'écrira rien ; les validateurs
+    // standards restent responsables d'un éventuel upsert explicitement demandé.
+    if (!persisted) {
+        return;
+    }
+
+    const currentPeriodStart = getMergedUpdateValue({
+        query: this,
+        update,
+        path: 'currentPeriodStart',
+        persistedValue: persisted.currentPeriodStart,
+    });
+    const currentPeriodEnd = getMergedUpdateValue({
+        query: this,
+        update,
+        path: 'currentPeriodEnd',
+        persistedValue: persisted.currentPeriodEnd,
+    });
+    const trialEndsAt = getMergedUpdateValue({
+        query: this,
+        update,
+        path: 'trialEndsAt',
+        persistedValue: persisted.trialEndsAt,
+    });
+
+    const validationError = new mongoose.Error.ValidationError();
+
+    if (
+        currentPeriodStart != null
+        && currentPeriodEnd != null
+        && currentPeriodEnd <= currentPeriodStart
+    ) {
+        addValidatorError({
+            validationError,
+            path: 'currentPeriodEnd',
+            value: currentPeriodEnd,
+            message: CURRENT_PERIOD_END_VALIDATION_MESSAGE,
+        });
+    }
+
+    if (
+        currentPeriodStart != null
+        && trialEndsAt != null
+        && trialEndsAt <= currentPeriodStart
+    ) {
+        addValidatorError({
+            validationError,
+            path: 'trialEndsAt',
+            value: trialEndsAt,
+            message: TRIAL_END_VALIDATION_MESSAGE,
+        });
+    }
+
+    if (Object.keys(validationError.errors).length > 0) {
+        throw validationError;
+    }
+});
 
 /**
  * Garantit qu'un workspace ne possède qu'une seule souscription courante de
