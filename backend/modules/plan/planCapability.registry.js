@@ -1,4 +1,5 @@
 import {
+    USAGE_METRIC_BEHAVIOR,
     USAGE_METRIC_PERIOD_TYPE,
 } from '../../constants/usageMetric.constants.js';
 
@@ -43,25 +44,32 @@ const CORE_PLAN_METRIC = Object.freeze({
 /**
  * Définitions des métriques génériques fournies par le socle SaaS.
  *
- * Chaque métrique déclare explicitement la période sur laquelle sa
- * consommation doit être mesurée.
+ * Chaque métrique déclare explicitement :
+ * - sa période de mesure ;
+ * - sa nature métier ;
+ * - si un dépassement doit imposer une mise en conformité du workspace.
  *
  * Le nom d'une métrique ne doit jamais servir à déduire implicitement son
- * comportement. Par exemple, le service ne devra pas rechercher le suffixe
- * "_monthly" pour décider qu'une métrique est mensuelle.
+ * comportement. Une future application métier peut donc ajouter ses propres
+ * métriques sans dépendre d'une convention de nommage fragile.
  */
 const CORE_PLAN_METRIC_DEFINITIONS = Object.freeze({
     [CORE_PLAN_METRIC.MEMBERS]: Object.freeze({
         periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
+        behavior: USAGE_METRIC_BEHAVIOR.CAPACITY,
+        remediationRequired: true,
     }),
 
     [CORE_PLAN_METRIC.STORAGE_BYTES]: Object.freeze({
         periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
+        behavior: USAGE_METRIC_BEHAVIOR.CAPACITY,
+        remediationRequired: true,
     }),
 
     [CORE_PLAN_METRIC.FILE_UPLOADS_MONTHLY]: Object.freeze({
-        periodType:
-            USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH,
+        periodType: USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH,
+        behavior: USAGE_METRIC_BEHAVIOR.CONSUMPTION,
+        remediationRequired: false,
     }),
 });
 
@@ -85,38 +93,31 @@ const CORE_PLAN_METRICS = Object.freeze(
  * peut ajouter :
  * - des features ;
  * - des métriques simples destinées aux Plans ;
- * - des définitions temporelles permettant à UsageMetric de mesurer ces
- *   métriques.
+ * - des définitions temporelles et métier permettant de mesurer puis
+ *   interpréter correctement ces métriques.
  *
- * Une métrique peut rester déclarée sans définition temporelle tant qu'elle
- * n'est pas utilisée par UsageMetric. Le futur UsageMetricService refusera
- * toutefois de mesurer une métrique dépourvue de définition.
- *
- * Exemple :
- *
- * createPlanCapabilityRegistry({
- *     features: ['dpe_monitoring'],
- *     metrics: ['properties'],
- *     metricDefinitions: {
- *         dpe_checks_monthly: {
- *             periodType:
- *                 USAGE_METRIC_PERIOD_TYPE.CALENDAR_MONTH,
- *         },
- *     },
- * });
+ * Une métrique peut rester déclarée sans définition tant qu'elle n'est pas
+ * utilisée par UsageMetric ou par une politique de compatibilité de plan.
+ * Les services qui ont besoin de sa sémantique refuseront alors de l'utiliser.
  *
  * @param {object} [extensions]
  * @param {string[]} [extensions.features]
  * @param {string[]} [extensions.metrics]
  * @param {Record<string, {
- *     periodType: string
+ *     periodType: string,
+ *     behavior?: string,
+ *     remediationRequired?: boolean
  * }>} [extensions.metricDefinitions]
  * @returns {{
  *     features: Set<string>,
  *     metrics: Set<string>,
  *     getMetricDefinition: (
  *         metricKey: string
- *     ) => Readonly<{ periodType: string }> | null
+ *     ) => Readonly<{
+ *         periodType: string,
+ *         behavior?: string,
+ *         remediationRequired?: boolean
+ *     }> | null
  * }}
  */
 const createPlanCapabilityRegistry = ({
@@ -163,10 +164,10 @@ const createPlanCapabilityRegistry = ({
         metrics: metricRegistry,
 
         /**
-         * Retourne la définition temporelle d'une métrique.
+         * Retourne la définition d'une métrique.
          *
          * null distingue clairement une métrique inconnue ou une métrique
-         * déclarée sans définition mesurable.
+         * déclarée sans définition exploitable par les services métier.
          */
         getMetricDefinition(metricKey) {
             return metricDefinitionRegistry.get(metricKey) ?? null;
