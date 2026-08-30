@@ -2,7 +2,7 @@
 
 **Statut :** document de référence d’intégration  
 **Date de cadrage initial :** 24 août 2026  
-**Dernière mise à jour :** 29 août 2026 — lot F4 Subscription stabilisé  
+**Dernière mise à jour :** 30 août 2026 — lot D1.2 Workspace / Members / Invitations / Ownership  
 **Périmètre :** backend `saas-core-api` → futur frontend React/Vite  
 **Frontend cible :** React + Vite, JavaScript exclusivement, Tailwind CSS, shadcn/ui, Redux Toolkit, RTK Query
 
@@ -67,6 +67,7 @@ Principaux préfixes actuels :
 /api/plans
 /api/workspaces
 /api/workspaces/:workspaceId/files
+/api/invitations
 /api/platform
 /api/health
 
@@ -287,7 +288,7 @@ Le token de reset est à usage unique et n’est jamais persisté en clair côt�
 
 Après reset réussi, les sessions existantes sont invalidées.
 
-## 12. Workspaces
+## 12. Workspaces, membres, invitations et ownership
 
 Un utilisateur peut avoir accès à plusieurs workspaces. Le login ne choisit pas automatiquement le workspace courant.
 
@@ -295,17 +296,293 @@ Le frontend devra donc prévoir un sélecteur de workspace lorsque plusieurs wor
 
 Toute ressource tenant-scoped doit être consommée dans le contexte explicite du workspace courant.
 
-Exemples actuels :
+### 12.1 Workspaces
 
-GET /api/workspaces
+Endpoints stabilisés :
 
-GET /api/workspaces/:workspaceId
-
+```text
+POST  /api/workspaces
+GET   /api/workspaces
+GET   /api/workspaces/:workspaceId
 PATCH /api/workspaces/:workspaceId
+```
 
-GET /api/workspaces/:workspaceId/members
+La création et la modification du nom utilisent un body strict :
 
-La réponse de listing des membres utilise une pagination serveur et contient un objet `meta`.
+```json
+{
+  "name": "Workspace name"
+}
+```
+
+`name` est trimé et doit contenir entre 2 et 120 caractères.
+
+Une réponse workspace unitaire expose :
+
+```json
+{
+  "status": "success",
+  "data": {
+    "workspace": {
+      "id": "...",
+      "name": "...",
+      "status": "...",
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  }
+}
+```
+
+La modification générale d’un workspace n’est pas considérée comme une action de remédiation. Elle peut donc être refusée lorsqu’un état bloquant du workspace interdit les mutations ordinaires.
+
+### 12.2 Listing des membres
+
+Endpoint :
+
+```text
+GET /api/workspaces/:workspaceId/members?page=1&limit=20
+```
+
+Permission requise :
+
+```text
+member:read
+```
+
+La pagination est serveur. `page` est supérieur ou égal à 1 et `limit` est compris entre 1 et 100.
+
+La réponse expose les memberships actifs et suspendus, en excluant les memberships retirés et les comptes utilisateur clôturés :
+
+```json
+{
+  "status": "success",
+  "data": {
+    "members": [
+      {
+        "id": "<membershipId>",
+        "status": "active",
+        "joinedAt": "...",
+        "user": {
+          "id": "<userId>",
+          "firstName": "...",
+          "lastName": "...",
+          "accountStatus": "active"
+        },
+        "role": {
+          "id": "<roleId>",
+          "key": "member",
+          "name": "Member"
+        }
+      }
+    ]
+  },
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+
+Les lectures restent disponibles en mode de remédiation afin de permettre à l’interface d’expliquer la situation et de proposer les actions correctives pertinentes.
+
+### 12.3 Administration d’un membre
+
+Endpoints stabilisés :
+
+```text
+PATCH  /api/workspaces/:workspaceId/members/:memberId/role
+POST   /api/workspaces/:workspaceId/members/:memberId/suspend
+DELETE /api/workspaces/:workspaceId/members/:memberId
+```
+
+Permissions respectives :
+
+```text
+member:update
+member:suspend
+member:remove
+```
+
+Le changement de rôle accepte uniquement :
+
+```json
+{
+  "roleId": "<ObjectId>"
+}
+```
+
+Une mutation de rôle ou une suspension réussie renvoie :
+
+```json
+{
+  "status": "success",
+  "data": {
+    "member": {
+      "id": "<membershipId>",
+      "userId": "<userId>",
+      "roleId": "<roleId>",
+      "status": "active",
+      "joinedAt": "...",
+      "updatedAt": "..."
+    }
+  }
+}
+```
+
+La suppression logique d’un membre retourne `204 No Content`.
+
+Règles métier stabilisées :
+
+- le owner ne peut pas être administré par les commandes génériques de membership ;
+- un acteur ne peut pas exécuter ces actions sensibles sur sa propre appartenance ;
+- seul un membre actif peut changer de rôle ou être suspendu ;
+- le rôle système `owner` ne peut jamais être attribué par la commande générique de changement de rôle ;
+- un membre `active` ou `suspended` occupe un siège ;
+- la suspension ne libère donc pas de quota `members` ;
+- le passage à `removed` libère exactement un siège dans la même transaction que la mutation du membership ;
+- la suppression est autorisée en remédiation car elle peut ramener le workspace sous sa limite de membres.
+
+Principaux refus métier observables : `404` pour un membre ou rôle introuvable, `409` pour un état de membership incompatible, une auto-administration interdite, une tentative de gérer le owner ou d’attribuer le rôle owner.
+
+### 12.4 Invitations de workspace
+
+Endpoints stabilisés :
+
+```text
+POST   /api/workspaces/:workspaceId/invitations
+GET    /api/workspaces/:workspaceId/invitations
+POST   /api/workspaces/:workspaceId/invitations/:invitationId/resend
+DELETE /api/workspaces/:workspaceId/invitations/:invitationId
+POST   /api/invitations/accept
+```
+
+Les quatre premières routes utilisent la permission :
+
+```text
+member:invite
+```
+
+La création accepte un body strict :
+
+```json
+{
+  "email": "user@example.com",
+  "roleId": "<ObjectId>"
+}
+```
+
+Le listing utilise la pagination serveur commune `page` / `limit`.
+
+Le DTO public d’une invitation est :
+
+```json
+{
+  "id": "<invitationId>",
+  "email": "user@example.com",
+  "status": "pending",
+  "deliveryStatus": "...",
+  "lastDeliveryAttemptAt": null,
+  "deliveredAt": null,
+  "expiresAt": "...",
+  "createdAt": "..."
+}
+```
+
+Le token brut n’est jamais exposé par les réponses de création, listing ou renvoi.
+
+Le renvoi d’une invitation retourne `200 OK` avec le DTO invitation actualisé. La révocation retourne `204 No Content`.
+
+L’acceptation est une route authentifiée mais ne charge volontairement pas de contexte workspace : l’utilisateur n’est précisément pas encore membre du workspace au moment de l’acceptation.
+
+Body strict :
+
+```json
+{
+  "token": "<64 caractères hexadécimaux>"
+}
+```
+
+Réponse :
+
+```json
+{
+  "status": "success",
+  "data": {
+    "membership": {
+      "id": "<membershipId>",
+      "workspaceId": "<workspaceId>",
+      "roleId": "<roleId>",
+      "status": "active"
+    }
+  }
+}
+```
+
+Le frontend doit traiter l’acceptation comme un workflow d’identité/invitation distinct des écrans internes nécessitant déjà un membership actif.
+
+### 12.5 Transfert d’ownership
+
+Endpoint stabilisé :
+
+```text
+PATCH /api/workspaces/:workspaceId/ownership
+```
+
+Permission requise :
+
+```text
+workspace:ownership:transfer
+```
+
+Body strict :
+
+```json
+{
+  "newOwnerMemberId": "<ObjectId>",
+  "previousOwnerRoleId": "<ObjectId>",
+  "currentPassword": "<mot de passe courant>"
+}
+```
+
+Le mot de passe courant constitue une confirmation renforcée avant cette opération sensible. Il n’est ni trimé, ni persisté, ni écrit dans l’AuditLog.
+
+Réponse `200 OK` :
+
+```json
+{
+  "status": "success",
+  "data": {
+    "ownership": {
+      "previousOwnerMemberId": "<membershipId>",
+      "newOwnerMemberId": "<membershipId>"
+    }
+  }
+}
+```
+
+Le transfert d’ownership est un workflow métier dédié. Le frontend ne doit jamais le simuler par deux changements de rôle successifs.
+
+Règles métier stabilisées :
+
+- seul le owner actif courant peut transférer la propriété ;
+- le nouveau owner doit être un membre actif du même workspace ;
+- le transfert vers soi-même est interdit ;
+- le rôle attribué à l’ancien owner est explicitement fourni par le client ;
+- ce rôle doit appartenir au même workspace et ne peut pas être le rôle système `owner` ;
+- le workspace doit posséder exactement un owner actif avant et après le transfert ;
+- le workflow est transactionnel et sérialisé via `ownershipVersion` pour empêcher deux transferts concurrents de violer l’invariant ;
+- l’opération produit un événement `WORKSPACE_OWNERSHIP_TRANSFERRED` dans la transaction ;
+- le transfert ne modifie ni Subscription, ni TrialEligibility, ni `trialEndsAt`, ni quotas, ni sessions.
+
+Principaux refus métier observables :
+
+- `403` si l’acteur n’est pas le owner courant ;
+- `404` si le nouveau owner actif ou le rôle de remplacement n’est pas trouvé dans le workspace ;
+- `409` pour un rôle de remplacement owner, un auto-transfert, un invariant d’owner invalide ou un workspace devenu indisponible pendant la transaction ;
+- une confirmation de mot de passe invalide est refusée par le service d’authentification avant la transaction métier.
 
 ## 13. Rôles et permissions
 
@@ -317,15 +594,33 @@ manager
 member
 reader
 
-Exemples de permissions actuellement utilisées :
+Permissions Core actuellement utilisées par les contrats frontend stabilisés :
 
+```text
 workspace:read
 workspace:update
+workspace:ownership:transfer
 member:read
+member:invite
+member:update
+member:suspend
+member:remove
+role:read
+role:create
+role:update
+role:delete
 subscription:read
+audit:read
+file:read
 file:upload
+file:delete
+```
+
+`workspace:ownership:transfer` est réservée au rôle système owner. Elle représente la gouvernance du tenant et ne doit pas être assimilée à une simple permission administrative générique.
 
 `subscription:read` est actuellement attribuée aux rôles système owner et admin. Les commandes commerciales Subscription ne reposent pas sur une permission délégable : elles sont protégées par une barrière owner-only indépendante des permissions administrables.
+
+Les permissions membres servent à adapter l’UX, mais le frontend ne doit jamais déduire qu’une action est autorisée uniquement parce qu’un bouton est visible. L’autorisation définitive est toujours recalculée par le backend dans le contexte du workspace courant.
 
 Le frontend peut adapter l’interface selon les permissions, mais cela reste uniquement une couche UX. Le backend effectue toujours la protection réelle.
 
@@ -707,7 +1002,7 @@ features/plans/api/
 features/subscription/api/
 features/files/api/
 
-Le domaine `features/subscription/` peut désormais consommer le contrat stabilisé décrit dans `docs/frontend-backend-subscription-contract.md`. Un futur domaine `features/billing/` devra rester distinct et sera introduit lorsque le contrat Payment/Billing sera stabilisé.
+Le domaine `features/workspaces/` devra notamment porter les données serveur workspace, membres, invitations et ownership. Le domaine `features/subscription/` peut désormais consommer le contrat stabilisé décrit dans `docs/frontend-backend-subscription-contract.md`. Un futur domaine `features/billing/` devra rester distinct et sera introduit lorsque le contrat Payment/Billing sera stabilisé.
 
 Les composants React ne doivent pas appeler fetch() directement de manière dispersée.
 
@@ -726,6 +1021,8 @@ loading ;
 erreurs serveur ;
 
 refetch.
+
+Après une mutation de membre, d’invitation ou d’ownership, le frontend devra invalider/refetch les données serveur concernées plutôt que de reconstruire localement les invariants de gouvernance.
 
 Pour Subscription, après une mutation réussie, la stratégie recommandée est d’invalider/refetch la vue consolidée du workspace plutôt que de reconstruire localement le fallback, la temporalité ou la remédiation.
 
@@ -772,6 +1069,10 @@ refresh token brut ;
 
 token de reset stocké ;
 
+token brut d’invitation dans les réponses d’administration ;
+
+mot de passe courant utilisé pour confirmer un transfert d’ownership ;
+
 chemins de fichiers internes ;
 
 secrets ;
@@ -791,8 +1092,6 @@ Ne doivent pas encore être considérés comme des contrats frontend définitifs
 administration globale ;
 
 interface complète AuditLog ;
-
-invitations ;
 
 gestion avancée des rôles ;
 
