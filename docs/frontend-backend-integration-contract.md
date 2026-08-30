@@ -1,8 +1,8 @@
 # SAAS-CORE-API — Contrat d’intégration frontend / backend
 
-**Statut :** document de référence d’intégration  
+**Statut :** document de référence d’intégration — Core V1 aligné sur le backend  
 **Date de cadrage initial :** 24 août 2026  
-**Dernière mise à jour :** 30 août 2026 — lot D1.2 Workspace / Members / Invitations / Ownership  
+**Dernière mise à jour :** 30 août 2026 — lot D1 consolidé  
 **Périmètre :** backend `saas-core-api` → futur frontend React/Vite  
 **Frontend cible :** React + Vite, JavaScript exclusivement, Tailwind CSS, shadcn/ui, Redux Toolkit, RTK Query
 
@@ -26,7 +26,11 @@ subscriptions, trials et entitlement effectif ;
 
 fonctionnalités et quotas ;
 
-upload de fichiers ;
+fichiers ;
+
+AuditLog ;
+
+administration Platform ;
 
 principes de gestion des erreurs ;
 
@@ -51,7 +55,7 @@ Redux Toolkit
 RTK Query
 → données et état provenant du serveur
 
-Les ressources comme l’utilisateur courant, les workspaces, les membres, les plans, les subscriptions, l’entitlement effectif et les fichiers doivent être traitées comme des données serveur et consommées via RTK Query.
+Les ressources comme l’utilisateur courant, les workspaces, les membres, les plans, les subscriptions, l’entitlement effectif, les fichiers et les AuditLogs doivent être traitées comme des données serveur et consommées via RTK Query.
 
 Le frontend ne doit pas dupliquer dans Redux Toolkit une donnée déjà détenue et mise en cache par RTK Query.
 
@@ -71,7 +75,7 @@ Principaux préfixes actuels :
 /api/platform
 /api/health
 
-Le contrat HTTP Subscription du workspace est désormais exposé et stabilisé sous `/api/workspaces/:workspaceId/subscription`. Le détail normatif des endpoints, validations, permissions, DTO et erreurs est maintenu dans `docs/frontend-backend-subscription-contract.md`. Le frontend ne doit pas inventer d’autres routes Subscription en dehors de ce contrat.
+Le contrat HTTP Subscription du workspace est exposé et stabilisé sous `/api/workspaces/:workspaceId/subscription`. Le détail normatif des endpoints, validations, permissions, DTO et erreurs est maintenu dans `docs/frontend-backend-subscription-contract.md`. Le frontend ne doit pas inventer d’autres routes Subscription en dehors de ce contrat.
 
 Le frontend ne doit pas reconstruire les URLs de manière dispersée dans les composants. La future configuration RTK Query devra centraliser la baseUrl.
 
@@ -84,11 +88,11 @@ Succès avec données
   "data": {}
 }
 
-Exemples : data.user, data.workspace, data.workspaces, data.members, data.plans, data.file.
+Exemples : data.user, data.workspace, data.workspaces, data.members, data.plans, data.file, data.files, data.auditLogs.
 
 Succès sans contenu
 
-Certaines opérations retournent 204 No Content, notamment logout, logout-all et change-password. Le frontend ne doit pas tenter de parser du JSON après une réponse 204.
+Certaines opérations retournent 204 No Content, notamment logout, logout-all, change-password, révocation d’invitation, suppression de membre et suppression logique de fichier. Le frontend ne doit pas tenter de parser du JSON après une réponse 204.
 
 Succès avec message
 
@@ -833,19 +837,131 @@ Une limite répond à la question : « quelle quantité de cette ressource peut 
 
 Le frontend peut afficher ces informations, mais la validation réelle reste côté backend.
 
-## 21. Upload de fichiers
+## 21. Fichiers
 
-Endpoint actuel :
+Le domaine File expose désormais les opérations workspace suivantes :
 
+```text
+GET    /api/workspaces/:workspaceId/files
+GET    /api/workspaces/:workspaceId/files/:fileId
+GET    /api/workspaces/:workspaceId/files/:fileId/download
+POST   /api/workspaces/:workspaceId/files
+DELETE /api/workspaces/:workspaceId/files/:fileId
+```
+
+### 21.1 Lecture et listing
+
+Les lectures utilisent la permission :
+
+```text
+file:read
+```
+
+Le listing accepte la pagination serveur `page` / `limit`, avec les mêmes bornes communes : `page >= 1`, `1 <= limit <= 100`.
+
+Seuls les fichiers `active` sont exposés par les lectures workspace. Les résultats sont triés par :
+
+```text
+createdAt DESC
+_id DESC
+```
+
+DTO public de lecture :
+
+```json
+{
+  "id": "<fileId>",
+  "originalName": "document.pdf",
+  "mimeType": "application/pdf",
+  "extension": "pdf",
+  "sizeBytes": 12345,
+  "category": "document",
+  "status": "active",
+  "uploadedBy": "<userId>",
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+```
+
+Réponse du listing :
+
+```json
+{
+  "status": "success",
+  "data": {
+    "files": []
+  },
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 0,
+    "totalPages": 0
+  }
+}
+```
+
+Un fichier inexistant, supprimé, purgé ou appartenant à un autre workspace est traité comme introuvable (`404`) par les lectures unitaires.
+
+Les lectures restent disponibles en remédiation. Elles ne dépendent pas de la feature `file_upload` : un plan qui interdit de nouveaux uploads ne doit pas masquer les fichiers actifs déjà possédés.
+
+### 21.2 Téléchargement
+
+Endpoint :
+
+```text
+GET /api/workspaces/:workspaceId/files/:fileId/download
+```
+
+Le backend stream le contenu et fixe notamment :
+
+```text
+Content-Type
+Content-Length
+Content-Disposition: attachment
+```
+
+Le nom original est encodé dans `filename*`. La clé ou le chemin physique de stockage ne sont jamais exposés.
+
+### 21.3 Upload
+
+Endpoint :
+
+```text
 POST /api/workspaces/:workspaceId/files
+```
 
 Content-Type :
 
+```text
 multipart/form-data
+```
 
 Champ fichier :
 
+```text
 file
+```
+
+Permission et capacité requises :
+
+```text
+file:upload
+feature file_upload
+```
+
+Le body multipart peut contenir uniquement `category`. Valeurs stabilisées :
+
+```text
+avatar
+logo
+document
+image
+import
+export
+other
+```
+
+`category` vaut `other` par défaut.
 
 Ordre de protection backend :
 
@@ -853,6 +969,7 @@ authenticate
 → validation workspaceId
 → chargement du contexte workspace
 → permission file:upload
+→ contrôle du mode d’accès workspace
 → vérification de la feature du plan
 → Multer
 → validation des métadonnées multipart
@@ -880,12 +997,11 @@ persistance MongoDB ;
 
 AuditLog.
 
-Le frontend peut filtrer la sélection de fichiers pour l’UX, mais ne remplace jamais ces contrôles.
+Types initialement acceptés : PDF, JPEG et PNG. Le type déclaré par le navigateur ne constitue jamais une validation suffisante.
 
-## 22. Réponse d’un upload réussi
+Réponse `201 Created` :
 
-201 Created
-
+```json
 {
   "status": "success",
   "data": {
@@ -896,68 +1012,262 @@ Le frontend peut filtrer la sélection de fichiers pour l’UX, mais ne remplace
       "extension": "...",
       "sizeBytes": 0,
       "category": "...",
-      "status": "...",
+      "status": "active",
       "createdAt": "...",
       "updatedAt": "..."
     }
   }
 }
+```
 
-Le contrat public n’expose pas les informations physiques internes de stockage.
+Le DTO d’upload ne réexpose pas `uploadedBy`, contrairement au DTO de lecture.
 
-## 23. Rejets d’upload
+### 21.4 Suppression logique et purge
 
-Fichier trop volumineux
+Endpoint :
 
+```text
+DELETE /api/workspaces/:workspaceId/files/:fileId
+```
+
+Permission :
+
+```text
+file:delete
+```
+
+Réponse :
+
+```text
+204 No Content
+```
+
+La suppression est logique : le fichier passe hors des lectures actives et la capacité `storage_bytes` est libérée une seule fois. Cette action est autorisée en remédiation car elle peut réduire une consommation bloquante.
+
+Le contenu physique n’est pas supprimé immédiatement. La politique actuelle conserve le fichier supprimé pendant 30 jours, puis le job backend de purge le supprime physiquement et fait évoluer son statut vers `purged`.
+
+Le frontend n’appelle pas le job de purge et ne doit pas inventer de route de purge. Le workflow Trash/Restore reste volontairement différé et documenté séparément.
+
+### 21.5 Statuts internes de cycle de vie
+
+Le backend connaît :
+
+```text
+quarantined
+active
+rejected
+deleted
+purged
+```
+
+Dans le contrat workspace actuel, les lectures ordinaires exposent uniquement `active`. Les autres états appartiennent au pipeline de sécurité, à la suppression ou à la maintenance et ne doivent pas être interprétés comme une liste navigable côté frontend.
+
+### 21.6 Rejets d’upload
+
+Fichier trop volumineux :
+
+```text
 413 Payload Too Large
+```
 
-{
-  "status": "fail",
-  "message": "Le fichier dépasse la taille maximale autorisée."
-}
+Type MIME déclaré non autorisé :
 
-Ce rejet est audité côté backend avec :
-
-FILE_UPLOAD_REJECTED
-reason = FILE_TOO_LARGE
-
-Une panne de l’AuditLog ne transforme pas ce rejet en succès.
-
-Type MIME déclaré non autorisé
-
-Le filtrage préliminaire peut répondre :
-
+```text
 415 Unsupported Media Type
+```
 
+Le backend peut aussi refuser l’upload pour incompatibilité de contenu réel, analyse antivirus non fiable ou négative, feature absente, workspace en remédiation, ou dépassement de quota `storage_bytes` / `file_uploads_monthly`.
+
+Le frontend peut filtrer la sélection de fichiers pour l’UX, mais ne remplace jamais ces contrôles et doit traiter la décision serveur comme autoritaire.
+
+## 22. AuditLog workspace
+
+L’AuditLog est créé exclusivement par le backend pour les opérations métier auditées. Le frontend ne crée pas directement ces événements.
+
+Endpoint de consultation workspace stabilisé :
+
+```text
+GET /api/workspaces/:workspaceId/audit-logs
+```
+
+Permission :
+
+```text
+audit:read
+```
+
+La lecture reste disponible en remédiation.
+
+Query string stricte :
+
+```text
+page
+limit
+action
+actorId
+entityType
+status
+from
+to
+```
+
+`page` vaut 1 par défaut ; `limit` vaut 20 par défaut et est borné à 100. `actorId` est un ObjectId. `from` et `to` utilisent des ISO datetime avec offset ; si les deux sont fournis, `from <= to`.
+
+Tri stable :
+
+```text
+createdAt DESC
+_id DESC
+```
+
+DTO public :
+
+```json
 {
-  "status": "fail",
-  "message": "Le type de fichier déclaré n’est pas autorisé."
+  "id": "<auditLogId>",
+  "actor": {
+    "id": "<userId>",
+    "firstName": "...",
+    "lastName": "...",
+    "email": "..."
+  },
+  "action": "...",
+  "status": "success",
+  "entity": {
+    "type": "...",
+    "id": "..."
+  },
+  "createdAt": "..."
 }
+```
 
-Le backend effectue ensuite une inspection du contenu réel pour les fichiers admis par ce premier filtre.
+`actor` peut être `null`. `entity` peut être `null`.
 
-Quotas
+Le DTO public workspace n’expose volontairement pas `ipAddress`, `userAgent` ni `metadata`. L’absence de ces champs est une frontière de sécurité et non une donnée manquante à reconstruire côté client.
 
-Le backend peut refuser l’upload lorsque les limites du plan sont atteintes. Le frontend doit considérer ce refus comme une décision serveur autoritaire.
+La réponse utilise :
 
-## 24. AuditLog
+```json
+{
+  "status": "success",
+  "data": {
+    "auditLogs": []
+  },
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 0,
+    "totalPages": 0
+  }
+}
+```
 
-L’AuditLog est un mécanisme backend. Le frontend ne doit pas créer directement les événements d’audit correspondant aux opérations métier classiques.
+## 23. Administration Platform
 
-Exemples actuels :
+Le périmètre Platform est réellement exposé sous :
 
-LOGIN_FAILED
-PASSWORD_RESET_COMPLETED
-SESSION_REUSE_DETECTED
-WORKSPACE_CREATED
-FILE_UPLOADED
-FILE_UPLOAD_REJECTED
+```text
+/api/platform
+```
 
-Une future interface d’administration pourra consulter les événements uniquement lorsqu’une API dédiée existera.
+Le routeur Platform racine impose l’authentification. Les surfaces stabilisées ci-dessous sont réservées au rôle plateforme :
 
-Aucun endpoint frontend de consultation des AuditLogs n’est défini dans ce contrat à ce stade.
+```text
+SUPER_ADMIN
+```
 
-## 25. Multi-tenant : règle fondamentale
+### 23.1 Users
+
+```text
+GET   /api/platform/users
+GET   /api/platform/users/:userId
+PATCH /api/platform/users/:userId/disable
+PATCH /api/platform/users/:userId/enable
+POST  /api/platform/users/:userId/revoke-sessions
+PATCH /api/platform/users/:userId/role
+```
+
+### 23.2 Workspaces
+
+```text
+GET   /api/platform/workspaces
+GET   /api/platform/workspaces/:workspaceId
+PATCH /api/platform/workspaces/:workspaceId/suspend
+PATCH /api/platform/workspaces/:workspaceId/reactivate
+```
+
+### 23.3 Plans
+
+```text
+GET   /api/platform/plans
+POST  /api/platform/plans
+PATCH /api/platform/plans/:planId
+PATCH /api/platform/plans/:planId/archive
+```
+
+La liste Platform peut inclure des plans privés, inactifs ou archivés nécessaires à l’administration ; elle ne doit pas être confondue avec le catalogue public `/api/plans`.
+
+### 23.4 Subscriptions
+
+```text
+GET   /api/platform/subscriptions
+POST  /api/platform/subscriptions/grant-trial
+GET   /api/platform/subscriptions/:subscriptionId
+PATCH /api/platform/subscriptions/:subscriptionId
+PATCH /api/platform/subscriptions/:subscriptionId/cancel
+PATCH /api/platform/subscriptions/:subscriptionId/resume
+```
+
+Ces opérations sont des commandes administratives Platform. Elles ne doivent pas être reproduites dans le frontend workspace sous des URLs inventées.
+
+### 23.5 AuditLogs Platform
+
+```text
+GET /api/platform/audit-logs
+```
+
+Query string stricte :
+
+```text
+page
+limit
+workspaceId
+actorId
+action
+entityType
+status
+from
+to
+```
+
+Le DTO reprend la projection safe du workspace et ajoute le workspace concerné :
+
+```json
+{
+  "id": "<auditLogId>",
+  "actor": {
+    "id": "<userId>",
+    "firstName": "...",
+    "lastName": "...",
+    "email": "..."
+  },
+  "workspace": {
+    "id": "<workspaceId>",
+    "name": "..."
+  },
+  "action": "...",
+  "status": "success",
+  "entity": {
+    "type": "...",
+    "id": "..."
+  },
+  "createdAt": "..."
+}
+```
+
+`actor`, `workspace` ou `entity` peuvent être `null` selon la nature de l’événement. La vue globale n’expose pas davantage les champs internes sensibles de l’AuditLog.
+
+## 24. Multi-tenant : règle fondamentale
 
 Toute ressource appartenant à un workspace doit être consommée dans le contexte du workspace courant.
 
@@ -983,13 +1293,17 @@ le statut du workspace.
 
 Pour les commandes Subscription utilisant un `subscriptionId`, le backend vérifie en plus que cette Subscription appartient au `workspaceId` courant avant toute transition métier.
 
-## 26. Statut du workspace
+Les routes Platform sont une frontière administrative distincte et ne doivent pas être utilisées pour contourner les règles tenant-scoped du frontend workspace.
+
+## 25. Statut du workspace
 
 Un workspace peut devenir indisponible indépendamment de l’état affiché dans le frontend.
 
 Le frontend devra pouvoir réagir à un refus serveur en invalidant les données concernées, affichant l’état indisponible et proposant éventuellement un retour au sélecteur de workspaces.
 
-## 27. Contrat RTK Query futur
+Certaines lectures ou actions correctives restent explicitement disponibles en remédiation ; cette possibilité est définie route par route côté backend et ne doit pas être extrapolée par le frontend.
+
+## 26. Contrat RTK Query futur
 
 La couche API devra être centralisée et organisée par domaines, par exemple :
 
@@ -1001,8 +1315,10 @@ features/workspaces/api/
 features/plans/api/
 features/subscription/api/
 features/files/api/
+features/audit/api/
+features/platform/api/
 
-Le domaine `features/workspaces/` devra notamment porter les données serveur workspace, membres, invitations et ownership. Le domaine `features/subscription/` peut désormais consommer le contrat stabilisé décrit dans `docs/frontend-backend-subscription-contract.md`. Un futur domaine `features/billing/` devra rester distinct et sera introduit lorsque le contrat Payment/Billing sera stabilisé.
+Le domaine `features/workspaces/` devra notamment porter les données serveur workspace, membres, invitations et ownership. Le domaine `features/subscription/` peut consommer le contrat stabilisé décrit dans `docs/frontend-backend-subscription-contract.md`. Un futur domaine `features/billing/` devra rester distinct et sera introduit lorsque le contrat Payment/Billing sera stabilisé.
 
 Les composants React ne doivent pas appeler fetch() directement de manière dispersée.
 
@@ -1024,15 +1340,17 @@ refetch.
 
 Après une mutation de membre, d’invitation ou d’ownership, le frontend devra invalider/refetch les données serveur concernées plutôt que de reconstruire localement les invariants de gouvernance.
 
+Après une mutation de fichier, la liste/détail et les données Subscription/entitlement dépendantes des quotas doivent être rafraîchies selon la stratégie de tags retenue.
+
 Pour Subscription, après une mutation réussie, la stratégie recommandée est d’invalider/refetch la vue consolidée du workspace plutôt que de reconstruire localement le fallback, la temporalité ou la remédiation.
 
-## 28. Cookies et navigateur
+## 27. Cookies et navigateur
 
 Le refresh token étant dans un cookie HttpOnly, les appels dépendant de ce cookie devront être configurés de manière compatible avec l’envoi des credentials navigateur.
 
 La configuration exacte dépendra de l’environnement frontend/backend et de la politique CORS finale. Elle devra être traitée dans la couche API, jamais composant par composant.
 
-## 29. États UI exigés par le contrat backend
+## 28. États UI exigés par le contrat backend
 
 Chaque feature consommatrice devra prévoir au minimum :
 
@@ -1056,10 +1374,12 @@ validation rejected
 remediation
 cancellation scheduled
 downgrade scheduled
+file unavailable
+invitation unavailable
 
 La traduction graphique de ces états appartiendra au futur design system Tailwind + shadcn/ui.
 
-## 30. Données sensibles
+## 29. Données sensibles
 
 Le frontend ne doit jamais attendre du backend :
 
@@ -1073,29 +1393,23 @@ token brut d’invitation dans les réponses d’administration ;
 
 mot de passe courant utilisé pour confirmer un transfert d’ownership ;
 
-chemins de fichiers internes ;
+storageKey ou chemins de fichiers internes ;
 
 secrets ;
 
 données techniques antivirus sensibles ;
 
-données internes AuditLog non explicitement exposées ;
+ipAddress, userAgent ou metadata internes via les DTO AuditLog de lecture ;
 
 moyens de paiement ou identifiants Billing/Payment via la lecture Subscription owner/admin.
 
 Une absence de champ sensible doit être considérée comme intentionnelle.
 
-## 31. Contrats non encore figés
+## 30. Périmètres non encore figés ou volontairement différés
 
 Ne doivent pas encore être considérés comme des contrats frontend définitifs :
 
-administration globale ;
-
-interface complète AuditLog ;
-
-gestion avancée des rôles ;
-
-mutation des plans ;
+gestion HTTP complète des rôles personnalisés ;
 
 activation payante HTTP réelle après confirmation de paiement ;
 
@@ -1105,25 +1419,37 @@ changement de périodicité monthly/yearly ;
 
 cycle `past_due` définitif ;
 
-billing externe, moyens de paiement, factures et webhooks ;
+billing externe, moyens de paiement, taxes, factures, remboursements et webhooks ;
 
-listing / téléchargement / suppression complet des fichiers ;
+fermeture de compte / fermeture de workspace ;
+
+Trash / Restore des fichiers ;
+
+stockage cloud et antivirus de production tant que le contexte d’hébergement n’est pas figé ;
 
 organisations ;
 
-notifications ;
+notifications hors besoin Core concret ;
 
-API keys ;
+API keys / accès M2M ;
 
-webhooks ;
+webhooks applicatifs ;
 
 fonctionnalités métier propres aux futurs SaaS utilisant ce core.
 
 Le frontend ne doit pas être conçu aujourd’hui autour d’endpoints supposés pour ces fonctionnalités.
 
-## 32. Stabilisation F4 — Subscription workspace
+## 31. Contrat Subscription spécialisé
 
-Le lot F4 fige désormais comme contrat frontend observable :
+Le contrat détaillé et normatif du domaine Subscription workspace est :
+
+```text
+docs/frontend-backend-subscription-contract.md
+```
+
+Le lot D1 a revérifié ce document contre les routes, validations et controllers actuels. Aucune divergence nécessitant une modification de ce contrat spécialisé n’a été identifiée.
+
+Il fige notamment :
 
 - la lecture consolidée baseline/commercial/effectiveEntitlement ;
 - `subscription:read` pour owner/admin ;
@@ -1136,13 +1462,7 @@ Le lot F4 fige désormais comme contrat frontend observable :
 - `accessMode`, `blockingLimits` et `nonBlockingLimits` ;
 - la séparation stricte entre Subscription et le futur domaine Billing/Payment.
 
-Le document normatif spécialisé est :
-
-```text
-docs/frontend-backend-subscription-contract.md
-```
-
-## 33. Règle de maintenance
+## 32. Règle de maintenance
 
 Ce document doit évoluer uniquement lorsqu’un contrat observable par le frontend change.
 
