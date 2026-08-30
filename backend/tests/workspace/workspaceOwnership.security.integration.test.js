@@ -94,6 +94,8 @@ describe('workspace ownership HTTP security', () => {
             '507f1f77bcf86cd799439012',
         previousOwnerRoleId:
             '507f1f77bcf86cd799439013',
+        currentPassword:
+            'Correct Horse Battery Staple',
     };
 
     it('refuse le transfert sans la permission owner-only', async () => {
