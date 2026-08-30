@@ -1,72 +1,21 @@
 import mongoose from 'mongoose';
 import { pathToFileURL } from 'node:url';
 
-import { connectDB } from '../config/db.js';
 import { env } from '../config/env.js';
+import { connectDB } from '../config/db.js';
+import { createPlan } from '../modules/plans/plan.service.js';
+import { getInitialPlanDefinitions } from '../modules/plans/plan.registry.js';
+import { Plan } from '../modules/plans/plan.model.js';
 
-import {
-    PLAN_KEY,
-    PLAN_STATUS,
-} from '../constants/plan.constants.js';
-import {
-    CORE_PLAN_FEATURE,
-} from '../modules/plan/planCapability.registry.js';
 
-import { Plan } from '../modules/plan/plan.model.js';
-import { createPlan } from '../modules/plan/plan.service.js';
+const INITIAL_PLAN_DEFINITIONS = getInitialPlanDefinitions();
 
 
 /**
- * Définition initiale du plan gratuit fourni par le socle SaaS.
+ * Crée les plans système absents sans modifier les plans déjà présents.
  *
- * Les plans payants seront ajoutés lorsque leur politique tarifaire,
- * leurs fonctionnalités et leurs limites auront été définies.
- */
-const INITIAL_PLAN_DEFINITIONS = Object.freeze([
-    Object.freeze({
-        key: PLAN_KEY.FREE,
-        name: 'Free',
-        description: 'Plan gratuit de découverte.',
-        status: PLAN_STATUS.ACTIVE,
-        isPublic: true,
-        displayOrder: 0,
-        trialEnabled: false,
-        trialDurationDays: null,
-
-        // Les prix sont stockés en unités monétaires mineures.
-        currency: 'EUR',
-        priceMonthlyExclTaxMinor: 0,
-        priceYearlyExclTaxMinor: 0,
-
-        features: Object.freeze([
-            CORE_PLAN_FEATURE.FILE_UPLOAD,
-        ]),
-
-        limits: Object.freeze({
-            members: 1,
-
-            // 100 Mio exprimés en octets.
-            storage_bytes: 100 * 1024 * 1024,
-
-            file_uploads_monthly: 10,
-        }),
-    }),
-]);
-
-
-/**
- * Crée les plans initiaux absents de la base de données.
- *
- * Le seed est idempotent : une seconde exécution ne recrée pas un plan
- * possédant déjà la même clé fonctionnelle.
- *
- * La création passe par PlanService afin de ne pas contourner la validation
- * fonctionnelle des features et des métriques.
- *
- * @returns {Promise<{
- *     created: string[],
- *     skipped: string[]
- * }>}
+ * Le seed est volontairement idempotent : il peut être rejoué sans écraser
+ * une configuration commerciale éventuellement administrée après le bootstrap.
  */
 const seedPlans = async () => {
     const result = {
@@ -85,7 +34,7 @@ const seedPlans = async () => {
         }
 
         await createPlan({
-            planData: planDefinition,
+            ...planDefinition,
 
             // null indique une création réalisée par le système.
             actorId: null,
@@ -133,7 +82,7 @@ if (isExecutedDirectly) {
     runSeedPlans().catch((error) => {
         console.error(
             'Échec de la création des plans initiaux :',
-            error,
+            { message: error.message },
         );
 
         process.exitCode = 1;
