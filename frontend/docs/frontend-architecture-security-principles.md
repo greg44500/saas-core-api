@@ -81,6 +81,45 @@ La taille en nombre de lignes n’est pas utilisée comme règle arbitraire, mai
 
 Il faut privilégier la composition à la création de composants génériques sur-paramétrés ou de fichiers « couteau suisse ».
 
+### 4.2 Documentation du code et commentaires
+
+Chaque fichier doit être compréhensible rapidement par un développeur qui le reprend sans avoir à reconstruire mentalement tout son contexte.
+
+La documentation doit rester concise et expliquer principalement :
+
+- le rôle du fichier lorsqu’il n’est pas évident par son nom ou son emplacement ;
+- les décisions architecturales importantes ;
+- les règles métier ou UX non triviales ;
+- les comportements de sécurité ou de permission pouvant surprendre ;
+- les raisons d’un contournement, d’une contrainte technique ou d’un ordre d’exécution particulier ;
+- les hypothèses ou invariants dont dépend le code.
+
+Les commentaires ne doivent pas paraphraser le code.
+
+Exemples à éviter :
+
+```js
+// Initialise l'état ouvert
+const [isOpen, setIsOpen] = useState(false);
+
+// Ferme la modale
+setIsOpen(false);
+```
+
+Exemple pertinent :
+
+```js
+// La modale reste montée pendant la mutation afin de préserver le contexte
+// d'erreur et d'éviter de perdre les données saisies en cas d'échec API.
+const [isOpen, setIsOpen] = useState(false);
+```
+
+Un `useState`, `useEffect`, hook, composant ou handler ne doit donc être commenté que si son intention, sa contrainte ou son effet de bord n’est pas évident à la lecture du code.
+
+Pour les composants, hooks ou utilitaires réutilisables ayant une API non triviale, JSDoc peut être utilisé pour documenter les paramètres, valeurs retournées, contrats de props ou comportements particuliers. JSDoc ne doit pas être ajouté mécaniquement aux fonctions évidentes.
+
+La règle est : **commenter le pourquoi, les contraintes et les invariants ; laisser le code exprimer le quoi**.
+
 ## 5. Règle anti-hardcoding
 
 Le code en dur doit être évité lorsqu’une valeur est susceptible d’évoluer, d’être partagée ou de représenter une règle transverse.
