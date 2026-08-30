@@ -61,4 +61,12 @@ describe('System role permissions', () => {
             );
         }
     });
+
+    it('accorde file:read à tous les rôles système', () => {
+        for (const role of SYSTEM_ROLE_DEFINITIONS) {
+            expect(role.permissions).toContain(
+                CORE_PERMISSION.FILE_READ,
+            );
+        }
+    });
 });
