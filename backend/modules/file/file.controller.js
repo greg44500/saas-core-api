@@ -4,6 +4,9 @@ import {
     fileService,
 } from './file.service.js';
 import {
+    deleteWorkspaceFile,
+} from './fileDelete.service.js';
+import {
     getWorkspaceFile,
     listWorkspaceFiles,
     openWorkspaceFileDownload,
@@ -118,10 +121,23 @@ const download = async (request, response) => {
     await pipeline(stream, response);
 };
 
+const remove = async (request, response) => {
+    await deleteWorkspaceFile({
+        workspaceId: request.workspace._id,
+        fileId: request.validated.params.fileId,
+        actorId: request.user._id,
+        ipAddress: request.context.ipAddress,
+        userAgent: request.context.userAgent,
+    });
+
+    response.status(204).send();
+};
+
 
 export {
     download,
     getById,
     list,
+    remove,
     upload,
 };
