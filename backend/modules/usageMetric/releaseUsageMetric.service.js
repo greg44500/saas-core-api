@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 import { USAGE_METRIC_PERIOD_TYPE } from '../../constants/usageMetric.constants.js';
 import { UsageMetric } from './usageMetric.model.js';
 
@@ -41,7 +43,14 @@ const releaseCurrentUsageMetric = async ({
             metricKey: metricKey.trim().toLowerCase(),
             periodType: USAGE_METRIC_PERIOD_TYPE.CURRENT,
             periodStart: null,
-            value: { $gte: amount },
+            /*
+             * sanitizeFilter reste actif pour les filtres non fiables.
+             * trusted() autorise uniquement cet opérateur construit par le
+             * service afin d'empêcher qu'un décrément rende la métrique négative.
+             */
+            value: mongoose.trusted({
+                $gte: amount,
+            }),
         },
         {
             $inc: { value: -amount },
