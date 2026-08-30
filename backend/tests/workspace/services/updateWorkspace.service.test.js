@@ -36,6 +36,18 @@ vi.mock(
     }),
 );
 
+/*
+ * updateWorkspace n'exerce aucune règle de quota. Le moteur de limites est
+ * mocké à sa frontière afin que ce test reste indépendant des modèles
+ * UsageMetric chargés indirectement par planLimit.service.js.
+ */
+vi.mock(
+    '../../../modules/plan/planLimit.service.js',
+    () => ({
+        enforcePlanLimit: vi.fn(),
+    }),
+);
+
 vi.mock('mongoose', () => {
     const ObjectId = vi.fn(function (value) {
         return {
