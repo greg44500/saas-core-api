@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Backend Core V1 Ready for Frontend
 
-**Statut :** checkpoint R1 validé  
+**Statut :** checkpoint R1 validé — décision R2 actée  
 **Date :** 30 août 2026  
 **Périmètre :** Backend Core V1  
 **Référence de validation :** suite globale Vitest exécutée localement après consolidation D1
@@ -47,7 +47,7 @@ Le checkpoint couvre notamment :
 
 ## 4. Contrats frontend de référence
 
-Le frontend doit prendre comme sources de vérité :
+Pour la phase actuelle de développement, le frontend prend comme sources de vérité documentaires :
 
 ```text
 docs/frontend-backend-integration-contract.md
@@ -92,13 +92,17 @@ Restent volontairement hors du checkpoint **Ready for Frontend** :
 
 Ces éléments ne doivent pas être implémentés implicitement pendant F0 ou dans les composants frontend.
 
-## 7. OpenAPI — décision séparée R2
+## 7. OpenAPI — décision R2
 
-OpenAPI reste un item distinct du checkpoint R1.
+La décision R2 est actée : **OpenAPI n’est pas requis pour démarrer ni poursuivre le développement frontend du Core V1**.
 
-Le backend peut démarrer son frontend à partir des contrats Markdown stabilisés, mais la décision de maintenir l’exigence OpenAPI pour le Core doit être prise explicitement dans **R2**.
+Le contexte actuel est celui d’un développement assuré par un développeur unique sur `saas-core-api` et sur les futurs modules métier. Dans ce cadre, les contrats Markdown stabilisés et maintenus avec le backend constituent une documentation suffisante pour la phase de construction actuelle.
 
-Si cette exigence est conservée, la spécification devra décrire le contrat réellement implémenté et rester alignée avec les deux documents d’intégration de référence. Elle ne devra pas inventer de routes futures.
+OpenAPI est donc **différé**, et non abandonné. Son intérêt sera réévalué lors de la finalisation complète backend/frontend, notamment si le projet doit alors bénéficier d’une documentation API standardisée, d’outillage automatique, de consommateurs supplémentaires ou d’une API destinée à des intégrations externes.
+
+Si OpenAPI est introduit ultérieurement, la spécification devra décrire le contrat réellement implémenté au moment de cette finalisation et rester alignée avec les contrats Markdown de référence. Elle ne devra pas inventer de routes futures.
+
+Cette décision évite de maintenir prématurément une troisième représentation du contrat HTTP pendant une phase où backend, frontend et futurs modules métier vont continuer à évoluer sous la responsabilité du même développeur.
 
 ## 8. Règle de changement après checkpoint
 
@@ -123,12 +127,14 @@ H1  Audit jobs / maintenance / reconciliation            TERMINÉ
 H2  Audit index / secrets / env / operational hardening  TERMINÉ
 D1  Contrat frontend/backend Core global                 TERMINÉ
 R1  Suite globale finale + checkpoint readiness          TERMINÉ
-R2  OpenAPI : confirmer l’exigence puis produire/aligner À DÉCIDER
-F0  Fondation frontend                                   APRÈS DÉCISION R2
+R2  Décision OpenAPI                                     TERMINÉ — DIFFÉRÉ
+F0  Fondation frontend                                   PROCHAINE ÉTAPE
 ```
 
 ## 10. Conclusion
 
 Le Backend Core V1 dispose désormais d’un checkpoint explicite permettant d’engager le développement frontend sans rouvrir les invariants backend déjà stabilisés.
+
+La décision R2 ne crée aucun travail backend supplémentaire avant F0 : les contrats Markdown restent les références documentaires d’intégration pendant le développement actuel.
 
 Les futures fonctionnalités produit devront s’appuyer sur ce socle au lieu de contourner ses frontières Auth, Workspace, Permissions, Subscription, Quotas, Files et AuditLog.
