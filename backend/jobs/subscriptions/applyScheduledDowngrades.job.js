@@ -1,7 +1,10 @@
-import { applyScheduledDowngrades } from '../../modules/subscriptions/services/applyScheduledDowngrades.service.js';
+import {
+    applyScheduledDowngrades,
+} from '../../modules/subscriptions/services/applyScheduledDowngrades.service.js';
 
 const runApplyScheduledDowngradesJob = async ({
     now = new Date(),
+    batchSize,
     logger = console,
 } = {}) => {
     if (!logger || typeof logger.info !== 'function' || typeof logger.error !== 'function') {
@@ -9,11 +12,14 @@ const runApplyScheduledDowngradesJob = async ({
     }
 
     try {
-        const result = await applyScheduledDowngrades({ now });
+        const result = await applyScheduledDowngrades({
+            now,
+            ...(batchSize === undefined ? {} : { batchSize }),
+        });
         logger.info('Scheduled downgrades processed', result);
         return result;
     } catch (error) {
-        logger.error('Scheduled downgrade job failed', error);
+        logger.error('Scheduled downgrade job failed', { message: error.message });
         throw error;
     }
 };
