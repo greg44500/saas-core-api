@@ -15,10 +15,14 @@ import { AppError } from '../../utils/appError.js';
 import {
     createAuditLog,
 } from '../auditLog/auditLog.service.js';
+import {
+    confirmCurrentUserPassword,
+} from '../auth/services/confirmCurrentUserPassword.service.js';
 import { Role } from '../role/role.model.js';
 import {
     WorkspaceMember,
 } from '../workspaceMember/workspaceMember.model.js';
+import { Workspace } from './workspace.model.js';
 
 
 /**
@@ -28,11 +32,17 @@ import {
  * l'appelant. Ce choix évite de figer une politique métier implicite telle que
  * "l'ancien owner devient toujours admin".
  *
+ * Une confirmation du mot de passe courant est exigée avant toute transaction.
+ * Le Workspace est ensuite écrit dans la transaction via ownershipVersion :
+ * deux transferts concurrents entrent ainsi en conflit sur le même document
+ * MongoDB au lieu de pouvoir modifier indépendamment les deux memberships.
+ *
  * @param {object} params
  * @param {string|mongoose.Types.ObjectId} params.workspaceId
  * @param {string|mongoose.Types.ObjectId} params.newOwnerMemberId
  * @param {string|mongoose.Types.ObjectId} params.previousOwnerRoleId
  * @param {string|mongoose.Types.ObjectId} params.actorId
+ * @param {string} params.currentPassword
  * @param {string|null} [params.ipAddress]
  * @param {string|null} [params.userAgent]
  * @returns {Promise<object>}
@@ -42,6 +52,7 @@ const transferWorkspaceOwnership = async ({
     newOwnerMemberId,
     previousOwnerRoleId,
     actorId,
+    currentPassword,
     ipAddress = null,
     userAgent = null,
 }) => {
@@ -50,11 +61,21 @@ const transferWorkspaceOwnership = async ({
         || !newOwnerMemberId
         || !previousOwnerRoleId
         || !actorId
+        || !currentPassword
     ) {
         throw new TypeError(
-            'workspaceId, newOwnerMemberId, previousOwnerRoleId and actorId are required to transfer workspace ownership',
+            'workspaceId, newOwnerMemberId, previousOwnerRoleId, actorId and currentPassword are required to transfer workspace ownership',
         );
     }
+
+    /*
+     * La réauthentification précède la transaction métier. Le mot de passe
+     * brut n'entre jamais dans AuditLog ni dans une écriture MongoDB.
+     */
+    await confirmCurrentUserPassword({
+        userId: actorId,
+        password: currentPassword,
+    });
 
     return mongoose.connection.transaction(async (session) => {
         const [ownerRole, previousOwnerRole] = await Promise.all([
@@ -136,6 +157,30 @@ const transferWorkspaceOwnership = async ({
         if (ownerCountBefore !== 1) {
             throw new AppError(
                 'Le workspace doit posséder exactement un propriétaire actif avant le transfert',
+                409,
+            );
+        }
+
+        /*
+         * Ce write est le point de sérialisation du workflow ownership.
+         *
+         * Deux transactions concurrentes qui ont lu le même owner tentent de
+         * modifier le même document Workspace. MongoDB déclenche alors un
+         * conflit d'écriture ; lors d'un éventuel retry transactionnel, la
+         * relecture des memberships constate que l'acteur n'est plus owner.
+         */
+        const workspaceWrite = await Workspace.updateOne(
+            { _id: workspaceId },
+            {
+                $inc: { ownershipVersion: 1 },
+                $set: { updatedBy: actorId },
+            },
+            { session },
+        );
+
+        if (workspaceWrite.matchedCount !== 1) {
+            throw new AppError(
+                'Workspace indisponible pour le transfert de propriété',
                 409,
             );
         }
