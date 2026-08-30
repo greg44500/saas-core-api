@@ -10,6 +10,15 @@ const CORE_PERMISSION = Object.freeze({
     WORKSPACE_READ: 'workspace:read',
     WORKSPACE_UPDATE: 'workspace:update',
 
+    /*
+     * Transfert de la propriété du workspace.
+     *
+     * Cette permission est volontairement distincte des permissions
+     * d'administration ordinaires : seul le propriétaire courant doit pouvoir
+     * initier un changement de propriétaire dans le Core V1.
+     */
+    WORKSPACE_OWNERSHIP_TRANSFER: 'workspace:ownership:transfer',
+
     // Consultation et administration des appartenances au workspace.
     MEMBER_READ: 'member:read',
     MEMBER_INVITE: 'member:invite',
