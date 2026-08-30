@@ -32,6 +32,14 @@ Les choix suivants sont considérés comme acquis sauf décision explicite ulté
 - recours à des tokens sémantiques et variables de design ;
 - aucune donnée sensible, secret, rôle, permission, endpoint ou règle métier critique codé en dur lorsqu’une abstraction/configuration adaptée est nécessaire ;
 - composants réutilisables et architecture par fonctionnalités ;
+- priorité à la composition plutôt qu’aux composants monolithiques ou sur-paramétrés ;
+- les pages ne doivent pas accumuler logique métier, appels API, règles de permissions et rendu complexe dans un même fichier ;
+- un fichier devenu difficile à lire, tester ou faire évoluer doit être revu selon ses responsabilités plutôt qu’en fonction d’un seuil arbitraire de lignes ;
+- affichage conditionnel prévu pour adapter navigation, actions et contenu selon permissions, rôles, entitlements, statuts et contexte courant ;
+- aucune condition d’affichage ne doit être considérée comme une frontière de sécurité : le backend reste l’autorité ;
+- une même règle conditionnelle réutilisée ne doit pas être dupliquée dans plusieurs composants ;
+- une stratégie unique de notifications/toasts sera retenue pour l’application ;
+- les toasts complètent les messages inline mais ne remplacent pas les erreurs de formulaire proches des champs ;
 - priorité à la maintenabilité, la sécurité et la cohérence globale ;
 - développement progressif, un lot fonctionnel à la fois ;
 - les contrats Markdown backend/frontend existants restent les références d’intégration API pendant la phase actuelle.
@@ -44,6 +52,8 @@ Les choix suivants sont considérés comme acquis sauf décision explicite ulté
 - les dashboards et navigations doivent refléter rôles et permissions ;
 - la zone Platform SUPER_ADMIN doit disposer d’une véritable interface de pilotage distincte ;
 - les interfaces d’administration peuvent être plus denses que les interfaces utilisateur métier ;
+- l’affichage conditionnel doit réduire le bruit visuel et présenter à l’utilisateur les actions pertinentes dans son contexte ;
+- les retours d’action doivent être cohérents : erreurs de champ inline, états de page/composant pour les erreurs structurelles, et notifications temporaires pour les confirmations ou informations transverses ;
 - les questions de cadrage utilisant des notions génériques ou ambiguës doivent toujours comporter des exemples concrets.
 
 ## 4. Règle de design system
@@ -215,7 +225,7 @@ Les blocs suivants seront détaillés progressivement, sans les mélanger :
 3. design system, palette, typographie et dark mode ;
 4. architecture frontend et conventions de code ;
 5. authentification et cycle de session ;
-6. rôles, permissions et guards UI ;
+6. rôles, permissions, affichage conditionnel et guards UI ;
 7. contexte workspace et multi-tenant ;
 8. formulaires et validation ;
 9. erreurs, loaders, empty states, toasts et confirmations ;
@@ -227,7 +237,7 @@ Les blocs suivants seront détaillés progressivement, sans les mélanger :
 15. performance ;
 16. observabilité et gestion des erreurs client ;
 17. préparation aux futurs modules métier ;
-18. stratégie de maintenance et revue des effets de bord.
+18. stratégie de maintenance, composition des composants et revue des effets de bord.
 
 ## 6. Règle de maintenance du document
 
