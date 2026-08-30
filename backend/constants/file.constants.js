@@ -39,6 +39,14 @@ export const FILE_STATUS = Object.freeze({
 });
 
 /**
+ * Durée de conservation physique après une suppression logique.
+ *
+ * La valeur est centralisée car elle appartient à la politique produit et ne
+ * doit jamais être dupliquée comme nombre magique dans les services ou jobs.
+ */
+export const FILE_RETENTION_DAYS = 30;
+
+/**
  * Résultat de l'analyse antivirus.
  *
  * ERROR est différent d'INFECTED :
