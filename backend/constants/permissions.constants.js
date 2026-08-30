@@ -34,6 +34,13 @@ const CORE_PERMISSION = Object.freeze({
     SUBSCRIPTION_READ: 'subscription:read',
 
     /*
+     * La lecture reste distincte de l'upload : perdre la capacité commerciale
+     * de déposer de nouveaux contenus ne doit pas rendre inaccessibles les
+     * fichiers actifs déjà détenus par le workspace.
+     */
+    FILE_READ: 'file:read',
+
+    /*
      * Création d'une ressource File à partir d'un upload.
      *
      * Cette permission reste distincte de workspace:update : administrer les
