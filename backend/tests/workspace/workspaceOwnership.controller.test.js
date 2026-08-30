@@ -52,6 +52,8 @@ describe('transferOwnership controller', () => {
                 body: {
                     newOwnerMemberId: 'new-owner-member-id',
                     previousOwnerRoleId: 'replacement-role-id',
+                    currentPassword:
+                        'Correct Horse Battery Staple',
                 },
             },
             context: {
@@ -72,6 +74,8 @@ describe('transferOwnership controller', () => {
             workspaceId: 'workspace-id',
             newOwnerMemberId: 'new-owner-member-id',
             previousOwnerRoleId: 'replacement-role-id',
+            currentPassword:
+                'Correct Horse Battery Staple',
             actorId: 'actor-id',
             ipAddress: '127.0.0.1',
             userAgent: 'Vitest',
