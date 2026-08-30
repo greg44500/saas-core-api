@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Backend Core V1
 
-Dernière consolidation : 2026-08-30 — checkpoint R1
+Dernière consolidation : 2026-08-30 — checkpoint R1 + décision R2
 
 ## 1. Rôle du document
 
@@ -303,6 +303,7 @@ La checklist initiale prévoyait `platform.controller.js` et `platform.service.j
 - [x] TERMINÉ — dettes fonctionnelles Account/Workspace Closure et File Trash/Restore documentées.
 - [x] TERMINÉ — présente checklist backend vivante.
 - [x] TERMINÉ — checkpoint documentaire `docs/backend-core-v1-ready-for-frontend.md` créé après validation R1.
+- [x] TERMINÉ — `R2` : décision de ne pas produire OpenAPI pendant la phase actuelle ; les contrats Markdown restent les références d’intégration. OpenAPI est différé jusqu’à la finalisation complète backend/frontend, où son intérêt sera réévalué.
 - [ ] DIFFÉRÉ — contrat UI/UX spécifique jusqu’au démarrage du frontend.
 
 ## 22. Qualité / sécurité / readiness
@@ -327,7 +328,7 @@ Le Backend Core V1 est considéré prêt pour démarrer l’intégration fronten
 - [x] TERMINÉ — contrats frontend/backend globaux consolidés et revérifiés contre le HEAD. `D1`.
 - [x] TERMINÉ — suite globale finale R1 : `181` fichiers de tests passés, `845` tests passés, aucun échec.
 - [x] TERMINÉ — checkpoint `Backend Core V1 Ready for Frontend` établi. `R1`.
-- [ ] À FAIRE — `R2` : décider explicitement si OpenAPI reste une exigence du Core ; si oui, produire et aligner la spécification sur les contrats réellement implémentés. Cet item est distinct du verdict R1.
+- [x] TERMINÉ — décision R2 : OpenAPI différé ; aucun artefact OpenAPI à maintenir pendant le développement actuel.
 
 ## 23. Ordre restant recommandé avant le frontend
 
@@ -337,11 +338,11 @@ H1  Audit jobs / maintenance / reconciliation            TERMINÉ
 H2  Audit index / secrets / env / operational hardening  TERMINÉ
 D1  Contrat frontend/backend Core global                 TERMINÉ
 R1  Suite globale finale + checkpoint readiness          TERMINÉ
-R2  OpenAPI : confirmer l’exigence puis produire/aligner À DÉCIDER
-F0  Fondation frontend                                   APRÈS DÉCISION R2
+R2  Décision OpenAPI                                     TERMINÉ — DIFFÉRÉ
+F0  Fondation frontend                                   PROCHAINE ÉTAPE
 ```
 
-Le verdict R1 autorise le démarrage du frontend sur le socle stabilisé. La séquence recommande néanmoins de trancher R2 avant F0 afin de fermer proprement le cadrage backend et d’éviter de produire une documentation API en parallèle du frontend sans décision explicite.
+Le Backend Core V1 est désormais prêt pour F0. Les contrats Markdown constituent les références documentaires d’intégration pendant la phase actuelle. OpenAPI sera réévalué lors de la finalisation complète backend/frontend et ne bloque pas le développement frontend.
 
 ## 24. Règle de maintenance
 
