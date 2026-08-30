@@ -27,13 +27,11 @@ import {
     scheduleActiveSubscriptionCancellation,
 } from '../../modules/subscriptions/services/activeSubscriptionLifecycle.service.js';
 
-
 vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
 }));
 
 const { ObjectId } = mongoose.Types;
-
 const NOW = new Date('2026-08-29T12:00:00.000Z');
 const PERIOD_END = new Date('2026-09-29T12:00:00.000Z');
 
@@ -59,6 +57,10 @@ const queryResult = (value) => ({
     session: vi.fn().mockResolvedValue(value),
 });
 
+const findChain = (value) => ({
+    sort: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue(value),
+});
 
 describe('active subscription lifecycle', () => {
     beforeEach(() => {
@@ -108,73 +110,48 @@ describe('active subscription lifecycle', () => {
     });
 
     it('refuse de programmer deux fois la même annulation', async () => {
-        const subscription = createSubscription({
-            cancelAtPeriodEnd: true,
-        });
-
-        vi.spyOn(Subscription, 'findById')
-            .mockReturnValue(queryResult(subscription));
+        const subscription = createSubscription({ cancelAtPeriodEnd: true });
+        vi.spyOn(Subscription, 'findById').mockReturnValue(queryResult(subscription));
         const updateSpy = vi.spyOn(Subscription, 'findOneAndUpdate');
 
-        await expect(
-            scheduleActiveSubscriptionCancellation({
-                subscriptionId: subscription._id,
-                actorId: new ObjectId(),
-                now: NOW,
-            }),
-        ).rejects.toMatchObject({ statusCode: 409 });
+        await expect(scheduleActiveSubscriptionCancellation({
+            subscriptionId: subscription._id,
+            actorId: new ObjectId(),
+            now: NOW,
+        })).rejects.toMatchObject({ statusCode: 409 });
 
         expect(updateSpy).not.toHaveBeenCalled();
     });
 
     it('refuse de programmer l’annulation de la baseline Free', async () => {
-        const subscription = createSubscription({
-            kind: SUBSCRIPTION_KIND.BASELINE,
-        });
+        const subscription = createSubscription({ kind: SUBSCRIPTION_KIND.BASELINE });
+        vi.spyOn(Subscription, 'findById').mockReturnValue(queryResult(subscription));
 
-        vi.spyOn(Subscription, 'findById')
-            .mockReturnValue(queryResult(subscription));
-
-        await expect(
-            scheduleActiveSubscriptionCancellation({
-                subscriptionId: subscription._id,
-                actorId: new ObjectId(),
-                now: NOW,
-            }),
-        ).rejects.toMatchObject({ statusCode: 409 });
+        await expect(scheduleActiveSubscriptionCancellation({
+            subscriptionId: subscription._id,
+            actorId: new ObjectId(),
+            now: NOW,
+        })).rejects.toMatchObject({ statusCode: 409 });
     });
 
     it('refuse une annulation différée lorsque la période est déjà terminée', async () => {
-        const subscription = createSubscription({
-            currentPeriodEnd: NOW,
-        });
+        const subscription = createSubscription({ currentPeriodEnd: NOW });
+        vi.spyOn(Subscription, 'findById').mockReturnValue(queryResult(subscription));
 
-        vi.spyOn(Subscription, 'findById')
-            .mockReturnValue(queryResult(subscription));
-
-        await expect(
-            scheduleActiveSubscriptionCancellation({
-                subscriptionId: subscription._id,
-                actorId: new ObjectId(),
-                now: NOW,
-            }),
-        ).rejects.toMatchObject({ statusCode: 409 });
+        await expect(scheduleActiveSubscriptionCancellation({
+            subscriptionId: subscription._id,
+            actorId: new ObjectId(),
+            now: NOW,
+        })).rejects.toMatchObject({ statusCode: 409 });
     });
 
     it('retire une annulation programmée avant son échéance', async () => {
         const actorId = new ObjectId();
-        const subscription = createSubscription({
-            cancelAtPeriodEnd: true,
-        });
-        const updated = createSubscription({
-            ...subscription,
-            cancelAtPeriodEnd: false,
-        });
+        const subscription = createSubscription({ cancelAtPeriodEnd: true });
+        const updated = createSubscription({ ...subscription, cancelAtPeriodEnd: false });
 
-        vi.spyOn(Subscription, 'findById')
-            .mockReturnValue(queryResult(subscription));
-        vi.spyOn(Subscription, 'findOneAndUpdate')
-            .mockResolvedValue(updated);
+        vi.spyOn(Subscription, 'findById').mockReturnValue(queryResult(subscription));
+        vi.spyOn(Subscription, 'findOneAndUpdate').mockResolvedValue(updated);
         createAuditLog.mockResolvedValue({});
 
         const result = await resumeScheduledSubscriptionCancellation({
@@ -186,26 +163,20 @@ describe('active subscription lifecycle', () => {
         expect(result.cancelAtPeriodEnd).toBe(false);
         expect(result.status).toBe(SUBSCRIPTION_STATUS.ACTIVE);
         expect(createAuditLog).toHaveBeenCalledWith(
-            expect.objectContaining({
-                action: AUDIT_ACTION.SUBSCRIPTION_RESUMED,
-            }),
+            expect.objectContaining({ action: AUDIT_ACTION.SUBSCRIPTION_RESUMED }),
             expect.any(Object),
         );
     });
 
     it('refuse une reprise lorsqu’aucune annulation n’est programmée', async () => {
         const subscription = createSubscription();
+        vi.spyOn(Subscription, 'findById').mockReturnValue(queryResult(subscription));
 
-        vi.spyOn(Subscription, 'findById')
-            .mockReturnValue(queryResult(subscription));
-
-        await expect(
-            resumeScheduledSubscriptionCancellation({
-                subscriptionId: subscription._id,
-                actorId: new ObjectId(),
-                now: NOW,
-            }),
-        ).rejects.toMatchObject({ statusCode: 409 });
+        await expect(resumeScheduledSubscriptionCancellation({
+            subscriptionId: subscription._id,
+            actorId: new ObjectId(),
+            now: NOW,
+        })).rejects.toMatchObject({ statusCode: 409 });
     });
 
     it('annule immédiatement une souscription commerciale active sans calcul de prorata', async () => {
@@ -217,10 +188,8 @@ describe('active subscription lifecycle', () => {
             currentPeriodEnd: NOW,
         });
 
-        vi.spyOn(Subscription, 'findById')
-            .mockReturnValue(queryResult(subscription));
-        vi.spyOn(Subscription, 'findOneAndUpdate')
-            .mockResolvedValue(updated);
+        vi.spyOn(Subscription, 'findById').mockReturnValue(queryResult(subscription));
+        vi.spyOn(Subscription, 'findOneAndUpdate').mockResolvedValue(updated);
         createAuditLog.mockResolvedValue({});
 
         const result = await cancelActiveSubscriptionImmediately({
@@ -246,38 +215,27 @@ describe('active subscription lifecycle', () => {
     });
 
     it('refuse l’annulation immédiate d’une souscription qui n’est plus active', async () => {
-        const subscription = createSubscription({
-            status: SUBSCRIPTION_STATUS.CANCELED,
-        });
+        const subscription = createSubscription({ status: SUBSCRIPTION_STATUS.CANCELED });
+        vi.spyOn(Subscription, 'findById').mockReturnValue(queryResult(subscription));
 
-        vi.spyOn(Subscription, 'findById')
-            .mockReturnValue(queryResult(subscription));
-
-        await expect(
-            cancelActiveSubscriptionImmediately({
-                subscriptionId: subscription._id,
-                actorId: new ObjectId(),
-                reason: 'test',
-                canceledAt: NOW,
-            }),
-        ).rejects.toMatchObject({ statusCode: 409 });
+        await expect(cancelActiveSubscriptionImmediately({
+            subscriptionId: subscription._id,
+            actorId: new ObjectId(),
+            reason: 'test',
+            canceledAt: NOW,
+        })).rejects.toMatchObject({ statusCode: 409 });
     });
 
     it('refuse proprement une transition perdue à cause d’une concurrence', async () => {
         const subscription = createSubscription();
+        vi.spyOn(Subscription, 'findById').mockReturnValue(queryResult(subscription));
+        vi.spyOn(Subscription, 'findOneAndUpdate').mockResolvedValue(null);
 
-        vi.spyOn(Subscription, 'findById')
-            .mockReturnValue(queryResult(subscription));
-        vi.spyOn(Subscription, 'findOneAndUpdate')
-            .mockResolvedValue(null);
-
-        await expect(
-            scheduleActiveSubscriptionCancellation({
-                subscriptionId: subscription._id,
-                actorId: new ObjectId(),
-                now: NOW,
-            }),
-        ).rejects.toMatchObject({ statusCode: 409 });
+        await expect(scheduleActiveSubscriptionCancellation({
+            subscriptionId: subscription._id,
+            actorId: new ObjectId(),
+            now: NOW,
+        })).rejects.toMatchObject({ statusCode: 409 });
 
         expect(createAuditLog).not.toHaveBeenCalled();
     });
@@ -293,18 +251,21 @@ describe('active subscription lifecycle', () => {
             cancelAtPeriodEnd: false,
         });
 
-        vi.spyOn(Subscription, 'find').mockResolvedValue([candidate]);
-        vi.spyOn(Subscription, 'findOneAndUpdate')
-            .mockResolvedValue(updated);
+        const chain = findChain([candidate]);
+        vi.spyOn(Subscription, 'find').mockReturnValue(chain);
+        vi.spyOn(Subscription, 'findOneAndUpdate').mockResolvedValue(updated);
         createAuditLog.mockResolvedValue({});
 
         const result = await finalizeScheduledCancellations({ now: NOW });
 
+        expect(chain.sort).toHaveBeenCalledWith({ currentPeriodEnd: 1, _id: 1 });
+        expect(chain.limit).toHaveBeenCalledWith(100);
         expect(result).toEqual({
             processedAt: NOW,
             scanned: 1,
             canceled: 1,
             skipped: 0,
+            hasMore: false,
         });
         expect(createAuditLog).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -325,14 +286,14 @@ describe('active subscription lifecycle', () => {
             currentPeriodEnd: new Date('2026-08-29T11:00:00.000Z'),
         });
 
-        vi.spyOn(Subscription, 'find').mockResolvedValue([candidate]);
-        vi.spyOn(Subscription, 'findOneAndUpdate')
-            .mockResolvedValue(null);
+        vi.spyOn(Subscription, 'find').mockReturnValue(findChain([candidate]));
+        vi.spyOn(Subscription, 'findOneAndUpdate').mockResolvedValue(null);
 
         const result = await finalizeScheduledCancellations({ now: NOW });
 
         expect(result.canceled).toBe(0);
         expect(result.skipped).toBe(1);
+        expect(result.hasMore).toBe(false);
         expect(createAuditLog).not.toHaveBeenCalled();
     });
 
@@ -342,25 +303,23 @@ describe('active subscription lifecycle', () => {
             currentPeriodEnd: new Date('2026-08-29T11:00:00.000Z'),
         });
 
-        vi.spyOn(Subscription, 'find').mockResolvedValue([candidate]);
-        vi.spyOn(Subscription, 'findOneAndUpdate')
-            .mockResolvedValue(createSubscription({
-                ...candidate,
-                status: SUBSCRIPTION_STATUS.CANCELED,
-            }));
+        vi.spyOn(Subscription, 'find').mockReturnValue(findChain([candidate]));
+        vi.spyOn(Subscription, 'findOneAndUpdate').mockResolvedValue(createSubscription({
+            ...candidate,
+            status: SUBSCRIPTION_STATUS.CANCELED,
+        }));
         createAuditLog.mockRejectedValue(new Error('audit unavailable'));
 
-        await expect(
-            finalizeScheduledCancellations({ now: NOW }),
-        ).rejects.toThrow('audit unavailable');
+        await expect(finalizeScheduledCancellations({ now: NOW }))
+            .rejects.toThrow('audit unavailable');
     });
 
     it('valide strictement les dates système injectées', async () => {
         const findSpy = vi.spyOn(Subscription, 'find');
 
-        await expect(
-            finalizeScheduledCancellations({ now: new Date('invalid') }),
-        ).rejects.toThrow('now must be a valid Date');
+        await expect(finalizeScheduledCancellations({
+            now: new Date('invalid'),
+        })).rejects.toThrow('now must be a valid Date');
 
         expect(findSpy).not.toHaveBeenCalled();
     });
