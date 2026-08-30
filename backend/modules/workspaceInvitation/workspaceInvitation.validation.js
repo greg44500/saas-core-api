@@ -9,8 +9,9 @@ const objectIdSchema = (fieldName) => z
 
 const createWorkspaceInvitationBodySchema = z.strictObject({
     email: z
-        .email('email invalide')
+        .string()
         .trim()
+        .email('email invalide')
         .max(254),
     roleId: objectIdSchema('roleId'),
 });
