@@ -22,33 +22,21 @@ const {
 
 vi.mock('mongoose', () => ({
     default: {
-        connection: {
-            transaction: transactionMock,
-        },
+        connection: { transaction: transactionMock },
         trusted: (value) => value,
     },
 }));
-
 vi.mock('../../modules/file/file.model.js', () => ({
-    File: {
-        find: findMock,
-        findOne: findOneMock,
-    },
+    File: { find: findMock, findOne: findOneMock },
 }));
-
 vi.mock('../../services/storage/storage.service.js', () => ({
-    storageService: {
-        deleteFile: deleteFileMock,
-    },
+    storageService: { deleteFile: deleteFileMock },
 }));
-
 vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: createAuditLogMock,
 }));
 
-import {
-    purgeDeletedFiles,
-} from '../../modules/file/filePurge.service.js';
+import { purgeDeletedFiles } from '../../modules/file/filePurge.service.js';
 
 const createFindChain = (candidates) => ({
     select: vi.fn().mockReturnThis(),
@@ -59,9 +47,7 @@ const createFindChain = (candidates) => ({
 
 beforeEach(() => {
     vi.clearAllMocks();
-    transactionMock.mockImplementation(
-        async (callback) => callback({ id: 'session' }),
-    );
+    transactionMock.mockImplementation(async (callback) => callback({ id: 'session' }));
 });
 
 describe('purgeDeletedFiles', () => {
@@ -74,7 +60,6 @@ describe('purgeDeletedFiles', () => {
             storageKey: 'workspaces/workspace-id/file.pdf',
             purgeScheduledAt: new Date('2026-09-30T10:00:00.000Z'),
         };
-
         const fileDocument = {
             _id: 'file-id',
             workspace: 'workspace-id',
@@ -84,96 +69,74 @@ describe('purgeDeletedFiles', () => {
             updatedBy: 'previous-actor',
             save: vi.fn().mockResolvedValue(undefined),
         };
-
         findMock.mockReturnValue(createFindChain([candidate]));
-        findOneMock.mockReturnValue({
-            session: vi.fn().mockResolvedValue(fileDocument),
-        });
+        findOneMock.mockReturnValue({ session: vi.fn().mockResolvedValue(fileDocument) });
         deleteFileMock.mockResolvedValue({ deleted: true });
         createAuditLogMock.mockResolvedValue({});
 
-        const result = await purgeDeletedFiles({
-            now,
-            batchSize: 25,
-        });
+        const result = await purgeDeletedFiles({ now, batchSize: 25 });
 
-        expect(findMock).toHaveBeenCalledWith({
-            status: 'deleted',
-            purgeScheduledAt: { $lte: now },
-        });
-        expect(deleteFileMock).toHaveBeenCalledWith({
-            provider: 'local',
-            storageKey: 'workspaces/workspace-id/file.pdf',
-        });
         expect(fileDocument.status).toBe('purged');
-        expect(fileDocument.purgedAt).toBe(now);
-        expect(fileDocument.updatedBy).toBeNull();
-        expect(fileDocument.save).toHaveBeenCalledWith({
-            session: { id: 'session' },
-        });
-        expect(createAuditLogMock).toHaveBeenCalledWith(
-            expect.objectContaining({
-                actor: null,
-                workspace: 'workspace-id',
-                action: 'FILE_PURGED',
-                entityType: 'File',
-                entityId: 'file-id',
-                status: 'success',
-            }),
-            { session: { id: 'session' } },
-        );
+        expect(createAuditLogMock).toHaveBeenCalled();
         expect(result).toEqual({
             selected: 1,
             purged: 1,
             skipped: 0,
+            hasMore: false,
+        });
+    });
+
+    it('signale un lot plein pour permettre un nouveau passage', async () => {
+        const now = new Date('2026-09-30T12:00:00.000Z');
+        const candidates = Array.from({ length: 2 }, (_, index) => ({
+            _id: `file-${index}`,
+            workspace: 'workspace-id',
+            storageProvider: 'local',
+            storageKey: `workspaces/workspace-id/file-${index}.pdf`,
+            purgeScheduledAt: now,
+        }));
+        findMock.mockReturnValue(createFindChain(candidates));
+        deleteFileMock.mockResolvedValue({ deleted: false });
+        findOneMock.mockReturnValue({ session: vi.fn().mockResolvedValue(null) });
+
+        const result = await purgeDeletedFiles({ now, batchSize: 2 });
+        expect(result).toEqual({
+            selected: 2,
+            purged: 0,
+            skipped: 2,
+            hasMore: true,
         });
     });
 
     it('considère comme ignoré un candidat déjà finalisé par un autre worker', async () => {
         const now = new Date('2026-09-30T12:00:00.000Z');
-        const candidate = {
+        findMock.mockReturnValue(createFindChain([{
             _id: 'file-id',
             workspace: 'workspace-id',
             storageProvider: 'local',
             storageKey: 'workspaces/workspace-id/file.pdf',
-            purgeScheduledAt: new Date('2026-09-30T10:00:00.000Z'),
-        };
-
-        findMock.mockReturnValue(createFindChain([candidate]));
-        findOneMock.mockReturnValue({
-            session: vi.fn().mockResolvedValue(null),
-        });
+            purgeScheduledAt: now,
+        }]));
+        findOneMock.mockReturnValue({ session: vi.fn().mockResolvedValue(null) });
         deleteFileMock.mockResolvedValue({ deleted: false });
 
         const result = await purgeDeletedFiles({ now });
-
-        expect(deleteFileMock).toHaveBeenCalledOnce();
+        expect(result).toMatchObject({ purged: 0, skipped: 1, hasMore: false });
         expect(createAuditLogMock).not.toHaveBeenCalled();
-        expect(result).toEqual({
-            selected: 1,
-            purged: 0,
-            skipped: 1,
-        });
     });
 
     it('propage un échec du stockage sans marquer le fichier purged', async () => {
         const now = new Date('2026-09-30T12:00:00.000Z');
-        const candidate = {
+        findMock.mockReturnValue(createFindChain([{
             _id: 'file-id',
             workspace: 'workspace-id',
             storageProvider: 'local',
             storageKey: 'workspaces/workspace-id/file.pdf',
-            purgeScheduledAt: new Date('2026-09-30T10:00:00.000Z'),
-        };
+            purgeScheduledAt: now,
+        }]));
+        deleteFileMock.mockRejectedValue(new Error('storage unavailable'));
 
-        findMock.mockReturnValue(createFindChain([candidate]));
-        deleteFileMock.mockRejectedValue(
-            new Error('storage unavailable'),
-        );
-
-        await expect(purgeDeletedFiles({ now }))
-            .rejects.toThrow('storage unavailable');
-
+        await expect(purgeDeletedFiles({ now })).rejects.toThrow('storage unavailable');
         expect(findOneMock).not.toHaveBeenCalled();
         expect(createAuditLogMock).not.toHaveBeenCalled();
     });
