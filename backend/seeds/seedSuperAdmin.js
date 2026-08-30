@@ -2,62 +2,150 @@ import mongoose from 'mongoose';
 import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 
-import { env } from '../config/env.js';
 import { connectDB } from '../config/db.js';
-import { PLATFORM_ROLE } from '../constants/platformRoles.constants.js';
-import { AUTH_PROVIDER } from '../constants/authProvider.constants.js';
+import { env } from '../config/env.js';
+
+import {
+    PLATFORM_ROLE,
+} from '../constants/platformRoles.constants.js';
+import {
+    AUTH_PROVIDER,
+} from '../constants/authProvider.constants.js';
+
+import {
+    AuthIdentity,
+} from '../modules/authIdentities/authIdentity.model.js';
 import { User } from '../modules/users/user.model.js';
-import { AuthIdentity } from '../modules/auth/authIdentity.model.js';
+
+import {
+    canonicalizeEmail,
+} from '../utils/canonicalizeEmail.js';
 import { hashPassword } from '../utils/password.js';
-import { normalizeEmail } from '../utils/normalizeEmail.js';
 
 
+/**
+ * Configuration spécifique au bootstrap du premier super-admin.
+ *
+ * Ces variables ne sont volontairement pas intégrées à env.js :
+ * elles sont nécessaires au seed, mais pas au fonctionnement normal
+ * du serveur HTTP.
+ */
 const superAdminSeedEnvSchema = z.object({
-    SUPER_ADMIN_FIRST_NAME: z.string().trim().min(1),
-    SUPER_ADMIN_LAST_NAME: z.string().trim().min(1),
-    SUPER_ADMIN_EMAIL: z.string().trim().email(),
-    SUPER_ADMIN_PASSWORD: z.string().min(12),
+    SUPER_ADMIN_EMAIL: z
+        .email(
+            'SUPER_ADMIN_EMAIL doit être une adresse email valide',
+        ),
+
+    SUPER_ADMIN_PASSWORD: z
+        .string()
+        .min(
+            12,
+            'SUPER_ADMIN_PASSWORD doit contenir au minimum 12 caractères',
+        ),
+
+    SUPER_ADMIN_FIRST_NAME: z
+        .string()
+        .trim()
+        .min(
+            1,
+            'SUPER_ADMIN_FIRST_NAME est obligatoire',
+        )
+        .max(100),
+
+    SUPER_ADMIN_LAST_NAME: z
+        .string()
+        .trim()
+        .min(
+            1,
+            'SUPER_ADMIN_LAST_NAME est obligatoire',
+        )
+        .max(100),
 });
 
 
+/**
+ * Lit et valide uniquement la configuration nécessaire au seed.
+ *
+ * La validation est exécutée au moment où le seed est réellement lancé,
+ * et non lors de son import par Vitest.
+ */
 const getSuperAdminSeedConfig = () => {
-    const result = superAdminSeedEnvSchema.safeParse(process.env);
+    const validationResult =
+        superAdminSeedEnvSchema.safeParse(process.env);
 
-    if (!result.success) {
+    if (!validationResult.success) {
+        const errors = z.flattenError(
+            validationResult.error,
+        ).fieldErrors;
+
         throw new Error(
-            'Configuration du seed super-admin invalide ou incomplète.',
+            `Configuration du seed super-admin invalide : ${JSON.stringify(errors)
+            }`,
         );
     }
 
-    return result.data;
+    return validationResult.data;
 };
 
 
+/**
+ * Crée le premier compte super-admin de la plateforme.
+ *
+ * User et AuthIdentity sont persistés dans la même transaction afin
+ * qu'un compte administratif partiellement initialisé ne puisse jamais
+ * rester en base.
+ *
+ * Le seed est idempotent :
+ * - un super-admin local déjà présent avec le même email est conservé ;
+ * - un compte existant avec un autre rôle n'est jamais promu
+ *   silencieusement.
+ *
+ * @param {object} input
+ * @param {string} input.firstName
+ * @param {string} input.lastName
+ * @param {string} input.email
+ * @param {string} input.password
+ * @returns {Promise<{
+ *     created: boolean,
+ *     userId: string
+ * }>}
+ */
 const seedSuperAdmin = async ({
     firstName,
     lastName,
     email,
     password,
 }) => {
-    const emailCanonical = normalizeEmail(email);
+    const emailCanonical = canonicalizeEmail(email);
 
     const existingUser = await User.findOne({
         emailCanonical,
     });
 
+    /*
+     * Un compte existant ne doit jamais être élevé en super-admin
+     * implicitement par un script de bootstrap.
+     */
     if (existingUser) {
         if (
             existingUser.platformRole
             !== PLATFORM_ROLE.SUPER_ADMIN
         ) {
-            existingUser.platformRole =
-                PLATFORM_ROLE.SUPER_ADMIN;
-            existingUser.updatedBy = null;
-            await existingUser.save();
+            throw new Error(
+                'Un utilisateur existe déjà avec '
+                + 'SUPER_ADMIN_EMAIL mais ne possède pas '
+                + 'le rôle super_admin.',
+            );
         }
 
+        /*
+         * Le seed initialise un compte d'authentification locale.
+         * Un super-admin existant sans identité locale représente
+         * donc une situation différente qui doit être traitée
+         * explicitement, et non modifiée silencieusement.
+         */
         const existingLocalIdentity =
-            await AuthIdentity.findOne({
+            await AuthIdentity.exists({
                 user: existingUser._id,
                 provider: AUTH_PROVIDER.LOCAL,
             });
