@@ -20,7 +20,7 @@ const run = async () => {
     } catch (error) {
         console.error(
             'Échec de la migration addSubscriptionLifecycleIndexes :',
-            error,
+            { message: error.message },
         );
         process.exitCode = 1;
     } finally {
