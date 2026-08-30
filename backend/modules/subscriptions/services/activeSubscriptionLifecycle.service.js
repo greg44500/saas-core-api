@@ -5,16 +5,16 @@ import {
     AUDIT_ENTITY_TYPE,
     AUDIT_STATUS,
 } from '../../../constants/auditActions.constants.js';
-
 import {
     SUBSCRIPTION_KIND,
     SUBSCRIPTION_STATUS,
 } from '../../../constants/subscription.constants.js';
-
 import { AppError } from '../../../utils/appError.js';
 import { createAuditLog } from '../../auditLog/auditLog.service.js';
 import { Subscription } from '../subscription.model.js';
 
+const DEFAULT_CANCELLATION_FINALIZATION_BATCH_SIZE = 100;
+const MAX_CANCELLATION_FINALIZATION_BATCH_SIZE = 500;
 
 const assertValidDate = (value, fieldName) => {
     if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
@@ -22,6 +22,17 @@ const assertValidDate = (value, fieldName) => {
     }
 };
 
+const assertValidCancellationBatchSize = (batchSize) => {
+    if (
+        !Number.isInteger(batchSize)
+        || batchSize <= 0
+        || batchSize > MAX_CANCELLATION_FINALIZATION_BATCH_SIZE
+    ) {
+        throw new TypeError(
+            `batchSize must be an integer between 1 and ${MAX_CANCELLATION_FINALIZATION_BATCH_SIZE}`,
+        );
+    }
+};
 
 const buildSubscriptionLifecycleDto = (subscription) => ({
     id: subscription._id.toString(),
@@ -40,7 +51,6 @@ const buildSubscriptionLifecycleDto = (subscription) => ({
     updatedAt: subscription.updatedAt,
 });
 
-
 const assertActiveCommercialSubscription = ({ subscription, now }) => {
     if (subscription.kind !== SUBSCRIPTION_KIND.COMMERCIAL) {
         throw new AppError(
@@ -48,14 +58,12 @@ const assertActiveCommercialSubscription = ({ subscription, now }) => {
             409,
         );
     }
-
     if (subscription.status !== SUBSCRIPTION_STATUS.ACTIVE) {
         throw new AppError(
             'Cette opération nécessite une souscription commerciale active',
             409,
         );
     }
-
     if (
         !(subscription.currentPeriodEnd instanceof Date)
         || subscription.currentPeriodEnd <= now
@@ -67,14 +75,6 @@ const assertActiveCommercialSubscription = ({ subscription, now }) => {
     }
 };
 
-
-/**
- * Programme la fin d'une souscription commerciale active à son échéance.
- *
- * La souscription reste `active` jusqu'à `currentPeriodEnd`. L'entitlement
- * contrôle lui-même cette borne temporelle afin qu'un retard du job de
- * réconciliation ne prolonge jamais les droits commerciaux.
- */
 const scheduleActiveSubscriptionCancellation = async ({
     subscriptionId,
     actorId,
@@ -88,90 +88,46 @@ const scheduleActiveSubscriptionCancellation = async ({
             'subscriptionId and actorId are required to schedule a subscription cancellation',
         );
     }
-
     assertValidDate(now, 'now');
-
     let result;
-
     await mongoose.connection.transaction(async (session) => {
-        const subscription = await Subscription.findById(
-            subscriptionId,
-        ).session(session);
-
-        if (!subscription) {
-            throw new AppError('Souscription introuvable', 404);
-        }
-
+        const subscription = await Subscription.findById(subscriptionId).session(session);
+        if (!subscription) throw new AppError('Souscription introuvable', 404);
         assertActiveCommercialSubscription({ subscription, now });
-
         if (subscription.cancelAtPeriodEnd === true) {
-            throw new AppError(
-                'L’annulation en fin de période est déjà programmée',
-                409,
-            );
+            throw new AppError('L’annulation en fin de période est déjà programmée', 409);
         }
-
         result = await Subscription.findOneAndUpdate(
             {
                 _id: subscription._id,
                 kind: SUBSCRIPTION_KIND.COMMERCIAL,
                 status: SUBSCRIPTION_STATUS.ACTIVE,
                 cancelAtPeriodEnd: false,
-                currentPeriodEnd: mongoose.trusted({
-                    $type: 'date',
-                    $gt: now,
-                }),
+                currentPeriodEnd: mongoose.trusted({ $type: 'date', $gt: now }),
             },
-            {
-                $set: {
-                    cancelAtPeriodEnd: true,
-                    updatedBy: actorId,
-                },
-            },
-            {
-                returnDocument: 'after',
-                runValidators: true,
-                session,
-            },
+            { $set: { cancelAtPeriodEnd: true, updatedBy: actorId } },
+            { returnDocument: 'after', runValidators: true, session },
         );
-
-        if (!result) {
-            throw new AppError(
-                'La souscription a été modifiée concurremment',
-                409,
-            );
-        }
-
-        await createAuditLog(
-            {
-                actor: actorId,
-                action: AUDIT_ACTION.SUBSCRIPTION_CANCELLATION_SCHEDULED,
-                entityType: AUDIT_ENTITY_TYPE.SUBSCRIPTION,
-                entityId: result._id,
-                status: AUDIT_STATUS.SUCCESS,
-                ipAddress,
-                userAgent,
-                metadata: {
-                    reason,
-                    effectiveAt: subscription.currentPeriodEnd,
-                    previousCancelAtPeriodEnd: false,
-                    cancelAtPeriodEnd: true,
-                },
+        if (!result) throw new AppError('La souscription a été modifiée concurremment', 409);
+        await createAuditLog({
+            actor: actorId,
+            action: AUDIT_ACTION.SUBSCRIPTION_CANCELLATION_SCHEDULED,
+            entityType: AUDIT_ENTITY_TYPE.SUBSCRIPTION,
+            entityId: result._id,
+            status: AUDIT_STATUS.SUCCESS,
+            ipAddress,
+            userAgent,
+            metadata: {
+                reason,
+                effectiveAt: subscription.currentPeriodEnd,
+                previousCancelAtPeriodEnd: false,
+                cancelAtPeriodEnd: true,
             },
-            { session },
-        );
+        }, { session });
     });
-
     return buildSubscriptionLifecycleDto(result);
 };
 
-
-/**
- * Retire une annulation programmée tant que l'échéance n'est pas atteinte.
- *
- * Cette opération ne ressuscite jamais une Subscription déjà `canceled` ou
- * `expired` : elle retire uniquement un drapeau encore réversible.
- */
 const resumeScheduledSubscriptionCancellation = async ({
     subscriptionId,
     actorId,
@@ -184,91 +140,46 @@ const resumeScheduledSubscriptionCancellation = async ({
             'subscriptionId and actorId are required to resume a scheduled subscription cancellation',
         );
     }
-
     assertValidDate(now, 'now');
-
     let result;
-
     await mongoose.connection.transaction(async (session) => {
-        const subscription = await Subscription.findById(
-            subscriptionId,
-        ).session(session);
-
-        if (!subscription) {
-            throw new AppError('Souscription introuvable', 404);
-        }
-
+        const subscription = await Subscription.findById(subscriptionId).session(session);
+        if (!subscription) throw new AppError('Souscription introuvable', 404);
         assertActiveCommercialSubscription({ subscription, now });
-
         if (subscription.cancelAtPeriodEnd !== true) {
-            throw new AppError(
-                'Aucune annulation en fin de période n’est programmée',
-                409,
-            );
+            throw new AppError('Aucune annulation en fin de période n’est programmée', 409);
         }
-
         result = await Subscription.findOneAndUpdate(
             {
                 _id: subscription._id,
                 kind: SUBSCRIPTION_KIND.COMMERCIAL,
                 status: SUBSCRIPTION_STATUS.ACTIVE,
                 cancelAtPeriodEnd: true,
-                currentPeriodEnd: mongoose.trusted({
-                    $type: 'date',
-                    $gt: now,
-                }),
+                currentPeriodEnd: mongoose.trusted({ $type: 'date', $gt: now }),
             },
-            {
-                $set: {
-                    cancelAtPeriodEnd: false,
-                    updatedBy: actorId,
-                },
-            },
-            {
-                returnDocument: 'after',
-                runValidators: true,
-                session,
-            },
+            { $set: { cancelAtPeriodEnd: false, updatedBy: actorId } },
+            { returnDocument: 'after', runValidators: true, session },
         );
-
-        if (!result) {
-            throw new AppError(
-                'La souscription a été modifiée concurremment',
-                409,
-            );
-        }
-
-        await createAuditLog(
-            {
-                actor: actorId,
-                action: AUDIT_ACTION.SUBSCRIPTION_RESUMED,
-                entityType: AUDIT_ENTITY_TYPE.SUBSCRIPTION,
-                entityId: result._id,
-                status: AUDIT_STATUS.SUCCESS,
-                ipAddress,
-                userAgent,
-                metadata: {
-                    reason: 'scheduled_cancellation_revoked',
-                    effectiveAt: subscription.currentPeriodEnd,
-                    previousCancelAtPeriodEnd: true,
-                    cancelAtPeriodEnd: false,
-                },
+        if (!result) throw new AppError('La souscription a été modifiée concurremment', 409);
+        await createAuditLog({
+            actor: actorId,
+            action: AUDIT_ACTION.SUBSCRIPTION_RESUMED,
+            entityType: AUDIT_ENTITY_TYPE.SUBSCRIPTION,
+            entityId: result._id,
+            status: AUDIT_STATUS.SUCCESS,
+            ipAddress,
+            userAgent,
+            metadata: {
+                reason: 'scheduled_cancellation_revoked',
+                effectiveAt: subscription.currentPeriodEnd,
+                previousCancelAtPeriodEnd: true,
+                cancelAtPeriodEnd: false,
             },
-            { session },
-        );
+        }, { session });
     });
-
     return buildSubscriptionLifecycleDto(result);
 };
 
-
-/**
- * Met fin immédiatement à une souscription commerciale active.
- *
- * Cette primitive métier est destinée notamment à une action administrative.
- * Elle ne calcule aucun remboursement ni prorata : ces responsabilités
- * appartiendront au futur domaine Billing/Payment.
- */
 const cancelActiveSubscriptionImmediately = async ({
     subscriptionId,
     actorId,
@@ -282,36 +193,19 @@ const cancelActiveSubscriptionImmediately = async ({
             'subscriptionId, actorId and reason are required to cancel an active subscription immediately',
         );
     }
-
     assertValidDate(canceledAt, 'canceledAt');
-
     let result;
-
     await mongoose.connection.transaction(async (session) => {
-        const subscription = await Subscription.findById(
-            subscriptionId,
-        ).session(session);
-
-        if (!subscription) {
-            throw new AppError('Souscription introuvable', 404);
-        }
-
-        assertActiveCommercialSubscription({
-            subscription,
-            now: canceledAt,
-        });
-
+        const subscription = await Subscription.findById(subscriptionId).session(session);
+        if (!subscription) throw new AppError('Souscription introuvable', 404);
+        assertActiveCommercialSubscription({ subscription, now: canceledAt });
         const previousPeriodEnd = subscription.currentPeriodEnd;
-
         result = await Subscription.findOneAndUpdate(
             {
                 _id: subscription._id,
                 kind: SUBSCRIPTION_KIND.COMMERCIAL,
                 status: SUBSCRIPTION_STATUS.ACTIVE,
-                currentPeriodEnd: mongoose.trusted({
-                    $type: 'date',
-                    $gt: canceledAt,
-                }),
+                currentPeriodEnd: mongoose.trusted({ $type: 'date', $gt: canceledAt }),
             },
             {
                 $set: {
@@ -321,75 +215,58 @@ const cancelActiveSubscriptionImmediately = async ({
                     updatedBy: actorId,
                 },
             },
-            {
-                returnDocument: 'after',
-                runValidators: true,
-                session,
-            },
+            { returnDocument: 'after', runValidators: true, session },
         );
-
-        if (!result) {
-            throw new AppError(
-                'La souscription a été modifiée concurremment',
-                409,
-            );
-        }
-
-        await createAuditLog(
-            {
-                actor: actorId,
-                action: AUDIT_ACTION.SUBSCRIPTION_CANCELED,
-                entityType: AUDIT_ENTITY_TYPE.SUBSCRIPTION,
-                entityId: result._id,
-                status: AUDIT_STATUS.SUCCESS,
-                ipAddress,
-                userAgent,
-                metadata: {
-                    mode: 'immediate',
-                    reason,
-                    previousStatus: SUBSCRIPTION_STATUS.ACTIVE,
-                    newStatus: SUBSCRIPTION_STATUS.CANCELED,
-                    previousPeriodEnd,
-                    effectiveAt: canceledAt,
-                },
+        if (!result) throw new AppError('La souscription a été modifiée concurremment', 409);
+        await createAuditLog({
+            actor: actorId,
+            action: AUDIT_ACTION.SUBSCRIPTION_CANCELED,
+            entityType: AUDIT_ENTITY_TYPE.SUBSCRIPTION,
+            entityId: result._id,
+            status: AUDIT_STATUS.SUCCESS,
+            ipAddress,
+            userAgent,
+            metadata: {
+                mode: 'immediate',
+                reason,
+                previousStatus: SUBSCRIPTION_STATUS.ACTIVE,
+                newStatus: SUBSCRIPTION_STATUS.CANCELED,
+                previousPeriodEnd,
+                effectiveAt: canceledAt,
             },
-            { session },
-        );
+        }, { session });
     });
-
     return buildSubscriptionLifecycleDto(result);
 };
 
-
 /**
- * Rend persistantes les annulations programmées arrivées à échéance.
+ * Finalise un lot borné d'annulations programmées arrivées à échéance.
  *
- * Le service est idempotent et concurrence-safe : plusieurs exécutions peuvent
- * observer le même candidat, mais une seule transition `active -> canceled`
- * peut réussir. Les droits ont déjà cessé exactement à `currentPeriodEnd`
- * grâce au contrôle fail-closed de l'entitlement.
+ * Les droits cessent déjà à currentPeriodEnd via l'entitlement fail-closed.
+ * Le batch évite une lecture non bornée et le filtre conditionnel rend chaque
+ * transition idempotente et sûre face à plusieurs workers.
  */
 const finalizeScheduledCancellations = async ({
     now = new Date(),
+    batchSize = DEFAULT_CANCELLATION_FINALIZATION_BATCH_SIZE,
 } = {}) => {
     assertValidDate(now, 'now');
+    assertValidCancellationBatchSize(batchSize);
 
     const candidates = await Subscription.find({
         kind: SUBSCRIPTION_KIND.COMMERCIAL,
         status: SUBSCRIPTION_STATUS.ACTIVE,
         cancelAtPeriodEnd: true,
-        currentPeriodEnd: mongoose.trusted({
-            $type: 'date',
-            $lte: now,
-        }),
-    });
+        currentPeriodEnd: mongoose.trusted({ $type: 'date', $lte: now }),
+    })
+        .sort({ currentPeriodEnd: 1, _id: 1 })
+        .limit(batchSize);
 
     let canceled = 0;
     let skipped = 0;
 
     for (const candidate of candidates) {
         let transitioned = false;
-
         await mongoose.connection.transaction(async (session) => {
             const updated = await Subscription.findOneAndUpdate(
                 {
@@ -397,57 +274,32 @@ const finalizeScheduledCancellations = async ({
                     kind: SUBSCRIPTION_KIND.COMMERCIAL,
                     status: SUBSCRIPTION_STATUS.ACTIVE,
                     cancelAtPeriodEnd: true,
-                    currentPeriodEnd: mongoose.trusted({
-                        $type: 'date',
-                        $lte: now,
-                    }),
+                    currentPeriodEnd: mongoose.trusted({ $type: 'date', $lte: now }),
                 },
-                {
-                    $set: {
-                        status: SUBSCRIPTION_STATUS.CANCELED,
-                        cancelAtPeriodEnd: false,
-                        updatedBy: null,
-                    },
-                },
-                {
-                    returnDocument: 'after',
-                    runValidators: true,
-                    session,
-                },
+                { $set: { status: SUBSCRIPTION_STATUS.CANCELED, cancelAtPeriodEnd: false, updatedBy: null } },
+                { returnDocument: 'after', runValidators: true, session },
             );
-
-            if (!updated) {
-                return;
-            }
-
-            await createAuditLog(
-                {
-                    actor: null,
-                    action: AUDIT_ACTION.SUBSCRIPTION_CANCELED,
-                    entityType: AUDIT_ENTITY_TYPE.SUBSCRIPTION,
-                    entityId: updated._id,
-                    status: AUDIT_STATUS.SUCCESS,
-                    metadata: {
-                        mode: 'period_end',
-                        reason: 'scheduled_cancellation_effective',
-                        previousStatus: SUBSCRIPTION_STATUS.ACTIVE,
-                        newStatus: SUBSCRIPTION_STATUS.CANCELED,
-                        effectiveAt: candidate.currentPeriodEnd,
-                        processedAt: now,
-                        baselineFallbackEnabled: true,
-                    },
+            if (!updated) return;
+            await createAuditLog({
+                actor: null,
+                action: AUDIT_ACTION.SUBSCRIPTION_CANCELED,
+                entityType: AUDIT_ENTITY_TYPE.SUBSCRIPTION,
+                entityId: updated._id,
+                status: AUDIT_STATUS.SUCCESS,
+                metadata: {
+                    mode: 'period_end',
+                    reason: 'scheduled_cancellation_effective',
+                    previousStatus: SUBSCRIPTION_STATUS.ACTIVE,
+                    newStatus: SUBSCRIPTION_STATUS.CANCELED,
+                    effectiveAt: candidate.currentPeriodEnd,
+                    processedAt: now,
+                    baselineFallbackEnabled: true,
                 },
-                { session },
-            );
-
+            }, { session });
             transitioned = true;
         });
-
-        if (transitioned) {
-            canceled += 1;
-        } else {
-            skipped += 1;
-        }
+        if (transitioned) canceled += 1;
+        else skipped += 1;
     }
 
     return {
@@ -455,11 +307,13 @@ const finalizeScheduledCancellations = async ({
         scanned: candidates.length,
         canceled,
         skipped,
+        hasMore: candidates.length === batchSize,
     };
 };
 
-
 export {
+    DEFAULT_CANCELLATION_FINALIZATION_BATCH_SIZE,
+    MAX_CANCELLATION_FINALIZATION_BATCH_SIZE,
     buildSubscriptionLifecycleDto,
     cancelActiveSubscriptionImmediately,
     finalizeScheduledCancellations,
