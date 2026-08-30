@@ -20,9 +20,3 @@ thumbs.db
 
 # Fichiers téléversés et fichiers temporaires
 uploads/
-
-# Documentation de travail privée
-#
-# Ce dossier contient les dettes fonctionnelles, notes de cadrage et autres
-# documents internes qui ne doivent jamais être versionnés ni publiés.
-docs/private/
