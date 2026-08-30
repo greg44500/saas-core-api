@@ -16,27 +16,40 @@ import {
     calculatePaidPeriodEnd,
 } from './activatePaidSubscriptionFromTrial.helpers.js';
 
+const DEFAULT_SCHEDULED_DOWNGRADE_BATCH_SIZE = 100;
+const MAX_SCHEDULED_DOWNGRADE_BATCH_SIZE = 500;
+
 const isValidDate = (value) =>
     value instanceof Date && !Number.isNaN(value.getTime());
 
+const assertValidBatchSize = (batchSize) => {
+    if (
+        !Number.isInteger(batchSize)
+        || batchSize <= 0
+        || batchSize > MAX_SCHEDULED_DOWNGRADE_BATCH_SIZE
+    ) {
+        throw new TypeError(
+            `batchSize must be an integer between 1 and ${MAX_SCHEDULED_DOWNGRADE_BATCH_SIZE}`,
+        );
+    }
+};
+
 /**
- * Applique les downgrades dont la date d'effet contractuelle est atteinte.
+ * Applique un lot borné de downgrades arrivés à leur date contractuelle.
  *
  * Le snapshot commercial enregistré lors de la programmation devient la
- * nouvelle référence de la Subscription. Le service ne recalcule jamais le
- * prix depuis Plan : une modification ultérieure du catalogue ne doit pas
- * réécrire rétroactivement l'intention déjà acceptée.
- *
- * La nouvelle période démarre exactement à `effectiveAt` et conserve les
- * règles calendaires monthly/yearly déjà utilisées par le domaine payant.
- *
- * Chaque candidat utilise sa propre transaction afin qu'un échec isolé
- * n'annule pas les transitions déjà valides d'autres workspaces.
+ * nouvelle référence de la Subscription. Le tri stable permet des passages
+ * successifs déterministes, tandis que chaque transition reste protégée par
+ * son filtre conditionnel et sa propre transaction.
  */
-const applyScheduledDowngrades = async ({ now = new Date() } = {}) => {
+const applyScheduledDowngrades = async ({
+    now = new Date(),
+    batchSize = DEFAULT_SCHEDULED_DOWNGRADE_BATCH_SIZE,
+} = {}) => {
     if (!isValidDate(now)) {
         throw new TypeError('now must be a valid Date');
     }
+    assertValidBatchSize(batchSize);
 
     const candidates = await Subscription.find({
         kind: SUBSCRIPTION_KIND.COMMERCIAL,
@@ -46,7 +59,9 @@ const applyScheduledDowngrades = async ({ now = new Date() } = {}) => {
             $type: 'date',
             $lte: now,
         }),
-    });
+    })
+        .sort({ 'scheduledChange.effectiveAt': 1, _id: 1 })
+        .limit(batchSize);
 
     let applied = 0;
     let skipped = 0;
@@ -130,7 +145,12 @@ const applyScheduledDowngrades = async ({ now = new Date() } = {}) => {
         scanned: candidates.length,
         applied,
         skipped,
+        hasMore: candidates.length === batchSize,
     };
 };
 
-export { applyScheduledDowngrades };
+export {
+    DEFAULT_SCHEDULED_DOWNGRADE_BATCH_SIZE,
+    MAX_SCHEDULED_DOWNGRADE_BATCH_SIZE,
+    applyScheduledDowngrades,
+};
