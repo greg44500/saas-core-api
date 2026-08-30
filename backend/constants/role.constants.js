@@ -24,6 +24,7 @@ const STANDARD_MEMBER_PERMISSIONS = Object.freeze([
     CORE_PERMISSION.WORKSPACE_READ,
     CORE_PERMISSION.MEMBER_READ,
     CORE_PERMISSION.ROLE_READ,
+    CORE_PERMISSION.FILE_READ,
 ]);
 
 
@@ -74,6 +75,7 @@ const SYSTEM_ROLE_DEFINITIONS = Object.freeze([
         description: 'Dispose d’un accès en lecture au workspace.',
         permissions: Object.freeze([
             CORE_PERMISSION.WORKSPACE_READ,
+            CORE_PERMISSION.FILE_READ,
         ]),
         isSystem: true,
         isEditable: false,
