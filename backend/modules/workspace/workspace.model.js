@@ -98,6 +98,24 @@ const workspaceSchema = new Schema(
         },
 
         /**
+         * Compteur technique utilisé pour sérialiser les transferts de
+         * propriété concurrents.
+         *
+         * Chaque transfert écrit le document Workspace dans la transaction.
+         * MongoDB peut ainsi détecter un conflit d'écriture lorsque deux
+         * transactions tentent de modifier simultanément le même ownership.
+         *
+         * Ce compteur n'est pas un numéro fonctionnel et ne doit pas être
+         * exposé dans les contrats HTTP.
+         */
+        ownershipVersion: {
+            type: Number,
+            default: 0,
+            min: 0,
+            required: true,
+        },
+
+        /**
          * Utilisateur ayant créé historiquement le workspace.
          *
          * Ce champ ne représente pas son owner actuel et ne change pas lors
