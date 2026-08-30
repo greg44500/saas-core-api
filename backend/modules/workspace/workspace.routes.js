@@ -9,6 +9,9 @@ import {
 import { loadWorkspaceContext } from '../../middlewares/loadWorkspaceContext.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
+    auditLogRouter,
+} from '../auditLog/auditLog.routes.js';
+import {
     subscriptionRouter,
 } from '../subscriptions/subscription.routes.js';
 import {
@@ -57,6 +60,15 @@ router.get(
 router.use(
     '/:workspaceId/subscription',
     subscriptionRouter,
+);
+
+/**
+ * AuditLog porte sa propre politique de lecture. Le routeur workspace ne fait
+ * que fournir le segment tenant commun à cette API transversale.
+ */
+router.use(
+    '/:workspaceId/audit-logs',
+    auditLogRouter,
 );
 
 /**
