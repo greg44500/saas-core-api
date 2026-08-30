@@ -109,16 +109,11 @@ Une décision peut être révisée, mais toute révision doit être explicite et
 
 Quel niveau de technicité doit servir de référence au Core ?
 
-Exemples :
-
-- utilisateur métier peu technique : responsable de restaurant, formateur, responsable RH ;
-- utilisateur professionnel habitué aux logiciels de gestion : manager utilisant CRM, ERP ou outils de reporting ;
-- utilisateur technique : développeur, intégrateur, administrateur système ;
-- Core adaptable : base professionnelle accessible, complexité ajustée ensuite selon le SaaS métier.
+- utilisateur métier peu technique : responsable de restaurant, formateur, responsable RH mais aussi Core adaptable : base professionnelle accessible, complexité ajustée ensuite selon le SaaS métier.
 
 **Réponse :**
 
-> À compléter.
+- utilisateur métier peu technique : responsable de restaurant, formateur, responsable RH mais aussi Core adaptable : base professionnelle accessible, complexité ajustée ensuite selon le SaaS métier.
 
 **Décision :**
 
@@ -134,7 +129,7 @@ Exemples :
 
 **Réponse :**
 
-> À compléter.
+- interface professionnelle intermédiaire : recherche, filtres, statuts, tableaux, actions contextuelles ;
 
 **Décision :**
 
@@ -150,7 +145,7 @@ Exemples :
 
 **Réponse :**
 
-> À compléter.
+design system professionnel configurable via tokens, permettant un rebranding futur sans réécrire les composants.
 
 **Décision :**
 
@@ -167,7 +162,7 @@ Exemples :
 
 **Réponse :**
 
-> À compléter.
+- responsive complet desktop/tablette/mobile ;
 
 **Décision :**
 
@@ -183,7 +178,7 @@ Exemples :
 
 **Réponse :**
 
-> À compléter.
+Formulaire avec placeholder quand c'est nécessaire et régle de validation sous les champs mal remplis ou requis mais vides
 
 **Décision :**
 
@@ -208,7 +203,7 @@ Exemples d’informations de pilotage possibles lorsque le backend les expose : 
 
 **Réponse :**
 
-> À compléter.
+oui il faut une zone d'administration Platform et les exemples proposés sont un minimum
 
 **Décision :**
 
