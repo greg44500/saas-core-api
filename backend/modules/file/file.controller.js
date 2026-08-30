@@ -1,6 +1,13 @@
+import { pipeline } from 'node:stream/promises';
+
 import {
     fileService,
 } from './file.service.js';
+import {
+    getWorkspaceFile,
+    listWorkspaceFiles,
+    openWorkspaceFileDownload,
+} from './fileRead.service.js';
 
 
 /**
@@ -57,5 +64,64 @@ const upload = async (request, response) => {
     });
 };
 
+const list = async (request, response) => {
+    const {
+        files,
+        pagination,
+    } = await listWorkspaceFiles({
+        workspaceId: request.workspace._id,
+        page: request.validated.query.page,
+        limit: request.validated.query.limit,
+    });
 
-export { upload };
+    response.status(200).json({
+        status: 'success',
+        data: { files },
+        meta: pagination,
+    });
+};
+
+const getById = async (request, response) => {
+    const file = await getWorkspaceFile({
+        workspaceId: request.workspace._id,
+        fileId: request.validated.params.fileId,
+    });
+
+    response.status(200).json({
+        status: 'success',
+        data: { file },
+    });
+};
+
+const download = async (request, response) => {
+    const {
+        file,
+        stream,
+    } = await openWorkspaceFileDownload({
+        workspaceId: request.workspace._id,
+        fileId: request.validated.params.fileId,
+    });
+
+    response.setHeader('Content-Type', file.mimeType);
+    response.setHeader('Content-Length', String(file.sizeBytes));
+
+    /*
+     * filename* encode le nom fourni lors de l'upload sans réinjecter de
+     * caractères de contrôle dans l'en-tête HTTP. La clé de stockage interne
+     * n'est jamais exposée au client.
+     */
+    response.setHeader(
+        'Content-Disposition',
+        `attachment; filename*=UTF-8''${encodeURIComponent(file.originalName)}`,
+    );
+
+    await pipeline(stream, response);
+};
+
+
+export {
+    download,
+    getById,
+    list,
+    upload,
+};
