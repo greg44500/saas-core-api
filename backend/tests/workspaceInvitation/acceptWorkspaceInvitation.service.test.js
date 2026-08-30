@@ -22,6 +22,9 @@ import {
     createAuditLog,
 } from '../../modules/auditLog/auditLog.service.js';
 import {
+    CORE_PLAN_METRIC,
+} from '../../modules/plan/planCapability.registry.js';
+import {
     enforcePlanLimit,
 } from '../../modules/plan/planLimit.service.js';
 import { Role } from '../../modules/role/role.model.js';
@@ -105,7 +108,7 @@ function prepareAcceptance({ existingMembership = null } = {}) {
     });
     createAuditLog.mockResolvedValue(undefined);
 
-    return { session, now, actor, role, invitation };
+    return { session, now, invitation };
 }
 
 describe('acceptWorkspaceInvitation', () => {
@@ -124,15 +127,14 @@ describe('acceptWorkspaceInvitation', () => {
             now,
         });
 
-        expect(enforcePlanLimit).toHaveBeenCalledWith(
-            expect.objectContaining({
-                workspaceId: 'workspace-id',
-                amount: 1,
-                actorId: 'actor-id',
-                now: undefined,
-                session,
-            }),
-        );
+        expect(enforcePlanLimit).toHaveBeenCalledWith({
+            workspaceId: 'workspace-id',
+            metricKey: CORE_PLAN_METRIC.MEMBERS,
+            amount: 1,
+            actorId: 'actor-id',
+            at: now,
+            session,
+        });
         expect(WorkspaceMember.create).toHaveBeenCalledOnce();
         expect(invitation.status).toBe(
             WORKSPACE_INVITATION_STATUS.ACCEPTED,
