@@ -221,4 +221,35 @@ describe('hardenOperationalIndexes', () => {
             expect(spy).not.toHaveBeenCalled();
         }
     });
+
+    it('refuse un index nommé existant avec une définition incompatible', async () => {
+        mockExistingIndexes(new Map([
+            [
+                Subscription,
+                [
+                    { name: '_id_', key: { _id: 1 } },
+                    {
+                        name: 'subscription_trial_expiration_batch_v2',
+                        key: {
+                            kind: 1,
+                            status: 1,
+                            trialEndsAt: -1,
+                            _id: 1,
+                        },
+                    },
+                ],
+            ],
+        ]));
+        const createIndexSpies = mockCreateIndexes();
+
+        await expect(
+            hardenOperationalIndexes(),
+        ).rejects.toThrow(
+            'L’index subscription_trial_expiration_batch_v2 existe avec une définition incompatible',
+        );
+
+        for (const spy of createIndexSpies) {
+            expect(spy).not.toHaveBeenCalled();
+        }
+    });
 });
