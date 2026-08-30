@@ -10,11 +10,23 @@ const SYSTEM_ROLE_KEY = Object.freeze({
 });
 
 
-// Owner et admin possèdent toutes les permissions actuellement
-// fournies par le socle. Les protections particulières du rôle owner
-// resteront appliquées par les services métier.
-const ADMINISTRATION_PERMISSIONS = Object.freeze([
-    ...Object.values(CORE_PERMISSION),
+/*
+ * Les permissions d'administration ordinaires sont partagées par owner/admin.
+ * Les permissions de gouvernance propres au propriétaire restent exclues ici
+ * afin de ne pas être accordées automatiquement à un administrateur.
+ */
+const ADMINISTRATION_PERMISSIONS = Object.freeze(
+    Object.values(CORE_PERMISSION).filter(
+        (permission) =>
+            permission
+            !== CORE_PERMISSION.WORKSPACE_OWNERSHIP_TRANSFER,
+    ),
+);
+
+
+const OWNER_PERMISSIONS = Object.freeze([
+    ...ADMINISTRATION_PERMISSIONS,
+    CORE_PERMISSION.WORKSPACE_OWNERSHIP_TRANSFER,
 ]);
 
 
@@ -37,7 +49,7 @@ const SYSTEM_ROLE_DEFINITIONS = Object.freeze([
         key: SYSTEM_ROLE_KEY.OWNER,
         name: 'Propriétaire',
         description: 'Propriétaire du workspace avec un accès complet.',
-        permissions: ADMINISTRATION_PERMISSIONS,
+        permissions: OWNER_PERMISSIONS,
         isSystem: true,
         isEditable: false,
     }),
