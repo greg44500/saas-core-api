@@ -245,7 +245,7 @@ describe('hardenOperationalIndexes', () => {
         await expect(
             hardenOperationalIndexes(),
         ).rejects.toThrow(
-            'L’index subscription_trial_expiration_batch_v2 existe avec une définition incompatible',
+            "L'index subscription_trial_expiration_batch_v2 existe avec une définition incompatible",
         );
 
         for (const spy of createIndexSpies) {
