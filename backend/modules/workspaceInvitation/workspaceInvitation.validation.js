@@ -16,12 +16,24 @@ const createWorkspaceInvitationBodySchema = z.strictObject({
     roleId: objectIdSchema('roleId'),
 });
 
+const workspaceIdParamsSchema = z.strictObject({
+    workspaceId: objectIdSchema('workspaceId'),
+});
+
 const workspaceInvitationParamsSchema = z.strictObject({
     workspaceId: objectIdSchema('workspaceId'),
     invitationId: objectIdSchema('invitationId'),
 });
 
+const acceptWorkspaceInvitationBodySchema = z.strictObject({
+    token: z
+        .string()
+        .regex(/^[a-f\d]{64}$/i, 'token invalide'),
+});
+
 export {
+    acceptWorkspaceInvitationBodySchema,
     createWorkspaceInvitationBodySchema,
+    workspaceIdParamsSchema,
     workspaceInvitationParamsSchema,
 };
