@@ -19,6 +19,7 @@
     "format:check": "prettier --check .",
     "seed:plans": "node backend/seeds/seedPlans.js",
     "seed:super-admin": "node backend/seeds/seedSuperAdmin.js",
+    "migration:subscription-kind": "node backend/migrations/runAddSubscriptionKindMigration.js",
     "migration:subscription-lifecycle-indexes": "node backend/migrations/runAddSubscriptionLifecycleIndexesMigration.js",
     "migration:operational-indexes": "node backend/migrations/runHardenOperationalIndexesMigration.js",
     "migration:subscription-read-permission": "node backend/migrations/runAddSubscriptionReadPermissionToSystemRolesMigration.js",
