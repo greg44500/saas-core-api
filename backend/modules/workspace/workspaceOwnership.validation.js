@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+import {
+    passwordSchema,
+} from '../auth/auth.validation.js';
+
 
 const objectIdSchema = z
     .string()
@@ -10,7 +14,11 @@ const objectIdSchema = z
 
 
 /**
- * Valide les deux identifiants nécessaires au transfert de propriété.
+ * Valide les données nécessaires au transfert de propriété.
+ *
+ * currentPassword fournit une confirmation renforcée de l'owner avant cette
+ * opération sensible. Le secret n'est pas trimé et réutilise la politique
+ * d'authentification locale existante.
  *
  * Les règles métier (membre actif, rôle du même workspace, rôle non-owner)
  * restent volontairement dans le service transactionnel.
@@ -18,6 +26,7 @@ const objectIdSchema = z
 const transferWorkspaceOwnershipBodySchema = z.strictObject({
     newOwnerMemberId: objectIdSchema,
     previousOwnerRoleId: objectIdSchema,
+    currentPassword: passwordSchema,
 });
 
 
