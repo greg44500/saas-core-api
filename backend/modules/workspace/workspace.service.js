@@ -6,7 +6,6 @@ import {
 import {
     WORKSPACE_STATUS,
 } from '../../constants/workspace.constants.js';
-
 import {
     WORKSPACE_MEMBER_STATUS,
 } from '../../constants/workspaceMember.constants.js';
@@ -18,21 +17,23 @@ import {
 import {
     USER_STATUS,
 } from '../../constants/userStatus.constants.js';
-
+import {
+    CORE_PLAN_METRIC,
+} from '../plan/planCapability.registry.js';
+import {
+    enforcePlanLimit,
+} from '../plan/planLimit.service.js';
 import { createSystemRolesForWorkspace } from '../role/role.service.js';
 import {
     createFreeSubscriptionForWorkspace,
 } from '../subscriptions/subscription.service.js';
-
 import {
     createAuditLog,
 } from '../auditLog/auditLog.service.js';
-
 import { WorkspaceMember } from '../workspaceMember/workspaceMember.model.js';
 import { Workspace } from './workspace.model.js';
 import { Role } from '../role/role.model.js';
 import { User } from '../users/user.model.js';
-
 
 /**
  * Crée un workspace complet avec ses rôles système, son membre owner
@@ -74,9 +75,7 @@ const createWorkspace = async ({
                     updatedBy: actorId,
                 },
             ],
-            {
-                session,
-            },
+            { session },
         );
 
         const systemRoles = await createSystemRolesForWorkspace({
@@ -89,15 +88,12 @@ const createWorkspace = async ({
             (role) => role.key === SYSTEM_ROLE_KEY.OWNER,
         );
 
-        /*
-         * L'absence du rôle owner constitue une incohérence interne critique.
-         * Lever une erreur ici force l'annulation de toute la transaction.
-         */
         if (!ownerRole) {
             throw new Error(
                 'Owner system role was not created for the workspace',
             );
         }
+
         await WorkspaceMember.create(
             [
                 {
@@ -108,15 +104,14 @@ const createWorkspace = async ({
                     updatedBy: actorId,
                 },
             ],
-            {
-                session,
-            },
+            { session },
         );
+
         /*
          * La souscription gratuite fait partie de la même transaction.
-         *
-         * Si le plan free actif est absent ou si la souscription ne peut pas être
-         * créée, la création du workspace, des rôles et du membership sera annulée.
+         * Elle doit exister avant la réservation de la place owner, car le
+         * moteur de quotas résout toujours la limite depuis l'entitlement du
+         * workspace et jamais depuis une valeur dupliquée localement.
          */
         await createFreeSubscriptionForWorkspace({
             workspaceId: workspace._id,
@@ -125,26 +120,36 @@ const createWorkspace = async ({
         });
 
         /*
- * La création du tenant et sa trace constituent une seule opération :
- * aucune structure partielle ne doit survivre à un échec d'audit.
- */
+         * L'owner occupe la première place du workspace dès sa création.
+         * Initialiser la métrique dans la transaction évite qu'un futur ajout
+         * de membre dispose artificiellement d'une place supplémentaire.
+         */
+        await enforcePlanLimit({
+            workspaceId: workspace._id,
+            metricKey: CORE_PLAN_METRIC.MEMBERS,
+            amount: 1,
+            actorId,
+            session,
+        });
+
+        /*
+         * La création du tenant et sa trace constituent une seule opération :
+         * aucune structure partielle ne doit survivre à un échec d'audit.
+         */
         await createAuditLog(
             {
                 actor: actorId,
                 workspace: workspace._id,
-                action:
-                    AUDIT_ACTION.WORKSPACE_CREATED,
-                entityType:
-                    AUDIT_ENTITY_TYPE.WORKSPACE,
+                action: AUDIT_ACTION.WORKSPACE_CREATED,
+                entityType: AUDIT_ENTITY_TYPE.WORKSPACE,
                 entityId: workspace._id,
                 status: AUDIT_STATUS.SUCCESS,
                 ipAddress,
                 userAgent,
             },
-            {
-                session,
-            },
+            { session },
         );
+
         return workspace;
     });
 };
@@ -177,9 +182,7 @@ const listUserWorkspaces = async (userId) => {
         .select('_id workspace role')
         .populate({
             path: 'workspace',
-            match: {
-                status: WORKSPACE_STATUS.ACTIVE,
-            },
+            match: { status: WORKSPACE_STATUS.ACTIVE },
             select: '_id name status createdAt updatedAt',
         })
         .populate({
@@ -188,13 +191,6 @@ const listUserWorkspaces = async (userId) => {
         })
         .lean();
 
-    /*
-     * populate({ match }) ne supprime pas le WorkspaceMember parent :
-     * si le workspace ne correspond pas au filtre ACTIVE, workspace vaut null.
-     *
-     * On exclut également un rôle absent ou rattaché à un autre workspace,
-     * car le contexte tenant serait alors incohérent.
-     */
     return memberships
         .filter((membership) => {
             if (!membership.workspace || !membership.role) {
@@ -221,25 +217,12 @@ const listUserWorkspaces = async (userId) => {
             updatedAt: membership.workspace.updatedAt,
         }));
 };
+
 /**
  * Retourne les membres actuels d’un workspace avec pagination.
  *
  * Les memberships retirés et les comptes clôturés sont exclus.
  * Le rôle chargé doit appartenir au même workspace que le membership.
- *
- * @param {object} params
- * @param {string|import('mongoose').Types.ObjectId} params.workspaceId
- * @param {number} [params.page=1]
- * @param {number} [params.limit=20]
- * @returns {Promise<{
- *   members: Array<object>,
- *   pagination: {
- *     page: number,
- *     limit: number,
- *     total: number,
- *     totalPages: number
- *   }
- * }>}
  */
 const listWorkspaceMembers = async ({
     workspaceId,
@@ -258,25 +241,15 @@ const listWorkspaceMembers = async ({
         );
     }
 
-    if (
-        !Number.isInteger(limit)
-        || limit < 1
-        || limit > 100
-    ) {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
         throw new TypeError(
             'limit must be an integer between 1 and 100',
         );
     }
 
-    /*
-     * Mongoose ne convertit pas automatiquement les valeurs contenues
-     * dans les étapes d’une agrégation.
-     */
-    const workspaceObjectId =
-        new mongoose.Types.ObjectId(
-            workspaceId.toString(),
-        );
-
+    const workspaceObjectId = new mongoose.Types.ObjectId(
+        workspaceId.toString(),
+    );
     const skip = (page - 1) * limit;
 
     const [result] = await WorkspaceMember.aggregate([
@@ -299,9 +272,7 @@ const listWorkspaceMembers = async ({
                 pipeline: [
                     {
                         $match: {
-                            status: {
-                                $ne: USER_STATUS.CLOSED,
-                            },
+                            status: { $ne: USER_STATUS.CLOSED },
                         },
                     },
                     {
@@ -316,9 +287,7 @@ const listWorkspaceMembers = async ({
                 as: 'user',
             },
         },
-        {
-            $unwind: '$user',
-        },
+        { $unwind: '$user' },
         {
             $lookup: {
                 from: Role.collection.name,
@@ -326,9 +295,7 @@ const listWorkspaceMembers = async ({
                 foreignField: '_id',
                 pipeline: [
                     {
-                        $match: {
-                            workspace: workspaceObjectId,
-                        },
+                        $match: { workspace: workspaceObjectId },
                     },
                     {
                         $project: {
@@ -341,44 +308,27 @@ const listWorkspaceMembers = async ({
                 as: 'role',
             },
         },
-        {
-            $unwind: '$role',
-        },
+        { $unwind: '$role' },
         {
             $facet: {
                 members: [
-                    {
-                        $sort: {
-                            joinedAt: 1,
-                            _id: 1,
-                        },
-                    },
-                    {
-                        $skip: skip,
-                    },
-                    {
-                        $limit: limit,
-                    },
+                    { $sort: { joinedAt: 1, _id: 1 } },
+                    { $skip: skip },
+                    { $limit: limit },
                     {
                         $project: {
                             _id: 0,
-                            id: {
-                                $toString: '$_id',
-                            },
+                            id: { $toString: '$_id' },
                             status: 1,
                             joinedAt: 1,
                             user: {
-                                id: {
-                                    $toString: '$user._id',
-                                },
+                                id: { $toString: '$user._id' },
                                 firstName: '$user.firstName',
                                 lastName: '$user.lastName',
                                 accountStatus: '$user.status',
                             },
                             role: {
-                                id: {
-                                    $toString: '$role._id',
-                                },
+                                id: { $toString: '$role._id' },
                                 key: '$role.key',
                                 name: '$role.name',
                             },
@@ -386,9 +336,7 @@ const listWorkspaceMembers = async ({
                     },
                 ],
                 metadata: [
-                    {
-                        $count: 'total',
-                    },
+                    { $count: 'total' },
                 ],
             },
         },
@@ -413,15 +361,6 @@ const listWorkspaceMembers = async ({
  *
  * Le filtre sur le statut est volontairement répété ici même si
  * loadWorkspaceContext a déjà vérifié que le workspace était actif.
- *
- * Cette seconde vérification protège l'écriture contre un changement
- * administratif intervenu entre le middleware et l'opération MongoDB.
- *
- * @param {object} params
- * @param {import('mongoose').Types.ObjectId|string} params.workspaceId
- * @param {string} params.name
- * @param {import('mongoose').Types.ObjectId|string} params.actorId
- * @returns {Promise<import('mongoose').Document|null>}
  */
 const updateWorkspace = async ({
     workspaceId,
@@ -436,77 +375,48 @@ const updateWorkspace = async ({
         );
     }
 
-    return mongoose.connection.transaction(
-        async (session) => {
-            const workspace =
-                await Workspace.findOneAndUpdate(
-                    {
-                        _id: workspaceId,
-                        status:
-                            WORKSPACE_STATUS.ACTIVE,
-                    },
-                    {
-                        $set: {
-                            name,
-                            updatedBy: actorId,
-                        },
-                    },
-                    {
-                        returnDocument: 'after',
-                        runValidators: true,
-                        session,
-                    },
-                );
-
-            /*
-             * Le workspace peut avoir été suspendu entre
-             * loadWorkspaceContext et cette écriture.
-             *
-             * Aucun AuditLog de succès ne doit être créé
-             * lorsqu'aucune modification n'a eu lieu.
-             */
-            if (!workspace) {
-                return null;
-            }
-
-            /*
-             * La modification et sa trace constituent une
-             * seule opération durable. Un échec de l'audit
-             * annule donc également la mutation du workspace.
-             */
-            await createAuditLog(
-                {
-                    actor: actorId,
-                    workspace: workspace._id,
-
-                    action:
-                        AUDIT_ACTION.WORKSPACE_UPDATED,
-
-                    entityType:
-                        AUDIT_ENTITY_TYPE.WORKSPACE,
-
-                    entityId: workspace._id,
-
-                    status:
-                        AUDIT_STATUS.SUCCESS,
-
-                    ipAddress,
-                    userAgent,
-
-                    metadata: {
-                        changedFields: [
-                            'name',
-                        ],
-                    },
+    return mongoose.connection.transaction(async (session) => {
+        const workspace = await Workspace.findOneAndUpdate(
+            {
+                _id: workspaceId,
+                status: WORKSPACE_STATUS.ACTIVE,
+            },
+            {
+                $set: {
+                    name,
+                    updatedBy: actorId,
                 },
-                {
-                    session,
-                },
-            );
+            },
+            {
+                returnDocument: 'after',
+                runValidators: true,
+                session,
+            },
+        );
 
-            return workspace;
-        },
-    );
+        if (!workspace) {
+            return null;
+        }
+
+        await createAuditLog(
+            {
+                actor: actorId,
+                workspace: workspace._id,
+                action: AUDIT_ACTION.WORKSPACE_UPDATED,
+                entityType: AUDIT_ENTITY_TYPE.WORKSPACE,
+                entityId: workspace._id,
+                status: AUDIT_STATUS.SUCCESS,
+                ipAddress,
+                userAgent,
+                metadata: {
+                    changedFields: ['name'],
+                },
+            },
+            { session },
+        );
+
+        return workspace;
+    });
 };
 
 export {
