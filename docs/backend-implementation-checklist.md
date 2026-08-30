@@ -298,12 +298,10 @@ La checklist initiale prévoyait `platform.controller.js` et `platform.service.j
 
 ## 21. Documentation / contrat frontend
 
-- [x] TERMINÉ — `docs/frontend-backend-integration-contract.md` existe.
-- [x] TERMINÉ — `docs/frontend-backend-subscription-contract.md` existe.
+- [x] TERMINÉ — `docs/frontend-backend-integration-contract.md` existe et est aligné sur le HEAD Core V1 pour Workspaces, Members/Invitations, Ownership, Files, AuditLog workspace/Platform et surfaces Platform stabilisées. `D1`.
+- [x] TERMINÉ — `docs/frontend-backend-subscription-contract.md` existe et a été revérifié contre les routes, validations et controllers Subscription actuels ; aucune divergence nécessitant une modification n’a été identifiée. `D1`.
 - [x] TERMINÉ — dettes fonctionnelles Account/Workspace Closure et File Trash/Restore documentées.
 - [x] TERMINÉ — présente checklist backend vivante.
-- [ ] À FAIRE — mettre à jour le contrat frontend/backend global avec les endpoints stabilisés depuis sa dernière révision : AuditLog workspace/Platform et transfert d’ownership notamment.
-- [ ] À FAIRE — vérifier que Members/Invitations et Files F1/F2/F3 sont décrits conformément au HEAD réel.
 - [ ] À FAIRE — préparer le checkpoint documentaire `Backend Core V1 Ready for Frontend`.
 - [ ] DIFFÉRÉ — contrat UI/UX spécifique jusqu’au démarrage du frontend.
 
@@ -335,7 +333,7 @@ La synthèse de cadrage initiale définit le backend V1 comme prêt lorsque le p
 C1  Checklist backend officielle                         TERMINÉ
 H1  Audit jobs / maintenance / reconciliation            TERMINÉ
 H2  Audit index / secrets / env / operational hardening  TERMINÉ
-D1  Contrat frontend/backend Core global                 À FAIRE
+D1  Contrat frontend/backend Core global                 TERMINÉ
 R1  Suite globale finale + checkpoint readiness          À FAIRE
 R2  OpenAPI : confirmer l’exigence puis produire/aligner À FAIRE
 F0  Fondation frontend                                   APRÈS CHECKPOINT
