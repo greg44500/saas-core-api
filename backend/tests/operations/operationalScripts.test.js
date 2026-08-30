@@ -1,4 +1,4 @@
-import { readFile, readdir } from 'node:fs/promises';
+import { access, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -81,5 +81,24 @@ describe('scripts npm d’exploitation', () => {
                 (seed) => !exposedPaths.includes(seed),
             ),
         ).toEqual([]);
+    });
+
+    it('ne référence aucun fichier Node inexistant', async () => {
+        const commands = await readPackageScripts();
+        const nodeScriptPaths = commands
+            .map(extractNodeScriptPath)
+            .filter(Boolean);
+
+        const missingPaths = [];
+
+        for (const scriptPath of nodeScriptPaths) {
+            try {
+                await access(path.join(projectRoot, scriptPath));
+            } catch {
+                missingPaths.push(scriptPath);
+            }
+        }
+
+        expect(missingPaths).toEqual([]);
     });
 });
