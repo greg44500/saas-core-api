@@ -27,7 +27,7 @@ const createValidSubscription = (overrides = {}) => new Subscription({
 });
 
 describe('Subscription scheduledChange', () => {
-    it('accepte un downgrade programmé complet sans modifier le plan courant', () => {
+    it('accepte un downgrade programmé complet sans modifier le plan courant', async () => {
         const currentPlanId = new ObjectId();
         const targetPlanId = new ObjectId();
         const actorId = new ObjectId();
@@ -48,16 +48,15 @@ describe('Subscription scheduledChange', () => {
             },
         });
 
-        const error = subscription.validateSync();
+        await expect(subscription.validate()).resolves.toBeUndefined();
 
-        expect(error).toBeUndefined();
         expect(subscription.plan).toEqual(currentPlanId);
         expect(subscription.scheduledChange.targetPlan)
             .toEqual(targetPlanId);
         expect(subscription.scheduledChange._id).toBeUndefined();
     });
 
-    it('refuse un prix cible négatif', () => {
+    it('refuse un prix cible négatif', async () => {
         const subscription = createValidSubscription({
             scheduledChange: {
                 type: SUBSCRIPTION_PLAN_CHANGE_TYPE.DOWNGRADE,
@@ -71,13 +70,14 @@ describe('Subscription scheduledChange', () => {
             },
         });
 
-        const error = subscription.validateSync();
-
-        expect(error?.errors['scheduledChange.targetPriceExclTaxMinor'])
-            .toBeDefined();
+        await expect(subscription.validate()).rejects.toMatchObject({
+            errors: {
+                'scheduledChange.targetPriceExclTaxMinor': expect.anything(),
+            },
+        });
     });
 
-    it('refuse une périodicité cible inconnue', () => {
+    it('refuse une périodicité cible inconnue', async () => {
         const subscription = createValidSubscription({
             scheduledChange: {
                 type: SUBSCRIPTION_PLAN_CHANGE_TYPE.DOWNGRADE,
@@ -91,9 +91,10 @@ describe('Subscription scheduledChange', () => {
             },
         });
 
-        const error = subscription.validateSync();
-
-        expect(error?.errors['scheduledChange.targetBillingInterval'])
-            .toBeDefined();
+        await expect(subscription.validate()).rejects.toMatchObject({
+            errors: {
+                'scheduledChange.targetBillingInterval': expect.anything(),
+            },
+        });
     });
 });
