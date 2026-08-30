@@ -120,10 +120,15 @@ describe('listPlatformSubscriptions', () => {
             select: 'key name',
         });
 
+        /*
+         * _id départage les souscriptions créées au même instant et garantit
+         * un ordre stable entre deux pages successives.
+         */
         expect(
             sort,
         ).toHaveBeenCalledWith({
             createdAt: -1,
+            _id: -1,
         });
 
         expect(
