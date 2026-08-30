@@ -52,6 +52,7 @@ import {
     download,
     getById,
     list,
+    remove,
     upload,
 } from './file.controller.js';
 
@@ -102,6 +103,25 @@ router.get(
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.FILE_READ),
     getById,
+);
+
+/**
+ * La suppression logique libère de la capacité et constitue donc une action
+ * corrective valide en remédiation. Le contenu physique reste conservé jusqu'à
+ * la purge différée du bloc F3.
+ */
+router.delete(
+    '/:fileId',
+    authenticate,
+    validateRequest({
+        params: workspaceFileParamsSchema,
+    }),
+    loadWorkspaceContext,
+    authorizePermission(CORE_PERMISSION.FILE_DELETE),
+    enforceWorkspaceAccessMode({
+        allowDuringRemediation: true,
+    }),
+    remove,
 );
 
 /**
