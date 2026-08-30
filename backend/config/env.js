@@ -185,6 +185,18 @@ const envSchema = z.object({
             message: `${field} ne peut pas utiliser une valeur d’exemple en production`,
         });
     }
+
+    /*
+     * Les cookies d'authentification et les requêtes CORS avec credentials
+     * exigent un frontend servi en HTTPS en production.
+     */
+    if (!config.CLIENT_URL.startsWith('https://')) {
+        context.addIssue({
+            code: 'custom',
+            path: ['CLIENT_URL'],
+            message: 'CLIENT_URL doit utiliser HTTPS en production',
+        });
+    }
 });
 
 const validateEnvironment = (input) => envSchema.safeParse(input);
