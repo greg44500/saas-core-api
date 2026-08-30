@@ -99,7 +99,14 @@ const createApp = () => {
 };
 
 beforeEach(() => {
-    vi.clearAllMocks();
+    authenticate.mockClear();
+    validationMiddleware.mockClear();
+    workspaceContextMiddleware.mockClear();
+    permissionMiddleware.mockClear();
+    accessModeMiddleware.mockClear();
+    create.mockClear();
+    revoke.mockClear();
+    accept.mockClear();
 });
 
 describe('workspaceInvitation.routes', () => {
