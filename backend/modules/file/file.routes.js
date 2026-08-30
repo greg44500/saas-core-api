@@ -41,20 +41,68 @@ import {
 } from '../../middlewares/validateRequest.js';
 
 import {
+    paginationQuerySchema,
+} from '../../utils/validations/pagination.validation.js';
+
+import {
     workspaceIdParamsSchema,
 } from '../workspace/workspace.validation.js';
 
 import {
+    download,
+    getById,
+    list,
     upload,
 } from './file.controller.js';
 
 import {
     uploadFileBodySchema,
+    workspaceFileParamsSchema,
 } from './file.validation.js';
 
 const router = Router({
     mergeParams: true,
 });
+
+/**
+ * Les lectures n'augmentent aucune consommation et restent accessibles en
+ * remédiation. Elles ne dépendent pas non plus de la feature file_upload : un
+ * plan qui interdit de nouveaux dépôts ne doit pas masquer les fichiers actifs
+ * déjà possédés par le workspace.
+ */
+router.get(
+    '/',
+    authenticate,
+    validateRequest({
+        params: workspaceIdParamsSchema,
+        query: paginationQuerySchema,
+    }),
+    loadWorkspaceContext,
+    authorizePermission(CORE_PERMISSION.FILE_READ),
+    list,
+);
+
+router.get(
+    '/:fileId/download',
+    authenticate,
+    validateRequest({
+        params: workspaceFileParamsSchema,
+    }),
+    loadWorkspaceContext,
+    authorizePermission(CORE_PERMISSION.FILE_READ),
+    download,
+);
+
+router.get(
+    '/:fileId',
+    authenticate,
+    validateRequest({
+        params: workspaceFileParamsSchema,
+    }),
+    loadWorkspaceContext,
+    authorizePermission(CORE_PERMISSION.FILE_READ),
+    getById,
+);
 
 /**
  * Téléverse un fichier dans le workspace courant.
