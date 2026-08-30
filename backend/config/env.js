@@ -23,7 +23,7 @@ const envSchema = z.object({
     PORT: z.coerce.number().int().min(1).max(65535).default(5000),
     CLIENT_URL: z
         .url({
-            protocol: /^http?$/,
+            protocol: /^https?$/,
             error: 'CLIENT_URL doit être une URL HTTP ou HTTPS valide',
         }),
     MONGODB_URI: z
