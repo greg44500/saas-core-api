@@ -11,6 +11,9 @@ import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
     subscriptionRouter,
 } from '../subscriptions/subscription.routes.js';
+import {
+    workspaceMemberRouter,
+} from '../workspaceMember/workspaceMember.routes.js';
 
 import {
     create,
@@ -54,6 +57,16 @@ router.get(
 router.use(
     '/:workspaceId/subscription',
     subscriptionRouter,
+);
+
+/**
+ * Les commandes individuelles des membres appartiennent au module
+ * WorkspaceMember. La collection reste lue depuis Workspace afin de préserver
+ * le contrat de pagination déjà exposé.
+ */
+router.use(
+    '/:workspaceId/members',
+    workspaceMemberRouter,
 );
 
 /**
