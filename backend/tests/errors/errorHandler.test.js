@@ -32,7 +32,7 @@ describe("errorHandler", () => {
 
         expect(next).not.toHaveBeenCalled();
     });
-    //  Test pour vérifier que errorHandler masque une erreur technique imprévue et renvoie un message d'erreur générique
+    // Test pour vérifier qu'une erreur technique reste masquée et journalisée sans exposer l'objet Error brut.
     it("masque une erreur technique imprévue", () => {
         const error = new Error("Erreur technique");
         const req = {};
@@ -54,7 +54,14 @@ describe("errorHandler", () => {
         });
 
         expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-        expect(consoleErrorSpy).toHaveBeenCalledWith(error);
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+            "Unhandled application error",
+            {
+                requestId: null,
+                name: "Error",
+                message: "Erreur technique",
+            },
+        );
         expect(next).not.toHaveBeenCalled();
 
         consoleErrorSpy.mockRestore(); // Restaure la fonction console.error originale après le test
