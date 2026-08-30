@@ -5,65 +5,51 @@ import {
     AUDIT_ENTITY_TYPE,
     AUDIT_STATUS,
 } from '../../../constants/auditActions.constants.js';
-
 import {
     SUBSCRIPTION_KIND,
     SUBSCRIPTION_STATUS,
 } from '../../../constants/subscription.constants.js';
+import { createAuditLog } from '../../auditLog/auditLog.service.js';
+import { Subscription } from '../subscription.model.js';
 
-import {
-    createAuditLog,
-} from '../../auditLog/auditLog.service.js';
+const DEFAULT_TRIAL_EXPIRATION_BATCH_SIZE = 100;
+const MAX_TRIAL_EXPIRATION_BATCH_SIZE = 500;
 
-import {
-    Subscription,
-} from '../subscription.model.js';
-
-
-/**
- * Expire les trials commerciaux dont l'échéance est atteinte.
- *
- * Ce service contient uniquement la règle métier d'expiration naturelle. Il ne
- * décide pas quand ni à quelle fréquence il est exécuté : un futur job pourra
- * simplement l'appeler sans dupliquer la logique de cycle de vie.
- *
- * Invariants protégés :
- * - seules les Subscription `commercial` encore `trialing` sont candidates ;
- * - trialEndsAt doit être une vraie date et être antérieur ou égal à `now` ;
- * - l'expiration naturelle produit `expired`, jamais `canceled` ;
- * - la date d'effet reste trialEndsAt, même si le traitement s'exécute plus tard ;
- * - la baseline Free n'est ni modifiée ni recréée : elle redevient effective
- *   automatiquement via la résolution d'entitlement existante ;
- * - TrialEligibility reste consommé et n'est jamais réinitialisé ;
- * - chaque transition et son audit sont atomiques ;
- * - une transition concurrente est ignorée sans écraser le nouvel état.
- *
- * @param {object} [params]
- * @param {Date} [params.now]
- * @returns {Promise<{
- *     processedAt: Date,
- *     scanned: number,
- *     expired: number,
- *     skipped: number
- * }>}
- */
-const expireExpiredTrials = async ({
-    now = new Date(),
-} = {}) => {
-    if (
-        !(now instanceof Date)
-        || Number.isNaN(now.getTime())
-    ) {
+const assertValidDate = (value) => {
+    if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
         throw new TypeError(
             'now must be a valid Date to expire commercial trials',
         );
     }
+};
 
-    /*
-     * $type évite qu'une ancienne donnée incohérente avec trialEndsAt=null soit
-     * considérée comme échue par l'ordre de comparaison BSON. L'opérateur est
-     * construit exclusivement par le backend et est donc explicitement trusted.
-     */
+const assertValidBatchSize = (batchSize) => {
+    if (
+        !Number.isInteger(batchSize)
+        || batchSize <= 0
+        || batchSize > MAX_TRIAL_EXPIRATION_BATCH_SIZE
+    ) {
+        throw new TypeError(
+            `batchSize must be an integer between 1 and ${MAX_TRIAL_EXPIRATION_BATCH_SIZE}`,
+        );
+    }
+};
+
+/**
+ * Expire un lot borné de trials commerciaux arrivés à échéance.
+ *
+ * Le tri stable et la limite permettent à l'ordonnanceur de rejouer le job
+ * jusqu'à épuisement sans charger toute la collection en mémoire. Chaque
+ * transition reste conditionnelle et transactionnelle : un candidat modifié
+ * concurremment est simplement compté comme ignoré.
+ */
+const expireExpiredTrials = async ({
+    now = new Date(),
+    batchSize = DEFAULT_TRIAL_EXPIRATION_BATCH_SIZE,
+} = {}) => {
+    assertValidDate(now);
+    assertValidBatchSize(batchSize);
+
     const candidates = await Subscription.find({
         kind: SUBSCRIPTION_KIND.COMMERCIAL,
         status: SUBSCRIPTION_STATUS.TRIALING,
@@ -71,7 +57,9 @@ const expireExpiredTrials = async ({
             $type: 'date',
             $lte: now,
         }),
-    });
+    })
+        .sort({ trialEndsAt: 1, _id: 1 })
+        .limit(batchSize);
 
     let expired = 0;
     let skipped = 0;
@@ -80,11 +68,6 @@ const expireExpiredTrials = async ({
         let didExpire = false;
 
         await mongoose.connection.transaction(async (session) => {
-            /*
-             * Le statut et l'échéance font partie du filtre d'écriture. Si une
-             * autre opération annule, convertit ou expire le trial entre la
-             * lecture initiale et cette transaction, nous n'écrasons pas cet état.
-             */
             const expiredSubscription =
                 await Subscription.findOneAndUpdate(
                     {
@@ -150,10 +133,12 @@ const expireExpiredTrials = async ({
         scanned: candidates.length,
         expired,
         skipped,
+        hasMore: candidates.length === batchSize,
     };
 };
 
-
 export {
+    DEFAULT_TRIAL_EXPIRATION_BATCH_SIZE,
+    MAX_TRIAL_EXPIRATION_BATCH_SIZE,
     expireExpiredTrials,
 };
