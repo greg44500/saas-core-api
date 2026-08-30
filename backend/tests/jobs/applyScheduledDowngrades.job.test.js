@@ -43,7 +43,7 @@ describe('runApplyScheduledDowngradesJob', () => {
         );
     });
 
-    it('journalise puis propage une erreur du service', async () => {
+    it('journalise un message sûr puis propage une erreur du service', async () => {
         const error = new Error('boom');
         const logger = {
             info: vi.fn(),
@@ -57,7 +57,7 @@ describe('runApplyScheduledDowngradesJob', () => {
 
         expect(logger.error).toHaveBeenCalledWith(
             'Scheduled downgrade job failed',
-            error,
+            { message: error.message },
         );
     });
 
