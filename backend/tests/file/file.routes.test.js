@@ -13,6 +13,7 @@ import {
     download,
     getById,
     list,
+    remove,
     upload,
 } from '../../modules/file/file.controller.js';
 import { fileRouter } from '../../modules/file/file.routes.js';
@@ -127,6 +128,7 @@ vi.mock('../../modules/file/file.controller.js', () => ({
     list: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     getById: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     download: vi.fn((req, res) => res.status(200).end()),
+    remove: vi.fn((req, res) => res.status(204).send()),
 }));
 
 const createTestApp = () => {
@@ -153,6 +155,7 @@ beforeEach(() => {
     list.mockClear();
     getById.mockClear();
     download.mockClear();
+    remove.mockClear();
 });
 
 describe('file.routes', () => {
@@ -222,5 +225,24 @@ describe('file.routes', () => {
         expect(list).toHaveBeenCalledOnce();
         expect(getById).toHaveBeenCalledOnce();
         expect(download).toHaveBeenCalledOnce();
+    });
+
+    it('autorise la suppression comme action corrective en remédiation', async () => {
+        const workspace = '507f1f77bcf86cd799439011';
+        const file = '507f1f77bcf86cd799439012';
+
+        const response = await request(createTestApp())
+            .delete(`/workspaces/${workspace}/files/${file}`);
+
+        expect(response.status).toBe(204);
+        expect(authorizePermission).toHaveBeenCalledWith(
+            CORE_PERMISSION.FILE_DELETE,
+        );
+        expect(enforceWorkspaceAccessMode).toHaveBeenCalledWith({
+            allowDuringRemediation: true,
+        });
+        expect(remove).toHaveBeenCalledOnce();
+        expect(planFeatureMiddleware).not.toHaveBeenCalled();
+        expect(multerMiddleware).not.toHaveBeenCalled();
     });
 });
