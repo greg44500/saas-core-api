@@ -17,6 +17,10 @@ import {
     platformRouter,
 } from './modules/platform/platform.routes.js';
 import { fileRouter } from './modules/file/file.routes.js';
+import {
+    invitationAcceptanceRouter,
+    workspaceInvitationRouter,
+} from './modules/workspaceInvitation/workspaceInvitation.routes.js';
 import { planRouter } from './modules/plan/plan.routes.js';
 import {
     subscriptionRouter,
@@ -37,12 +41,6 @@ if (env.NODE_ENV === 'development') {
 app.use('/api', apiRateLimiter);
 app.use(express.json());
 
-/*
- * Les futures routes seront enregistrées ici.
- *
- * Exemple futur :
- * app.use("/api/auth", authRoutes);
- */
 app.use('/api/auth', authRouter);
 app.use('/api/platform', platformRouter);
 app.use('/api/plans', planRouter);
@@ -58,8 +56,12 @@ app.use(
     '/api/workspaces/:workspaceId/subscription',
     subscriptionRouter,
 );
+app.use(
+    '/api/workspaces/:workspaceId/invitations',
+    workspaceInvitationRouter,
+);
+app.use('/api/invitations', invitationAcceptanceRouter);
 app.use('/api/workspaces', workspaceRouter);
-
 
 app.use('/api/health', healthRouter);// Route pour vérifier l'état de santé de l'API
 app.use(notFound);// Middleware pour gérer les routes non trouvées (404)
