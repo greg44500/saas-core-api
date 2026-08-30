@@ -43,6 +43,7 @@ describe('validateEnvironment', () => {
         const result = validateEnvironment(
             createValidEnvironment({
                 NODE_ENV: 'production',
+                CLIENT_URL: 'https://app.example.com',
             }),
         );
 
@@ -72,6 +73,7 @@ describe('validateEnvironment', () => {
             const result = validateEnvironment(
                 createValidEnvironment({
                     NODE_ENV: 'production',
+                    CLIENT_URL: 'https://app.example.com',
                     [field]: placeholder,
                 }),
             );
@@ -89,6 +91,27 @@ describe('validateEnvironment', () => {
             ).toBe(true);
         },
     );
+
+    it('refuse une CLIENT_URL HTTP en production', () => {
+        const result = validateEnvironment(
+            createValidEnvironment({
+                NODE_ENV: 'production',
+                CLIENT_URL: 'http://app.example.com',
+            }),
+        );
+
+        expect(result.success).toBe(false);
+
+        if (result.success) {
+            return;
+        }
+
+        expect(
+            result.error.issues.some(
+                (issue) => issue.path[0] === 'CLIENT_URL',
+            ),
+        ).toBe(true);
+    });
 
     it('autorise les valeurs d’exemple hors production pour faciliter le développement local', () => {
         const result = validateEnvironment(
