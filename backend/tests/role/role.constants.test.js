@@ -44,7 +44,6 @@ describe('System role permissions', () => {
         );
     });
 
-
     it('n’accorde pas file:upload aux rôles manager, member et reader', () => {
         const restrictedRoleKeys = [
             SYSTEM_ROLE_KEY.MANAGER,
@@ -53,8 +52,7 @@ describe('System role permissions', () => {
         ];
 
         for (const roleKey of restrictedRoleKeys) {
-            const role =
-                getSystemRoleDefinition(roleKey);
+            const role = getSystemRoleDefinition(roleKey);
 
             expect(role.permissions).not.toContain(
                 CORE_PERMISSION.FILE_UPLOAD,
@@ -93,6 +91,31 @@ describe('System role permissions', () => {
             const role = getSystemRoleDefinition(roleKey);
             expect(role.permissions).not.toContain(
                 CORE_PERMISSION.FILE_DELETE,
+            );
+        }
+    });
+
+    it('réserve workspace:ownership:transfer au rôle owner', () => {
+        const owner = getSystemRoleDefinition(
+            SYSTEM_ROLE_KEY.OWNER,
+        );
+
+        expect(owner.permissions).toContain(
+            CORE_PERMISSION.WORKSPACE_OWNERSHIP_TRANSFER,
+        );
+
+        const restrictedRoleKeys = [
+            SYSTEM_ROLE_KEY.ADMIN,
+            SYSTEM_ROLE_KEY.MANAGER,
+            SYSTEM_ROLE_KEY.MEMBER,
+            SYSTEM_ROLE_KEY.READER,
+        ];
+
+        for (const roleKey of restrictedRoleKeys) {
+            const role = getSystemRoleDefinition(roleKey);
+
+            expect(role.permissions).not.toContain(
+                CORE_PERMISSION.WORKSPACE_OWNERSHIP_TRANSFER,
             );
         }
     });
