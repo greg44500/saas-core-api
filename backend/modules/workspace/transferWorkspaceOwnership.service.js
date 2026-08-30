@@ -127,14 +127,11 @@ const transferWorkspaceOwnership = async ({
             );
         }
 
-        const ownerCountBeforeQuery = WorkspaceMember.countDocuments({
+        const ownerCountBefore = await WorkspaceMember.countDocuments({
             workspace: workspaceId,
             role: ownerRole._id,
             status: WORKSPACE_MEMBER_STATUS.ACTIVE,
-        });
-        ownerCountBeforeQuery.session(session);
-
-        const ownerCountBefore = await ownerCountBeforeQuery;
+        }).session(session);
 
         if (ownerCountBefore !== 1) {
             throw new AppError(
@@ -154,14 +151,11 @@ const transferWorkspaceOwnership = async ({
         newOwner.updatedBy = actorId;
         await newOwner.save({ session });
 
-        const ownerCountAfterQuery = WorkspaceMember.countDocuments({
+        const ownerCountAfter = await WorkspaceMember.countDocuments({
             workspace: workspaceId,
             role: ownerRole._id,
             status: WORKSPACE_MEMBER_STATUS.ACTIVE,
-        });
-        ownerCountAfterQuery.session(session);
-
-        const ownerCountAfter = await ownerCountAfterQuery;
+        }).session(session);
 
         if (ownerCountAfter !== 1) {
             throw new AppError(
