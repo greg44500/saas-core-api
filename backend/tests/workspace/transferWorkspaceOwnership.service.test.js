@@ -22,10 +22,14 @@ import {
 import {
     createAuditLog,
 } from '../../modules/auditLog/auditLog.service.js';
+import {
+    confirmCurrentUserPassword,
+} from '../../modules/auth/services/confirmCurrentUserPassword.service.js';
 import { Role } from '../../modules/role/role.model.js';
 import {
     transferWorkspaceOwnership,
 } from '../../modules/workspace/transferWorkspaceOwnership.service.js';
+import { Workspace } from '../../modules/workspace/workspace.model.js';
 import {
     WorkspaceMember,
 } from '../../modules/workspaceMember/workspaceMember.model.js';
@@ -43,9 +47,22 @@ vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
 }));
 
+vi.mock(
+    '../../modules/auth/services/confirmCurrentUserPassword.service.js',
+    () => ({
+        confirmCurrentUserPassword: vi.fn(),
+    }),
+);
+
 vi.mock('../../modules/role/role.model.js', () => ({
     Role: {
         findOne: vi.fn(),
+    },
+}));
+
+vi.mock('../../modules/workspace/workspace.model.js', () => ({
+    Workspace: {
+        updateOne: vi.fn(),
     },
 }));
 
@@ -69,6 +86,7 @@ describe('transferWorkspaceOwnership', () => {
     const session = { id: 'mongo-session' };
     const workspaceId = 'workspace-id';
     const actorId = 'owner-user-id';
+    const currentPassword = 'current-password-value';
     const newOwnerMemberId = 'new-owner-member-id';
     const previousOwnerRoleId = 'admin-role-id';
 
@@ -90,9 +108,15 @@ describe('transferWorkspaceOwnership', () => {
     beforeEach(() => {
         vi.clearAllMocks();
 
+        confirmCurrentUserPassword.mockResolvedValue(undefined);
+
         mongoose.connection.transaction.mockImplementation(
             async (callback) => callback(session),
         );
+
+        Workspace.updateOne.mockResolvedValue({
+            matchedCount: 1,
+        });
 
         currentOwner = {
             _id: 'current-owner-member-id',
@@ -126,16 +150,21 @@ describe('transferWorkspaceOwnership', () => {
     });
 
 
-    it('transfère atomiquement le rôle owner vers un autre membre actif', async () => {
+    it('confirme l’owner puis sérialise et transfère atomiquement la propriété', async () => {
         const result = await transferWorkspaceOwnership({
             workspaceId,
             newOwnerMemberId,
             previousOwnerRoleId,
             actorId,
+            currentPassword,
             ipAddress: '127.0.0.1',
             userAgent: 'Vitest',
         });
 
+        expect(confirmCurrentUserPassword).toHaveBeenCalledWith({
+            userId: actorId,
+            password: currentPassword,
+        });
         expect(mongoose.connection.transaction).toHaveBeenCalledOnce();
 
         expect(Role.findOne).toHaveBeenNthCalledWith(
@@ -172,6 +201,21 @@ describe('transferWorkspaceOwnership', () => {
                 workspace: workspaceId,
                 status: WORKSPACE_MEMBER_STATUS.ACTIVE,
             },
+        );
+
+        expect(Workspace.updateOne).toHaveBeenCalledWith(
+            { _id: workspaceId },
+            {
+                $inc: { ownershipVersion: 1 },
+                $set: { updatedBy: actorId },
+            },
+            { session },
+        );
+
+        expect(
+            Workspace.updateOne.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            currentOwner.save.mock.invocationCallOrder[0],
         );
 
         expect(currentOwner.role).toBe(previousOwnerRole._id);
@@ -213,6 +257,31 @@ describe('transferWorkspaceOwnership', () => {
     });
 
 
+    it('refuse le workflow avant transaction si la confirmation échoue', async () => {
+        confirmCurrentUserPassword.mockRejectedValue(
+            Object.assign(new Error('Confirmation d’identité invalide'), {
+                statusCode: 401,
+            }),
+        );
+
+        await expect(
+            transferWorkspaceOwnership({
+                workspaceId,
+                newOwnerMemberId,
+                previousOwnerRoleId,
+                actorId,
+                currentPassword,
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 401,
+            message: 'Confirmation d’identité invalide',
+        });
+
+        expect(mongoose.connection.transaction).not.toHaveBeenCalled();
+        expect(Workspace.updateOne).not.toHaveBeenCalled();
+    });
+
+
     it('refuse une cible qui n’est pas un membre actif du workspace', async () => {
         WorkspaceMember.findOne
             .mockReset()
@@ -225,6 +294,7 @@ describe('transferWorkspaceOwnership', () => {
                 newOwnerMemberId,
                 previousOwnerRoleId,
                 actorId,
+                currentPassword,
             }),
         ).rejects.toMatchObject({
             statusCode: 404,
@@ -249,6 +319,7 @@ describe('transferWorkspaceOwnership', () => {
                 newOwnerMemberId,
                 previousOwnerRoleId: ownerRole._id,
                 actorId,
+                currentPassword,
             }),
         ).rejects.toMatchObject({
             statusCode: 409,
@@ -272,6 +343,7 @@ describe('transferWorkspaceOwnership', () => {
                 newOwnerMemberId,
                 previousOwnerRoleId,
                 actorId,
+                currentPassword,
             }),
         ).rejects.toMatchObject({
             statusCode: 403,
@@ -280,6 +352,7 @@ describe('transferWorkspaceOwnership', () => {
         });
 
         expect(WorkspaceMember.countDocuments).not.toHaveBeenCalled();
+        expect(Workspace.updateOne).not.toHaveBeenCalled();
         expect(createAuditLog).not.toHaveBeenCalled();
     });
 
@@ -295,11 +368,38 @@ describe('transferWorkspaceOwnership', () => {
                 newOwnerMemberId,
                 previousOwnerRoleId,
                 actorId,
+                currentPassword,
             }),
         ).rejects.toMatchObject({
             statusCode: 409,
             message:
                 'Le workspace doit posséder exactement un propriétaire actif avant le transfert',
+        });
+
+        expect(Workspace.updateOne).not.toHaveBeenCalled();
+        expect(currentOwner.save).not.toHaveBeenCalled();
+        expect(newOwner.save).not.toHaveBeenCalled();
+        expect(createAuditLog).not.toHaveBeenCalled();
+    });
+
+
+    it('refuse le transfert si le point de sérialisation workspace est indisponible', async () => {
+        Workspace.updateOne.mockResolvedValue({
+            matchedCount: 0,
+        });
+
+        await expect(
+            transferWorkspaceOwnership({
+                workspaceId,
+                newOwnerMemberId,
+                previousOwnerRoleId,
+                actorId,
+                currentPassword,
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 409,
+            message:
+                'Workspace indisponible pour le transfert de propriété',
         });
 
         expect(currentOwner.save).not.toHaveBeenCalled();
@@ -320,6 +420,7 @@ describe('transferWorkspaceOwnership', () => {
                 newOwnerMemberId,
                 previousOwnerRoleId,
                 actorId,
+                currentPassword,
             }),
         ).rejects.toMatchObject({
             statusCode: 409,
@@ -333,17 +434,19 @@ describe('transferWorkspaceOwnership', () => {
     });
 
 
-    it('refuse les paramètres obligatoires manquants avant toute transaction', async () => {
+    it('refuse les paramètres obligatoires manquants avant toute confirmation', async () => {
         await expect(
             transferWorkspaceOwnership({
                 workspaceId,
                 newOwnerMemberId,
                 actorId,
+                currentPassword,
             }),
         ).rejects.toThrow(
-            'workspaceId, newOwnerMemberId, previousOwnerRoleId and actorId are required to transfer workspace ownership',
+            'workspaceId, newOwnerMemberId, previousOwnerRoleId, actorId and currentPassword are required to transfer workspace ownership',
         );
 
+        expect(confirmCurrentUserPassword).not.toHaveBeenCalled();
         expect(mongoose.connection.transaction).not.toHaveBeenCalled();
     });
 });
