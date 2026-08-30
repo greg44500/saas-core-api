@@ -19,6 +19,12 @@ import {
     createAuditLog,
 } from '../../../modules/auditLog/auditLog.service.js';
 import {
+    CORE_PLAN_METRIC,
+} from '../../../modules/plan/planCapability.registry.js';
+import {
+    enforcePlanLimit,
+} from '../../../modules/plan/planLimit.service.js';
+import {
     createSystemRolesForWorkspace,
 } from '../../../modules/role/role.service.js';
 import {
@@ -34,7 +40,6 @@ import {
     WorkspaceMember,
 } from '../../../modules/workspaceMember/workspaceMember.model.js';
 
-
 vi.mock('mongoose', () => ({
     default: {
         connection: {
@@ -47,156 +52,118 @@ vi.mock('../../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
 }));
 
+vi.mock('../../../modules/plan/planLimit.service.js', () => ({
+    enforcePlanLimit: vi.fn(),
+}));
+
 vi.mock('../../../modules/role/role.model.js', () => ({
-    Role: {
-        collection: {
-            name: 'roles',
-        },
-    },
+    Role: { collection: { name: 'roles' } },
 }));
 
 vi.mock('../../../modules/users/user.model.js', () => ({
-    User: {
-        collection: {
-            name: 'users',
-        },
-    },
+    User: { collection: { name: 'users' } },
 }));
 
 vi.mock('../../../modules/role/role.service.js', () => ({
     createSystemRolesForWorkspace: vi.fn(),
 }));
 
-vi.mock(
-    '../../../modules/subscriptions/subscription.service.js',
-    () => ({
-        createFreeSubscriptionForWorkspace:
-            vi.fn(),
-    }),
-);
-
-vi.mock('../../../modules/workspace/workspace.model.js', () => ({
-    Workspace: {
-        create: vi.fn(),
-    },
+vi.mock('../../../modules/subscriptions/subscription.service.js', () => ({
+    createFreeSubscriptionForWorkspace: vi.fn(),
 }));
 
-vi.mock(
-    '../../../modules/workspaceMember/workspaceMember.model.js',
-    () => ({
-        WorkspaceMember: {
-            create: vi.fn(),
-        },
-    }),
-);
+vi.mock('../../../modules/workspace/workspace.model.js', () => ({
+    Workspace: { create: vi.fn() },
+}));
 
+vi.mock('../../../modules/workspaceMember/workspaceMember.model.js', () => ({
+    WorkspaceMember: { create: vi.fn() },
+}));
 
 function prepareWorkspaceCreation() {
-    const session = {
-        id: 'mongo-session',
-    };
+    const session = { id: 'mongo-session' };
+    const workspace = { _id: 'workspace-id', name: 'Acme' };
 
-    const workspace = {
-        _id: 'workspace-id',
-        name: 'Acme',
-    };
+    mongoose.connection.transaction.mockImplementation(
+        async (callback) => callback(session),
+    );
 
-    mongoose.connection.transaction
-        .mockImplementation(
-            async (callback) => callback(session),
-        );
-
-    Workspace.create.mockResolvedValue([
-        workspace,
-    ]);
-
+    Workspace.create.mockResolvedValue([workspace]);
     createSystemRolesForWorkspace.mockResolvedValue([
-        {
-            _id: 'owner-role-id',
-            key: SYSTEM_ROLE_KEY.OWNER,
-        },
+        { _id: 'owner-role-id', key: SYSTEM_ROLE_KEY.OWNER },
     ]);
-
     WorkspaceMember.create.mockResolvedValue([
-        {
-            _id: 'membership-id',
-        },
+        { _id: 'membership-id' },
     ]);
-
-    createFreeSubscriptionForWorkspace
-        .mockResolvedValue({
-            _id: 'subscription-id',
-        });
-
+    createFreeSubscriptionForWorkspace.mockResolvedValue({
+        _id: 'subscription-id',
+    });
+    enforcePlanLimit.mockResolvedValue({
+        usageMetric: { value: 1 },
+    });
     createAuditLog.mockResolvedValue(undefined);
 
-    return {
-        session,
-        workspace,
-    };
+    return { session, workspace };
 }
-
 
 describe('createWorkspace audit', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
+    it('initialise la capacité membre avec la place occupée par owner', async () => {
+        const { session, workspace } = prepareWorkspaceCreation();
+
+        await createWorkspace({
+            name: 'Acme',
+            actorId: 'actor-id',
+        });
+
+        expect(enforcePlanLimit).toHaveBeenCalledWith({
+            workspaceId: workspace._id,
+            metricKey: CORE_PLAN_METRIC.MEMBERS,
+            amount: 1,
+            actorId: 'actor-id',
+            session,
+        });
+    });
 
     it('audite la création dans la transaction', async () => {
-        const {
-            session,
-            workspace,
-        } = prepareWorkspaceCreation();
+        const { session, workspace } = prepareWorkspaceCreation();
 
         await createWorkspace({
             name: 'Acme',
             actorId: 'actor-id',
             ipAddress: '127.0.0.1',
-            userAgent:
-                'Mozilla/5.0 Test Browser',
+            userAgent: 'Mozilla/5.0 Test Browser',
         });
 
         expect(createAuditLog).toHaveBeenCalledWith(
             {
                 actor: 'actor-id',
                 workspace: workspace._id,
-                action:
-                    AUDIT_ACTION
-                        .WORKSPACE_CREATED,
-                entityType:
-                    AUDIT_ENTITY_TYPE.WORKSPACE,
+                action: AUDIT_ACTION.WORKSPACE_CREATED,
+                entityType: AUDIT_ENTITY_TYPE.WORKSPACE,
                 entityId: workspace._id,
                 status: AUDIT_STATUS.SUCCESS,
                 ipAddress: '127.0.0.1',
-                userAgent:
-                    'Mozilla/5.0 Test Browser',
+                userAgent: 'Mozilla/5.0 Test Browser',
             },
-            {
-                session,
-            },
+            { session },
         );
     });
 
-
     it('propage l’échec de l’audit', async () => {
         prepareWorkspaceCreation();
-
-        const auditError = new Error(
-            'AuditLog persistence failed',
-        );
-
-        createAuditLog.mockRejectedValue(
-            auditError,
-        );
+        const auditError = new Error('AuditLog persistence failed');
+        createAuditLog.mockRejectedValue(auditError);
 
         await expect(
             createWorkspace({
                 name: 'Acme',
                 actorId: 'actor-id',
                 ipAddress: '127.0.0.1',
-                userAgent:
-                    'Mozilla/5.0 Test Browser',
+                userAgent: 'Mozilla/5.0 Test Browser',
             }),
         ).rejects.toBe(auditError);
     });
