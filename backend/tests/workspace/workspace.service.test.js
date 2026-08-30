@@ -43,6 +43,16 @@ vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
 }));
 
+/*
+ * Les tests de Workspace valident ici l'orchestration du module Workspace,
+ * pas l'implémentation interne de UsageMetric. Le moteur de quotas est donc
+ * isolé à sa frontière pour éviter de coupler ces tests aux modèles chargés
+ * indirectement par planLimit.service.js.
+ */
+vi.mock('../../modules/plan/planLimit.service.js', () => ({
+    enforcePlanLimit: vi.fn(),
+}));
+
 vi.mock('mongoose', () => {
     const ObjectId = vi.fn(function (value) {
         return {
