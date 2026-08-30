@@ -21,7 +21,7 @@ const run = async () => {
     } catch (error) {
         console.error(
             'Échec de la migration addSubscriptionKind :',
-            error,
+            { message: error.message },
         );
 
         process.exitCode = 1;
