@@ -25,6 +25,9 @@ import {
     listMembers,
     update,
 } from './workspace.controller.js';
+import {
+    workspaceOwnershipRouter,
+} from './workspaceOwnership.routes.js';
 
 import {
     createWorkspaceSchema,
@@ -69,6 +72,15 @@ router.use(
 router.use(
     '/:workspaceId/audit-logs',
     auditLogRouter,
+);
+
+/**
+ * Le transfert de propriété est un workflow métier dédié. Il ne passe jamais
+ * par la commande générique de changement de rôle d'un WorkspaceMember.
+ */
+router.use(
+    '/:workspaceId/ownership',
+    workspaceOwnershipRouter,
 );
 
 /**
