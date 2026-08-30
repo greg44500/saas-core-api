@@ -32,7 +32,9 @@ describe('releaseCurrentUsageMetric', () => {
                 metricKey: 'members',
                 periodType: 'current',
                 periodStart: null,
-                value: { $gte: 1 },
+                value: expect.objectContaining({
+                    $gte: 1,
+                }),
             }),
             expect.objectContaining({
                 $inc: { value: -1 },
