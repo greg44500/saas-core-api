@@ -98,7 +98,19 @@ app.use(
 
 
 beforeEach(() => {
-    vi.clearAllMocks();
+    /*
+     * validateRequest() et authorizePermission() sont des factories invoquées
+     * une seule fois lors de la construction du routeur. Leurs appels ne sont
+     * donc pas effacés ici : ils décrivent la configuration statique à tester.
+     *
+     * En revanche, les middlewares retournés et le controller s'exécutent à
+     * chaque requête et doivent être remis à zéro entre les scénarios.
+     */
+    authenticate.mockClear();
+    validationMiddleware.mockClear();
+    workspaceContextMiddleware.mockClear();
+    permissionMiddleware.mockClear();
+    transferOwnership.mockClear();
 });
 
 
