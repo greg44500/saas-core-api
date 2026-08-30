@@ -37,7 +37,10 @@ Il ne remplace ni les contrats frontend/backend ni les documents de dette foncti
 - [x] TERMINÉ — `backend/app.js`.
 - [x] TERMINÉ — `backend/server.js` avec arrêt propre.
 - [x] TERMINÉ — configuration environnement validée par Zod.
+- [x] TERMINÉ — variables sensibles de production protégées contre les placeholders connus. `AJOUTÉ EN COURS DE DÉVELOPPEMENT`.
+- [x] TERMINÉ — `CLIENT_URL` impose HTTPS en production et accepte HTTP/HTTPS selon l’environnement. `AJOUTÉ EN COURS DE DÉVELOPPEMENT`.
 - [x] TERMINÉ — connexion MongoDB/Mongoose.
+- [x] TERMINÉ — `autoIndex` explicitement désactivé en production et conservé en développement/test ; les index de production passent par migrations. `AJOUTÉ EN COURS DE DÉVELOPPEMENT`.
 - [x] TERMINÉ — `.env.test` pour les tests.
 - [x] TERMINÉ — Vitest + Supertest.
 - [x] TERMINÉ — MongoDB replica set disponible pour les transactions.
@@ -61,6 +64,8 @@ Il ne remplace ni les contrats frontend/backend ni les documents de dette foncti
 - [x] TERMINÉ — `errorHandler`.
 - [x] TERMINÉ — `notFound`.
 - [x] TERMINÉ — contrat d’erreur opérationnelle centralisé.
+- [x] TERMINÉ — les erreurs techniques inattendues sont masquées côté HTTP en production.
+- [x] TERMINÉ — journalisation serveur des erreurs inattendues limitée à des champs sûrs ; aucun objet `Error` brut issu d’une dépendance n’est journalisé. `AJOUTÉ EN COURS DE DÉVELOPPEMENT`.
 
 ## 5. User / Auth
 
@@ -94,8 +99,11 @@ Il ne remplace ni les contrats frontend/backend ni les documents de dette foncti
 ## 7. Seeds
 
 - [x] TERMINÉ — seed Plans idempotent.
+- [x] TERMINÉ — seed Plans ne réécrit pas silencieusement un plan existant.
 - [x] TERMINÉ — seed Super Admin idempotent.
+- [x] TERMINÉ — seed Super Admin transactionnel et refusant toute promotion implicite d’un utilisateur existant.
 - [x] TERMINÉ — rôles système créés par workspace lors de sa création. `REMPLACÉ PAR` rapport à un seed global de rôles.
+- [x] TERMINÉ — chaque seed exécutable est exposé par un script npm et contrôlé par test d’exploitation. `AJOUTÉ EN COURS DE DÉVELOPPEMENT`.
 
 ## 8. Workspaces
 
@@ -249,20 +257,30 @@ La checklist initiale prévoyait `platform.controller.js` et `platform.service.j
 - [x] TERMINÉ — application des downgrades programmés.
 - [x] TERMINÉ — purge différée des fichiers supprimés.
 - [x] TERMINÉ — runners CLI dédiés et scripts npm.
-- [ ] À FAIRE — audit final d’idempotence, rejouabilité, observabilité et procédures d’exploitation de tous les jobs.
-- [ ] À FAIRE — vérifier s’il manque une réconciliation métier nécessaire au Core V1 ; ne pas créer de job générique sans invariant concret à protéger.
+- [x] TERMINÉ — audit d’idempotence, rejouabilité et concurrence des jobs lifecycle. `AJOUTÉ EN COURS DE DÉVELOPPEMENT`.
+- [x] TERMINÉ — traitements Subscription bornés par batch (`100` par défaut, `500` maximum), sans `skip()`, avec tri déterministe et indicateur `hasMore`. `AJOUTÉ EN COURS DE DÉVELOPPEMENT`.
+- [x] TERMINÉ — purge Files bornée, tri déterministe, idempotence et `hasMore`.
+- [x] TERMINÉ — les runners journalisent un résultat exploitable et propagent l’échec au scheduler via code de sortie/rejet approprié.
+- [x] TERMINÉ — aucun job de réconciliation générique ajouté sans invariant métier concret ; une réconciliation ciblée UsageMetric `members` est fournie sous forme de migration rejouable.
 
 ## 18. Migrations
 
+- [x] TERMINÉ — migration `Subscription.kind` et index d’unicité `workspace + kind`.
+- [x] TERMINÉ — préflight du runner `Subscription.kind` : l’index cible est créé/validé avant suppression de l’index legacy ; dérive incompatible refusée explicitement. `AJOUTÉ EN COURS DE DÉVELOPPEMENT`.
 - [x] TERMINÉ — indexes lifecycle Subscription.
+- [x] TERMINÉ — indexes opérationnels alignés sur les requêtes/jobs Core V1, via migration additive forward-only. `AJOUTÉ EN COURS DE DÉVELOPPEMENT`.
+- [x] TERMINÉ — migration d’indexes fail-fast lorsqu’un nom attendu existe avec une définition incompatible ; aucune suppression automatique destructive. `AJOUTÉ EN COURS DE DÉVELOPPEMENT`.
 - [x] TERMINÉ — permission `subscription:read`.
 - [x] TERMINÉ — permission `audit:read`.
 - [x] TERMINÉ — backfill UsageMetric members.
+- [x] TERMINÉ — réconciliation forward-only UsageMetric `members`, y compris remise à zéro d’une métrique obsolète. `AJOUTÉ EN COURS DE DÉVELOPPEMENT`.
 - [x] TERMINÉ — permission `member:invite`.
 - [x] TERMINÉ — permission `file:read`.
 - [x] TERMINÉ — permission `file:delete`.
 - [x] TERMINÉ — permission `workspace:ownership:transfer`.
 - [x] TERMINÉ — runners et scripts npm correspondants.
+- [x] TERMINÉ — test d’exploitation garantissant que chaque runner/seed possède un script npm et que les fichiers Node référencés existent. `AJOUTÉ EN COURS DE DÉVELOPPEMENT`.
+- [x] TERMINÉ — migrations historiques conservées immuables ; les corrections tardives sont ajoutées sous forme de migrations forward-only.
 
 ## 19. Notifications / API Keys / modèles optionnels
 
@@ -302,20 +320,21 @@ La synthèse de cadrage initiale définit le backend V1 comme prêt lorsque le p
 - [x] TERMINÉ — transactions sur les opérations multi-documents critiques.
 - [x] TERMINÉ — quotas protégés côté backend.
 - [x] TERMINÉ — actions sensibles auditées.
-- [x] TERMINÉ — seeds/migrations conçus idempotents.
-- [ ] À FAIRE — audit global des index MongoDB par rapport aux requêtes réellement utilisées.
-- [ ] À FAIRE — audit final de non-exposition des secrets/PII dans réponses, erreurs et logs.
-- [ ] À FAIRE — audit final des variables d’environnement et `.env.example`.
-- [ ] À FAIRE — audit final des jobs et procédures d’exploitation.
-- [ ] À FAIRE — exécuter et consigner une suite globale finale après les derniers hardenings.
+- [x] TERMINÉ — audit global des index MongoDB par rapport aux requêtes réellement utilisées. `H2.1`.
+- [x] TERMINÉ — audit final de non-exposition des secrets/PII dans réponses, erreurs et logs ; journalisation des runners/seeds durcie. `H2.2`.
+- [x] TERMINÉ — audit final des variables d’environnement et `.env.example`, politique `autoIndex`, placeholders production et HTTPS frontend. `H2.3`.
+- [x] TERMINÉ — audit des seeds/migrations : idempotence, rejouabilité, scripts d’exploitation, préflight des index et réconciliation ciblée. `H2.4`.
+- [x] TERMINÉ — audit warnings runtime/dette technique ; suppression des usages `validateSync()` du dépôt et validation via suite globale. `H2.5`.
+- [x] TERMINÉ — audit final des jobs, idempotence, batchs bornés, tris déterministes, `hasMore` et comportement de retry. `H1`.
+- [x] TERMINÉ — suite globale Vitest exécutée avec succès après les hardenings H1/H2.
 - [ ] À FAIRE — OpenAPI décrivant le contrat réellement implémenté, si cette exigence de cadrage est maintenue pour le checkpoint Core V1.
 
 ## 23. Ordre restant recommandé avant le frontend
 
 ```text
 C1  Checklist backend officielle                         TERMINÉ
-H1  Audit jobs / maintenance / reconciliation            À FAIRE
-H2  Audit index / secrets / env / operational hardening  À FAIRE
+H1  Audit jobs / maintenance / reconciliation            TERMINÉ
+H2  Audit index / secrets / env / operational hardening  TERMINÉ
 D1  Contrat frontend/backend Core global                 À FAIRE
 R1  Suite globale finale + checkpoint readiness          À FAIRE
 R2  OpenAPI : confirmer l’exigence puis produire/aligner À FAIRE
