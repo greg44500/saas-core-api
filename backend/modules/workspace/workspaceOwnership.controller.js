@@ -7,8 +7,8 @@ import {
  * Transfère la propriété du workspace courant.
  *
  * L'identité de l'acteur et le workspace proviennent exclusivement du contexte
- * authentifié. Le client ne peut fournir que la cible et le rôle de
- * déclassement de l'ancien owner.
+ * authentifié. Le client fournit la cible, le rôle de déclassement de l'ancien
+ * owner et son mot de passe courant comme confirmation renforcée.
  */
 const transferOwnership = async (req, res) => {
     const {
@@ -20,6 +20,8 @@ const transferOwnership = async (req, res) => {
             req.validated.body.newOwnerMemberId,
         previousOwnerRoleId:
             req.validated.body.previousOwnerRoleId,
+        currentPassword:
+            req.validated.body.currentPassword,
         actorId: req.user.id,
         ipAddress: req.context?.ipAddress ?? null,
         userAgent: req.context?.userAgent ?? null,
