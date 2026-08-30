@@ -21,6 +21,7 @@ const AUDIT_ENTITY_TYPE = Object.freeze({
     SUBSCRIPTION: 'Subscription',
     USER: 'User',
     WORKSPACE: 'Workspace',
+    WORKSPACE_INVITATION: 'WorkspaceInvitation',
     WORKSPACE_MEMBER: 'WorkspaceMember',
 });
 
@@ -50,6 +51,7 @@ const AUDIT_ACTION = Object.freeze({
     WORKSPACE_CLOSED: 'WORKSPACE_CLOSED',
 
     MEMBER_INVITED: 'MEMBER_INVITED',
+    MEMBER_INVITATION_REVOKED: 'MEMBER_INVITATION_REVOKED',
     MEMBER_REMOVED: 'MEMBER_REMOVED',
 
     ROLE_CREATED: 'ROLE_CREATED',
