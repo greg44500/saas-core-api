@@ -150,7 +150,14 @@ const acceptWorkspaceInvitation = async ({
             existingMembership.status = WORKSPACE_MEMBER_STATUS.ACTIVE;
             existingMembership.role = role._id;
             existingMembership.updatedBy = actorId;
-            membership = await existingMembership.save({ session });
+
+            /*
+             * Le document existant reste la référence du membership réactivé.
+             * La logique métier ne doit pas dépendre de la valeur retournée par
+             * save(), notamment lorsque cette méthode est mockée en test.
+             */
+            await existingMembership.save({ session });
+            membership = existingMembership;
         } else {
             [membership] = await WorkspaceMember.create(
                 [
