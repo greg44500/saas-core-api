@@ -2,7 +2,19 @@ import 'dotenv/config';
 import { z } from 'zod';
 import { FILE_STORAGE_PROVIDER } from '../constants/file.constants.js';
 
-//Schema de validation pour les variables d'environnement
+const PRODUCTION_PLACEHOLDER_VALUES = new Set([
+    'replace_with_a_long_random_secret',
+    'replace_with_a_dedicated_long_random_secret',
+    'your_smtp_username',
+    'your_smtp_password',
+]);
+
+const isKnownPlaceholder = (value) => (
+    typeof value === 'string'
+    && PRODUCTION_PLACEHOLDER_VALUES.has(value.trim())
+);
+
+// Schema de validation pour les variables d'environnement.
 const envSchema = z.object({
     NODE_ENV: z
         .enum(['development', 'test', 'production'])
@@ -120,7 +132,7 @@ const envSchema = z.object({
     CLAMAV_BINARY_PATH: z
         .string()
         .trim()
-        .min(1, "CLAMAV_BINARY_PATH est obligatoire"),
+        .min(1, 'CLAMAV_BINARY_PATH est obligatoire'),
 
     CLAMAV_SCAN_TIMEOUT_MS: z.coerce
         .number()
@@ -129,32 +141,56 @@ const envSchema = z.object({
         .max(120000),
 
     /*
-* Durée pendant laquelle un fichier temporaire est protégé contre la
-* purge. La valeur minimale de cinq minutes empêche une configuration
-* accidentelle de cibler des uploads encore actifs.
-*/
+     * Durée pendant laquelle un fichier temporaire est protégé contre la
+     * purge. La valeur minimale de cinq minutes empêche une configuration
+     * accidentelle de cibler des uploads encore actifs.
+     */
     UPLOAD_TEMP_FILE_MAX_AGE_MINUTES: z.coerce
         .number()
         .int()
         .min(5)
         .max(10080)
         .default(60),
-    /* 
-    *Secret dédié à la génération des empreintes HMAC utilisées pour
-    *identifier durablement une identité ayant déjà consommé un trial.
-    */
+
+    /*
+     * Secret dédié à la génération des empreintes HMAC utilisées pour
+     * identifier durablement une identité ayant déjà consommé un trial.
+     */
     TRIAL_IDENTITY_SECRET: z
         .string()
         .min(
             32,
             'TRIAL_IDENTITY_SECRET doit contenir au minimum 32 caractères',
         ),
+}).superRefine((config, context) => {
+    if (config.NODE_ENV !== 'production') {
+        return;
+    }
 
+    const productionSensitiveFields = [
+        'JWT_ACCESS_SECRET',
+        'TRIAL_IDENTITY_SECRET',
+        'SMTP_USER',
+        'SMTP_PASSWORD',
+    ];
+
+    for (const field of productionSensitiveFields) {
+        if (!isKnownPlaceholder(config[field])) {
+            continue;
+        }
+
+        context.addIssue({
+            code: 'custom',
+            path: [field],
+            message: `${field} ne peut pas utiliser une valeur d’exemple en production`,
+        });
+    }
 });
 
+const validateEnvironment = (input) => envSchema.safeParse(input);
 
-// Valider les variables d'environnement et les transformer en types appropriés
-const validationResult = envSchema.safeParse(process.env);
+// Valider les variables d'environnement et les transformer en types appropriés.
+const validationResult = validateEnvironment(process.env);
 
 if (!validationResult.success) {
     console.error(
@@ -164,7 +200,13 @@ if (!validationResult.success) {
 
     process.exit(1);
 }
-// Geler l'objet pour éviter toute modification accidentelle
+
+// Geler l'objet pour éviter toute modification accidentelle.
 const env = Object.freeze(validationResult.data);
 
-export { env }
+export {
+    env,
+    envSchema,
+    isKnownPlaceholder,
+    validateEnvironment,
+};
