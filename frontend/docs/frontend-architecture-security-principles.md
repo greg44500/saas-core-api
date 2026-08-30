@@ -63,6 +63,24 @@ La structure finale sera créée progressivement. Cette arborescence définit le
 - `useState` reste réservé à l’état local de composant ;
 - les règles d’autorisation backend ne doivent jamais être remplacées par un simple contrôle visuel frontend.
 
+### 4.1 Composants réutilisables et taille des fichiers
+
+La composition est la règle par défaut.
+
+Un fichier React ne doit pas devenir un assemblage monolithique mêlant rendu, appels API, transformation de données, permissions, formulaires et logique de navigation.
+
+Lorsqu’un composant acquiert plusieurs responsabilités indépendantes, des blocs réutilisables ou testables séparément doivent être extraits dans le niveau architectural approprié.
+
+La taille en nombre de lignes n’est pas utilisée comme règle arbitraire, mais un fichier long doit déclencher une revue de responsabilité. L’objectif est d’obtenir des unités :
+
+- faciles à lire ;
+- faciles à tester ;
+- faciles à remplacer ;
+- avec une API de props claire ;
+- sans duplication de logique ou de présentation.
+
+Il faut privilégier la composition à la création de composants génériques sur-paramétrés ou de fichiers « couteau suisse ».
+
 ## 5. Règle anti-hardcoding
 
 Le code en dur doit être évité lorsqu’une valeur est susceptible d’évoluer, d’être partagée ou de représenter une règle transverse.
@@ -96,7 +114,37 @@ La palette personnalisée sera intégrée au niveau des tokens afin de permettre
 - contraste contrôlé ;
 - réutilisation des composants dans les futurs SaaS métier.
 
-## 7. Sécurité frontend
+## 7. Affichage conditionnel
+
+L’affichage conditionnel doit être explicite, centralisé lorsque la règle est partagée et fondé sur un état réel : permission, rôle, statut, entitlement, état de requête ou contexte de navigation.
+
+Exemples :
+
+- afficher une action « Inviter » uniquement si l’utilisateur dispose de la permission correspondante ;
+- masquer ou désactiver une fonctionnalité absente de l’entitlement effectif ;
+- afficher un état de remédiation spécifique lorsqu’un workspace est suspendu ;
+- séparer les navigations Workspace et Platform selon le contexte réellement accessible.
+
+Une condition réutilisée ne doit pas être recopiée sous des formes légèrement différentes dans plusieurs pages. Elle doit être portée par une fonction, un sélecteur, un hook ou un composant adapté à son niveau de responsabilité.
+
+L’affichage conditionnel améliore l’UX mais ne constitue jamais un mécanisme de sécurité : le backend reste l’autorité finale.
+
+## 8. Notifications et toasts
+
+Les notifications temporaires doivent utiliser une stratégie unique pour toute l’application.
+
+Le système retenu devra :
+
+- supporter au minimum succès, information, avertissement, erreur et opérations asynchrones ;
+- être compatible avec le thème clair/sombre ;
+- éviter la multiplication de bibliothèques concurrentes ;
+- centraliser les conventions de messages et de durée lorsque pertinent ;
+- ne pas remplacer les erreurs inline d’un formulaire ;
+- ne pas exposer de message technique ou sensible provenant directement du backend.
+
+Au 30 août 2026, shadcn/ui propose un composant Toast pour ses projets Base UI et continue aussi de documenter Sonner. Le choix définitif sera cadré avant installation selon la variante shadcn retenue et la simplicité d’intégration dans Vite/JavaScript.
+
+## 9. Sécurité frontend
 
 Le frontend est une couche d’expérience utilisateur, jamais une frontière de sécurité suffisante.
 
@@ -115,7 +163,7 @@ Principes :
 - minimiser les données persistées dans `localStorage`/`sessionStorage` ;
 - toute persistance client doit avoir une justification et une politique de nettoyage.
 
-## 8. Authentification et permissions
+## 10. Authentification et permissions
 
 Le frontend devra couvrir les parcours complets exposés par le Core :
 
@@ -141,7 +189,7 @@ Les rôles/permissions servent à adapter :
 
 Mais l’autorisation effective reste backend.
 
-## 9. Workspace et Platform
+## 11. Workspace et Platform
 
 Les deux contextes doivent être distincts :
 
@@ -150,7 +198,7 @@ Les deux contextes doivent être distincts :
 
 La séparation doit être visible dans le routing, les layouts et les guards pour réduire les risques d’erreur de contexte.
 
-## 10. Validation des formulaires
+## 12. Validation des formulaires
 
 La validation client améliore l’UX mais ne remplace jamais Zod côté backend.
 
@@ -164,7 +212,7 @@ Les formulaires devront :
 
 Le choix de l’outillage de formulaire frontend sera cadré avant implémentation.
 
-## 11. Accessibilité
+## 13. Accessibilité
 
 Le design system doit prévoir dès le départ :
 
@@ -176,9 +224,9 @@ Le design system doit prévoir dès le départ :
 - états non communiqués uniquement par la couleur ;
 - composants modaux, menus et popovers accessibles.
 
-Les primitives shadcn/Radix réduisent certains risques mais ne dispensent pas d’une validation de l’usage réel.
+Les primitives shadcn réduisent certains risques mais ne dispensent pas d’une validation de l’usage réel.
 
-## 12. Tests
+## 14. Tests
 
 Chaque lot frontend devra envisager :
 
@@ -190,7 +238,7 @@ Chaque lot frontend devra envisager :
 
 Les tests doivent vérifier le comportement observable plutôt que les détails d’implémentation React.
 
-## 13. Règle d’évolution
+## 15. Règle d’évolution
 
 Toute modification transverse doit être évaluée pour ses impacts sur :
 
