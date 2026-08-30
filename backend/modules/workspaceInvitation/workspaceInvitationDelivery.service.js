@@ -37,6 +37,8 @@ const deliverWorkspaceInvitation = async ({
         expiresInDays: WORKSPACE_INVITATION_TTL_DAYS,
     });
 
+    let deliveryStatus;
+
     try {
         await sendEmail({
             to: invitation.emailCanonical,
@@ -44,45 +46,33 @@ const deliverWorkspaceInvitation = async ({
             text: email.text,
             html: email.html,
         });
-
-        const deliveredInvitation =
-            await WorkspaceInvitation.findByIdAndUpdate(
-                invitation._id,
-                {
-                    $set: {
-                        deliveryStatus:
-                            WORKSPACE_INVITATION_DELIVERY_STATUS.SENT,
-                        lastDeliveryAttemptAt: now,
-                        deliveredAt: now,
-                    },
-                },
-                {
-                    returnDocument: 'after',
-                    runValidators: true,
-                },
-            );
-
-        return deliveredInvitation ?? invitation;
+        deliveryStatus = WORKSPACE_INVITATION_DELIVERY_STATUS.SENT;
     } catch {
-        const failedInvitation =
-            await WorkspaceInvitation.findByIdAndUpdate(
-                invitation._id,
-                {
-                    $set: {
-                        deliveryStatus:
-                            WORKSPACE_INVITATION_DELIVERY_STATUS.FAILED,
-                        lastDeliveryAttemptAt: now,
-                        deliveredAt: null,
-                    },
-                },
-                {
-                    returnDocument: 'after',
-                    runValidators: true,
-                },
-            );
-
-        return failedInvitation ?? invitation;
+        deliveryStatus = WORKSPACE_INVITATION_DELIVERY_STATUS.FAILED;
     }
+
+    const deliveredAt =
+        deliveryStatus === WORKSPACE_INVITATION_DELIVERY_STATUS.SENT
+            ? now
+            : null;
+
+    const updatedInvitation =
+        await WorkspaceInvitation.findByIdAndUpdate(
+            invitation._id,
+            {
+                $set: {
+                    deliveryStatus,
+                    lastDeliveryAttemptAt: now,
+                    deliveredAt,
+                },
+            },
+            {
+                returnDocument: 'after',
+                runValidators: true,
+            },
+        );
+
+    return updatedInvitation ?? invitation;
 };
 
 export { deliverWorkspaceInvitation };
