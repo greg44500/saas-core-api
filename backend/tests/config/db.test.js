@@ -7,7 +7,35 @@ import {
 } from 'vitest';
 import mongoose from 'mongoose';
 
-import { connectDB } from '../../config/db.js';
+import {
+    buildMongoConnectionOptions,
+    connectDB,
+} from '../../config/db.js';
+
+
+describe('buildMongoConnectionOptions', () => {
+    it('désactive autoIndex en production', () => {
+        expect(
+            buildMongoConnectionOptions('production'),
+        ).toEqual({
+            autoIndex: false,
+        });
+    });
+
+    it('conserve autoIndex en développement et en test', () => {
+        expect(
+            buildMongoConnectionOptions('development'),
+        ).toEqual({
+            autoIndex: true,
+        });
+
+        expect(
+            buildMongoConnectionOptions('test'),
+        ).toEqual({
+            autoIndex: true,
+        });
+    });
+});
 
 
 describe('connectDB', () => {
@@ -33,6 +61,9 @@ describe('connectDB', () => {
 
         expect(connectSpy).toHaveBeenCalledWith(
             'mongodb://example.test/database',
+            {
+                autoIndex: true,
+            },
         );
         expect(consoleErrorSpy).not.toHaveBeenCalled();
         expect(exitSpy).not.toHaveBeenCalled();
