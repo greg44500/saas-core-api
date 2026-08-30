@@ -125,6 +125,8 @@ describe('workspaceOwnership.routes', () => {
                     '507f1f77bcf86cd799439012',
                 previousOwnerRoleId:
                     '507f1f77bcf86cd799439013',
+                currentPassword:
+                    'Correct Horse Battery Staple',
             });
 
         expect(response.status).toBe(200);
