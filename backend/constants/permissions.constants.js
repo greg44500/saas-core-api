@@ -48,6 +48,12 @@ const CORE_PERMISSION = Object.freeze({
      * qui doivent pouvoir évoluer indépendamment.
      */
     FILE_UPLOAD: 'file:upload',
+
+    /*
+     * La suppression est une action destructive distincte de la lecture et de
+     * l'upload. Elle reste réservée aux rôles d'administration du workspace.
+     */
+    FILE_DELETE: 'file:delete',
 });
 
 export { CORE_PERMISSION };
