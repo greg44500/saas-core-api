@@ -24,7 +24,17 @@ const uploadFileBodySchema = z.strictObject({
         .default(FILE_CATEGORY.OTHER),
 });
 
+const workspaceFileParamsSchema = z.strictObject({
+    workspaceId: z
+        .string()
+        .regex(/^[a-f\d]{24}$/i, 'workspaceId invalide'),
+    fileId: z
+        .string()
+        .regex(/^[a-f\d]{24}$/i, 'fileId invalide'),
+});
+
 
 export {
     uploadFileBodySchema,
+    workspaceFileParamsSchema,
 };
