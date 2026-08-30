@@ -31,6 +31,21 @@ const ensureIndex = async ({
         return false;
     }
 
+    const conflictingNamedIndex = indexes.find(
+        (index) => index.name === name,
+    );
+
+    /*
+     * Un nom d'index identique avec une définition différente représente une
+     * dérive de schéma. La migration doit s'arrêter explicitement plutôt que
+     * masquer le problème ou tenter une suppression destructive automatique.
+     */
+    if (conflictingNamedIndex) {
+        throw new Error(
+            `L'index ${name} existe avec une définition incompatible ; intervention manuelle requise.`,
+        );
+    }
+
     const options = {
         name,
         ...(partialFilterExpression === undefined
@@ -48,9 +63,8 @@ const ensureIndex = async ({
  * bornés utilisés par le Core V1.
  *
  * Cette migration est volontairement additive. Les anciens index préfixes ne
- * sont pas supprimés ici car `autoIndex` peut encore les recréer au démarrage.
- * Leur éventuel retrait doit être effectué seulement après le durcissement de
- * la stratégie d'indexation Mongoose en production.
+ * sont pas supprimés ici car leur retrait peut affecter d'autres requêtes et
+ * doit être décidé séparément après observation des plans d'exécution.
  */
 const hardenOperationalIndexes = async () => {
     const collections = {
