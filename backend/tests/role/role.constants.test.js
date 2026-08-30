@@ -69,4 +69,31 @@ describe('System role permissions', () => {
             );
         }
     });
+
+    it('réserve file:delete aux rôles owner et admin', () => {
+        const privilegedRoleKeys = [
+            SYSTEM_ROLE_KEY.OWNER,
+            SYSTEM_ROLE_KEY.ADMIN,
+        ];
+
+        for (const roleKey of privilegedRoleKeys) {
+            const role = getSystemRoleDefinition(roleKey);
+            expect(role.permissions).toContain(
+                CORE_PERMISSION.FILE_DELETE,
+            );
+        }
+
+        const restrictedRoleKeys = [
+            SYSTEM_ROLE_KEY.MANAGER,
+            SYSTEM_ROLE_KEY.MEMBER,
+            SYSTEM_ROLE_KEY.READER,
+        ];
+
+        for (const roleKey of restrictedRoleKeys) {
+            const role = getSystemRoleDefinition(roleKey);
+            expect(role.permissions).not.toContain(
+                CORE_PERMISSION.FILE_DELETE,
+            );
+        }
+    });
 });
