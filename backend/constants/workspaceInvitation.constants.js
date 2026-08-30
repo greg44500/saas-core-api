@@ -12,21 +12,30 @@ const WORKSPACE_INVITATION_STATUS = Object.freeze({
 });
 
 /**
- * Durée de validité métier d'une invitation.
+ * État du transport de l'invitation.
  *
- * La valeur est centralisée afin que le service, les tests et les futurs
- * transports email utilisent la même règle sans dupliquer un nombre magique.
+ * Le transport est volontairement séparé du statut métier : une invitation
+ * peut rester pending même si son email n'a pas pu être délivré.
+ */
+const WORKSPACE_INVITATION_DELIVERY_STATUS = Object.freeze({
+    PENDING: 'pending',
+    SENT: 'sent',
+    FAILED: 'failed',
+});
+
+/**
+ * Durée de validité métier d'une invitation.
  */
 const WORKSPACE_INVITATION_TTL_DAYS = 7;
 
 /**
  * Taille du secret aléatoire remis au destinataire.
- *
- * Seul le hash SHA-256 de ce secret sera persisté en base.
+ * Seul le hash SHA-256 de ce secret est persisté.
  */
 const WORKSPACE_INVITATION_TOKEN_BYTES = 32;
 
 export {
+    WORKSPACE_INVITATION_DELIVERY_STATUS,
     WORKSPACE_INVITATION_STATUS,
     WORKSPACE_INVITATION_TOKEN_BYTES,
     WORKSPACE_INVITATION_TTL_DAYS,
