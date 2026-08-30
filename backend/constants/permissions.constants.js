@@ -34,6 +34,15 @@ const CORE_PERMISSION = Object.freeze({
     SUBSCRIPTION_READ: 'subscription:read',
 
     /*
+     * Consultation de l'historique des actions sensibles du workspace.
+     *
+     * Cette permission reste distincte de workspace:read : accéder aux
+     * informations courantes d'un tenant ne doit pas donner automatiquement
+     * accès à son historique d'administration et de sécurité.
+     */
+    AUDIT_READ: 'audit:read',
+
+    /*
      * La lecture reste distincte de l'upload : perdre la capacité commerciale
      * de déposer de nouveaux contenus ne doit pas rendre inaccessibles les
      * fichiers actifs déjà détenus par le workspace.
