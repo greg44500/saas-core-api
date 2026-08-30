@@ -40,6 +40,8 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [x] TERMINÉ — design system basé sur variables/tokens sémantiques.
 - [x] TERMINÉ — palette personnalisée à intégrer via les tokens, sans couleurs de marque dispersées en dur.
 - [x] TERMINÉ — priorité explicite à la maintenabilité, la sécurité et la réutilisabilité.
+- [x] TERMINÉ — règle de documentation concise du code : commenter le pourquoi, les contraintes et invariants, jamais le code évident.
+- [x] TERMINÉ — JSDoc réservé aux APIs de composants/hooks/utilitaires non triviales, sans documentation mécanique.
 - [x] TERMINÉ — registre de cadrage `frontend-cadrage-ux-ui.md` créé.
 - [x] TERMINÉ — principes d’architecture/sécurité documentés.
 - [ ] À CADRER — utilisateurs de référence et densité UX.
@@ -254,6 +256,10 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [ ] À CADRER — conventions d’optimisation React sans memoization prématurée.
 - [ ] À FAIRE — éviter les appels API dupliqués.
 - [ ] À FAIRE — éviter la duplication de composants et logique.
+- [ ] À FAIRE — revoir la responsabilité d’un fichier lorsqu’il devient long ou mélange plusieurs préoccupations, plutôt qu’imposer un nombre arbitraire de lignes.
+- [ ] À FAIRE — maintenir des commentaires concis expliquant uniquement les décisions, contraintes, invariants et effets de bord non évidents.
+- [ ] À FAIRE — ne pas commenter mécaniquement `useState`, `useEffect`, handlers, JSX ou appels de hooks lorsque le code est auto-explicatif.
+- [ ] À FAIRE — utiliser JSDoc lorsque l’API d’un composant, hook ou utilitaire réutilisable mérite un contrat explicite.
 - [ ] À FAIRE — vérifier les effets de bord lors des changements de contrats API.
 - [ ] À FAIRE — maintenir les dépendances frontend maîtrisées ; pas d’ajout de librairie sans besoin clair.
 
