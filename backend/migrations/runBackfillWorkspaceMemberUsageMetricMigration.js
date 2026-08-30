@@ -19,7 +19,7 @@ const run = async () => {
     } catch (error) {
         console.error(
             'Échec de la migration backfillWorkspaceMemberUsageMetric :',
-            error,
+            { message: error.message },
         );
         process.exitCode = 1;
     } finally {
