@@ -12,6 +12,7 @@ const CORE_PERMISSION = Object.freeze({
 
     // Consultation et administration des appartenances au workspace.
     MEMBER_READ: 'member:read',
+    MEMBER_INVITE: 'member:invite',
     MEMBER_UPDATE: 'member:update',
     MEMBER_SUSPEND: 'member:suspend',
     MEMBER_REMOVE: 'member:remove',
@@ -41,6 +42,5 @@ const CORE_PERMISSION = Object.freeze({
      */
     FILE_UPLOAD: 'file:upload',
 });
-
 
 export { CORE_PERMISSION };
