@@ -9,6 +9,16 @@ import { Input } from '@/components/ui/input';
 import { useLoginMutation } from '@/features/auth/api/auth-api';
 import { loginSchema } from '@/features/auth/validation/auth-schemas';
 
+function getRequestedDestination(location) {
+  const destination = location.state?.from;
+
+  if (!destination?.pathname) {
+    return '/workspaces';
+  }
+
+  return `${destination.pathname}${destination.search ?? ''}${destination.hash ?? ''}`;
+}
+
 function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,10 +38,7 @@ function LoginPage() {
   const onSubmit = async (values) => {
     try {
       await login(values).unwrap();
-      const destination = location.state?.from;
-      navigate(destination ? `${destination.pathname}${destination.search ?? ''}${destination.hash ?? ''}` : '/', {
-        replace: true,
-      });
+      navigate(getRequestedDestination(location), { replace: true });
     } catch {
       setError('root.credentials', {
         type: 'server',
@@ -96,4 +103,4 @@ function LoginPage() {
   );
 }
 
-export { LoginPage };
+export { LoginPage, getRequestedDestination };
