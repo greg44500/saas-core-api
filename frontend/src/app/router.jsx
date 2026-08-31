@@ -45,6 +45,16 @@ function createAppRoutes() {
       Component: AuthGuard,
       children: [
         {
+          path: 'invitations/accept',
+          HydrateFallback: PageLoader,
+          lazy: async () => {
+            const { AcceptWorkspaceInvitationPage } = await import(
+              '@/features/workspace-invitation/pages/accept-workspace-invitation-page'
+            );
+            return { Component: AcceptWorkspaceInvitationPage };
+          },
+        },
+        {
           path: 'workspaces',
           HydrateFallback: PageLoader,
           lazy: async () => {
