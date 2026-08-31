@@ -2,7 +2,7 @@
 
 **Date :** 31 août 2026  
 **Lot :** F5  
-**Statut :** implémenté sur GitHub — validation locale requise
+**Statut :** TERMINÉ — validé localement
 
 ## Objectif
 
@@ -17,7 +17,6 @@ Implémenter le bootstrap réel de session, les guards Auth, les formulaires Log
 - `PageLoader` pendant `authStatus = checking` afin d’éviter le flash Login ;
 - conservation de la destination protégée demandée dans le state React Router ;
 - retour vers cette destination après login réussi ;
-- fallback post-login `/` lorsque aucune destination protégée n’existe ;
 - page Login réelle ;
 - page Register réelle ;
 - React Hook Form + resolver Zod ;
@@ -31,7 +30,10 @@ Implémenter le bootstrap réel de session, les guards Auth, les formulaires Log
 - double soumission empêchée via `isLoading` ;
 - erreur Login volontairement générique ;
 - register réussi → Login avec message de succès ;
-- navigation Login ↔ Register via le router.
+- navigation Login ↔ Register via le router ;
+- proxy Vite `/api` vers le backend de développement, configurable via `VITE_API_PROXY_TARGET` ;
+- arbre de routes isolé par router via `createAppRoutes()` ;
+- lazy routes alignées avec l’API React Router 8.
 
 ## Dépendances F5
 
@@ -75,6 +77,8 @@ Une route protégée demandée sans session suit :
 → retour à la destination initiale
 ```
 
+La résolution de destination post-login sans `state.from` est volontairement confiée à F6.
+
 ## Tests ajoutés / adaptés
 
 - validation Login conforme ;
@@ -88,6 +92,22 @@ Une route protégée demandée sans session suit :
 - accès Workspace authentifié ;
 - accès Platform authentifié ;
 - non-régression NotFound.
+
+## Validation locale obtenue
+
+Validations remontées le 31 août 2026 :
+
+- tests frontend : verts ;
+- build Vite : vert ;
+- tests backend : verts ;
+- parcours Register réel : fonctionnel via backend ;
+- parcours Login réel : fonctionnel via backend ;
+- bootstrap session réel : fonctionnel ;
+- `GuestGuard` validé ;
+- proxy Vite `/api` validé ;
+- `frontend/package-lock.json` versionné ;
+- commit de lock F5 présent sur `main` : `ba20378538588cc364ad7a6f56c19228cc3d221b` ;
+- working tree final annoncé propre.
 
 ## Volontairement exclu de F5
 
@@ -103,47 +123,6 @@ Une route protégée demandée sans session suit :
 - Account/Security UI ;
 - synchronisation multi-device de la préférence de thème.
 
-La destination de secours post-login reste donc `/` jusqu’à F6. Cette décision évite d’inventer un contexte workspace non encore chargé.
-
-## Validation locale requise
-
-Après `git pull`, depuis `frontend/` :
-
-```bash
-npm install
-npm run test
-npm run build
-npm run dev
-```
-
-Vérifier manuellement :
-
-1. `/login` affiche le formulaire Login ;
-2. `/register` affiche le formulaire Register ;
-3. mot de passe < 15 caractères → erreur inline ;
-4. confirmations différentes → erreur inline ;
-5. bouton d’affichage/masquage du password accessible ;
-6. navigation Login ↔ Register ;
-7. une route protégée non authentifiée redirige vers `/login` sans afficher brièvement le contenu protégé ;
-8. aucune erreur React/Redux/Router dans la console.
-
-Puis depuis la racine :
-
-```bash
-npm test
-git status --short
-```
-
-Le lockfile frontend doit être modifié par les trois dépendances F5 puis versionné après validation.
-
 ## Critères de clôture
 
-F5 pourra passer à `TERMINÉ` lorsque :
-
-- installation des dépendances réussie ;
-- tests frontend verts ;
-- build Vite vert ;
-- smoke test Auth visuel validé ;
-- tests backend verts ;
-- lockfile F5 versionné ;
-- working tree clean.
+Tous les critères de clôture F5 sont satisfaits. Le lot est terminé et la résolution post-login passe désormais sous la responsabilité de F6.
