@@ -18,6 +18,7 @@ frontend-state-management-policy.md
 frontend-design-system-components-policy.md
 frontend-performance-loading-policy.md
 frontend-ux-experience-policy.md
+frontend-routing-navigation-policy.md
 ```
 
 Le document `frontend-cadrage-ux-ui.md` reste le journal vivant des questions et arbitrages. Les politiques normatives ci-dessus fixent les règles déjà validées.
@@ -57,7 +58,7 @@ Les modales sont utilisées pour les interactions courtes, contextuelles ou sens
 
 ## 4. Palette et thème
 
-Palette de marque désormais fournie :
+Palette de marque :
 
 ```text
 #137C8B
@@ -127,7 +128,57 @@ TanStack Query n’est pas utilisé parallèlement à RTK Query.
 
 Référence détaillée : `frontend-state-management-policy.md`.
 
-## 7. Performance et chargement
+## 7. Routing, layouts et navigation
+
+Décisions actives :
+
+```text
+router              → React Router
+server state        → RTK Query, pas loaders router concurrents
+workspace context   → /workspaces/:workspaceId/*
+platform context    → /platform/*
+account context     → /account/*
+```
+
+Layouts distincts :
+
+```text
+PublicLayout
+AuthLayout
+WorkspaceLayout
+PlatformLayout
+```
+
+Navigation Workspace : sidebar gauche rétractable structurée par zones fonctionnelles, workspace switcher en partie haute, topbar sobre et contextuelle.
+
+Navigation Platform : contexte distinct mais composants de structure réutilisés avec une configuration Platform dédiée.
+
+Menu utilisateur : profil et sécurité accessibles depuis l’avatar/pastille ; logout rapidement accessible ; logout-all réservé à la zone sécurité/session.
+
+Guards séparés :
+
+```text
+Authentication Guard
+Workspace Guard
+Permission Guard
+Platform Guard
+```
+
+Traitement :
+
+```text
+401 → refresh/session puis login si nécessaire
+403 → Forbidden contextualisé
+404 → NotFound ou ressource masquée selon réponse backend
+```
+
+Après login, priorité à l’URL protégée initialement demandée lorsqu’elle reste autorisée. Un SUPER_ADMIN n’est pas redirigé automatiquement vers Platform uniquement en raison de son rôle.
+
+Lazy loading des routes Auth, Workspace et Platform par défaut, avec `PageLoader` partagé.
+
+Référence détaillée : `frontend-routing-navigation-policy.md`.
+
+## 8. Performance et chargement
 
 Décisions actives :
 
@@ -146,7 +197,7 @@ Une forte volumétrie de données ne doit jamais conduire à charger tout le dat
 
 Référence détaillée : `frontend-performance-loading-policy.md`.
 
-## 8. Expérience utilisateur contextuelle
+## 9. Expérience utilisateur contextuelle
 
 Le Core doit proposer une expérience plus qualitative qu’une simple interface CRUD lorsque les données disponibles permettent une contextualisation fiable.
 
@@ -167,7 +218,7 @@ Cette fonctionnalité ne doit être implémentée que si le backend fournit une 
 
 Référence détaillée : `frontend-ux-experience-policy.md`.
 
-## 9. Règle pour les futures reprises
+## 10. Règle pour les futures reprises
 
 Avant toute implémentation frontend :
 
