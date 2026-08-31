@@ -27,7 +27,7 @@ function WorkspaceEntryPage() {
               Vérifiez votre connexion puis réessayez.
             </p>
           </div>
-          <Button type="button" onClick={refetch}>Réessayer</Button>
+          <Button type="button" onClick={() => refetch()}>Réessayer</Button>
         </section>
       </main>
     );
