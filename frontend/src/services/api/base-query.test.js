@@ -47,6 +47,8 @@ function getRequestUrl(input) {
   return typeof input === 'string' ? input : input.url;
 }
 
+const TEST_API_BASE_URL = 'http://localhost/api';
+
 describe('baseQueryWithReauth', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -57,18 +59,24 @@ describe('baseQueryWithReauth', () => {
     vi.restoreAllMocks();
   });
 
+  async function createTestQueries() {
+    const { createBaseQueryWithReauth } = await import('@/services/api/base-query');
+    return createBaseQueryWithReauth({ baseUrl: TEST_API_BASE_URL });
+  }
+
   it('injecte centralement le Bearer depuis le store mémoire', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       jsonResponse({ status: 'success', data: { ok: true } }),
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const { rawBaseQuery } = await import('@/services/api/base-query');
+    const { rawBaseQuery } = await createTestQueries();
     const { api } = createApiHarness('memory-token');
 
     await rawBaseQuery('/protected', api, {});
 
     const request = fetchMock.mock.calls[0][0];
+    expect(request.url).toBe('http://localhost/api/protected');
     expect(request.headers.get('authorization')).toBe('Bearer memory-token');
     expect(request.credentials).toBe('include');
   });
@@ -102,7 +110,7 @@ describe('baseQueryWithReauth', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const { baseQueryWithReauth } = await import('@/services/api/base-query');
+    const { baseQueryWithReauth } = await createTestQueries();
     const { api, dispatch, state } = createApiHarness('expired-token');
 
     const result = await baseQueryWithReauth('/protected', api, {});
@@ -139,7 +147,7 @@ describe('baseQueryWithReauth', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const { baseQueryWithReauth } = await import('@/services/api/base-query');
+    const { baseQueryWithReauth } = await createTestQueries();
     const { api } = createApiHarness('expired-token');
 
     const result = await baseQueryWithReauth('/protected', api, {});
@@ -155,7 +163,7 @@ describe('baseQueryWithReauth', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const { baseQueryWithReauth } = await import('@/services/api/base-query');
+    const { baseQueryWithReauth } = await createTestQueries();
     const { api, dispatch } = createApiHarness();
 
     const result = await baseQueryWithReauth('/auth/login', api, {
@@ -184,8 +192,7 @@ describe('baseQueryWithReauth', () => {
       }
 
       protectedCalls += 1;
-      const request = input;
-      const authorization = request.headers.get('authorization');
+      const authorization = input.headers.get('authorization');
 
       if (authorization === 'Bearer fresh-token') {
         return jsonResponse({ status: 'success', data: { ok: true } });
@@ -195,7 +202,7 @@ describe('baseQueryWithReauth', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const { baseQueryWithReauth } = await import('@/services/api/base-query');
+    const { baseQueryWithReauth } = await createTestQueries();
     const { api } = createApiHarness('expired-token');
 
     const [firstResult, secondResult] = await Promise.all([
