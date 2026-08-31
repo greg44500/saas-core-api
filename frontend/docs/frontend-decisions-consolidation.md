@@ -20,6 +20,7 @@ frontend-performance-loading-policy.md
 frontend-ux-experience-policy.md
 frontend-routing-navigation-policy.md
 frontend-dashboard-activity-panel-policy.md
+frontend-auth-session-policy.md
 ```
 
 Le document `frontend-cadrage-ux-ui.md` reste le journal vivant des questions et arbitrages. Les politiques normatives ci-dessus fixent les règles déjà validées.
@@ -236,7 +237,60 @@ Lazy loading des routes Auth, Workspace et Platform par défaut, avec `PageLoade
 
 Référence détaillée : `frontend-routing-navigation-policy.md`.
 
-## 8. Performance et chargement
+## 8. Auth et cycle de session
+
+Décisions actives :
+
+```text
+access token        → mémoire uniquement
+refresh token       → cookie HttpOnly
+bootstrap session   → POST /auth/refresh
+authStatus initial  → checking
+server state        → RTK Query
+Auth lifecycle      → Redux Toolkit / mémoire
+```
+
+Le résultat de `/auth/refresh` initialise la session sans appel `/me` systématique immédiatement après, puisque le backend renvoie déjà `user + accessToken`.
+
+Toutes les requêtes protégées utilisent un `baseQueryWithReauth` centralisé qui injecte le Bearer token et gère les 401.
+
+### Refresh concurrent
+
+Un seul refresh est autorisé à la fois. Si plusieurs requêtes reçoivent 401 simultanément :
+
+```text
+première requête 401 → lance refresh
+autres 401           → attendent le même cycle de refresh
+refresh réussi       → nouveau token partagé
+                      → requêtes rejouées une fois
+```
+
+Cette règle est critique car le backend utilise une rotation du refresh token avec consommation unique et détection de réutilisation.
+
+Une requête n’est rejouée qu’une seule fois après refresh afin d’éviter toute boucle.
+
+Les endpoints Auth publics comme login, register, forgot/reset password et refresh lui-même ne déclenchent pas automatiquement un reauth sur leurs 401 naturels.
+
+### Flows
+
+```text
+login            → access token mémoire + cookie backend + navigation déterministe
+register         → succès puis Login, pas d’auto-login artificiel
+logout           → clear Auth + reset RTK Query + Login
+logout-all       → confirmation + clear Auth/cache + Login
+change-password  → toutes sessions révoquées + clear Auth/cache + Login
+reset-password   → session non recréée + Login
+forgot-password  → message générique anti-enumération
+refresh échoué   → session terminée + nettoyage + Login
+```
+
+Le cache RTK Query sensible est nettoyé à chaque changement d’identité/session définitif afin d’éviter toute fuite visuelle ou incohérence multi-user.
+
+La destination protégée initialement demandée reste sous la responsabilité du router et est restaurée après login lorsqu’elle reste autorisée.
+
+Référence détaillée : `frontend-auth-session-policy.md`.
+
+## 9. Performance et chargement
 
 Décisions actives :
 
@@ -255,7 +309,7 @@ Une forte volumétrie de données ne doit jamais conduire à charger tout le dat
 
 Référence détaillée : `frontend-performance-loading-policy.md`.
 
-## 9. Expérience utilisateur contextuelle
+## 10. Expérience utilisateur contextuelle
 
 Le Core doit proposer une expérience plus qualitative qu’une simple interface CRUD lorsque les données disponibles permettent une contextualisation fiable.
 
@@ -276,7 +330,7 @@ Cette fonctionnalité ne doit être implémentée que si le backend fournit une 
 
 Référence détaillée : `frontend-ux-experience-policy.md`.
 
-## 10. Dashboards Workspace et Platform
+## 11. Dashboards Workspace et Platform
 
 ### Dashboard Workspace
 
@@ -313,7 +367,7 @@ Tant qu’il n’existe pas, l’Overview Platform reste un hub utile vers Users
 
 Référence détaillée : `frontend-dashboard-activity-panel-policy.md`.
 
-## 11. Panneaux contextuels et règles d’édition
+## 12. Panneaux contextuels et règles d’édition
 
 Les listes/tableaux professionnels utilisent lorsque pertinent un panneau latéral contextuel (`DetailsPanel`/`Sheet`) pour consulter ou éditer une entité sans perdre pagination, filtres, recherche ou position dans la liste.
 
@@ -342,7 +396,7 @@ Après mutation réussie, un toast peut confirmer l’action. Les erreurs de cha
 
 Référence détaillée : `frontend-dashboard-activity-panel-policy.md`.
 
-## 12. Règle pour les futures reprises
+## 13. Règle pour les futures reprises
 
 Avant toute implémentation frontend :
 
