@@ -25,6 +25,8 @@ frontend-auth-forms-ux-policy.md
 frontend-subscription-navigation-ux-policy.md
 frontend-onboarding-workspace-policy.md
 frontend-feedback-errors-policy.md
+frontend-final-foundations-policy.md
+frontend-f0-readiness-checklist.md
 ```
 
 Le document `frontend-cadrage-ux-ui.md` reste le journal vivant des questions et arbitrages. Les politiques normatives ci-dessus fixent les règles déjà validées.
@@ -315,12 +317,48 @@ Booléen → Switch ; valeur exclusive courte → Select ; valeur exclusive rech
 
 Modification significative → Annuler/Enregistrer explicite ; autosave → faible risque seulement ; destructif/irréversible → confirmation supplémentaire.
 
-## 17. Règle pour les futures reprises
+## 17. Fondations finales d'implémentation
+
+Le cadrage F0 est clôturé avec les conventions suivantes :
+
+```text
+alias principal        → @/ vers src/
+composants React       → PascalCase
+hooks/utilitaires      → camelCase
+routes multi-mots      → kebab-case
+tests composants       → Vitest + React Testing Library + user-event
+E2E                    → Playwright dans frontend/e2e
+couverture             → orientée risques, sans seuil arbitraire initial
+```
+
+Les tests sont orientés comportements utilisateur et contrats visibles, avec sélecteurs accessibles privilégiés.
+
+La structure cible reste organisée par responsabilités : `app`, `components/ui`, `components/shared`, `components/forms`, `components/data-display`, `features`, `services/api`, `store`, `hooks`, `lib`, `utils`, `assets`.
+
+Aucune abstraction, dépendance, couche globale ou nouveau dossier transverse n'est ajouté sans problème concret identifié.
+
+Ordre d'implémentation validé :
+
+```text
+F1 — React + Vite
+F2 — Tailwind + shadcn/ui + tokens de base
+F3 — Router + providers + layouts minimaux
+F4 — Redux Toolkit + RTK Query + infrastructure Auth/session
+F5 — Login/Register + bootstrap session
+F6 — onboarding Workspace Free
+F7 — shell Workspace + premières pages Core
+```
+
+Références : `frontend-final-foundations-policy.md` et `frontend-f0-readiness-checklist.md`.
+
+## 18. Règle pour les futures reprises
 
 Avant toute implémentation frontend :
 
-1. consulter le cadrage UX/UI ;
-2. consulter les politiques normatives concernées ;
-3. vérifier la checklist ;
-4. vérifier le contrat backend/frontend ;
-5. ne pas réintroduire une ancienne option remplacée par une décision normative plus récente.
+1. consulter les politiques normatives concernées ;
+2. vérifier la checklist du lot ;
+3. vérifier le contrat backend/frontend ;
+4. ne pas réintroduire une ancienne option remplacée par une décision normative plus récente ;
+5. résoudre les détails non bloquants dans le lot qui les rencontre plutôt que de rouvrir une phase générale de cadrage.
+
+Le frontend est désormais considéré prêt pour l'implémentation F1.
