@@ -5,10 +5,12 @@ import { AuthLayout } from '@/app/layouts/auth-layout';
 import { PlatformLayout } from '@/app/layouts/platform-layout';
 import { PublicLayout } from '@/app/layouts/public-layout';
 import { WorkspaceLayout } from '@/app/layouts/workspace-layout';
+import { PageLoader } from '@/components/shared/page-loader';
 
 const appRoutes = [
   {
     Component: PublicLayout,
+    HydrateFallback: PageLoader,
     children: [
       {
         index: true,
@@ -18,6 +20,7 @@ const appRoutes = [
   },
   {
     Component: AuthLayout,
+    HydrateFallback: PageLoader,
     children: [
       {
         path: '/login',
@@ -38,6 +41,7 @@ const appRoutes = [
   {
     path: '/workspaces/:workspaceId',
     Component: WorkspaceLayout,
+    HydrateFallback: PageLoader,
     children: [
       {
         path: 'dashboard',
@@ -52,6 +56,7 @@ const appRoutes = [
   {
     path: '/platform',
     Component: PlatformLayout,
+    HydrateFallback: PageLoader,
     children: [
       {
         path: 'overview',
@@ -65,6 +70,7 @@ const appRoutes = [
   },
   {
     path: '*',
+    HydrateFallback: PageLoader,
     lazy: {
       Component: async () =>
         (await import('@/pages/not-found-page')).NotFoundPage,
