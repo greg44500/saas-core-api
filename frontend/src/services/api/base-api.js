@@ -1,0 +1,11 @@
+import { createApi } from '@reduxjs/toolkit/query/react';
+
+import { baseQueryWithReauth } from '@/services/api/base-query';
+
+const baseApi = createApi({
+  reducerPath: 'coreApi',
+  baseQuery: baseQueryWithReauth,
+  endpoints: () => ({}),
+});
+
+export { baseApi };
