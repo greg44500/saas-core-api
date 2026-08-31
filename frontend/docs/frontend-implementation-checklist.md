@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Checklist d’implémentation Frontend Core V1
 
 **Statut :** initialisation F0  
-**Dernière consolidation :** 30 août 2026
+**Dernière consolidation :** 31 août 2026
 
 ## 1. Rôle du document
 
@@ -36,18 +36,23 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [x] TERMINÉ — Tailwind CSS retenu.
 - [x] TERMINÉ — shadcn/ui retenu en JavaScript.
 - [x] TERMINÉ — Lucide retenu pour les icônes.
-- [x] TERMINÉ — dark mode prévu dès l’architecture.
+- [x] TERMINÉ — dark mode obligatoire dès l’architecture.
 - [x] TERMINÉ — design system basé sur variables/tokens sémantiques.
-- [x] TERMINÉ — palette personnalisée à intégrer via les tokens, sans couleurs de marque dispersées en dur.
+- [x] TERMINÉ — thème de couleurs de marque à intégrer via les tokens, sans couleurs de marque dispersées en dur.
 - [x] TERMINÉ — priorité explicite à la maintenabilité, la sécurité et la réutilisabilité.
 - [x] TERMINÉ — règle de documentation concise du code : commenter le pourquoi, les contraintes et invariants, jamais le code évident.
 - [x] TERMINÉ — JSDoc réservé aux APIs de composants/hooks/utilitaires non triviales, sans documentation mécanique.
 - [x] TERMINÉ — registre de cadrage `frontend-cadrage-ux-ui.md` créé.
 - [x] TERMINÉ — principes d’architecture/sécurité documentés.
-- [ ] À CADRER — utilisateurs de référence et densité UX.
-- [ ] À CADRER — structure globale de navigation.
-- [ ] À CADRER — responsive cible.
-- [ ] À CADRER — identité visuelle et palette.
+- [x] TERMINÉ — politique normative de gestion d’état documentée dans `frontend-state-management-policy.md`.
+- [x] TERMINÉ — utilisateur de référence : professionnel métier non nécessairement technique.
+- [x] TERMINÉ — densité UX professionnelle intermédiaire par défaut ; Platform potentiellement plus dense.
+- [x] TERMINÉ — responsive complet desktop/tablette/mobile comme exigence fonctionnelle.
+- [x] TERMINÉ — principe d’une sidebar gauche rétractable pour les interfaces authentifiées.
+- [x] TERMINÉ — principe d’un bandeau supérieur avec contexte utilisateur, accès profil et déconnexion rapide.
+- [x] TERMINÉ — principe d’usage des modales lorsque l’interaction courte, sensible ou contextuelle le justifie.
+- [ ] À CADRER — structure globale détaillée de navigation et routing.
+- [ ] À CADRER — palette de marque exacte et déclinaisons clair/sombre.
 - [ ] À CADRER — typographie.
 - [ ] À CADRER — conventions de spacing, radius, ombres et densité.
 - [ ] À CADRER — choix de la librairie/stratégie de formulaires.
@@ -66,6 +71,12 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 
 ## 3. Architecture applicative
 
+- [x] TERMINÉ — server state attribué à RTK Query.
+- [x] TERMINÉ — global client state attribué à Redux Toolkit uniquement lorsqu’il est réellement transverse et non couvert par une meilleure source de vérité.
+- [x] TERMINÉ — local UI state attribué à `useState`/`useReducer`.
+- [x] TERMINÉ — navigation state partageable/rechargeable attribué à l’URL/router.
+- [x] TERMINÉ — données dérivables non dupliquées dans le store.
+- [x] TERMINÉ — TanStack Query non retenu parallèlement à RTK Query.
 - [ ] À CADRER — router retenu et conventions de routes.
 - [ ] À CADRER — layouts Public / Authenticated / Workspace / Platform.
 - [ ] À CADRER — conventions d’import et aliases.
@@ -81,8 +92,8 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 
 ## 4. Design system
 
-- [ ] À CADRER — palette claire.
-- [ ] À CADRER — palette sombre.
+- [ ] À CADRER — palette claire de marque.
+- [ ] À CADRER — palette sombre dérivée de la marque et des tokens sémantiques.
 - [ ] À CADRER — couleurs sémantiques de statut : success, warning, info, destructive si extension nécessaire.
 - [ ] À CADRER — typographie.
 - [ ] À CADRER — échelle de spacing.
@@ -102,6 +113,9 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [ ] À CADRER — comportement après register.
 - [ ] À CADRER — messages d’erreur Auth.
 - [ ] À CADRER — stratégie de refresh et bootstrap de session.
+- [ ] À CADRER — contenu exact du menu utilisateur du bandeau supérieur.
+- [x] TERMINÉ — accès au profil prévu depuis l’avatar/pastille utilisateur.
+- [x] TERMINÉ — déconnexion accessible rapidement depuis un emplacement logique et constant.
 - [ ] À FAIRE — page login.
 - [ ] À FAIRE — page register.
 - [ ] À FAIRE — forgot password.
@@ -118,6 +132,10 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 
 ## 6. Navigation et contexte Workspace
 
+- [x] TERMINÉ — principe d’une sidebar gauche rétractable sur les interfaces authentifiées.
+- [x] TERMINÉ — sidebar ouverte : icônes + libellés ; sidebar rétractée : icônes conservées avec identification accessible.
+- [x] TERMINÉ — bandeau supérieur avec contexte utilisateur et actions globales.
+- [ ] À CADRER — arborescence exacte de navigation Workspace.
 - [ ] À CADRER — sélection du workspace actif.
 - [ ] À CADRER — persistance éventuelle du workspace actif.
 - [ ] À CADRER — comportement lorsqu’un utilisateur n’a aucun workspace.
@@ -185,7 +203,9 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 ## 12. Platform SUPER_ADMIN
 
 - [x] TERMINÉ — principe d’une console Platform distincte retenu comme exigence de cadrage.
-- [ ] À CADRER — layout/navigation Platform.
+- [x] TERMINÉ — périmètre minimal : Overview, Users, Workspaces, Plans, Subscriptions, Audit Logs.
+- [x] TERMINÉ — aucun KPI ou état métier inventé côté frontend sans exposition backend correspondante.
+- [ ] À CADRER — layout/navigation Platform détaillés.
 - [ ] À CADRER — dashboard Platform et métriques réellement disponibles.
 - [ ] À CADRER — priorisation des opérations de pilotage.
 - [ ] À FAIRE — Platform Users.
@@ -199,11 +219,14 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 
 ## 13. UX transversale
 
+- [x] TERMINÉ — principe : modales utilisées uniquement lorsque pertinentes pour une interaction courte, sensible ou contextuelle.
+- [x] TERMINÉ — une tâche longue/complexe ne doit pas être forcée dans une modale si une page dédiée ou un parcours guidé est plus approprié.
+- [x] TERMINÉ — formulaires guidés avec labels explicites, placeholders utiles seulement, et erreurs proches du champ concerné.
 - [ ] À CADRER — loaders : spinner, skeleton, progressive loading.
 - [ ] À CADRER — empty states.
 - [ ] À CADRER — toasts.
 - [ ] À CADRER — erreurs inline vs globales.
-- [ ] À CADRER — confirmations destructrices.
+- [ ] À CADRER — confirmations destructrices détaillées.
 - [ ] À CADRER — dirty forms / navigation avec changements non sauvegardés.
 - [ ] À CADRER — pagination.
 - [ ] À CADRER — recherche et debounce.
@@ -212,9 +235,11 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 
 ## 14. Responsive et accessibilité
 
+- [x] TERMINÉ — responsive complet desktop/tablette/mobile comme exigence générale.
+- [x] TERMINÉ — desktop reste le contexte principal des écrans professionnels complexes sans rendre les fonctions essentielles inutilisables sur tablette/mobile.
 - [ ] À CADRER — breakpoints fonctionnels et comportement de navigation.
 - [ ] À CADRER — adaptation tableaux mobile.
-- [ ] À CADRER — stratégie sidebar/drawer.
+- [ ] À CADRER — stratégie sidebar/drawer sur tablette/mobile.
 - [ ] À FAIRE — navigation clavier.
 - [ ] À FAIRE — focus visible.
 - [ ] À FAIRE — labels et descriptions accessibles.
@@ -227,6 +252,8 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [x] TERMINÉ — principe : aucun secret dans le bundle client.
 - [x] TERMINÉ — principe : l’UI ne remplace jamais l’autorisation backend.
 - [x] TERMINÉ — principe : minimiser la persistance navigateur.
+- [x] TERMINÉ — principe : refresh token jamais exposé au state JavaScript ; cookie HttpOnly selon contrat backend.
+- [x] TERMINÉ — principe : access token non persisté dans le navigateur ; stratégie mémoire à finaliser pendant Auth/session.
 - [ ] À CADRER — données autorisées en localStorage/sessionStorage, si nécessaire.
 - [ ] À CADRER — stratégie CSP/headers côté déploiement frontend lorsque l’hébergement sera défini.
 - [ ] À FAIRE — gestion sûre des erreurs API.
@@ -266,6 +293,7 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 ## 18. Documentation et futurs modules métier
 
 - [x] TERMINÉ — OpenAPI n’est pas requis pendant la phase actuelle ; contrats Markdown backend/frontend utilisés.
+- [x] TERMINÉ — politique de state management consolidée et normative.
 - [ ] À CADRER — contrat UI/UX frontend consolidé après les blocs de cadrage structurants.
 - [ ] À FAIRE — documenter les conventions réutilisables pour les futurs modules métier.
 - [ ] À FAIRE — maintenir cette checklist à chaque lot.
