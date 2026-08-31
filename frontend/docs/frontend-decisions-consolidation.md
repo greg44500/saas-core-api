@@ -24,6 +24,7 @@ frontend-auth-session-policy.md
 frontend-auth-forms-ux-policy.md
 frontend-subscription-navigation-ux-policy.md
 frontend-onboarding-workspace-policy.md
+frontend-feedback-errors-policy.md
 ```
 
 Le document `frontend-cadrage-ux-ui.md` reste le journal vivant des questions et arbitrages. Les politiques normatives ci-dessus fixent les règles déjà validées.
@@ -255,29 +256,66 @@ Le futur Billing complète la surface Subscription/Workspace et ne migre pas dan
 
 Références : `frontend-subscription-navigation-ux-policy.md` et `frontend-onboarding-workspace-policy.md`.
 
-## 12. Performance et chargement
+## 12. Feedback utilisateur, erreurs et confirmations
+
+La politique active suit une règle de proximité :
+
+```text
+erreur de champ             → inline
+erreur de formulaire        → dans la surface concernée
+succès de mutation          → toast si utile
+erreur de chargement local  → état d'erreur local
+erreur de route             → page d'état
+action destructive          → confirmation avant action
+```
+
+Une infrastructure globale unique de toasts est utilisée avec variantes `success`, `info`, `warning`, `error`. Les toasts ne sont pas utilisés pour les navigations évidentes ni pour chaque erreur de lecture.
+
+Les erreurs RTK Query passent par une couche centrale de normalisation (`normalizeApiError` / abstraction équivalente). Les comparaisons dispersées basées sur le texte exact des messages backend sont interdites.
+
+401 récupérable → invisible ; 401 définitif → nettoyage session/cache + Login ; 403 → feedback local ou surface Forbidden ; 404 → NotFound sans révéler une permission masquée ; 500 → message générique ; erreur réseau → message dédié + retry lorsque possible.
+
+Un échec de refetch ne supprime pas automatiquement les données déjà disponibles dans le cache.
+
+Les quotas, plans et entitlements dépassés utilisent une logique de remédiation plutôt qu'une simple erreur : explication + usage/limite + CTA adapté si pertinent.
+
+Les actions destructrices utilisent une confirmation explicite avec conséquences réelles et libellé d'action précis. Les confirmations renforcées sont réservées aux opérations réellement critiques.
+
+Pendant une mutation : feedback local, bouton disabled, pas de blocage plein écran sans nécessité. Après succès : UI réellement mise à jour + toast éventuel. Après échec : données saisies conservées et surface maintenue ouverte.
+
+Une famille partagée `StateMessage`/`ErrorState`/`ForbiddenState`/`NotFoundState`/`NetworkErrorState` est retenue.
+
+Une React Error Boundary protège les grands contextes applicatifs contre les erreurs de rendu inattendues.
+
+Les feedbacks importants respectent l'accessibilité (`aria-live`, `role="alert"`, gestion du focus selon contexte) et ne reposent jamais uniquement sur la couleur.
+
+Aucun secret ou credential (`password`, access/refresh/reset token, etc.) n'est journalisé côté client.
+
+Référence : `frontend-feedback-errors-policy.md`.
+
+## 13. Performance et chargement
 
 Route-level code splitting → React lazy/Suspense ; route → PageLoader ; contenu structurant → Skeleton ; mutations locales → feedback local ; datasets importants → pagination/recherche/tri/filtres serveur ; infinite loading uniquement si UX justifiée ; virtualisation seulement si nécessaire.
 
-## 13. Expérience utilisateur contextuelle
+## 14. Expérience utilisateur contextuelle
 
 Le Core propose lorsque les données le permettent : accueil contextuel, message de retour, empty states guidés, remédiations quota/permission/entitlement, feedback clair et progressive disclosure.
 
 Le frontend n’invente jamais une dernière connexion ou un état métier non fourni par le backend.
 
-## 14. Dashboards Workspace et Platform
+## 15. Dashboards Workspace et Platform
 
 Dashboard Workspace : synthèse opérationnelle extensible avec accueil, éléments à traiter/surveiller, indicateurs Core, actions rapides, activité récente et widgets métier futurs.
 
 Platform Overview : centre de pilotage global ; pas de faux KPI. Un futur endpoint agrégé reste recommandé avant métriques globales réelles.
 
-## 15. Panneaux contextuels et règles d’édition
+## 16. Panneaux contextuels et règles d’édition
 
 Booléen → Switch ; valeur exclusive courte → Select ; valeur exclusive recherchée → Combobox ; choix multiples → Checkbox/multi-select.
 
 Modification significative → Annuler/Enregistrer explicite ; autosave → faible risque seulement ; destructif/irréversible → confirmation supplémentaire.
 
-## 16. Règle pour les futures reprises
+## 17. Règle pour les futures reprises
 
 Avant toute implémentation frontend :
 
