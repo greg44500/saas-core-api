@@ -2,7 +2,7 @@
 
 **Date :** 31 août 2026  
 **Lot :** F1  
-**Statut :** implémenté sur GitHub — validation locale requise
+**Statut :** validation fonctionnelle locale réussie — lockfile à versionner
 
 ## Objectif
 
@@ -23,9 +23,10 @@ Initialiser le frontend React/Vite JavaScript et son socle de tests sans perturb
 - `@testing-library/user-event` ;
 - setup global de nettoyage RTL ;
 - smoke test React interactif ;
-- nettoyage du boilerplate Vite : aucun asset ou composant de démonstration inutile ;
+- nettoyage du boilerplate Vite ;
 - `.gitignore` frontend pour `node_modules`, `dist` et fichiers locaux ;
-- scripts `dev`, `build`, `preview`, `test`, `test:watch`.
+- scripts `dev`, `build`, `preview`, `test`, `test:watch` ;
+- isolation de la suite backend via les scripts Vitest racine ciblant `backend/`.
 
 ## Vérifications couvertes par le smoke test
 
@@ -34,6 +35,19 @@ Le test `src/App.test.jsx` vérifie :
 1. que React rend correctement le composant racine ;
 2. que l’alias `@/` est résolu dans l’environnement de test ;
 3. qu’une interaction utilisateur déclenche une mise à jour React.
+
+## Validation locale du 31 août 2026
+
+Validation communiquée après exécution locale :
+
+- `npm install` frontend : réussi ;
+- `npm run test` frontend : **1 test passé** ;
+- `npm run build` frontend : réussi ;
+- `npm run dev` : fonctionnement validé ;
+- suite backend depuis la racine : tous les tests verts ;
+- `frontend/package-lock.json` généré par npm et contrôlé comme cohérent avec le `frontend/package.json`.
+
+Aucune régression fonctionnelle n’a été signalée sur le backend.
 
 ## Volontairement exclu de F1
 
@@ -49,44 +63,20 @@ Le test `src/App.test.jsx` vérifie :
 
 Ces éléments appartiennent respectivement aux lots F2 et suivants.
 
-## Validation locale requise
+## Lockfile
 
-Après `git pull`, depuis la racine du dépôt :
-
-```bash
-cd frontend
-npm install
-npm run test
-npm run build
-```
-
-Puis, dans un second terminal ou après interruption du processus de développement :
-
-```bash
-npm run dev
-```
-
-Vérifier que Vite démarre et que la page affiche `Frontend Core V1`.
-
-Enfin, depuis la racine du dépôt :
-
-```bash
-npm test
-```
-
-Cette dernière commande valide l’absence de régression backend.
+Le premier `npm install` local a généré le vrai `frontend/package-lock.json` (lockfile v3). Il doit être versionné pour permettre des installations reproductibles via `npm ci`.
 
 ## Critères de clôture
 
-F1 pourra passer de `implémenté` à `TERMINÉ` lorsque :
+Les critères fonctionnels de F1 sont validés :
 
-- `npm install` frontend réussit ;
-- `npm run test` frontend est vert ;
-- `npm run build` frontend est vert ;
-- `npm run dev` démarre correctement ;
-- les tests backend restent verts ;
-- aucun document `frontend/docs/` n’a été perdu.
+- application Vite démarrable ;
+- build Vite réussi ;
+- Vitest / RTL opérationnels ;
+- premier smoke test vert ;
+- alias `@/` opérationnel ;
+- documentation frontend conservée ;
+- backend non impacté.
 
-## Note sur le lockfile
-
-Le connecteur GitHub ne résout pas lui-même l’arbre npm. Le fichier `frontend/package-lock.json` doit être produit par le premier `npm install` réalisé dans l’environnement local avec npm, puis versionné afin de figer la résolution effective des dépendances.
+La seule action Git restante avant clôture administrative complète de F1 est le versionnement de `frontend/package-lock.json`.
