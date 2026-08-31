@@ -23,6 +23,7 @@ frontend-dashboard-activity-panel-policy.md
 frontend-auth-session-policy.md
 frontend-auth-forms-ux-policy.md
 frontend-subscription-navigation-ux-policy.md
+frontend-onboarding-workspace-policy.md
 ```
 
 Le document `frontend-cadrage-ux-ui.md` reste le journal vivant des questions et arbitrages. Les politiques normatives ci-dessus fixent les règles déjà validées.
@@ -194,25 +195,43 @@ Auth et choix commercial restent séparés.
 
 Référence : `frontend-auth-forms-ux-policy.md`.
 
-## 10. Onboarding, plan Free et choix commercial
+## 10. Onboarding Workspace
 
-L’identité utilisateur est créée indépendamment du choix commercial.
+Après login, une résolution de contexte décide entre invitation, workspace existant, création de workspace, choix multi-workspaces ou Platform pour les cas autorisés.
 
-Pour un utilisateur créant son propre workspace :
+Priorité : une invitation valide et pertinente vers un workspace existant est traitée avant de proposer la création d’un workspace personnel.
+
+Un utilisateur possédant déjà un workspace ne repasse pas dans l’onboarding commercial à chaque connexion.
+
+Pour un utilisateur sans workspace :
 
 ```text
-compte
-→ connexion
-→ onboarding workspace
-→ choix Free / trial / plan disponible
-→ application
+Créer workspace
+↓
+Free actif immédiatement
+↓
+[Accéder à mon espace]
+ou
+[Comparer les plans]
 ```
 
-Le plan Free fournit un chemin d’entrée fonctionnel et ne doit jamais être présenté comme une absence d’abonnement.
+Le choix commercial est facultatif après création. Le frontend ne place pas un plan payant avant la création du workspace comme condition d’accès.
 
-Un utilisateur rejoignant un workspace existant ne choisit pas d’abonnement personnel si la subscription appartient déjà au workspace.
+Le trial n’est jamais démarré automatiquement : il résulte d’une action volontaire explicite. Aucun moyen de paiement n’est artificiellement demandé tant que le backend n’en exige pas.
 
-Référence : `frontend-subscription-navigation-ux-policy.md`.
+L’onboarding obligatoire reste minimal ; les découvertes fonctionnelles et commerciales se poursuivent ensuite par progressive disclosure dans l’application.
+
+Destination finale commune après création Free ou trial : `/workspaces/:workspaceId/dashboard`.
+
+Une invitation invalide/expirée propose une remédiation (`Voir mes workspaces` ou `Créer mon espace`) au lieu d’un dead end.
+
+Aucun flag `onboardingCompleted` n’est introduit tant que l’état est dérivable du contexte réel.
+
+SUPER_ADMIN : accès Platform possible sans obligation de créer un workspace personnel ; il n’est pas automatiquement forcé vers Platform non plus.
+
+Aucune jauge artificielle de progression onboarding tant que le parcours obligatoire reste court.
+
+Référence : `frontend-onboarding-workspace-policy.md`.
 
 ## 11. Subscription Workspace
 
@@ -232,9 +251,9 @@ Les actions commerciales sont affichées uniquement aux utilisateurs autorisés 
 
 Free est un vrai plan actif.
 
-Le futur Billing (paiement, factures, TVA, provider) complète la surface Subscription/Workspace et ne migre pas dans le profil utilisateur.
+Le futur Billing complète la surface Subscription/Workspace et ne migre pas dans le profil utilisateur.
 
-Référence : `frontend-subscription-navigation-ux-policy.md`.
+Références : `frontend-subscription-navigation-ux-policy.md` et `frontend-onboarding-workspace-policy.md`.
 
 ## 12. Performance et chargement
 
