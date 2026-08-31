@@ -27,12 +27,18 @@ describe('Role permission validation', () => {
         ).resolves.toBeUndefined();
     });
 
+    it('normalise les permissions en minuscules avant validation', async () => {
+        const role = buildRole(['workspace:Read']);
+
+        await expect(role.validate()).resolves.toBeUndefined();
+        expect(role.permissions).toEqual(['workspace:read']);
+    });
+
     it.each([
         'workspace',
         ':read',
         'workspace:',
         'workspace::read',
-        'workspace:Read',
         'workspace:ownership transfer',
     ])('refuse le format invalide %s', async (permission) => {
         await expect(
