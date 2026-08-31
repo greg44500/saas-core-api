@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router/dom';
 
 import { appRouter } from '@/app/router';
 import { ThemeProvider } from '@/components/shared/theme-provider';
+import { SessionBootstrap } from '@/features/auth/components/session-bootstrap';
 import { appStore } from '@/store/store';
 
 function AppProviders({
@@ -13,7 +14,9 @@ function AppProviders({
   return (
     <Provider store={store}>
       <ThemeProvider storageScope={themeScope}>
-        <RouterProvider router={router} />
+        <SessionBootstrap>
+          <RouterProvider router={router} />
+        </SessionBootstrap>
       </ThemeProvider>
     </Provider>
   );
