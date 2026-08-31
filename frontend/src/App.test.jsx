@@ -1,27 +1,49 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import App from '@/App';
 
-describe('App', () => {
-  it('rend le socle frontend et répond à une interaction utilisateur', async () => {
+describe('App design system foundation', () => {
+  beforeEach(() => {
+    document.documentElement.classList.remove('dark');
+  });
+
+  afterEach(() => {
+    cleanup();
+    document.documentElement.classList.remove('dark');
+  });
+
+  it('rend les fondations F2 et les variantes principales du bouton', () => {
+    render(<App />);
+
+    expect(
+      screen.getByRole('heading', { name: 'Fondations UI prêtes' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Action principale' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Secondaire' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Contour' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Destructif' })).toBeInTheDocument();
+  });
+
+  it('bascule entre les thèmes clair et sombre sans persistance client', async () => {
     const user = userEvent.setup();
 
     render(<App />);
 
-    expect(
-      screen.getByRole('heading', { name: 'Frontend Core V1' }),
-    ).toBeInTheDocument();
-
-    const verificationButton = screen.getByRole('button', {
-      name: 'Vérifier l’interaction (0)',
+    const themeToggle = screen.getByRole('button', {
+      name: 'Activer le thème sombre',
     });
 
-    await user.click(verificationButton);
+    expect(document.documentElement).not.toHaveClass('dark');
 
+    await user.click(themeToggle);
+
+    expect(document.documentElement).toHaveClass('dark');
     expect(
-      screen.getByRole('button', { name: 'Vérifier l’interaction (1)' }),
+      screen.getByRole('button', { name: 'Activer le thème clair' }),
     ).toBeInTheDocument();
   });
 });
