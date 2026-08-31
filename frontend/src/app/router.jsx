@@ -6,65 +6,71 @@ import { PlatformLayout } from '@/app/layouts/platform-layout';
 import { PublicLayout } from '@/app/layouts/public-layout';
 import { WorkspaceLayout } from '@/app/layouts/workspace-layout';
 import { PageLoader } from '@/components/shared/page-loader';
+import { AuthGuard, GuestGuard } from '@/features/auth/components/auth-guard';
 
 const appRoutes = [
   {
     Component: PublicLayout,
     HydrateFallback: PageLoader,
+    children: [{ index: true, Component: App }],
+  },
+  {
+    Component: GuestGuard,
     children: [
       {
-        index: true,
-        Component: App,
+        Component: AuthLayout,
+        HydrateFallback: PageLoader,
+        children: [
+          {
+            path: '/login',
+            lazy: {
+              Component: async () =>
+                (await import('@/features/auth/pages/login-page')).LoginPage,
+            },
+          },
+          {
+            path: '/register',
+            lazy: {
+              Component: async () =>
+                (await import('@/features/auth/pages/register-page')).RegisterPage,
+            },
+          },
+        ],
       },
     ],
   },
   {
-    Component: AuthLayout,
-    HydrateFallback: PageLoader,
+    Component: AuthGuard,
     children: [
       {
-        path: '/login',
-        lazy: {
-          Component: async () =>
-            (await import('@/features/auth/pages/login-placeholder-page')).LoginPlaceholderPage,
-        },
+        path: '/workspaces/:workspaceId',
+        Component: WorkspaceLayout,
+        HydrateFallback: PageLoader,
+        children: [
+          {
+            path: 'dashboard',
+            lazy: {
+              Component: async () =>
+                (await import('@/features/workspace/pages/workspace-dashboard-placeholder-page'))
+                  .WorkspaceDashboardPlaceholderPage,
+            },
+          },
+        ],
       },
       {
-        path: '/register',
-        lazy: {
-          Component: async () =>
-            (await import('@/features/auth/pages/register-placeholder-page')).RegisterPlaceholderPage,
-        },
-      },
-    ],
-  },
-  {
-    path: '/workspaces/:workspaceId',
-    Component: WorkspaceLayout,
-    HydrateFallback: PageLoader,
-    children: [
-      {
-        path: 'dashboard',
-        lazy: {
-          Component: async () =>
-            (await import('@/features/workspace/pages/workspace-dashboard-placeholder-page'))
-              .WorkspaceDashboardPlaceholderPage,
-        },
-      },
-    ],
-  },
-  {
-    path: '/platform',
-    Component: PlatformLayout,
-    HydrateFallback: PageLoader,
-    children: [
-      {
-        path: 'overview',
-        lazy: {
-          Component: async () =>
-            (await import('@/features/platform/pages/platform-overview-placeholder-page'))
-              .PlatformOverviewPlaceholderPage,
-        },
+        path: '/platform',
+        Component: PlatformLayout,
+        HydrateFallback: PageLoader,
+        children: [
+          {
+            path: 'overview',
+            lazy: {
+              Component: async () =>
+                (await import('@/features/platform/pages/platform-overview-placeholder-page'))
+                  .PlatformOverviewPlaceholderPage,
+            },
+          },
+        ],
       },
     ],
   },
@@ -72,8 +78,7 @@ const appRoutes = [
     path: '*',
     HydrateFallback: PageLoader,
     lazy: {
-      Component: async () =>
-        (await import('@/pages/not-found-page')).NotFoundPage,
+      Component: async () => (await import('@/pages/not-found-page')).NotFoundPage,
     },
   },
 ];
