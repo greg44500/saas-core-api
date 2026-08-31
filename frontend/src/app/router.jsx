@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router';
 
 import App from '@/App';
 import { AuthLayout } from '@/app/layouts/auth-layout';
+import { OnboardingLayout } from '@/app/layouts/onboarding-layout';
 import { PlatformLayout } from '@/app/layouts/platform-layout';
 import { PublicLayout } from '@/app/layouts/public-layout';
 import { WorkspaceLayout } from '@/app/layouts/workspace-layout';
@@ -43,6 +44,41 @@ function createAppRoutes() {
     {
       Component: AuthGuard,
       children: [
+        {
+          path: 'workspaces',
+          HydrateFallback: PageLoader,
+          lazy: async () => {
+            const { WorkspaceEntryPage } = await import(
+              '@/features/workspace/pages/workspace-entry-page'
+            );
+            return { Component: WorkspaceEntryPage };
+          },
+        },
+        {
+          path: 'onboarding',
+          Component: OnboardingLayout,
+          HydrateFallback: PageLoader,
+          children: [
+            {
+              path: 'workspace',
+              lazy: async () => {
+                const { CreateWorkspacePage } = await import(
+                  '@/features/workspace/pages/create-workspace-page'
+                );
+                return { Component: CreateWorkspacePage };
+              },
+            },
+            {
+              path: 'plans/:workspaceId',
+              lazy: async () => {
+                const { OnboardingPlansPage } = await import(
+                  '@/features/workspace/pages/onboarding-plans-page'
+                );
+                return { Component: OnboardingPlansPage };
+              },
+            },
+          ],
+        },
         {
           path: 'workspaces/:workspaceId',
           Component: WorkspaceLayout,
