@@ -22,14 +22,14 @@ const appRoutes = [
         HydrateFallback: PageLoader,
         children: [
           {
-            path: '/login',
+            path: 'login',
             lazy: {
               Component: async () =>
                 (await import('@/features/auth/pages/login-page')).LoginPage,
             },
           },
           {
-            path: '/register',
+            path: 'register',
             lazy: {
               Component: async () =>
                 (await import('@/features/auth/pages/register-page')).RegisterPage,
@@ -43,7 +43,7 @@ const appRoutes = [
     Component: AuthGuard,
     children: [
       {
-        path: '/workspaces/:workspaceId',
+        path: 'workspaces/:workspaceId',
         Component: WorkspaceLayout,
         HydrateFallback: PageLoader,
         children: [
@@ -58,7 +58,7 @@ const appRoutes = [
         ],
       },
       {
-        path: '/platform',
+        path: 'platform',
         Component: PlatformLayout,
         HydrateFallback: PageLoader,
         children: [
