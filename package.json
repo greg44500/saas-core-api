@@ -12,8 +12,8 @@
   "scripts": {
     "dev": "node --watch backend/server.js",
     "start": "node backend/server.js",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run backend",
+    "test:watch": "vitest backend",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
