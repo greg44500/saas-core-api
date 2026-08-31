@@ -54,9 +54,9 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [x] TERMINÉ — principe d’un bandeau supérieur avec contexte utilisateur, accès profil et déconnexion rapide.
 - [x] TERMINÉ — principe d’usage des modales lorsque l’interaction courte, sensible ou contextuelle le justifie.
 - [x] TERMINÉ — principe d’usage d’un panneau latéral contextuel réutilisable pour consultation/édition rapide d’une entité.
-- [ ] À CADRER — palette claire/sombre finale et validation de contraste des tokens fonctionnels.
-- [ ] À CADRER — typographie.
-- [ ] À CADRER — conventions de spacing, radius, ombres et densité.
+- [x] TERMINÉ — Inter retenue comme police principale du Core.
+- [x] TERMINÉ — échelle de spacing, radius, ombres discrètes et densité intermédiaire figées.
+- [ ] À CADRER — valeurs finales des tokens clair/sombre et validation de contraste.
 - [ ] À CADRER — choix de la librairie/stratégie de formulaires.
 - [ ] À CADRER — stratégie de notifications/toasts détaillée.
 - [ ] À CADRER — stratégie d’erreur globale.
@@ -100,20 +100,31 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [x] TERMINÉ — palette de marque fournie : `#137C8B`, `#709CA7`, `#B8CBD0`, `#7A90A4`, `#344D59`.
 - [x] TERMINÉ — répartition de référence : primary / secondary / muted / accent / brand-dark.
 - [x] TERMINÉ — états fonctionnels séparés de la palette de marque : success, warning, info, destructive, invalid, disabled ; critical seulement si besoin métier réel.
+- [x] TERMINÉ — police principale `Inter`.
+- [x] TERMINÉ — hiérarchie typographique limitée et cohérente.
+- [x] TERMINÉ — spacing de référence : 4/8/12/16/20/24/32/40/48/64 px.
+- [x] TERMINÉ — radius de référence : 6/8/12/16 px selon niveau.
+- [x] TERMINÉ — ombres discrètes ; structure visuelle basée prioritairement sur surfaces/bordures/spacing/contraste.
+- [x] TERMINÉ — densité intermédiaire par défaut avec variante partagée `compact` si nécessaire.
 - [x] TERMINÉ — réutilisation UI exigée : une intention visuelle doit utiliser une famille de composants partagée.
-- [x] TERMINÉ — tableaux métier construits à partir d’une base `DataTable`/primitives communes, pas de tableaux visuellement divergents réimplémentés par module.
+- [x] TERMINÉ — tableaux métier construits à partir d’une base `DataTable`/primitives communes.
+- [x] TERMINÉ — pagination intégrée comme comportement standard des DataTables métier.
+- [x] TERMINÉ — pagination serveur privilégiée pour datasets non trivialement bornés.
+- [x] TERMINÉ — actions de ligne uniquement si opération backend disponible, permission suffisante et action pertinente.
+- [x] TERMINÉ — aucune colonne d’actions artificielle pour une table purement informative.
 - [x] TERMINÉ — panneaux de détail construits à partir d’une primitive/famille partagée.
+- [x] TERMINÉ — variantes de boutons standardisées : primary/default, secondary, outline, ghost, destructive, link.
+- [x] TERMINÉ — cards utilisées avec parcimonie, sans imbrication décorative systématique.
+- [x] TERMINÉ — famille de loaders/skeletons partagée.
+- [x] TERMINÉ — conventions de taille et d’accessibilité Lucide figées.
+- [x] TERMINÉ — responsive défini par comportement des composants et non simple réduction visuelle.
 - [ ] À CADRER — palette sombre finale dérivée et contrastes.
 - [ ] À CADRER — couleurs fonctionnelles finales et contrastes.
-- [ ] À CADRER — typographie.
-- [ ] À CADRER — échelle de spacing.
-- [ ] À CADRER — radius.
-- [ ] À CADRER — ombres.
-- [ ] À CADRER — densité précise des tableaux et formulaires.
 - [ ] À FAIRE — configurer les tokens CSS.
 - [ ] À FAIRE — implémenter le switch de thème selon la stratégie retenue.
 - [ ] À FAIRE — vérifier contrastes clair/sombre.
 - [ ] À FAIRE — intégrer les primitives shadcn nécessaires progressivement, jamais en masse sans besoin.
+- [ ] À FAIRE — implémenter la base `DataTable` partagée avec pagination, états et actions conditionnelles.
 - [ ] À FAIRE — utiliser Lucide avec conventions cohérentes de taille et accessibilité.
 
 ## 5. Zone publique et authentification
@@ -183,6 +194,7 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [x] TERMINÉ — changement de rôle significatif : sauvegarde explicite, pas d’enregistrement implicite à la fermeture.
 - [x] TERMINÉ — actions destructrices ou à fort impact : confirmation supplémentaire via modal lorsque pertinent.
 - [x] TERMINÉ — mutations réussies confirmables par toast ; erreurs de champs inline.
+- [x] TERMINÉ — les actions de ligne Membres sont conditionnées par endpoints, permissions et état de la ressource.
 - [ ] À CADRER — visualisation détaillée des permissions d’un rôle.
 - [ ] À FAIRE — liste membres paginée via base DataTable partagée.
 - [ ] À FAIRE — `MemberDetailsPanel` composé depuis la primitive de panneau partagée.
@@ -199,7 +211,7 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [ ] À CADRER — représentation liste/table/cartes selon responsive.
 - [ ] À CADRER — UX upload et progression.
 - [ ] À CADRER — erreurs taille/type/quota/feature.
-- [ ] À FAIRE — listing.
+- [ ] À FAIRE — listing paginé lorsque l’API le permet, via la base DataTable partagée si représentation tabulaire retenue.
 - [ ] À FAIRE — upload.
 - [ ] À FAIRE — download.
 - [ ] À FAIRE — soft delete.
@@ -236,6 +248,7 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [x] TERMINÉ — Platform Overview défini comme centre de pilotage global.
 - [x] TERMINÉ — tant qu’aucun endpoint agrégé n’existe, Overview reste un hub utile sans faux KPI.
 - [x] TERMINÉ — le frontend ne charge pas de grandes listes seulement pour calculer des compteurs Platform.
+- [x] TERMINÉ — listes Platform basées sur DataTable partagée avec pagination et actions conditionnelles.
 - [ ] DETTE — envisager un endpoint backend agrégé de type `GET /api/platform/overview` avant métriques globales réelles.
 - [ ] À CADRER — dashboard Platform : métriques exactes lorsque l’API agrégée sera définie.
 - [ ] À CADRER — priorisation des opérations de pilotage.
@@ -259,10 +272,10 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [x] TERMINÉ — autosave réservé aux changements de faible risque et sans ambiguïté.
 - [x] TERMINÉ — modifications significatives avec dirty state et actions Annuler/Enregistrer.
 - [x] TERMINÉ — perte importante de travail non sauvegardé protégée de façon proportionnée.
+- [x] TERMINÉ — pagination DataTable standardisée ; pagination serveur par défaut pour jeux de données non bornés.
 - [ ] À CADRER — implémentation exacte du système de toasts.
 - [ ] À CADRER — erreurs inline vs globales détaillées.
 - [ ] À CADRER — confirmations destructrices détaillées par niveau de risque.
-- [ ] À CADRER — pagination globale de DataTable.
 - [ ] À CADRER — recherche et debounce.
 - [ ] À CADRER — filtres et synchronisation avec URL.
 - [ ] À CADRER — breadcrumbs.
@@ -272,8 +285,8 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [x] TERMINÉ — responsive complet desktop/tablette/mobile comme exigence générale.
 - [x] TERMINÉ — desktop contexte principal des écrans professionnels complexes sans rendre les fonctions essentielles inutilisables sur tablette/mobile.
 - [x] TERMINÉ — panneau latéral desktop adapté en panneau large/quasi plein écran ou plein écran sur mobile si nécessaire.
+- [x] TERMINÉ — responsive des DataTables défini par priorisation/condensation/scroll ou représentation alternative, pas simple écrasement du tableau.
 - [ ] À CADRER — breakpoints fonctionnels et comportement précis de navigation.
-- [ ] À CADRER — adaptation tableaux mobile.
 - [ ] À CADRER — stratégie sidebar/drawer sur tablette/mobile.
 - [ ] À FAIRE — navigation clavier.
 - [ ] À FAIRE — focus visible.
@@ -309,6 +322,7 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [ ] À FAIRE — tests permissions/guards.
 - [ ] À FAIRE — tests workspace context.
 - [ ] À FAIRE — tests composants partagés DataTable / DetailsPanel / UsageIndicator selon leur lot.
+- [ ] À FAIRE — tester DataTable : pagination, loading/empty/error, visibilité des actions selon permissions et absence de colonne d’actions sans opération disponible.
 - [ ] À FAIRE — tests thème clair/sombre si logique client.
 - [ ] À FAIRE — parcours E2E critiques.
 
@@ -335,6 +349,7 @@ Elle sera mise à jour à la fin de chaque lot, comme la checklist backend.
 - [x] TERMINÉ — politique de state management consolidée et normative.
 - [x] TERMINÉ — politique routing/navigation consolidée et normative.
 - [x] TERMINÉ — politique dashboard/activité/panneaux contextuels consolidée et normative.
+- [x] TERMINÉ — politique design system détaillée et normative.
 - [x] TERMINÉ — dashboard prévu comme surface extensible par composition pour futurs modules métier.
 - [ ] À CADRER — contrat UI/UX frontend consolidé après les blocs de cadrage structurants.
 - [ ] À FAIRE — documenter les conventions réutilisables supplémentaires au fil des futurs modules métier.
