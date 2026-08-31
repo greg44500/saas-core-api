@@ -61,7 +61,7 @@ Les listes et tableaux professionnels peuvent ouvrir un panneau latéral context
 
 Les parcours longs ou complexes utilisent une page ou un wizard approprié.
 
-## 4. Palette et thème
+## 4. Design system détaillé
 
 Palette de marque :
 
@@ -83,9 +83,28 @@ accent      → #7A90A4
 brand-dark  → #344D59
 ```
 
-Cette répartition est une base de tokenisation et non une autorisation à utiliser directement les codes hexadécimaux dans les composants métier.
+Police principale : `Inter`.
 
-Le dark mode est obligatoire.
+Échelle de spacing de référence :
+
+```text
+4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 / 64 px
+```
+
+Radius :
+
+```text
+sm 6 px
+md 8 px
+lg 12 px
+xl 16 px
+```
+
+Les ombres restent discrètes ; bordures, surfaces, spacing et contraste structurent prioritairement la hiérarchie visuelle.
+
+Densité : professionnelle intermédiaire avec variante partagée `compact` lorsque nécessaire.
+
+Le dark mode est obligatoire et utilise des valeurs adaptées par token, jamais une inversion mécanique.
 
 Les états fonctionnels restent indépendants de la palette de marque :
 
@@ -99,21 +118,53 @@ disabled
 critical / urgent seulement si besoin métier réel
 ```
 
-Les variantes exactes light/dark et les valeurs fonctionnelles devront être validées par contraste avant implémentation finale.
+Les variantes finales light/dark et valeurs fonctionnelles seront validées par contraste au moment de la configuration CSS.
 
 Référence détaillée : `frontend-design-system-components-policy.md`.
 
-## 5. Réutilisation UI
+## 5. Réutilisation UI et DataTable
 
 La réutilisation des composants est une exigence structurante.
 
 Une même intention visuelle doit utiliser la même famille de composants.
 
-Exemple critique : les tableaux Workspace, Platform et futurs modules métier doivent partir d’une base `DataTable`/primitives partagées commune plutôt que de réimplémenter chacun pagination, densité, états, actions et responsive.
+Les tableaux Workspace, Platform et futurs modules métier partent d’une base `DataTable`/primitives communes plutôt que de réimplémenter pagination, densité, loading, empty state, actions ou responsive.
 
-Les panneaux de détail utilisent également une primitive/famille partagée pour leur structure, leurs états, leur scrolling, leur responsive et leurs actions de footer.
+Architecture de référence :
 
-Les différences métier sont obtenues par composition et configuration explicite, sans créer un composant universel sur-paramétré.
+```text
+DataTable
+├── TableHeader / TableBody / TableRow / TableCell
+├── TableToolbar
+├── TablePagination
+├── TableSkeleton
+├── TableEmptyState
+└── RowActions lorsque pertinent
+```
+
+### Pagination
+
+Les tableaux de données métier sont paginés par défaut.
+
+Pour les datasets non trivialement bornés : pagination serveur lorsque l’API la permet. Le frontend ne charge pas de gros volumes uniquement pour les paginer localement.
+
+Une petite liste strictement bornée peut exceptionnellement ne pas être paginée si le volume maximal est connu et faible.
+
+### Actions
+
+Les actions de ligne (`Voir`, `Modifier`, `Supprimer`, etc.) n’apparaissent que si :
+
+```text
+opération backend réellement disponible
++ permission utilisateur suffisante
++ action pertinente pour l’état courant
+```
+
+Une table purement informative ne possède pas artificiellement de colonne d’actions.
+
+Les actions sensibles suivent les conventions de confirmation et de feedback déjà figées.
+
+Les panneaux de détail utilisent une primitive/famille partagée pour structure, scrolling, responsive et actions de footer.
 
 Références détaillées : `frontend-design-system-components-policy.md` et `frontend-dashboard-activity-panel-policy.md`.
 
