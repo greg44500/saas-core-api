@@ -6,68 +6,92 @@ import {
   sessionTerminated,
 } from '@/features/auth/store/auth-slice';
 
-const refreshMutex = new Mutex();
+function createRawBaseQuery(baseUrl = '/api') {
+  return fetchBaseQuery({
+    baseUrl,
+    credentials: 'include',
+    prepareHeaders: (headers, { getState }) => {
+      const accessToken = getState().auth.accessToken;
 
-const rawBaseQuery = fetchBaseQuery({
-  baseUrl: '/api',
-  credentials: 'include',
-  prepareHeaders: (headers, { getState }) => {
-    const accessToken = getState().auth.accessToken;
+      if (accessToken) {
+        headers.set('authorization', `Bearer ${accessToken}`);
+      }
 
-    if (accessToken) {
-      headers.set('authorization', `Bearer ${accessToken}`);
-    }
-
-    return headers;
-  },
-});
+      return headers;
+    },
+  });
+}
 
 function extractAccessToken(result) {
   return result?.data?.data?.accessToken ?? null;
 }
 
-async function baseQueryWithReauth(args, api, extraOptions = {}) {
-  await refreshMutex.waitForUnlock();
+function createBaseQueryWithReauth({ baseUrl = '/api' } = {}) {
+  const rawQuery = createRawBaseQuery(baseUrl);
+  const mutex = new Mutex();
 
-  let result = await rawBaseQuery(args, api, extraOptions);
+  const queryWithReauth = async (args, api, extraOptions = {}) => {
+    await mutex.waitForUnlock();
 
-  if (result.error?.status !== 401 || extraOptions.skipReauth === true) {
-    return result;
-  }
+    let result = await rawQuery(args, api, extraOptions);
 
-  if (!refreshMutex.isLocked()) {
-    const release = await refreshMutex.acquire();
+    if (result.error?.status !== 401 || extraOptions.skipReauth === true) {
+      return result;
+    }
 
-    try {
-      const refreshResult = await rawBaseQuery(
-        { url: '/auth/refresh', method: 'POST' },
-        api,
-        { skipReauth: true },
-      );
-      const accessToken = extractAccessToken(refreshResult);
+    if (!mutex.isLocked()) {
+      const release = await mutex.acquire();
 
-      if (!accessToken) {
-        api.dispatch(sessionTerminated());
-        return result;
+      try {
+        const refreshResult = await rawQuery(
+          { url: '/auth/refresh', method: 'POST' },
+          api,
+          { skipReauth: true },
+        );
+        const accessToken = extractAccessToken(refreshResult);
+
+        if (!accessToken) {
+          api.dispatch(sessionTerminated());
+          return result;
+        }
+
+        api.dispatch(sessionAuthenticated({ accessToken }));
+
+        // Le retry utilise volontairement la base brute : un second 401 ne doit
+        // jamais déclencher une nouvelle boucle de refresh.
+        result = await rawQuery(args, api, extraOptions);
+      } finally {
+        release();
       }
+    } else {
+      await mutex.waitForUnlock();
 
-      api.dispatch(sessionAuthenticated({ accessToken }));
-
-      // Le retry utilise volontairement la base brute : un second 401 ne doit
-      // jamais déclencher une nouvelle boucle de refresh.
-      result = await rawBaseQuery(args, api, extraOptions);
-    } finally {
-      release();
+      if (api.getState().auth.accessToken) {
+        result = await rawQuery(args, api, extraOptions);
+      }
     }
-  } else {
-    await refreshMutex.waitForUnlock();
 
-    if (api.getState().auth.accessToken) {
-      result = await rawBaseQuery(args, api, extraOptions);
-    }
-  }
+    return result;
+  };
 
-  return result;
+  return {
+    baseQueryWithReauth: queryWithReauth,
+    rawBaseQuery: rawQuery,
+    refreshMutex: mutex,
+  };
 }
 
-export { baseQueryWithReauth, extractAccessToken, rawBaseQuery, refreshMutex };
+const {
+  baseQueryWithReauth,
+  rawBaseQuery,
+  refreshMutex,
+} = createBaseQueryWithReauth();
+
+export {
+  baseQueryWithReauth,
+  createBaseQueryWithReauth,
+  createRawBaseQuery,
+  extractAccessToken,
+  rawBaseQuery,
+  refreshMutex,
+};
