@@ -26,7 +26,7 @@ Palette fournie :
 #344D59
 ```
 
-La logique initiale retenue est :
+La logique retenue est :
 
 | Rôle | Couleur de référence | Usage principal |
 | --- | --- | --- |
@@ -40,7 +40,7 @@ Ces valeurs sont des références de marque. Les composants métier ne doivent p
 
 ## 3. Tokens sémantiques
 
-Le design system doit exposer au minimum des intentions du type :
+Le design system doit exposer au minimum :
 
 ```text
 background
@@ -85,9 +85,8 @@ Règles :
 - `invalid` représente principalement une validation invalide ou une erreur de champ ;
 - `disabled` utilise des tokens neutres et une diminution de contraste/interaction, sans devenir illisible ;
 - `warning` ne doit pas être confondu avec une couleur de marque ;
-- `critical` ou `urgent` n’est ajouté que si la sémantique métier nécessite une distinction indépendante de `destructive`.
-
-Les états ne doivent jamais être communiqués uniquement par la couleur : texte, icône, label ou autre information accessible doit compléter la couleur lorsque nécessaire.
+- `critical` ou `urgent` n’est ajouté que si la sémantique métier nécessite une distinction indépendante de `destructive` ;
+- un état ne doit jamais être communiqué par la couleur seule : texte, icône ou label doit compléter la couleur lorsque nécessaire.
 
 ## 5. Mode sombre
 
@@ -95,7 +94,7 @@ Le dark mode est obligatoire.
 
 Il ne consiste pas à inverser mécaniquement les couleurs ou à conserver toutes les valeurs light identiques.
 
-La même couche de tokens sémantiques est utilisée avec des valeurs adaptées au contraste sombre :
+La même couche de tokens sémantiques est utilisée avec des valeurs adaptées :
 
 ```text
 token sémantique
@@ -103,33 +102,120 @@ token sémantique
 └── valeur dark adaptée
 ```
 
-La palette de marque sert de base, mais des variantes plus claires ou plus sombres peuvent être dérivées pour garantir :
+La palette de marque sert de base, mais des variantes plus claires ou plus sombres peuvent être dérivées pour garantir lisibilité, contraste, hover/focus/active, surfaces imbriquées et accessibilité.
 
-- lisibilité ;
-- contraste ;
-- cohérence visuelle ;
-- états hover/focus/active ;
-- surfaces imbriquées ;
-- accessibilité.
+Toute valeur dérivée reste centralisée dans les tokens du thème.
 
-Toute valeur dérivée doit rester centralisée dans les tokens du thème.
+## 6. Typographie
 
-## 6. Règle de réutilisation des composants
+Police principale retenue : **Inter**.
+
+Elle est utilisée pour l’interface applicative afin de garantir lisibilité, cohérence et densité maîtrisée.
+
+Échelle de référence :
+
+```text
+Page title / display  → 30–32 px, semibold
+Section title         → 22–24 px, semibold
+Subsection            → 18–20 px, semibold
+Body                  → 14–16 px, regular
+Table / metadata      → 13–14 px
+Caption               → 12–13 px
+```
+
+Le projet évite de multiplier les tailles intermédiaires sans besoin fonctionnel.
+
+## 7. Spacing
+
+Échelle de référence :
+
+```text
+4
+8
+12
+16
+20
+24
+32
+40
+48
+64 px
+```
+
+Usages :
+
+```text
+4–8 px   → proximité interne
+12–16 px → composants
+20–24 px → blocs
+32 px+   → sections et structure de page
+```
+
+Les écrans ne doivent pas inventer des espacements locaux incohérents lorsque les tokens/échelles existants suffisent.
+
+## 8. Radius
+
+Échelle de référence :
+
+```text
+sm → 6 px
+md → 8 px
+lg → 12 px
+xl → 16 px
+```
+
+Usages recommandés :
+
+```text
+inputs / buttons     → 8 px
+cards                → 12 px
+dialogs / panels     → 12–16 px
+badges                → pill seulement si la sémantique le justifie
+```
+
+`rounded-full` n’est pas une convention globale.
+
+## 9. Ombres
+
+Les ombres restent discrètes. La hiérarchie repose principalement sur le spacing, les surfaces, les bordures et le contraste.
+
+```text
+card standard   → bordure en priorité
+dropdown/popover→ ombre légère
+modal/sheet     → ombre plus marquée
+élément actif   → pas d’ombre obligatoire
+```
+
+## 10. Densité
+
+Densité par défaut : professionnelle intermédiaire.
+
+Repères :
+
+```text
+Button       → hauteur 36–40 px
+Input        → hauteur 36–40 px
+Table row    → environ 44–48 px
+Sidebar item → environ 40 px
+Topbar       → environ 56–64 px
+```
+
+Une variante partagée `compact` peut être utilisée sur certaines interfaces d’administration denses, sans créer une nouvelle UI par module.
+
+## 11. Réutilisation des composants
 
 Avant de créer un nouveau composant, vérifier successivement :
 
-1. existe-t-il déjà une primitive dans `components/ui` ?
-2. existe-t-il déjà un composant partagé dans `components/shared`, `components/forms` ou `components/data-display` ?
-3. existe-t-il un composant de feature pouvant être généralisé sans devenir sur-paramétré ?
-4. la différence demandée est-elle réellement fonctionnelle ou seulement visuelle ?
+1. existe-t-il une primitive dans `components/ui` ?
+2. existe-t-il un composant partagé dans `components/shared`, `components/forms` ou `components/data-display` ?
+3. existe-t-il un composant de feature généralisable sans devenir sur-paramétré ?
+4. la différence demandée est-elle réellement fonctionnelle ou uniquement visuelle ?
 
-Si la différence est uniquement visuelle ou mineure, privilégier une variante ou une composition du composant existant.
+La composition est préférée à la duplication comme au composant universel sur-paramétré.
 
-Si la différence correspond à une responsabilité métier différente, un composant spécifique peut être créé, mais il doit réutiliser les briques du design system.
+## 12. Familles de composants partagés
 
-## 7. Familles de composants partagés
-
-Les familles suivantes doivent disposer d’une convention commune au fur et à mesure de leur apparition :
+Les familles suivantes disposent progressivement d’une convention commune :
 
 ```text
 buttons
@@ -138,6 +224,7 @@ selects
 checkboxes
 radios
 dialogs / modals
+sheets / details panels
 alerts
 badges
 tooltips
@@ -156,31 +243,34 @@ user avatar/menu
 sidebar navigation
 ```
 
-Le projet n’a pas à créer toutes ces familles dès le départ. Elles sont créées progressivement lorsqu’un besoin réel apparaît.
+Elles sont créées uniquement lorsqu’un besoin réel apparaît.
 
-## 8. Politique spécifique des tableaux
+## 13. Buttons
 
-Les tableaux constituent une famille de composants transversale critique.
+Variantes standard :
 
-Une base commune doit être utilisée pour garantir :
+```text
+primary / default
+secondary
+outline
+ghost
+destructive
+link
+```
 
-- typographie et densité cohérentes ;
-- en-têtes cohérents ;
-- alignements ;
-- états hover/selected ;
-- tri lorsque disponible ;
-- pagination ;
-- recherche/filtres lorsqu’ils existent ;
-- loading state ;
-- empty state ;
-- error state ;
-- actions de ligne ;
-- accessibilité ;
-- adaptation responsive.
+Une zone logique ne doit présenter qu’une action principale dominante lorsque possible.
 
-Les vues métier peuvent définir leurs colonnes, cellules et actions, mais ne doivent pas réinventer toute l’UI de table.
+## 14. Cards
 
-Architecture visée :
+Les cards servent à regrouper une information, un statut, une action ou un widget réellement cohérent.
+
+Le projet évite les imbrications décoratives de cards et les pages de listes enfermées systématiquement dans plusieurs surfaces inutiles.
+
+## 15. Politique normative DataTable
+
+Les tableaux sont une famille transversale critique.
+
+Architecture cible :
 
 ```text
 DataTable / primitives partagées
@@ -191,73 +281,138 @@ MembersTable
 UsersTable
 FilesTable
 SubscriptionsTable
-AuditTable
+ProductsTable futur
 ```
 
-Les composants métier restent explicites ; la réutilisation ne doit pas produire un composant universel impossible à comprendre ou rempli de dizaines de props conditionnelles.
-
-## 9. Variantes plutôt que duplication
-
-Lorsqu’un même composant présente plusieurs besoins légitimes, utiliser des variantes limitées et documentées.
-
-Exemples possibles :
+La base commune gère de manière cohérente :
 
 ```text
-Button
-├── default
-├── secondary
-├── outline
-├── ghost
-└── destructive
-
-Badge
-├── neutral
-├── success
-├── warning
-├── info
-└── destructive
+Table
+TableHeader
+TableBody
+TableRow
+TableCell
+TablePagination
+TableToolbar
+TableEmptyState
+TableSkeleton
+RowActions
 ```
 
-Une variante ne doit pas être créée uniquement pour reproduire un cas isolé pouvant être traité par composition.
+### Pagination
 
-## 10. Modales et dialogues
+Les tableaux de données métier sont **paginés par défaut**.
 
-Les modales doivent partir d’une même famille de primitives accessibles.
+Pour les jeux de données non trivialement bornés, la pagination doit être serveur lorsque l’API la permet. Le frontend ne charge pas volontairement de gros volumes uniquement pour les paginer localement.
 
-Utilisations pertinentes :
+Une petite liste réellement bornée peut exceptionnellement ne pas être paginée si cela améliore l’UX et si le volume maximal est connu et faible.
 
-- confirmation ;
-- action sensible ;
-- formulaire court ;
-- inspection ou édition contextuelle limitée ;
-- opération qui doit préserver le contexte de la page.
+La pagination, le nombre d’éléments par page et les filtres partageables doivent être synchronisables avec l’URL lorsque leur conservation/navigation le justifie.
 
-Une page ou un parcours dédié est préférable lorsque l’opération :
+### Actions de ligne
 
-- est longue ;
-- comporte de nombreuses étapes ;
-- nécessite plusieurs sections ;
-- doit être partageable par URL ;
-- implique une navigation complexe.
+Une colonne ou un menu d’actions n’existe que lorsqu’une ou plusieurs actions utiles existent réellement.
 
-Les confirmations destructrices doivent utiliser une convention cohérente dans toute l’application.
-
-## 11. Composition et responsabilités
-
-La réutilisation ne signifie pas créer des composants géants.
-
-La règle est :
+Exemples :
 
 ```text
-primitive UI
-→ composant partagé
-→ composant métier
-→ page d’assemblage
+Voir
+Modifier
+Supprimer
+Suspendre
+Restaurer
 ```
 
-Les pages assemblent. Les composants métier portent la représentation d’un domaine. Les composants partagés portent les conventions réutilisables. Les primitives UI portent le design system.
+Une action est affichée seulement si :
 
-## 12. Contrôle avant création d’un composant
+1. le backend expose l’opération correspondante ;
+2. l’utilisateur possède la permission nécessaire ;
+3. l’action est pertinente dans l’état courant de la ressource.
+
+Si une table est purement informative et qu’aucune route d’édition/suppression/consultation spécifique n’existe, aucune colonne d’actions vide ou artificielle n’est ajoutée.
+
+Les actions sensibles utilisent les conventions de confirmation déjà figées.
+
+### Responsive
+
+Desktop : table complète.  
+Tablette : colonnes secondaires réduites/priorisées.  
+Mobile : représentation condensée, scroll contrôlé ou variante carte selon le cas d’usage.
+
+Le responsive ne doit pas modifier la signification des données ni masquer une action essentielle sans alternative accessible.
+
+## 16. DetailsPanel / Sheet
+
+Structure partagée :
+
+```text
+DetailsPanel
+├── header
+├── title
+├── metadata
+├── body scrollable
+└── footer actions
+```
+
+Desktop : largeur typique 400–600 px selon contenu.  
+Mobile : quasi plein écran ou plein écran lorsque nécessaire.
+
+Le panneau conserve le contexte de liste et réutilise les conventions de sauvegarde explicite, dirty state et confirmations définies dans la politique dashboard/activité/panneaux.
+
+## 17. Modales
+
+Tailles fonctionnelles :
+
+```text
+small  → confirmation
+medium → formulaire court
+large  → exceptionnel
+```
+
+Une modale longue, multi-sections ou nécessitant navigation interne doit être reconsidérée au profit d’un panneau, d’une page ou d’un wizard.
+
+## 18. Loaders et skeletons
+
+Famille partagée :
+
+```text
+PageLoader
+InlineLoader
+ButtonLoader
+TableSkeleton
+CardSkeleton
+FormSkeleton
+```
+
+Le loader de navigation peut intégrer une animation de marque discrète. Les skeletons restent sobres et reflètent la structure du contenu attendu.
+
+## 19. Icônes Lucide
+
+Repères :
+
+```text
+16 px    → inline / actions compactes
+18–20 px → navigation / boutons
+24 px    → illustration UI légère
+```
+
+Une icône seule possède un nom accessible. La même intention utilise la même icône dans toute l’application sauf justification fonctionnelle.
+
+## 20. Responsive du design system
+
+Le responsive est défini par comportement, pas par simple réduction visuelle.
+
+Exemples :
+
+```text
+DataTable    → table complète / priorisée / condensée selon viewport
+DetailsPanel → sheet latérale / plein écran mobile
+Sidebar      → sidebar desktop / drawer mobile
+```
+
+Les composants partagés portent ces conventions pour éviter que chaque feature réimplémente son propre responsive.
+
+## 21. Contrôle avant création d’un composant
 
 Toute nouvelle famille visuelle doit répondre à :
 
@@ -272,4 +427,4 @@ Est-elle responsive et accessible ?
 Ses états loading / empty / error sont-ils cohérents ?
 ```
 
-Une duplication UI évitable doit être considérée comme une dette de maintenabilité.
+Une duplication UI évitable est une dette de maintenabilité.
