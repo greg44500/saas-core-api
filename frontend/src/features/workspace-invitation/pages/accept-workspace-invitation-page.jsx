@@ -7,7 +7,7 @@ import { useAcceptWorkspaceInvitationMutation } from '@/features/workspace-invit
 import { workspaceInvitationTokenSchema } from '@/features/workspace-invitation/validation/workspace-invitation-schemas';
 
 function AcceptWorkspaceInvitationPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [acceptedMembership, setAcceptedMembership] = useState(null);
   const tokenResult = workspaceInvitationTokenSchema.safeParse(searchParams.get('token') ?? '');
   const { data: workspaces = [] } = useListWorkspacesQuery();
@@ -24,26 +24,11 @@ function AcceptWorkspaceInvitationPage() {
     try {
       const membership = await acceptInvitation(tokenResult.data).unwrap();
       setAcceptedMembership(membership);
+      setSearchParams({}, { replace: true });
     } catch {
       // L'état d'erreur de la mutation fournit le feedback générique ci-dessous.
     }
   };
-
-  if (!tokenResult.success) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-muted/30 px-6 py-12">
-        <section className="w-full max-w-lg space-y-4 rounded-xl border border-border bg-card p-6 text-card-foreground">
-          <div className="space-y-2">
-            <h1 className="text-xl font-semibold">Invitation invalide</h1>
-            <p className="text-sm text-muted-foreground">
-              Ce lien d’invitation n’est pas utilisable. Vous pouvez continuer depuis vos espaces disponibles.
-            </p>
-          </div>
-          <Button asChild><Link to={fallbackPath}>{fallbackLabel}</Link></Button>
-        </section>
-      </main>
-    );
-  }
 
   if (acceptedMembership) {
     return (
@@ -61,6 +46,22 @@ function AcceptWorkspaceInvitationPage() {
               Accéder au workspace
             </Link>
           </Button>
+        </section>
+      </main>
+    );
+  }
+
+  if (!tokenResult.success) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-muted/30 px-6 py-12">
+        <section className="w-full max-w-lg space-y-4 rounded-xl border border-border bg-card p-6 text-card-foreground">
+          <div className="space-y-2">
+            <h1 className="text-xl font-semibold">Invitation invalide</h1>
+            <p className="text-sm text-muted-foreground">
+              Ce lien d’invitation n’est pas utilisable. Vous pouvez continuer depuis vos espaces disponibles.
+            </p>
+          </div>
+          <Button asChild><Link to={fallbackPath}>{fallbackLabel}</Link></Button>
         </section>
       </main>
     );
