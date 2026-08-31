@@ -26,7 +26,7 @@ function GuestGuard() {
   }
 
   if (authStatus === 'authenticated') {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/workspaces" replace />;
   }
 
   return <Outlet />;
