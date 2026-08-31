@@ -2,7 +2,7 @@
 
 **Date :** 31 août 2026  
 **Lot :** F2  
-**Statut :** implémenté sur GitHub — validation locale requise
+**Statut :** TERMINÉ — validé localement
 
 ## Objectif
 
@@ -74,6 +74,21 @@ dark primary / primary-foreground    → 6.59:1
 
 Ces paires dépassent le seuil WCAG AA de 4.5:1 pour le texte normal.
 
+## Validation locale obtenue
+
+Validations remontées le 31 août 2026 :
+
+- `npm install` : réussi ;
+- tests frontend : verts ;
+- build Vite : vert ;
+- serveur de développement : fonctionnel ;
+- thème clair/sombre : validé visuellement ;
+- restauration du thème après rechargement : validée ;
+- isolation des préférences entre scopes : couverte par test ;
+- tests backend : verts ;
+- `frontend/package-lock.json` : synchronisé avec les dépendances F2 ;
+- working tree local : clean.
+
 ## Volontairement exclu de F2
 
 - React Router et layouts applicatifs ;
@@ -87,47 +102,6 @@ Ces paires dépassent le seuil WCAG AA de 4.5:1 pour le texte normal.
 
 Ces responsabilités restent affectées à F3 et aux lots suivants.
 
-## Validation locale requise
-
-Après `git pull`, depuis `frontend/` :
-
-```bash
-npm install
-npm run test
-npm run build
-npm run dev
-```
-
-Le `npm install` doit mettre à jour `frontend/package-lock.json` avec les dépendances F2. Le lockfile modifié doit être versionné après validation.
-
-Vérifier visuellement :
-
-1. l’affichage en Inter ;
-2. les quatre variantes de boutons présentées ;
-3. le passage clair → sombre et retour ;
-4. recharger la page après sélection du thème sombre et vérifier que le thème sombre est restauré ;
-5. l’absence de flash ou d’élément illisible évident ;
-6. le comportement responsive simple de l’écran F2.
-
-Puis depuis la racine :
-
-```bash
-npm test
-```
-
-Cette commande confirme l’absence de régression backend.
-
 ## Critères de clôture
 
-F2 pourra passer à `TERMINÉ` lorsque :
-
-- `npm install` réussit et met à jour le lockfile ;
-- les tests frontend sont verts ;
-- le build Vite est vert ;
-- le serveur de développement démarre ;
-- le thème clair/sombre fonctionne visuellement ;
-- le thème choisi est restauré après rechargement ;
-- l’isolation des préférences entre scopes est couverte par test ;
-- les tests backend restent verts ;
-- le lockfile F2 est versionné ;
-- le working tree est clean.
+Tous les critères de clôture de F2 sont satisfaits. Le lot est terminé et ne porte pas de dette bloquante pour F3.
