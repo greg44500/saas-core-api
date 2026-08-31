@@ -17,16 +17,18 @@ const ROLE_KEY_PATTERN = /^[a-z][a-z0-9_-]*$/;
 /**
  * Format structurel d’une permission.
  *
- * Le modèle vérifie uniquement sa forme. Le futur RoleService vérifiera ensuite
- * que la permission existe réellement dans le registre actif de l’application.
+ * Une permission contient au minimum deux segments séparés par `:`.
+ * Des segments intermédiaires sont autorisés pour représenter proprement
+ * certaines actions de gouvernance sans écraser leur sens métier.
  *
  * Exemples valides :
  * - workspace:read
  * - member:suspend
- * - product:update
+ * - workspace:ownership:transfer
+ * - product:catalog:update
  */
 const PERMISSION_PATTERN =
-    /^[a-z][a-z0-9_-]*:[a-z][a-z0-9_-]*$/;
+    /^[a-z][a-z0-9_-]*(?::[a-z][a-z0-9_-]*)+$/;
 
 
 /**
@@ -98,9 +100,9 @@ const roleSchema = new Schema(
         /**
          * Actions autorisées pour les membres possédant ce rôle.
          *
-         * Le schéma valide seulement le format `ressource:action`. Le service
-         * contrôlera que chaque valeur appartient au registre des permissions
-         * réellement chargé par le socle et l’application métier.
+         * Le schéma valide uniquement la structure segmentée de la permission.
+         * Le service contrôle que chaque valeur appartient au registre actif des
+         * permissions réellement chargé par le socle et l’application métier.
          */
         permissions: {
             type: [
