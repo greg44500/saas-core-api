@@ -21,46 +21,23 @@ frontend-ux-experience-policy.md
 frontend-routing-navigation-policy.md
 frontend-dashboard-activity-panel-policy.md
 frontend-auth-session-policy.md
+frontend-auth-forms-ux-policy.md
+frontend-subscription-navigation-ux-policy.md
 ```
 
 Le document `frontend-cadrage-ux-ui.md` reste le journal vivant des questions et arbitrages. Les politiques normatives ci-dessus fixent les règles déjà validées.
 
 ## 3. Décisions UX/UI figées
 
-### Utilisateur de référence
-
-Utilisateur métier non nécessairement technique. L’interface reste professionnelle, claire, accessible et adaptable aux futurs SaaS métier.
-
-### Densité
+Utilisateur de référence : professionnel métier non nécessairement technique. L’interface reste professionnelle, claire, accessible et adaptable aux futurs SaaS métier.
 
 Densité professionnelle intermédiaire par défaut. Les interfaces Platform peuvent être plus denses lorsque le pilotage le justifie.
 
-### Responsive
+Responsive desktop/tablette/mobile dans le périmètre fonctionnel.
 
-Desktop, tablette et mobile sont dans le périmètre fonctionnel. Les composants complexes doivent disposer d’un comportement responsive dédié.
+Interfaces authentifiées : sidebar gauche rétractable + topbar + contexte utilisateur + accès profil + déconnexion rapidement accessible.
 
-### Navigation
-
-Interfaces authentifiées :
-
-```text
-sidebar gauche rétractable
-+ topbar
-+ contexte utilisateur
-+ accès profil
-+ déconnexion rapidement accessible
-```
-
-Sidebar ouverte : icônes + libellés.  
-Sidebar rétractée : icônes conservées avec identification accessible.
-
-### Modales et panneaux contextuels
-
-Les modales sont réservées aux interactions courtes, indépendantes ou sensibles, notamment confirmations destructrices et confirmations de sécurité.
-
-Les listes et tableaux professionnels peuvent ouvrir un panneau latéral contextuel réutilisable afin de consulter ou éditer une entité sans perdre le contexte de la page.
-
-Les parcours longs ou complexes utilisent une page ou un wizard approprié.
+Les modales sont réservées aux interactions courtes, indépendantes ou sensibles. Les listes/tableaux peuvent ouvrir un panneau latéral contextuel réutilisable afin de consulter ou éditer une entité sans perdre le contexte de la page.
 
 ## 4. Design system détaillé
 
@@ -86,52 +63,25 @@ brand-dark  → #344D59
 
 Police principale : `Inter`.
 
-Échelle de spacing de référence :
+Spacing : `4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 / 64 px`.
 
-```text
-4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 / 64 px
-```
+Radius : `6 / 8 / 12 / 16 px` selon niveau.
 
-Radius :
+Ombres discrètes ; hiérarchie basée prioritairement sur surfaces, bordures, spacing et contraste.
 
-```text
-sm 6 px
-md 8 px
-lg 12 px
-xl 16 px
-```
+Densité : intermédiaire avec variante partagée `compact` lorsque nécessaire.
 
-Les ombres restent discrètes ; bordures, surfaces, spacing et contraste structurent prioritairement la hiérarchie visuelle.
+Dark mode obligatoire avec valeurs adaptées par token.
 
-Densité : professionnelle intermédiaire avec variante partagée `compact` lorsque nécessaire.
+États fonctionnels séparés de la marque : success, warning, info, destructive, invalid, disabled ; critical/urgent seulement si besoin métier réel.
 
-Le dark mode est obligatoire et utilise des valeurs adaptées par token, jamais une inversion mécanique.
-
-Les états fonctionnels restent indépendants de la palette de marque :
-
-```text
-success
-warning
-info
-destructive
-invalid
-disabled
-critical / urgent seulement si besoin métier réel
-```
-
-Les variantes finales light/dark et valeurs fonctionnelles seront validées par contraste au moment de la configuration CSS.
-
-Référence détaillée : `frontend-design-system-components-policy.md`.
+Référence : `frontend-design-system-components-policy.md`.
 
 ## 5. Réutilisation UI et DataTable
 
-La réutilisation des composants est une exigence structurante.
+Une même intention visuelle utilise la même famille de composants.
 
-Une même intention visuelle doit utiliser la même famille de composants.
-
-Les tableaux Workspace, Platform et futurs modules métier partent d’une base `DataTable`/primitives communes plutôt que de réimplémenter pagination, densité, loading, empty state, actions ou responsive.
-
-Architecture de référence :
+Les tableaux Workspace, Platform et futurs modules métier partent d’une base `DataTable` commune.
 
 ```text
 DataTable
@@ -143,35 +93,15 @@ DataTable
 └── RowActions lorsque pertinent
 ```
 
-### Pagination
+Les tableaux métier sont paginés par défaut. Pour les datasets non trivialement bornés : pagination serveur lorsque l’API la permet.
 
-Les tableaux de données métier sont paginés par défaut.
+Les actions de ligne n’apparaissent que si l’opération backend existe, si l’utilisateur possède la permission requise et si l’action est pertinente pour l’état courant.
 
-Pour les datasets non trivialement bornés : pagination serveur lorsque l’API la permet. Le frontend ne charge pas de gros volumes uniquement pour les paginer localement.
+Une table purement informative ne possède pas de colonne d’actions artificielle.
 
-Une petite liste strictement bornée peut exceptionnellement ne pas être paginée si le volume maximal est connu et faible.
-
-### Actions
-
-Les actions de ligne (`Voir`, `Modifier`, `Supprimer`, etc.) n’apparaissent que si :
-
-```text
-opération backend réellement disponible
-+ permission utilisateur suffisante
-+ action pertinente pour l’état courant
-```
-
-Une table purement informative ne possède pas artificiellement de colonne d’actions.
-
-Les actions sensibles suivent les conventions de confirmation et de feedback déjà figées.
-
-Les panneaux de détail utilisent une primitive/famille partagée pour structure, scrolling, responsive et actions de footer.
-
-Références détaillées : `frontend-design-system-components-policy.md` et `frontend-dashboard-activity-panel-policy.md`.
+Références : `frontend-design-system-components-policy.md` et `frontend-dashboard-activity-panel-policy.md`.
 
 ## 6. State management
-
-Politique active :
 
 ```text
 server state        → RTK Query
@@ -185,61 +115,43 @@ browser persistence → interdite par défaut
 
 TanStack Query n’est pas utilisé parallèlement à RTK Query.
 
-Référence détaillée : `frontend-state-management-policy.md`.
-
 ## 7. Routing, layouts et navigation
-
-Décisions actives :
 
 ```text
 router              → React Router
-server state        → RTK Query, pas loaders router concurrents
+server state        → RTK Query
 workspace context   → /workspaces/:workspaceId/*
 platform context    → /platform/*
 account context     → /account/*
 ```
 
-Layouts distincts :
+Layouts distincts : PublicLayout, AuthLayout, WorkspaceLayout, PlatformLayout.
+
+Navigation Workspace : sidebar gauche rétractable, workspace switcher en partie haute, topbar sobre et contextuelle.
+
+Zone de gestion Workspace :
 
 ```text
-PublicLayout
-AuthLayout
-WorkspaceLayout
-PlatformLayout
+Gestion
+├── Abonnement
+└── Paramètres
 ```
 
-Navigation Workspace : sidebar gauche rétractable structurée par zones fonctionnelles, workspace switcher en partie haute, topbar sobre et contextuelle.
+`Abonnement` mène vers `/workspaces/:workspaceId/subscription` et `Paramètres` vers `/workspaces/:workspaceId/settings`.
 
-Navigation Platform : contexte distinct mais composants de structure réutilisés avec une configuration Platform dédiée.
+Le menu utilisateur de topbar reste centré sur la personne : profil, sécurité, apparence, logout. Un owner peut disposer d’un raccourci vers `Gérer l’abonnement`, mais la topbar n’est pas la surface principale de gestion commerciale.
 
-Menu utilisateur : profil et sécurité accessibles depuis l’avatar/pastille ; logout rapidement accessible ; logout-all réservé à la zone sécurité/session.
+Navigation Platform : contexte distinct mais composants structurels réutilisés.
 
-Guards séparés :
+Guards : Authentication, Workspace, Permission, Platform.
 
-```text
-Authentication Guard
-Workspace Guard
-Permission Guard
-Platform Guard
-```
+401 → refresh/session puis login si nécessaire ; 403 → Forbidden contextualisé ; 404 → NotFound ou ressource masquée selon backend.
 
-Traitement :
+Lazy loading des routes Auth, Workspace et Platform avec PageLoader partagé.
 
-```text
-401 → refresh/session puis login si nécessaire
-403 → Forbidden contextualisé
-404 → NotFound ou ressource masquée selon réponse backend
-```
-
-Après login, priorité à l’URL protégée initialement demandée lorsqu’elle reste autorisée. Un SUPER_ADMIN n’est pas redirigé automatiquement vers Platform uniquement en raison de son rôle.
-
-Lazy loading des routes Auth, Workspace et Platform par défaut, avec `PageLoader` partagé.
-
-Référence détaillée : `frontend-routing-navigation-policy.md`.
+Références : `frontend-routing-navigation-policy.md` et `frontend-subscription-navigation-ux-policy.md`.
 
 ## 8. Auth et cycle de session
-
-Décisions actives :
 
 ```text
 access token        → mémoire uniquement
@@ -250,153 +162,103 @@ server state        → RTK Query
 Auth lifecycle      → Redux Toolkit / mémoire
 ```
 
-Le résultat de `/auth/refresh` initialise la session sans appel `/me` systématique immédiatement après, puisque le backend renvoie déjà `user + accessToken`.
+Toutes les requêtes protégées utilisent un `baseQueryWithReauth` centralisé.
 
-Toutes les requêtes protégées utilisent un `baseQueryWithReauth` centralisé qui injecte le Bearer token et gère les 401.
+Un seul refresh est autorisé à la fois grâce à un verrou/mutex partagé. Les requêtes concurrentes attendent le même cycle puis se rejouent une seule fois.
 
-### Refresh concurrent
+Les endpoints Auth publics n’entraînent pas de reauth automatique sur leurs 401 naturels.
 
-Un seul refresh est autorisé à la fois. Si plusieurs requêtes reçoivent 401 simultanément :
+Flows : login → token mémoire + cookie backend ; register → succès puis Login ; logout/logout-all/change/reset → nettoyage Auth/cache selon contrat ; forgot password → message anti-énumération ; refresh définitif échoué → Login.
 
-```text
-première requête 401 → lance refresh
-autres 401           → attendent le même cycle de refresh
-refresh réussi       → nouveau token partagé
-                      → requêtes rejouées une fois
-```
+Référence : `frontend-auth-session-policy.md`.
 
-Cette règle est critique car le backend utilise une rotation du refresh token avec consommation unique et détection de réutilisation.
+## 9. UX des formulaires Auth
 
-Une requête n’est rejouée qu’une seule fois après refresh afin d’éviter toute boucle.
+Stack : React Hook Form + Zod frontend + resolver + primitives shadcn + RTK Query.
 
-Les endpoints Auth publics comme login, register, forgot/reset password et refresh lui-même ne déclenchent pas automatiquement un reauth sur leurs 401 naturels.
+Les valeurs de formulaire ne sont jamais stockées dans Redux.
 
-### Flows
+Les routes `/login` et `/register` restent distinctes et sont la source de vérité.
 
-```text
-login            → access token mémoire + cookie backend + navigation déterministe
-register         → succès puis Login, pas d’auto-login artificiel
-logout           → clear Auth + reset RTK Query + Login
-logout-all       → confirmation + clear Auth/cache + Login
-change-password  → toutes sessions révoquées + clear Auth/cache + Login
-reset-password   → session non recréée + Login
-forgot-password  → message générique anti-enumération
-refresh échoué   → session terminée + nettoyage + Login
-```
+Le Login est l’entrée Auth par défaut. Une action `Créer un compte` navigue vers Register ; Register propose `Déjà un compte ? Se connecter`.
 
-Le cache RTK Query sensible est nettoyé à chaque changement d’identité/session définitif afin d’éviter toute fuite visuelle ou incohérence multi-user.
+Un conteneur `AuthEntry` partagé peut animer la transition de manière courte et discrète (fade/slide/hauteur), sans remplacer le routing.
 
-La destination protégée initialement demandée reste sous la responsabilité du router et est restaurée après login lorsqu’elle reste autorisée.
+Register reste limité à identité + credentials. `confirmPassword` est frontend uniquement. Aucun plan, moyen de paiement ou détail commercial n’est ajouté au formulaire Register.
 
-Référence détaillée : `frontend-auth-session-policy.md`.
+Politique mot de passe visible : contraintes réelles du backend, sans règles artificielles de composition ni score arbitraire.
 
-## 9. Performance et chargement
+Erreurs de champs inline, erreurs de credentials génériques, focus sur premier champ invalide, double soumission empêchée, loader local sur submit, autocomplete correct.
 
-Décisions actives :
+Auth et choix commercial restent séparés.
+
+Référence : `frontend-auth-forms-ux-policy.md`.
+
+## 10. Onboarding, plan Free et choix commercial
+
+L’identité utilisateur est créée indépendamment du choix commercial.
+
+Pour un utilisateur créant son propre workspace :
 
 ```text
-route-level code splitting → React lazy / Suspense
-chargement de route        → PageLoader dédié
-chargement structurant     → Skeleton
-mutation locale            → feedback local
-large datasets             → pagination/recherche/tri/filtres serveur
-server state               → RTK Query
-infinite loading           → uniquement si l’UX le justifie
-virtualisation             → uniquement si le volume rendu le nécessite
+compte
+→ connexion
+→ onboarding workspace
+→ choix Free / trial / plan disponible
+→ application
 ```
 
-Une forte volumétrie de données ne doit jamais conduire à charger tout le dataset dans le navigateur par défaut.
+Le plan Free fournit un chemin d’entrée fonctionnel et ne doit jamais être présenté comme une absence d’abonnement.
 
-Référence détaillée : `frontend-performance-loading-policy.md`.
+Un utilisateur rejoignant un workspace existant ne choisit pas d’abonnement personnel si la subscription appartient déjà au workspace.
 
-## 10. Expérience utilisateur contextuelle
+Référence : `frontend-subscription-navigation-ux-policy.md`.
 
-Le Core doit proposer une expérience plus qualitative qu’une simple interface CRUD lorsque les données disponibles permettent une contextualisation fiable.
+## 11. Subscription Workspace
 
-Exemples retenus :
+L’abonnement appartient au Workspace, pas au profil utilisateur.
 
-```text
-message de bienvenue lors d’une première expérience identifiable
-message « ravi de vous revoir » après une absence significative
-empty states guidés
-remédiations en cas de quota/permission/entitlement
-feedback clair après actions
-progressive disclosure
-```
+La page `/workspaces/:workspaceId/subscription` est la surface de référence pour plan actuel, trial, entitlement effectif, limites/usages, upgrade, downgrade, changements programmés et annulation lorsque le backend le permet.
 
-Le seuil d’environ trois jours pour un message de retour est une intention UX à centraliser/configurer lors de l’implémentation.
+Le Dashboard Workspace peut afficher un résumé plan/trial et un CTA vers la page Subscription.
 
-Cette fonctionnalité ne doit être implémentée que si le backend fournit une donnée fiable permettant de connaître la dernière activité/connexion. Le frontend ne doit pas inventer cette information.
+Trial : jours restants + date absolue de fin. Une progression proportionnelle n’est affichée que si le backend fournit assez de données pour la calculer correctement.
 
-Référence détaillée : `frontend-ux-experience-policy.md`.
+Upgrade : accessible immédiatement lorsque l’opération backend existe.
 
-## 11. Dashboards Workspace et Platform
+Downgrade : impact expliqué, date d’effet visible, confirmation adaptée, révocation proposée lorsque l’API le permet.
 
-### Dashboard Workspace
+Les actions commerciales sont affichées uniquement aux utilisateurs autorisés ; l’autorisation backend reste l’autorité.
 
-Le Dashboard Workspace est une synthèse opérationnelle extensible, pas une collection décorative de KPI.
+Free est un vrai plan actif.
 
-Structure de référence :
+Le futur Billing (paiement, factures, TVA, provider) complète la surface Subscription/Workspace et ne migre pas dans le profil utilisateur.
 
-```text
-accueil/contextualisation
-éléments à traiter ou surveiller
-indicateurs Core utiles
-actions rapides
-activité récente
-widgets métier futurs
-```
+Référence : `frontend-subscription-navigation-ux-policy.md`.
 
-La structure générale reste commune entre rôles ; les blocs et actions sont affichés selon les permissions et données réellement disponibles.
+## 12. Performance et chargement
 
-Les indicateurs Core potentiels incluent membres, stockage, uploads mensuels, plan, trial/subscription et invitations en attente, uniquement si l’API permet de les alimenter proprement.
+Route-level code splitting → React lazy/Suspense ; route → PageLoader ; contenu structurant → Skeleton ; mutations locales → feedback local ; datasets importants → pagination/recherche/tri/filtres serveur ; infinite loading uniquement si UX justifiée ; virtualisation seulement si nécessaire.
 
-Les quotas/capacités utilisent une famille de composants réutilisable de type `UsageIndicator`.
+## 13. Expérience utilisateur contextuelle
 
-L’activité récente provient des AuditLogs backend. Les codes techniques sont traduits en messages humains avec acteur, action, objet et temps relatif. Une date absolue reste disponible lorsque la précision audit est nécessaire.
+Le Core propose lorsque les données le permettent : accueil contextuel, message de retour, empty states guidés, remédiations quota/permission/entitlement, feedback clair et progressive disclosure.
 
-Les futurs modules métier peuvent injecter leurs propres widgets par composition : indicateurs métier, évolution tarifaire, tâches prioritaires, alertes réellement justifiées, etc.
+Le frontend n’invente jamais une dernière connexion ou un état métier non fourni par le backend.
 
-### Dashboard Platform
+## 14. Dashboards Workspace et Platform
 
-Le Platform Overview est un centre de pilotage global.
+Dashboard Workspace : synthèse opérationnelle extensible avec accueil, éléments à traiter/surveiller, indicateurs Core, actions rapides, activité récente et widgets métier futurs.
 
-Le frontend ne charge pas de grandes listes uniquement pour calculer des compteurs. Un futur endpoint agrégé tel que `GET /api/platform/overview` est recommandé pour les métriques globales ; cet endpoint n’existe pas encore.
+Platform Overview : centre de pilotage global ; pas de faux KPI. Un futur endpoint agrégé reste recommandé avant métriques globales réelles.
 
-Tant qu’il n’existe pas, l’Overview Platform reste un hub utile vers Users, Workspaces, Plans, Subscriptions et Audit Logs, sans faux KPI.
+## 15. Panneaux contextuels et règles d’édition
 
-Référence détaillée : `frontend-dashboard-activity-panel-policy.md`.
+Booléen → Switch ; valeur exclusive courte → Select ; valeur exclusive recherchée → Combobox ; choix multiples → Checkbox/multi-select.
 
-## 12. Panneaux contextuels et règles d’édition
+Modification significative → Annuler/Enregistrer explicite ; autosave → faible risque seulement ; destructif/irréversible → confirmation supplémentaire.
 
-Les listes/tableaux professionnels utilisent lorsque pertinent un panneau latéral contextuel (`DetailsPanel`/`Sheet`) pour consulter ou éditer une entité sans perdre pagination, filtres, recherche ou position dans la liste.
-
-Contrôles UI :
-
-```text
-booléen                     → Switch
-valeur exclusive courte     → Select
-valeur exclusive recherchée → Combobox
-choix multiples             → Checkbox / multi-select
-```
-
-Un rôle exclusif n’est pas représenté par plusieurs switches.
-
-Sauvegarde :
-
-```text
-modification significative → Annuler / Enregistrer explicite
-autosave                   → seulement faible risque et comportement sans ambiguïté
-destructif / irréversible  → confirmation supplémentaire
-```
-
-La fermeture d’un panneau ne valide pas implicitement une modification sensible.
-
-Après mutation réussie, un toast peut confirmer l’action. Les erreurs de champs restent inline.
-
-Référence détaillée : `frontend-dashboard-activity-panel-policy.md`.
-
-## 13. Règle pour les futures reprises
+## 16. Règle pour les futures reprises
 
 Avant toute implémentation frontend :
 
@@ -405,5 +267,3 @@ Avant toute implémentation frontend :
 3. vérifier la checklist ;
 4. vérifier le contrat backend/frontend ;
 5. ne pas réintroduire une ancienne option remplacée par une décision normative plus récente.
-
-Les politiques spécifiques ont priorité sur les anciennes formulations non encore consolidées dans les documents vivants.
