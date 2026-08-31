@@ -19,6 +19,7 @@ frontend-design-system-components-policy.md
 frontend-performance-loading-policy.md
 frontend-ux-experience-policy.md
 frontend-routing-navigation-policy.md
+frontend-dashboard-activity-panel-policy.md
 ```
 
 Le document `frontend-cadrage-ux-ui.md` reste le journal vivant des questions et arbitrages. Les politiques normatives ci-dessus fixent les règles déjà validées.
@@ -52,9 +53,13 @@ sidebar gauche rétractable
 Sidebar ouverte : icônes + libellés.  
 Sidebar rétractée : icônes conservées avec identification accessible.
 
-### Modales
+### Modales et panneaux contextuels
 
-Les modales sont utilisées pour les interactions courtes, contextuelles ou sensibles. Les parcours longs ou complexes utilisent une page ou un wizard approprié.
+Les modales sont réservées aux interactions courtes, indépendantes ou sensibles, notamment confirmations destructrices et confirmations de sécurité.
+
+Les listes et tableaux professionnels peuvent ouvrir un panneau latéral contextuel réutilisable afin de consulter ou éditer une entité sans perdre le contexte de la page.
+
+Les parcours longs ou complexes utilisent une page ou un wizard approprié.
 
 ## 4. Palette et thème
 
@@ -106,9 +111,11 @@ Une même intention visuelle doit utiliser la même famille de composants.
 
 Exemple critique : les tableaux Workspace, Platform et futurs modules métier doivent partir d’une base `DataTable`/primitives partagées commune plutôt que de réimplémenter chacun pagination, densité, états, actions et responsive.
 
+Les panneaux de détail utilisent également une primitive/famille partagée pour leur structure, leurs états, leur scrolling, leur responsive et leurs actions de footer.
+
 Les différences métier sont obtenues par composition et configuration explicite, sans créer un composant universel sur-paramétré.
 
-Référence détaillée : `frontend-design-system-components-policy.md`.
+Références détaillées : `frontend-design-system-components-policy.md` et `frontend-dashboard-activity-panel-policy.md`.
 
 ## 6. State management
 
@@ -218,7 +225,73 @@ Cette fonctionnalité ne doit être implémentée que si le backend fournit une 
 
 Référence détaillée : `frontend-ux-experience-policy.md`.
 
-## 10. Règle pour les futures reprises
+## 10. Dashboards Workspace et Platform
+
+### Dashboard Workspace
+
+Le Dashboard Workspace est une synthèse opérationnelle extensible, pas une collection décorative de KPI.
+
+Structure de référence :
+
+```text
+accueil/contextualisation
+éléments à traiter ou surveiller
+indicateurs Core utiles
+actions rapides
+activité récente
+widgets métier futurs
+```
+
+La structure générale reste commune entre rôles ; les blocs et actions sont affichés selon les permissions et données réellement disponibles.
+
+Les indicateurs Core potentiels incluent membres, stockage, uploads mensuels, plan, trial/subscription et invitations en attente, uniquement si l’API permet de les alimenter proprement.
+
+Les quotas/capacités utilisent une famille de composants réutilisable de type `UsageIndicator`.
+
+L’activité récente provient des AuditLogs backend. Les codes techniques sont traduits en messages humains avec acteur, action, objet et temps relatif. Une date absolue reste disponible lorsque la précision audit est nécessaire.
+
+Les futurs modules métier peuvent injecter leurs propres widgets par composition : indicateurs métier, évolution tarifaire, tâches prioritaires, alertes réellement justifiées, etc.
+
+### Dashboard Platform
+
+Le Platform Overview est un centre de pilotage global.
+
+Le frontend ne charge pas de grandes listes uniquement pour calculer des compteurs. Un futur endpoint agrégé tel que `GET /api/platform/overview` est recommandé pour les métriques globales ; cet endpoint n’existe pas encore.
+
+Tant qu’il n’existe pas, l’Overview Platform reste un hub utile vers Users, Workspaces, Plans, Subscriptions et Audit Logs, sans faux KPI.
+
+Référence détaillée : `frontend-dashboard-activity-panel-policy.md`.
+
+## 11. Panneaux contextuels et règles d’édition
+
+Les listes/tableaux professionnels utilisent lorsque pertinent un panneau latéral contextuel (`DetailsPanel`/`Sheet`) pour consulter ou éditer une entité sans perdre pagination, filtres, recherche ou position dans la liste.
+
+Contrôles UI :
+
+```text
+booléen                     → Switch
+valeur exclusive courte     → Select
+valeur exclusive recherchée → Combobox
+choix multiples             → Checkbox / multi-select
+```
+
+Un rôle exclusif n’est pas représenté par plusieurs switches.
+
+Sauvegarde :
+
+```text
+modification significative → Annuler / Enregistrer explicite
+autosave                   → seulement faible risque et comportement sans ambiguïté
+destructif / irréversible  → confirmation supplémentaire
+```
+
+La fermeture d’un panneau ne valide pas implicitement une modification sensible.
+
+Après mutation réussie, un toast peut confirmer l’action. Les erreurs de champs restent inline.
+
+Référence détaillée : `frontend-dashboard-activity-panel-policy.md`.
+
+## 12. Règle pour les futures reprises
 
 Avant toute implémentation frontend :
 
