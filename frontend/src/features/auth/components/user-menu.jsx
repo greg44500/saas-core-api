@@ -1,4 +1,4 @@
-import { LogOut, ShieldCheck, UserRound } from 'lucide-react';
+import { Gauge, LogOut, ShieldCheck, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 
@@ -7,6 +7,7 @@ import {
   useGetCurrentUserQuery,
   useLogoutMutation,
 } from '@/features/auth/api/auth-api';
+import { PLATFORM_ROLE } from '@/features/platform/constants/platform-roles';
 
 function getInitials(user) {
   const firstInitial = user?.firstName?.trim()?.charAt(0) ?? '';
@@ -32,9 +33,15 @@ function UserMenu() {
     }
   }
 
+  function handlePlatformNavigation() {
+    setOpen(false);
+    navigate('/platform/overview');
+  }
+
   const displayName = user
     ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email
     : 'Compte utilisateur';
+  const isSuperAdmin = user?.platformRole === PLATFORM_ROLE.SUPER_ADMIN;
 
   return (
     <div className="relative">
@@ -87,6 +94,17 @@ function UserMenu() {
               <ShieldCheck aria-hidden="true" className="size-4" />
               Sécurité
             </button>
+            {isSuperAdmin && (
+              <button
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={handlePlatformNavigation}
+                role="menuitem"
+                type="button"
+              >
+                <Gauge aria-hidden="true" className="size-4" />
+                Console plateforme
+              </button>
+            )}
           </div>
 
           <div className="border-t border-border pt-2">
