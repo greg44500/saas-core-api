@@ -13,6 +13,10 @@ vi.mock('@/features/workspace/api/workspace-api', () => ({
   useListWorkspacesQuery: useListWorkspacesQueryMock,
 }));
 
+vi.mock('@/features/auth/components/user-menu', () => ({
+  UserMenu: () => <button type="button">Compte test</button>,
+}));
+
 import { createAppRoutes } from '@/app/router';
 import { ThemeProvider } from '@/components/shared/theme-provider';
 import { createAppStore } from '@/store/store';
@@ -100,6 +104,7 @@ describe('application routing', () => {
     expect(
       screen.getByRole('heading', { name: 'Tableau de bord' }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Compte test' })).toBeInTheDocument();
   });
 
   it('rend le contexte Platform pour une session authentifiée', async () => {
