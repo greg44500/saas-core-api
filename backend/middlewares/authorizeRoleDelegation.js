@@ -34,6 +34,7 @@ const authorizeRoleDelegation = async (req, res, next) => {
     const targetRole = await Role.findOne({
         _id: roleId,
         workspace: workspaceId,
+        deletedAt: null,
     }).select('permissions');
 
     if (!targetRole) {
