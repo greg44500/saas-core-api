@@ -18,6 +18,7 @@ function renderUserMenu() {
   const router = createMemoryRouter(
     [
       { path: '/workspaces/:workspaceId/dashboard', Component: UserMenu },
+      { path: '/platform/overview', Component: () => <h1>Console cible</h1> },
       { path: '/login', Component: () => <h1>Connexion cible</h1> },
     ],
     { initialEntries: ['/workspaces/workspace-1/dashboard'] },
@@ -76,7 +77,32 @@ describe('UserMenu', () => {
     expect(screen.getByText('greg@example.com')).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Profil' })).toBeDisabled();
     expect(screen.getByRole('menuitem', { name: 'Sécurité' })).toBeDisabled();
+    expect(screen.queryByRole('menuitem', { name: 'Console plateforme' })).not.toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Déconnexion' })).toBeEnabled();
+  });
+
+  it('affiche la Console plateforme uniquement au super_admin', async () => {
+    const user = userEvent.setup();
+    useGetCurrentUserQueryMock.mockReturnValue({
+      data: {
+        id: 'admin-1',
+        firstName: 'Super',
+        lastName: 'Admin',
+        email: 'admin@example.com',
+        platformRole: 'super_admin',
+      },
+      isLoading: false,
+    });
+
+    const router = renderUserMenu();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' }),
+    );
+    await user.click(screen.getByRole('menuitem', { name: 'Console plateforme' }));
+
+    expect(await screen.findByRole('heading', { name: 'Console cible' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/platform/overview');
   });
 
   it('déconnecte la session puis revient vers Login', async () => {
