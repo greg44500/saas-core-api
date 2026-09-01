@@ -9,7 +9,7 @@ const workspaceApi = baseApi.injectEndpoints({
     }),
     getWorkspaceById: build.query({
       query: (workspaceId) => `/workspaces/${workspaceId}`,
-      transformResponse: (response) => response?.data?.workspace ?? null,
+      transformResponse: (response) => response?.data ?? null,
       providesTags: (_result, _error, workspaceId) => [
         { type: 'Workspace', id: workspaceId },
       ],
