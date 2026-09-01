@@ -87,14 +87,21 @@ export const listMembers = async (req, res) => {
 };
 
 /**
- * Retourne le workspace courant déjà chargé par loadWorkspaceContext.
+ * Retourne le contexte tenant déjà chargé et validé par
+ * loadWorkspaceContext.
  *
- * Le middleware a déjà vérifié l'existence du workspace,
- * son statut, l'appartenance active de l'utilisateur
- * et la cohérence du rôle.
+ * Le frontend reçoit les permissions effectives du rôle courant afin de
+ * présenter uniquement les surfaces cohérentes avec l'autorisation serveur.
+ * Cette exposition ne remplace jamais authorizePermission : le backend reste
+ * l'autorité de sécurité pour chaque requête protégée.
  */
 export const getById = (req, res) => {
-    const { workspace } = req;
+    const {
+        workspace,
+        membership,
+        role,
+        permissions,
+    } = req;
 
     res.status(200).json({
         status: 'success',
@@ -106,6 +113,14 @@ export const getById = (req, res) => {
                 createdAt: workspace.createdAt,
                 updatedAt: workspace.updatedAt,
             },
+            membership: {
+                id: membership._id.toString(),
+                role: {
+                    key: role.key,
+                    name: role.name,
+                },
+            },
+            permissions: [...permissions],
         },
     });
 };
