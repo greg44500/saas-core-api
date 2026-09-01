@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router';
 
 import { ThemeToggle } from '@/components/shared/theme-toggle';
+import { UserMenu } from '@/features/auth/components/user-menu';
 
 function PlatformLayout() {
   return (
@@ -13,7 +14,10 @@ function PlatformLayout() {
             </p>
             <p className="font-semibold">Platform</p>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <UserMenu />
+          </div>
         </div>
       </header>
       <main className="px-6 py-8">
