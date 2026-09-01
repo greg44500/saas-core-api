@@ -165,6 +165,24 @@ const roleSchema = new Schema(
             ref: 'User',
             required: true,
         },
+
+        /**
+         * Un rôle personnalisé supprimé reste conservé afin de préserver les
+         * références historiques des memberships, invitations et AuditLogs.
+         */
+        deletedAt: {
+            type: Date,
+            default: null,
+        },
+
+        /**
+         * Acteur responsable de la suppression logique du rôle.
+         */
+        deletedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            default: null,
+        },
     },
     {
         timestamps: true,
@@ -189,11 +207,13 @@ roleSchema.index(
 );
 
 /**
- * Optimise la récupération des rôles système ou personnalisés d’un workspace.
+ * Optimise la récupération des rôles système ou personnalisés actifs d’un
+ * workspace sans exposer les rôles supprimés dans les listes courantes.
  */
 roleSchema.index({
     workspace: 1,
     isSystem: 1,
+    deletedAt: 1,
 });
 
 

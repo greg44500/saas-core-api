@@ -1,8 +1,10 @@
-import { listWorkspaceRoles } from './role.service.js';
+import {
+    createWorkspaceRole,
+    deleteWorkspaceRole,
+    listWorkspaceRoles,
+    updateWorkspaceRole,
+} from './role.service.js';
 
-/**
- * Retourne les rôles du workspace courant déjà autorisé par les middlewares.
- */
 const list = async (req, res) => {
     const roles = await listWorkspaceRoles({
         workspaceId: req.workspace._id,
@@ -10,10 +12,58 @@ const list = async (req, res) => {
 
     res.status(200).json({
         status: 'success',
-        data: {
-            roles,
-        },
+        data: { roles },
     });
 };
 
-export { list };
+const create = async (req, res) => {
+    const role = await createWorkspaceRole({
+        workspaceId: req.workspace._id,
+        actorId: req.user.id,
+        actorPermissions: req.permissions,
+        ...req.validated.body,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
+    });
+
+    res.status(201).json({
+        status: 'success',
+        data: { role },
+    });
+};
+
+const update = async (req, res) => {
+    const role = await updateWorkspaceRole({
+        workspaceId: req.workspace._id,
+        roleId: req.validated.params.roleId,
+        actorId: req.user.id,
+        actorPermissions: req.permissions,
+        changes: req.validated.body,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: { role },
+    });
+};
+
+const remove = async (req, res) => {
+    await deleteWorkspaceRole({
+        workspaceId: req.workspace._id,
+        roleId: req.validated.params.roleId,
+        actorId: req.user.id,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
+    });
+
+    res.status(204).send();
+};
+
+export {
+    create,
+    list,
+    remove,
+    update,
+};

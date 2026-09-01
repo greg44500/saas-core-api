@@ -32,7 +32,7 @@ describe('authorizeRoleDelegation', () => {
         vi.clearAllMocks();
     });
 
-    it('autorise un rôle dont toutes les permissions sont détenues par l’acteur', async () => {
+    it('autorise un rôle actif dont toutes les permissions sont détenues par l’acteur', async () => {
         findRoleMock.mockReturnValue(makeRoleQuery({
             permissions: ['member:read', 'file:read'],
         }));
@@ -51,6 +51,7 @@ describe('authorizeRoleDelegation', () => {
         expect(findRoleMock).toHaveBeenCalledWith({
             _id: 'role-id',
             workspace: 'workspace-id',
+            deletedAt: null,
         });
         expect(next).toHaveBeenCalledWith();
     });
@@ -88,7 +89,7 @@ describe('authorizeRoleDelegation', () => {
         });
     });
 
-    it('refuse un rôle qui n’appartient pas au workspace courant', async () => {
+    it('refuse un rôle absent, supprimé ou hors du workspace courant', async () => {
         findRoleMock.mockReturnValue(makeRoleQuery(null));
 
         const req = makeRequest({
