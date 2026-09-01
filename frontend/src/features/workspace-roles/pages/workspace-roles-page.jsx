@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
@@ -38,6 +38,7 @@ function WorkspaceRolesPage() {
   const [feedback, setFeedback] = useState(null);
 
   const roles = rolesQuery.data ?? [];
+  const actorPermissionSet = useMemo(() => new Set(permissions), [permissions]);
 
   function openCreate() {
     setEditingRole(null);
@@ -197,6 +198,10 @@ function WorkspaceRolesPage() {
               <tbody className="divide-y divide-border">
                 {roles.map((role) => {
                   const editable = !role.isSystem && role.isEditable === true;
+                  const actorCanAdminister = (role.permissions ?? []).every(
+                    (permission) => actorPermissionSet.has(permission),
+                  );
+                  const administrable = editable && actorCanAdminister;
 
                   return (
                     <tr key={role.id}>
@@ -222,7 +227,7 @@ function WorkspaceRolesPage() {
                           >
                             Voir
                           </Button>
-                          {editable && can(WORKSPACE_PERMISSION.ROLE_UPDATE) && (
+                          {administrable && can(WORKSPACE_PERMISSION.ROLE_UPDATE) && (
                             <Button
                               onClick={() => openEdit(role)}
                               size="sm"
@@ -232,7 +237,7 @@ function WorkspaceRolesPage() {
                               Modifier
                             </Button>
                           )}
-                          {editable && can(WORKSPACE_PERMISSION.ROLE_DELETE) && (
+                          {administrable && can(WORKSPACE_PERMISSION.ROLE_DELETE) && (
                             <Button
                               onClick={() => setDeleteCandidate(role)}
                               size="sm"
@@ -244,6 +249,11 @@ function WorkspaceRolesPage() {
                           )}
                           {!editable && (
                             <span className="self-center text-xs text-muted-foreground">Protégé</span>
+                          )}
+                          {editable && !actorCanAdminister && (
+                            <span className="self-center text-xs text-muted-foreground">
+                              Niveau supérieur
+                            </span>
                           )}
                         </div>
                       </td>
