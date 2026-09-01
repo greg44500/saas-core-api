@@ -117,6 +117,15 @@ function createAppRoutes() {
                     return { Component: WorkspaceMembersRoute };
                   },
                 },
+                {
+                  path: 'roles',
+                  lazy: async () => {
+                    const { WorkspaceRolesRoute } = await import(
+                      '@/features/workspace-roles/components/workspace-roles-route'
+                    );
+                    return { Component: WorkspaceRolesRoute };
+                  },
+                },
               ],
             },
           ],
