@@ -8,15 +8,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLoginMutation } from '@/features/auth/api/auth-api';
 import { loginSchema } from '@/features/auth/validation/auth-schemas';
+import { PLATFORM_ROLE } from '@/features/platform/constants/platform-roles';
 
-function getRequestedDestination(location) {
+function getRequestedDestination(location, user) {
   const destination = location.state?.from;
 
-  if (!destination?.pathname) {
-    return '/workspaces';
+  if (destination?.pathname) {
+    return `${destination.pathname}${destination.search ?? ''}${destination.hash ?? ''}`;
   }
 
-  return `${destination.pathname}${destination.search ?? ''}${destination.hash ?? ''}`;
+  if (user?.platformRole === PLATFORM_ROLE.SUPER_ADMIN) {
+    return '/platform/overview';
+  }
+
+  return '/workspaces';
 }
 
 function LoginPage() {
@@ -37,8 +42,8 @@ function LoginPage() {
 
   const onSubmit = async (values) => {
     try {
-      await login(values).unwrap();
-      navigate(getRequestedDestination(location), { replace: true });
+      const response = await login(values).unwrap();
+      navigate(getRequestedDestination(location, response?.data?.user), { replace: true });
     } catch {
       setError('root.credentials', {
         type: 'server',
