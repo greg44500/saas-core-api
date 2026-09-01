@@ -120,6 +120,7 @@ describe('role.controller', () => {
         const req = {
             workspace: { _id: 'workspace-id' },
             user: { id: 'actor-id' },
+            permissions: ['role:delete', 'member:read'],
             validated: { params: { roleId: 'role-id' } },
             context: {
                 ipAddress: '127.0.0.1',
@@ -134,6 +135,7 @@ describe('role.controller', () => {
             workspaceId: 'workspace-id',
             roleId: 'role-id',
             actorId: 'actor-id',
+            actorPermissions: ['role:delete', 'member:read'],
             ipAddress: '127.0.0.1',
             userAgent: null,
         });

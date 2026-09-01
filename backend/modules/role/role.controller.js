@@ -54,6 +54,7 @@ const remove = async (req, res) => {
         workspaceId: req.workspace._id,
         roleId: req.validated.params.roleId,
         actorId: req.user.id,
+        actorPermissions: req.permissions,
         ipAddress: req.context.ipAddress,
         userAgent: req.context.userAgent,
     });
