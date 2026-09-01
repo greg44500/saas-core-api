@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 
+import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { Button } from '@/components/ui/button';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
@@ -214,38 +216,30 @@ function WorkspaceRolesPage() {
                       <td className="px-5 py-4">
                         <RoleTypeBadge role={role} />
                       </td>
-                      <td className="px-5 py-4">
-                        {role.permissions?.length ?? 0}
-                      </td>
+                      <td className="px-5 py-4">{role.permissions?.length ?? 0}</td>
                       <td className="px-5 py-4">
                         <div className="flex flex-wrap gap-2">
-                          <Button
+                          <ActionIconButton
+                            Icon={Eye}
+                            label="Voir"
                             onClick={() => setSelectedRole(role)}
-                            size="sm"
-                            type="button"
                             variant="outline"
-                          >
-                            Voir
-                          </Button>
+                          />
                           {administrable && can(WORKSPACE_PERMISSION.ROLE_UPDATE) && (
-                            <Button
+                            <ActionIconButton
+                              Icon={Pencil}
+                              label="Modifier"
                               onClick={() => openEdit(role)}
-                              size="sm"
-                              type="button"
                               variant="outline"
-                            >
-                              Modifier
-                            </Button>
+                            />
                           )}
                           {administrable && can(WORKSPACE_PERMISSION.ROLE_DELETE) && (
-                            <Button
+                            <ActionIconButton
+                              Icon={Trash2}
+                              label="Supprimer"
                               onClick={() => setDeleteCandidate(role)}
-                              size="sm"
-                              type="button"
                               variant="destructive"
-                            >
-                              Supprimer
-                            </Button>
+                            />
                           )}
                           {!editable && (
                             <span className="self-center text-xs text-muted-foreground">Protégé</span>

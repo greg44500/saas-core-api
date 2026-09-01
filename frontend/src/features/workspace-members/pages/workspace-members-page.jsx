@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
+import { Ban, Eye, UserMinus } from 'lucide-react';
 
+import { ActionIconButton } from '@/components/shared/action-icon-button';
+import { Tooltip } from '@/components/shared/tooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useGetCurrentUserQuery } from '@/features/auth/api/auth-api';
@@ -306,17 +309,25 @@ function WorkspaceMembersPage() {
                 const isSelf = member.user.id === currentUser?.id;
                 const isOwner = member.role.key === 'owner';
                 const protectedMember = isSelf || isOwner;
+                const memberName = `${member.user.firstName} ${member.user.lastName}`;
 
                 return (
                   <tr key={member.id}>
                     <td className="px-5 py-4">
-                      <p className="font-medium">{member.user.firstName} {member.user.lastName}</p>
-                      {isSelf && <p className="text-xs text-muted-foreground">Vous</p>}
+                      {isSelf ? (
+                        <Tooltip content="Vous">
+                          <span className="cursor-help font-medium underline decoration-dotted underline-offset-4">
+                            {memberName}
+                          </span>
+                        </Tooltip>
+                      ) : (
+                        <p className="font-medium">{memberName}</p>
+                      )}
                     </td>
                     <td className="px-5 py-4">
                       {can(WORKSPACE_PERMISSION.MEMBER_UPDATE) && !protectedMember && assignableRoles.length > 0 ? (
                         <select
-                          aria-label={`Rôle de ${member.user.firstName} ${member.user.lastName}`}
+                          aria-label={`Rôle de ${memberName}`}
                           className="h-9 rounded-md border border-input bg-background px-2 text-sm"
                           disabled={updateRoleState.isLoading}
                           value={member.role.id}
@@ -331,41 +342,35 @@ function WorkspaceMembersPage() {
                     <td className="px-5 py-4 capitalize">{member.status}</td>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
+                        <ActionIconButton
+                          Icon={Eye}
+                          label="Voir"
                           onClick={() => setSelectedMember(member)}
-                        >
-                          Voir
-                        </Button>
+                          variant="outline"
+                        />
                         {can(WORKSPACE_PERMISSION.MEMBER_SUSPEND) && !protectedMember && member.status === 'active' && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
+                          <ActionIconButton
+                            Icon={Ban}
+                            label="Suspendre"
                             onClick={() => setPendingAction({
                               type: 'suspend',
                               id: member.id,
-                              message: `Suspendre ${member.user.firstName} ${member.user.lastName} ?`,
+                              message: `Suspendre ${memberName} ?`,
                             })}
-                          >
-                            Suspendre
-                          </Button>
+                            variant="outline"
+                          />
                         )}
                         {can(WORKSPACE_PERMISSION.MEMBER_REMOVE) && !protectedMember && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="destructive"
+                          <ActionIconButton
+                            Icon={UserMinus}
+                            label="Retirer"
                             onClick={() => setPendingAction({
                               type: 'remove',
                               id: member.id,
-                              message: `Retirer ${member.user.firstName} ${member.user.lastName} de ce workspace ?`,
+                              message: `Retirer ${memberName} de ce workspace ?`,
                             })}
-                          >
-                            Retirer
-                          </Button>
+                            variant="destructive"
+                          />
                         )}
                         {protectedMember && <span className="self-center text-xs text-muted-foreground">Protégé</span>}
                       </div>
