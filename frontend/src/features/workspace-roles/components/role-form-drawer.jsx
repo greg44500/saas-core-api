@@ -107,12 +107,10 @@ function RoleFormDrawer({ actorPermissions, mode, onClose, onSubmit, open, pendi
         </div>
 
         <fieldset className="space-y-5">
-          <div>
-            <legend className="text-sm font-semibold">Permissions</legend>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Seules vos permissions délégables sont proposées. Le backend revérifie ce périmètre à l’enregistrement.
-            </p>
-          </div>
+          <legend className="text-sm font-semibold">Permissions</legend>
+          <p className="text-sm text-muted-foreground">
+            Seules vos permissions délégables sont proposées. Le backend revérifie ce périmètre à l’enregistrement.
+          </p>
 
           {Object.entries(groupedOptions).map(([group, permissions]) => (
             <section className="space-y-2" key={group}>
