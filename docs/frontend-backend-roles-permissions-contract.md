@@ -112,6 +112,8 @@ Body strict contenant au moins un champ :
 
 Seuls `name`, `description` et `permissions` sont modifiables.
 
+Un acteur ne peut administrer un rôle personnalisé que si toutes les permissions déjà détenues par ce rôle sont elles-mêmes détenues par l’acteur. Cette règle s’applique même à une modification qui ne change pas `permissions[]`, par exemple un simple renommage.
+
 Réponse : `200 OK` avec `data.role`.
 
 ## 7. Suppression
@@ -124,7 +126,9 @@ Réponse : `204 No Content`.
 
 La suppression est logique. Le rôle reste conservé pour préserver les références historiques et l’audit.
 
-La suppression est refusée si le rôle est encore :
+Un acteur ne peut supprimer un rôle personnalisé que s’il possède toutes les permissions de ce rôle.
+
+La suppression est également refusée si le rôle est encore :
 
 - attribué à un membre `active` ou `suspended` ;
 - utilisé par une invitation `pending`.
@@ -153,9 +157,17 @@ Une permission affectée à un rôle personnalisé doit :
 2. être détenue par l’acteur qui crée ou modifie le rôle ;
 3. ne pas appartenir au registre des permissions réservées à la gouvernance.
 
+La règle générale d’administration est donc :
+
+```text
+permissions(targetRole) ⊆ permissions(actor)
+```
+
+Elle s’applique à la création, à la modification et à la suppression d’un rôle personnalisé.
+
 En Core V1, `workspace:ownership:transfer` est réservée au workflow d’ownership et ne peut pas être ajoutée à un rôle personnalisé, y compris par le owner.
 
-Le frontend doit filtrer les permissions proposées selon les permissions effectives de l’acteur pour améliorer l’UX. Ce filtrage ne constitue pas une barrière de sécurité.
+Le frontend doit filtrer les permissions proposées et les actions Modifier/Supprimer selon les permissions effectives de l’acteur pour améliorer l’UX. Ce filtrage ne constitue pas une barrière de sécurité.
 
 ## 10. Erreurs métier principales
 
@@ -202,6 +214,7 @@ F8.4b doit composer ou étendre ces composants au lieu de recréer une seconde r
 - distinction rôle système / personnalisé ;
 - actions conditionnées par `can(role:create/update/delete)` ;
 - absence d’édition/suppression des rôles système ;
+- absence d’administration d’un rôle personnalisé contenant une permission absente chez l’acteur ;
 - formulaire strict côté UX ;
 - permissions proposées limitées à celles détenues par l’acteur et hors permission réservée ;
 - invalidation RTK Query après mutations ;
