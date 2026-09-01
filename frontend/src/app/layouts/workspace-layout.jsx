@@ -18,7 +18,7 @@ function WorkspaceLayout() {
       />
       <div className="min-w-0 flex-1">
         <WorkspaceTopbar workspace={workspace} />
-        <main className="px-4 py-6 sm:px-6 lg:px-8">
+        <main className="relative z-0 px-4 py-6 sm:px-6 lg:px-8">
           <Outlet />
         </main>
       </div>
