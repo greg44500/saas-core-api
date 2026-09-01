@@ -91,7 +91,7 @@ describe('workspace.controller', () => {
     });
 
 
-    it('renvoie le workspace déjà chargé dans le contexte de la requête', () => {
+    it('renvoie le contexte workspace déjà chargé et ses permissions effectives', () => {
         const createdAt = new Date('2026-08-12T10:00:00.000Z');
         const updatedAt = new Date('2026-08-12T11:00:00.000Z');
 
@@ -105,6 +105,19 @@ describe('workspace.controller', () => {
                 createdAt,
                 updatedAt,
             },
+            membership: {
+                _id: {
+                    toString: () => 'membership-id',
+                },
+            },
+            role: {
+                key: 'admin',
+                name: 'Administrateur',
+            },
+            permissions: [
+                'workspace:read',
+                'member:read',
+            ],
         };
 
         const res = {
@@ -126,6 +139,17 @@ describe('workspace.controller', () => {
                     createdAt,
                     updatedAt,
                 },
+                membership: {
+                    id: 'membership-id',
+                    role: {
+                        key: 'admin',
+                        name: 'Administrateur',
+                    },
+                },
+                permissions: [
+                    'workspace:read',
+                    'member:read',
+                ],
             },
         });
     });
