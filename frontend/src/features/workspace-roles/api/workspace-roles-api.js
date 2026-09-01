@@ -1,5 +1,11 @@
 import { workspaceMembersApi } from '@/features/workspace-members/api/workspace-members-api';
 
+/*
+ * Le listing des rôles a été introduit avec l’administration des membres.
+ * On étend volontairement la même instance RTK Query afin de conserver un seul
+ * endpoint listWorkspaceRoles et un seul cache serveur au lieu de dupliquer la
+ * même ressource dans deux features.
+ */
 const workspaceRolesApi = workspaceMembersApi.injectEndpoints({
   endpoints: (build) => ({
     createWorkspaceRole: build.mutation({
