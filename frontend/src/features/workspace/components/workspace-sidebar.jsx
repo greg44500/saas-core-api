@@ -71,7 +71,7 @@ function WorkspaceSidebar({ collapsed, onToggle, workspace }) {
         <div className="space-y-1">
           {!collapsed && (
             <p className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Core
+              Administration
             </p>
           )}
           {futureNavigationItems.map(({ label, Icon }) => (
