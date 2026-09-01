@@ -50,5 +50,40 @@ const createSystemRolesForWorkspace = async ({
     });
 };
 
+/**
+ * Liste les rôles appartenant à un workspace.
+ *
+ * Le DTO reste volontairement limité aux informations nécessaires au frontend
+ * pour afficher et attribuer un rôle. Les permissions détaillées ne sont pas
+ * exposées ici : l'autorisation effective du membre courant provient du
+ * contexte workspace dédié.
+ */
+const listWorkspaceRoles = async ({ workspaceId }) => {
+    if (!workspaceId) {
+        throw new TypeError(
+            'workspaceId is required to list workspace roles',
+        );
+    }
 
-export { createSystemRolesForWorkspace };
+    const roles = await Role.find({
+        workspace: workspaceId,
+    })
+        .select('_id key name description isSystem isEditable')
+        .sort({ isSystem: -1, name: 1, _id: 1 })
+        .lean();
+
+    return roles.map((role) => ({
+        id: role._id.toString(),
+        key: role.key,
+        name: role.name,
+        description: role.description ?? null,
+        isSystem: role.isSystem,
+        isEditable: role.isEditable,
+    }));
+};
+
+
+export {
+    createSystemRolesForWorkspace,
+    listWorkspaceRoles,
+};
