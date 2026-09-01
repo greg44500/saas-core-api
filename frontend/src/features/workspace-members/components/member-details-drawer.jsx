@@ -1,5 +1,5 @@
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
-import { PermissionList } from '@/features/workspace-members/components/permission-list';
+import { PermissionList } from '@/features/workspace-roles/components/permission-list';
 
 function DetailRow({ label, value }) {
   return (
