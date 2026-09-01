@@ -20,7 +20,7 @@ const membership = {
   },
 };
 
-function renderSidebar(permissions) {
+function renderSidebar(permissions, { collapsed = false } = {}) {
   render(
     <MemoryRouter initialEntries={['/workspaces/workspace-1/dashboard']}>
       <WorkspaceProvider
@@ -29,7 +29,7 @@ function renderSidebar(permissions) {
         workspace={workspace}
       >
         <WorkspaceSidebar
-          collapsed={false}
+          collapsed={collapsed}
           onToggle={vi.fn()}
           workspace={workspace}
         />
@@ -66,5 +66,24 @@ describe('WorkspaceSidebar', () => {
     expect(screen.getByText('Abonnement')).toBeInTheDocument();
     expect(screen.queryByText('Fichiers')).not.toBeInTheDocument();
     expect(screen.queryByText('Paramètres')).not.toBeInTheDocument();
+  });
+
+  it('conserve des libellés accessibles et expose des tooltips en mode réduit', () => {
+    renderSidebar(
+      [
+        WORKSPACE_PERMISSION.WORKSPACE_READ,
+        WORKSPACE_PERMISSION.MEMBER_READ,
+      ],
+      { collapsed: true },
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Tableau de bord' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Tableau de bord', { selector: '[role="tooltip"]' })).toBeInTheDocument();
+    expect(screen.getByText('Membres', { selector: '[role="tooltip"]' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Déployer la navigation' }),
+    ).toBeInTheDocument();
   });
 });
