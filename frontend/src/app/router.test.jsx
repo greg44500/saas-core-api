@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -143,7 +143,9 @@ describe('application routing', () => {
 
     await user.click(await screen.findByRole('link', { name: 'Utilisateurs' }));
 
-    expect(router.state.location.pathname).toBe('/platform/users');
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/platform/users');
+    });
     expect(await screen.findByRole('heading', { name: 'Utilisateurs' })).toBeInTheDocument();
   });
 
