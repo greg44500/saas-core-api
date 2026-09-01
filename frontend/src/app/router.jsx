@@ -8,6 +8,7 @@ import { PublicLayout } from '@/app/layouts/public-layout';
 import { WorkspaceLayout } from '@/app/layouts/workspace-layout';
 import { PageLoader } from '@/components/shared/page-loader';
 import { AuthGuard, GuestGuard } from '@/features/auth/components/auth-guard';
+import { WorkspaceGuard } from '@/features/workspace/components/workspace-guard';
 
 function createAppRoutes() {
   return [
@@ -91,17 +92,22 @@ function createAppRoutes() {
         },
         {
           path: 'workspaces/:workspaceId',
-          Component: WorkspaceLayout,
+          Component: WorkspaceGuard,
           HydrateFallback: PageLoader,
           children: [
             {
-              path: 'dashboard',
-              lazy: async () => {
-                const { WorkspaceDashboardPlaceholderPage } = await import(
-                  '@/features/workspace/pages/workspace-dashboard-placeholder-page'
-                );
-                return { Component: WorkspaceDashboardPlaceholderPage };
-              },
+              Component: WorkspaceLayout,
+              children: [
+                {
+                  path: 'dashboard',
+                  lazy: async () => {
+                    const { WorkspaceDashboardPage } = await import(
+                      '@/features/workspace/pages/workspace-dashboard-page'
+                    );
+                    return { Component: WorkspaceDashboardPage };
+                  },
+                },
+              ],
             },
           ],
         },

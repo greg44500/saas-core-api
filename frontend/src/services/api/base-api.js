@@ -5,7 +5,7 @@ import { baseQueryWithReauth } from '@/services/api/base-query';
 const baseApi = createApi({
   reducerPath: 'coreApi',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['WorkspaceList', 'PlanCatalog'],
+  tagTypes: ['WorkspaceList', 'Workspace', 'PlanCatalog'],
   endpoints: () => ({}),
 });
 
