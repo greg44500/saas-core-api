@@ -54,7 +54,7 @@ describe('role.controller', () => {
         createWorkspaceRole.mockResolvedValue(role);
         const req = {
             workspace: { _id: 'workspace-id' },
-            user: { _id: 'actor-id' },
+            user: { id: 'actor-id' },
             permissions: ['role:create', 'member:read'],
             validated: {
                 body: {
@@ -62,8 +62,10 @@ describe('role.controller', () => {
                     permissions: ['member:read'],
                 },
             },
-            ip: '127.0.0.1',
-            get: vi.fn(() => 'vitest'),
+            context: {
+                ipAddress: '127.0.0.1',
+                userAgent: 'vitest',
+            },
         };
         const res = makeResponse();
 
@@ -86,14 +88,16 @@ describe('role.controller', () => {
         updateWorkspaceRole.mockResolvedValue(role);
         const req = {
             workspace: { _id: 'workspace-id' },
-            user: { _id: 'actor-id' },
+            user: { id: 'actor-id' },
             permissions: ['role:update', 'member:read'],
             validated: {
                 params: { roleId: 'role-id' },
                 body: { name: 'Support senior' },
             },
-            ip: '127.0.0.1',
-            get: vi.fn(() => null),
+            context: {
+                ipAddress: '127.0.0.1',
+                userAgent: null,
+            },
         };
         const res = makeResponse();
 
@@ -115,10 +119,12 @@ describe('role.controller', () => {
         deleteWorkspaceRole.mockResolvedValue(undefined);
         const req = {
             workspace: { _id: 'workspace-id' },
-            user: { _id: 'actor-id' },
+            user: { id: 'actor-id' },
             validated: { params: { roleId: 'role-id' } },
-            ip: '127.0.0.1',
-            get: vi.fn(() => null),
+            context: {
+                ipAddress: '127.0.0.1',
+                userAgent: null,
+            },
         };
         const res = makeResponse();
 
