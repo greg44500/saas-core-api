@@ -11,6 +11,7 @@ import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
     auditLogRouter,
 } from '../auditLog/auditLog.routes.js';
+import { roleRouter } from '../role/role.routes.js';
 import {
     subscriptionRouter,
 } from '../subscriptions/subscription.routes.js';
@@ -56,47 +57,36 @@ router.get(
     list,
 );
 
-/**
- * Le module Subscription reste responsable de sa propre chaîne HTTP. Le
- * workspaceRouter ne fait ici que porter la frontière multi-tenant commune.
- */
 router.use(
     '/:workspaceId/subscription',
     subscriptionRouter,
 );
 
-/**
- * AuditLog porte sa propre politique de lecture. Le routeur workspace ne fait
- * que fournir le segment tenant commun à cette API transversale.
- */
 router.use(
     '/:workspaceId/audit-logs',
     auditLogRouter,
 );
 
-/**
- * Le transfert de propriété est un workflow métier dédié. Il ne passe jamais
- * par la commande générique de changement de rôle d'un WorkspaceMember.
- */
 router.use(
     '/:workspaceId/ownership',
     workspaceOwnershipRouter,
 );
 
-/**
- * Les commandes individuelles des membres appartiennent au module
- * WorkspaceMember. La collection reste lue depuis Workspace afin de préserver
- * le contrat de pagination déjà exposé.
- */
 router.use(
     '/:workspaceId/members',
     workspaceMemberRouter,
 );
 
 /**
- * Les lectures restent accessibles en remédiation afin que l'interface puisse
- * expliquer la situation et présenter les ressources à mettre en conformité.
+ * Les rôles restent une ressource propre au tenant. Le frontend les lit pour
+ * alimenter les formulaires d'invitation et de changement de rôle sans jamais
+ * coder d'identifiants MongoDB en dur.
  */
+router.use(
+    '/:workspaceId/roles',
+    roleRouter,
+);
+
 router.get(
     '/:workspaceId/members',
     authenticate,
@@ -124,12 +114,6 @@ router.get(
     getById,
 );
 
-/**
- * Une modification générale du workspace n'est pas une action de remédiation.
- * Elle reste donc indisponible tant que des capacités bloquantes dépassent le
- * plan effectif. Les futures routes de correction déclareront explicitement
- * leur autorisation en remédiation.
- */
 router.patch(
     '/:workspaceId',
     authenticate,
