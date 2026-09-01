@@ -129,6 +129,21 @@ function createAppRoutes() {
                     return { Component: PlatformOverviewPlaceholderPage };
                   },
                 },
+                ...[
+                  ['users', 'PlatformUsersPlaceholderPage'],
+                  ['workspaces', 'PlatformWorkspacesPlaceholderPage'],
+                  ['plans', 'PlatformPlansPlaceholderPage'],
+                  ['subscriptions', 'PlatformSubscriptionsPlaceholderPage'],
+                  ['audit-logs', 'PlatformAuditLogsPlaceholderPage'],
+                ].map(([path, exportName]) => ({
+                  path,
+                  lazy: async () => {
+                    const module = await import(
+                      '@/features/platform/pages/platform-section-placeholder-page'
+                    );
+                    return { Component: module[exportName] };
+                  },
+                })),
               ],
             },
           ],
