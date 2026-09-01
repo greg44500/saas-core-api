@@ -88,15 +88,14 @@ describe('WorkspaceRolesPage', () => {
     expect(ownerRow).not.toHaveTextContent('Supprimer');
   });
 
-  it('réutilise le drawer de permissions pour consulter un rôle', () => {
+  it('réutilise le drawer de permissions pour consulter un rôle personnalisé', () => {
     render(<WorkspaceRolesPage />);
 
-    const supportRow = screen.getByText('Support').closest('tr');
-    fireEvent.click(screen.getByRole('button', { name: 'Voir' , hidden: false, exact: true }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Voir' })[1]);
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText('Rôle système')).toBeInTheDocument();
-    expect(supportRow).toBeInTheDocument();
+    expect(screen.getByText('Rôle personnalisé')).toBeInTheDocument();
+    expect(screen.getByText('Consulter les membres')).toBeInTheDocument();
   });
 
   it('ne propose pas la permission ownership dans le formulaire de création', () => {
