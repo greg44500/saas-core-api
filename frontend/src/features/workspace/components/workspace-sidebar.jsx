@@ -1,10 +1,26 @@
+import {
+  CreditCard,
+  Files,
+  LayoutDashboard,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings,
+  Users,
+} from 'lucide-react';
 import { NavLink } from 'react-router';
 
 import { Button } from '@/components/ui/button';
 
-const futureNavigationItems = ['Membres', 'Fichiers', 'Abonnement', 'Paramètres'];
+const futureNavigationItems = [
+  { label: 'Membres', Icon: Users },
+  { label: 'Fichiers', Icon: Files },
+  { label: 'Abonnement', Icon: CreditCard },
+  { label: 'Paramètres', Icon: Settings },
+];
 
 function WorkspaceSidebar({ collapsed, onToggle, workspace }) {
+  const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
+
   return (
     <aside
       className={`hidden min-h-screen shrink-0 border-r border-border bg-card md:flex md:flex-col ${
@@ -22,11 +38,11 @@ function WorkspaceSidebar({ collapsed, onToggle, workspace }) {
           aria-label={collapsed ? 'Déployer la navigation' : 'Réduire la navigation'}
           className="shrink-0"
           onClick={onToggle}
-          size="sm"
+          size="icon"
           type="button"
           variant="ghost"
         >
-          {collapsed ? '→' : '←'}
+          <ToggleIcon aria-hidden="true" />
         </Button>
       </div>
 
@@ -39,7 +55,7 @@ function WorkspaceSidebar({ collapsed, onToggle, workspace }) {
           )}
           <NavLink
             className={({ isActive }) =>
-              `flex min-h-10 items-center rounded-md px-3 text-sm font-medium transition-colors ${
+              `flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -47,9 +63,7 @@ function WorkspaceSidebar({ collapsed, onToggle, workspace }) {
             }
             to={`/workspaces/${workspace.id}/dashboard`}
           >
-            <span aria-hidden="true" className="w-6 shrink-0">
-              D
-            </span>
+            <LayoutDashboard aria-hidden="true" className="size-4 shrink-0" />
             {!collapsed && <span>Tableau de bord</span>}
           </NavLink>
         </div>
@@ -60,17 +74,15 @@ function WorkspaceSidebar({ collapsed, onToggle, workspace }) {
               Core
             </p>
           )}
-          {futureNavigationItems.map((item) => (
+          {futureNavigationItems.map(({ label, Icon }) => (
             <span
               aria-disabled="true"
-              className="flex min-h-10 cursor-not-allowed items-center rounded-md px-3 text-sm text-muted-foreground/60"
-              key={item}
-              title={`${item} — lot futur`}
+              className="flex min-h-10 cursor-not-allowed items-center gap-2 rounded-md px-3 text-sm text-muted-foreground/60"
+              key={label}
+              title={`${label} — lot futur`}
             >
-              <span aria-hidden="true" className="w-6 shrink-0">
-                {item.charAt(0)}
-              </span>
-              {!collapsed && <span>{item}</span>}
+              <Icon aria-hidden="true" className="size-4 shrink-0" />
+              {!collapsed && <span>{label}</span>}
             </span>
           ))}
         </div>
