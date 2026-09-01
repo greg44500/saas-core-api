@@ -108,6 +108,15 @@ function createAppRoutes() {
                     return { Component: WorkspaceDashboardPage };
                   },
                 },
+                {
+                  path: 'members',
+                  lazy: async () => {
+                    const { WorkspaceMembersPage } = await import(
+                      '@/features/workspace-members/pages/workspace-members-page'
+                    );
+                    return { Component: WorkspaceMembersPage };
+                  },
+                },
               ],
             },
           ],
@@ -129,21 +138,51 @@ function createAppRoutes() {
                     return { Component: PlatformOverviewPlaceholderPage };
                   },
                 },
-                ...[
-                  ['users', 'PlatformUsersPlaceholderPage'],
-                  ['workspaces', 'PlatformWorkspacesPlaceholderPage'],
-                  ['plans', 'PlatformPlansPlaceholderPage'],
-                  ['subscriptions', 'PlatformSubscriptionsPlaceholderPage'],
-                  ['audit-logs', 'PlatformAuditLogsPlaceholderPage'],
-                ].map(([path, exportName]) => ({
-                  path,
+                {
+                  path: 'users',
                   lazy: async () => {
-                    const module = await import(
+                    const { PlatformSectionPlaceholderPage } = await import(
                       '@/features/platform/pages/platform-section-placeholder-page'
                     );
-                    return { Component: module[exportName] };
+                    return { Component: () => <PlatformSectionPlaceholderPage title="Utilisateurs" /> };
                   },
-                })),
+                },
+                {
+                  path: 'workspaces',
+                  lazy: async () => {
+                    const { PlatformSectionPlaceholderPage } = await import(
+                      '@/features/platform/pages/platform-section-placeholder-page'
+                    );
+                    return { Component: () => <PlatformSectionPlaceholderPage title="Workspaces" /> };
+                  },
+                },
+                {
+                  path: 'plans',
+                  lazy: async () => {
+                    const { PlatformSectionPlaceholderPage } = await import(
+                      '@/features/platform/pages/platform-section-placeholder-page'
+                    );
+                    return { Component: () => <PlatformSectionPlaceholderPage title="Plans" /> };
+                  },
+                },
+                {
+                  path: 'subscriptions',
+                  lazy: async () => {
+                    const { PlatformSectionPlaceholderPage } = await import(
+                      '@/features/platform/pages/platform-section-placeholder-page'
+                    );
+                    return { Component: () => <PlatformSectionPlaceholderPage title="Abonnements" /> };
+                  },
+                },
+                {
+                  path: 'audit-logs',
+                  lazy: async () => {
+                    const { PlatformSectionPlaceholderPage } = await import(
+                      '@/features/platform/pages/platform-section-placeholder-page'
+                    );
+                    return { Component: () => <PlatformSectionPlaceholderPage title="Audit logs" /> };
+                  },
+                },
               ],
             },
           ],
