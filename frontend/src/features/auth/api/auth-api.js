@@ -64,6 +64,7 @@ const authApi = baseApi.injectEndpoints({
     }),
     getCurrentUser: build.query({
       query: () => '/auth/me',
+      transformResponse: (response) => response?.data?.user ?? null,
     }),
     logout: build.mutation({
       query: () => ({
@@ -76,6 +77,7 @@ const authApi = baseApi.injectEndpoints({
           await queryFulfilled;
         } finally {
           dispatch(sessionTerminated());
+          dispatch(baseApi.util.resetApiState());
         }
       },
     }),
@@ -90,6 +92,7 @@ const authApi = baseApi.injectEndpoints({
           await queryFulfilled;
         } finally {
           dispatch(sessionTerminated());
+          dispatch(baseApi.util.resetApiState());
         }
       },
     }),
@@ -103,6 +106,7 @@ const authApi = baseApi.injectEndpoints({
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         await queryFulfilled;
         dispatch(sessionTerminated());
+        dispatch(baseApi.util.resetApiState());
       },
     }),
     forgotPassword: build.mutation({
@@ -123,6 +127,7 @@ const authApi = baseApi.injectEndpoints({
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         await queryFulfilled;
         dispatch(sessionTerminated());
+        dispatch(baseApi.util.resetApiState());
       },
     }),
   }),
