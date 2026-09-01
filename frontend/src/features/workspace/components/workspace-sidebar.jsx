@@ -5,6 +5,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  ShieldCheck,
   Users,
 } from 'lucide-react';
 import { NavLink } from 'react-router';
@@ -19,6 +20,12 @@ const administrationNavigationItems = [
     Icon: Users,
     permission: WORKSPACE_PERMISSION.MEMBER_READ,
     path: 'members',
+  },
+  {
+    label: 'Rôles et permissions',
+    Icon: ShieldCheck,
+    permission: WORKSPACE_PERMISSION.ROLE_READ,
+    path: 'roles',
   },
   {
     label: 'Fichiers',
