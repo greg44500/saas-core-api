@@ -2,10 +2,18 @@ import { useNavigate, useParams } from 'react-router';
 
 import { useListWorkspacesQuery } from '@/features/workspace/api/workspace-api';
 
-function WorkspaceSwitcher() {
+function WorkspaceSwitcher({ currentWorkspace }) {
   const navigate = useNavigate();
   const { workspaceId } = useParams();
   const { data: workspaces = [], isLoading, isFetching } = useListWorkspacesQuery();
+
+  const includesCurrentWorkspace = workspaces.some(
+    (workspace) => workspace.id === workspaceId,
+  );
+  const availableWorkspaces =
+    currentWorkspace && !includesCurrentWorkspace
+      ? [currentWorkspace, ...workspaces]
+      : workspaces;
 
   function handleChange(event) {
     const nextWorkspaceId = event.target.value;
@@ -18,16 +26,20 @@ function WorkspaceSwitcher() {
   }
 
   return (
-    <label className="grid gap-1">
+    <label className="grid min-w-0 gap-1">
       <span className="sr-only">Espace de travail actif</span>
       <select
         aria-label="Espace de travail actif"
-        className="h-9 max-w-64 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        disabled={isLoading || isFetching || workspaces.length === 0}
+        className="h-9 w-full max-w-64 truncate rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        disabled={
+          (isLoading || isFetching) && availableWorkspaces.length <= 1
+            ? true
+            : availableWorkspaces.length <= 1
+        }
         onChange={handleChange}
         value={workspaceId ?? ''}
       >
-        {workspaces.map((workspace) => (
+        {availableWorkspaces.map((workspace) => (
           <option key={workspace.id} value={workspace.id}>
             {workspace.name}
           </option>
