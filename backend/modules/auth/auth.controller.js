@@ -12,6 +12,7 @@ import {
     registerUser,
     resetUserPassword,
 } from './auth.service.js';
+import { toPublicUser } from './publicUser.dto.js';
 
 import { signAccessToken } from '../../utils/jwt.js';
 
@@ -29,13 +30,7 @@ export const register = async (req, res) => {
     res.status(201).json({
         status: 'success',
         data: {
-            user: {
-                id: user._id.toString(),
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                emailVerifiedAt: user.emailVerifiedAt,
-            },
+            user: toPublicUser(user),
         },
     });
 };
@@ -80,13 +75,7 @@ export const login = async (req, res) => {
     res.status(200).json({
         status: 'success',
         data: {
-            user: {
-                id: user._id.toString(),
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                emailVerifiedAt: user.emailVerifiedAt,
-            },
+            user: toPublicUser(user),
             accessToken,
         },
     });
@@ -222,13 +211,7 @@ export const refresh = async (req, res) => {
     res.status(200).json({
         status: 'success',
         data: {
-            user: {
-                id: user._id.toString(),
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                emailVerifiedAt: user.emailVerifiedAt,
-            },
+            user: toPublicUser(user),
             accessToken,
         },
     });
@@ -325,18 +308,10 @@ export const changePassword = async (req, res) => {
  * dans `req.user`. Aucun nouvel accès MongoDB n'est nécessaire ici.
  */
 export const me = async (req, res) => {
-    const user = req.user;
-
     res.status(200).json({
         status: 'success',
         data: {
-            user: {
-                id: user.id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                emailVerifiedAt: user.emailVerifiedAt,
-            },
+            user: toPublicUser(req.user),
         },
     });
 };
