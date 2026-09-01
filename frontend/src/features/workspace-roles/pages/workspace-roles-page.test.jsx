@@ -122,4 +122,26 @@ describe('WorkspaceRolesPage', () => {
       screen.queryByRole('button', { name: 'Créer un rôle' }),
     ).not.toBeInTheDocument();
   });
+
+  it('n’autorise pas l’administration d’un rôle personnalisé plus puissant que l’acteur', () => {
+    mocks.rolesQuery.data = [
+      {
+        id: 'advanced-role',
+        key: 'custom-advanced',
+        name: 'Avancé',
+        description: null,
+        permissions: ['workspace:read', 'file:delete'],
+        isSystem: false,
+        isEditable: true,
+      },
+    ];
+
+    render(<WorkspaceRolesPage />);
+
+    const row = screen.getByText('Avancé').closest('tr');
+    expect(row).toHaveTextContent('Niveau supérieur');
+    expect(row).not.toHaveTextContent('Modifier');
+    expect(row).not.toHaveTextContent('Supprimer');
+    expect(row).toHaveTextContent('Voir');
+  });
 });
