@@ -4,7 +4,7 @@ import { WorkspaceSwitcher } from '@/features/workspace/components/workspace-swi
 
 function WorkspaceTopbar({ workspace }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
       <div className="flex min-h-16 items-center gap-4 px-4 sm:px-6">
         <div className="min-w-0 flex-1">
           <WorkspaceSwitcher currentWorkspace={workspace} />
