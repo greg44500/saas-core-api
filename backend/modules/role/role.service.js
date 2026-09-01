@@ -106,6 +106,13 @@ const assertEditableCustomRole = (role) => {
     }
 };
 
+const assertActorCanAdministerRole = ({ role, actorPermissions }) => {
+    assertCustomRolePermissions({
+        permissions: role.permissions ?? [],
+        actorPermissions,
+    });
+};
+
 /**
  * Crée les rôles système appartenant à un nouveau workspace.
  */
@@ -217,6 +224,7 @@ const updateWorkspaceRole = async ({
     }).session(session);
 
     assertEditableCustomRole(role);
+    assertActorCanAdministerRole({ role, actorPermissions });
 
     if (changes.permissions !== undefined) {
         role.permissions = assertCustomRolePermissions({
@@ -257,6 +265,7 @@ const deleteWorkspaceRole = async ({
     workspaceId,
     roleId,
     actorId,
+    actorPermissions,
     ipAddress = null,
     userAgent = null,
 }) => mongoose.connection.transaction(async (session) => {
@@ -267,6 +276,7 @@ const deleteWorkspaceRole = async ({
     }).session(session);
 
     assertEditableCustomRole(role);
+    assertActorCanAdministerRole({ role, actorPermissions });
 
     const activeMembership = await WorkspaceMember.findOne({
         workspace: workspaceId,
@@ -326,6 +336,7 @@ const deleteWorkspaceRole = async ({
 });
 
 export {
+    assertActorCanAdministerRole,
     assertCustomRolePermissions,
     createSystemRolesForWorkspace,
     createWorkspaceRole,
