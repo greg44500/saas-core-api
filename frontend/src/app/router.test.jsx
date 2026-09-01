@@ -1,9 +1,17 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+
+const useGetWorkspaceByIdQueryMock = vi.hoisted(() => vi.fn());
+const useListWorkspacesQueryMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/workspace/api/workspace-api', () => ({
+  useGetWorkspaceByIdQuery: useGetWorkspaceByIdQueryMock,
+  useListWorkspacesQuery: useListWorkspacesQueryMock,
+}));
 
 import { createAppRoutes } from '@/app/router';
 import { ThemeProvider } from '@/components/shared/theme-provider';
@@ -35,6 +43,20 @@ describe('application routing', () => {
   beforeEach(() => {
     window.localStorage.clear();
     document.documentElement.classList.remove('dark');
+    useGetWorkspaceByIdQueryMock.mockReset();
+    useListWorkspacesQueryMock.mockReset();
+    useGetWorkspaceByIdQueryMock.mockReturnValue({
+      data: { id: 'workspace-123', name: 'Workspace Démo', status: 'active' },
+      error: undefined,
+      isLoading: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    useListWorkspacesQueryMock.mockReturnValue({
+      data: [{ id: 'workspace-123', name: 'Workspace Démo' }],
+      isLoading: false,
+      isFetching: false,
+    });
   });
 
   afterEach(() => {
@@ -72,11 +94,11 @@ describe('application routing', () => {
     );
   });
 
-  it('rend le workspace pour une session authentifiée', async () => {
+  it('rend le workspace réel pour une session authentifiée', async () => {
     renderRoute('/workspaces/workspace-123/dashboard', 'authenticated');
-    expect(await screen.findByText('workspace-123')).toBeInTheDocument();
+    expect(await screen.findAllByText('Workspace Démo')).not.toHaveLength(0);
     expect(
-      screen.getByRole('heading', { name: 'Dashboard' }),
+      screen.getByRole('heading', { name: 'Tableau de bord' }),
     ).toBeInTheDocument();
   });
 
