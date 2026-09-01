@@ -65,4 +65,9 @@ function PermissionList({ permissions }) {
   );
 }
 
-export { PermissionList, groupPermissions };
+export {
+  CORE_PERMISSION_LABELS,
+  DOMAIN_LABELS,
+  PermissionList,
+  groupPermissions,
+};
