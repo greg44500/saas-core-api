@@ -54,7 +54,7 @@ function WorkspaceAccessState({ error, onRetry }) {
 function WorkspaceGuard() {
   const { workspaceId } = useParams();
   const {
-    data: workspace,
+    data: workspaceContext,
     error,
     isLoading,
     isFetching,
@@ -63,16 +63,20 @@ function WorkspaceGuard() {
     skip: !workspaceId,
   });
 
-  if (!workspaceId || isLoading || (isFetching && !workspace)) {
+  if (!workspaceId || isLoading || (isFetching && !workspaceContext)) {
     return <PageLoader />;
   }
 
-  if (error || !workspace) {
+  if (error || !workspaceContext?.workspace) {
     return <WorkspaceAccessState error={error} onRetry={refetch} />;
   }
 
   return (
-    <WorkspaceProvider workspace={workspace}>
+    <WorkspaceProvider
+      membership={workspaceContext.membership}
+      permissions={workspaceContext.permissions}
+      workspace={workspaceContext.workspace}
+    >
       <Outlet />
     </WorkspaceProvider>
   );
