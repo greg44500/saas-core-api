@@ -128,12 +128,23 @@ describe('application routing', () => {
     expect(screen.getByRole('button', { name: 'Compte test' })).toBeInTheDocument();
   });
 
-  it('rend le contexte Platform pour une session authentifiée', async () => {
+  it('rend le shell Platform et sa navigation pour une session authentifiée', async () => {
     renderRoute('/platform/overview', 'authenticated');
-    expect(await screen.findByText('Console')).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Overview' }),
-    ).toBeInTheDocument();
+
+    expect(await screen.findByText('Console Platform')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Navigation Platform' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Utilisateurs' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument();
+  });
+
+  it('navigue vers une section Platform préparée', async () => {
+    const user = userEvent.setup();
+    const router = renderRoute('/platform/overview', 'authenticated');
+
+    await user.click(await screen.findByRole('link', { name: 'Utilisateurs' }));
+
+    expect(router.state.location.pathname).toBe('/platform/users');
+    expect(await screen.findByRole('heading', { name: 'Utilisateurs' })).toBeInTheDocument();
   });
 
   it('affiche NotFound et permet un retour vers l’accueil', async () => {
