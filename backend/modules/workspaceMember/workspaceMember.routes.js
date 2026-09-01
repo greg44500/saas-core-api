@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
+import { authorizeRoleDelegation } from '../../middlewares/authorizeRoleDelegation.js';
 import {
     enforceWorkspaceAccessMode,
 } from '../../middlewares/enforceWorkspaceAccessMode.js';
@@ -26,6 +27,7 @@ workspaceMemberRouter.patch(
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_UPDATE),
     enforceWorkspaceAccessMode(),
+    authorizeRoleDelegation,
     updateRole,
 );
 

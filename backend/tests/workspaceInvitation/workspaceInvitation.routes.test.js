@@ -11,6 +11,7 @@ import {
 import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
+import { authorizeRoleDelegation } from '../../middlewares/authorizeRoleDelegation.js';
 import {
     enforceWorkspaceAccessMode,
 } from '../../middlewares/enforceWorkspaceAccessMode.js';
@@ -30,6 +31,7 @@ const {
     workspaceContextMiddleware,
     permissionMiddleware,
     accessModeMiddleware,
+    delegationMiddleware,
 } = vi.hoisted(() => ({
     validationMiddleware: vi.fn((req, res, next) => {
         req.validated = {
@@ -41,10 +43,12 @@ const {
     }),
     workspaceContextMiddleware: vi.fn((req, res, next) => {
         req.workspace = { _id: req.params.workspaceId };
+        req.permissions = [CORE_PERMISSION.MEMBER_INVITE];
         next();
     }),
     permissionMiddleware: vi.fn((req, res, next) => next()),
     accessModeMiddleware: vi.fn((req, res, next) => next()),
+    delegationMiddleware: vi.fn((req, res, next) => next()),
 }));
 
 vi.mock('../../middlewares/authenticate.js', () => ({
@@ -64,6 +68,10 @@ vi.mock('../../middlewares/loadWorkspaceContext.js', () => ({
 
 vi.mock('../../middlewares/authorizePermission.js', () => ({
     authorizePermission: vi.fn(() => permissionMiddleware),
+}));
+
+vi.mock('../../middlewares/authorizeRoleDelegation.js', () => ({
+    authorizeRoleDelegation: delegationMiddleware,
 }));
 
 vi.mock('../../middlewares/enforceWorkspaceAccessMode.js', () => ({
@@ -104,13 +112,14 @@ beforeEach(() => {
     workspaceContextMiddleware.mockClear();
     permissionMiddleware.mockClear();
     accessModeMiddleware.mockClear();
+    delegationMiddleware.mockClear();
     create.mockClear();
     revoke.mockClear();
     accept.mockClear();
 });
 
 describe('workspaceInvitation.routes', () => {
-    it('protège la création avec member:invite et le mode normal', async () => {
+    it('protège la création avec member:invite, le mode normal et l’anti-escalade', async () => {
         const response = await request(createApp())
             .post('/workspaces/507f1f77bcf86cd799439011/invitations')
             .send({
@@ -126,6 +135,7 @@ describe('workspaceInvitation.routes', () => {
         );
         expect(enforceWorkspaceAccessMode).toHaveBeenCalledWith();
         expect(accessModeMiddleware).toHaveBeenCalledOnce();
+        expect(authorizeRoleDelegation).toHaveBeenCalledOnce();
         expect(create).toHaveBeenCalledOnce();
     });
 
@@ -151,6 +161,7 @@ describe('workspaceInvitation.routes', () => {
         expect(authenticate).toHaveBeenCalledOnce();
         expect(workspaceContextMiddleware).not.toHaveBeenCalled();
         expect(permissionMiddleware).not.toHaveBeenCalled();
+        expect(delegationMiddleware).not.toHaveBeenCalled();
         expect(accept).toHaveBeenCalledOnce();
     });
 });
