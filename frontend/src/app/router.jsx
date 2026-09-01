@@ -8,6 +8,7 @@ import { PublicLayout } from '@/app/layouts/public-layout';
 import { WorkspaceLayout } from '@/app/layouts/workspace-layout';
 import { PageLoader } from '@/components/shared/page-loader';
 import { AuthGuard, GuestGuard } from '@/features/auth/components/auth-guard';
+import { PlatformGuard } from '@/features/platform/components/platform-guard';
 import { WorkspaceGuard } from '@/features/workspace/components/workspace-guard';
 
 function createAppRoutes() {
@@ -113,17 +114,22 @@ function createAppRoutes() {
         },
         {
           path: 'platform',
-          Component: PlatformLayout,
-          HydrateFallback: PageLoader,
+          Component: PlatformGuard,
           children: [
             {
-              path: 'overview',
-              lazy: async () => {
-                const { PlatformOverviewPlaceholderPage } = await import(
-                  '@/features/platform/pages/platform-overview-placeholder-page'
-                );
-                return { Component: PlatformOverviewPlaceholderPage };
-              },
+              Component: PlatformLayout,
+              HydrateFallback: PageLoader,
+              children: [
+                {
+                  path: 'overview',
+                  lazy: async () => {
+                    const { PlatformOverviewPlaceholderPage } = await import(
+                      '@/features/platform/pages/platform-overview-placeholder-page'
+                    );
+                    return { Component: PlatformOverviewPlaceholderPage };
+                  },
+                },
+              ],
             },
           ],
         },
