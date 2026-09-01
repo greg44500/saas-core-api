@@ -41,7 +41,19 @@ vi.mock('../../modules/role/role.controller.js', () => ({
 
 describe('role.routes', () => {
     beforeEach(() => {
-        vi.clearAllMocks();
+        /*
+         * authorizePermission() et validateRequest() sont des factories appelées
+         * lors de l'import du routeur. On conserve donc leur historique afin de
+         * pouvoir vérifier la configuration déclarative de la route.
+         *
+         * Seuls les middlewares exécutés pendant la requête sont réinitialisés.
+         */
+        authenticate.mockClear();
+        loadWorkspaceContext.mockClear();
+        validationMiddleware.mockClear();
+        workspaceContextMiddleware.mockClear();
+        permissionMiddleware.mockClear();
+        list.mockClear();
     });
 
     it('protège la lecture des rôles avec role:read', async () => {
@@ -53,6 +65,7 @@ describe('role.routes', () => {
 
         expect(response.status).toBe(200);
         expect(authenticate).toHaveBeenCalledOnce();
+        expect(validateRequest).toHaveBeenCalledOnce();
         expect(loadWorkspaceContext).toHaveBeenCalledOnce();
         expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.ROLE_READ,
