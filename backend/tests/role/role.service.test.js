@@ -12,15 +12,14 @@ import {
 import { Role } from '../../modules/role/role.model.js';
 import {
     createSystemRolesForWorkspace,
+    listWorkspaceRoles,
 } from '../../modules/role/role.service.js';
 
 
-describe('createSystemRolesForWorkspace', () => {
+describe('role.service', () => {
     afterEach(() => {
-        // Restaure la vraie méthode Mongoose après chaque test.
         vi.restoreAllMocks();
     });
-
 
     it('crée les cinq rôles système dans la transaction reçue', async () => {
         const workspaceId = 'workspace-id';
@@ -60,15 +59,12 @@ describe('createSystemRolesForWorkspace', () => {
         );
 
         expect(insertManySpy).toHaveBeenCalledOnce();
-
         expect(insertManySpy).toHaveBeenCalledWith(
             expectedRoles,
             { session },
         );
-
         expect(result).toBe(createdRoles);
     });
-
 
     it('refuse de créer les rôles sans session transactionnelle', async () => {
         const insertManySpy = vi.spyOn(Role, 'insertMany');
@@ -83,5 +79,44 @@ describe('createSystemRolesForWorkspace', () => {
         );
 
         expect(insertManySpy).not.toHaveBeenCalled();
+    });
+
+    it('expose les permissions des rôles dans le DTO de lecture', async () => {
+        const lean = vi.fn().mockResolvedValue([
+            {
+                _id: { toString: () => 'role-admin' },
+                key: 'admin',
+                name: 'Administrateur',
+                description: 'Administre le workspace.',
+                permissions: ['workspace:read', 'member:update'],
+                isSystem: true,
+                isEditable: false,
+            },
+        ]);
+        const sort = vi.fn(() => ({ lean }));
+        const select = vi.fn(() => ({ sort }));
+        const findSpy = vi.spyOn(Role, 'find').mockReturnValue({ select });
+
+        const roles = await listWorkspaceRoles({
+            workspaceId: 'workspace-id',
+        });
+
+        expect(findSpy).toHaveBeenCalledWith({
+            workspace: 'workspace-id',
+        });
+        expect(select).toHaveBeenCalledWith(
+            '_id key name description permissions isSystem isEditable',
+        );
+        expect(roles).toEqual([
+            {
+                id: 'role-admin',
+                key: 'admin',
+                name: 'Administrateur',
+                description: 'Administre le workspace.',
+                permissions: ['workspace:read', 'member:update'],
+                isSystem: true,
+                isEditable: false,
+            },
+        ]);
     });
 });
