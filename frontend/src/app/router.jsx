@@ -111,10 +111,10 @@ function createAppRoutes() {
                 {
                   path: 'members',
                   lazy: async () => {
-                    const { WorkspaceMembersPage } = await import(
-                      '@/features/workspace-members/pages/workspace-members-page'
+                    const { WorkspaceMembersRoute } = await import(
+                      '@/features/workspace-members/components/workspace-members-route'
                     );
-                    return { Component: WorkspaceMembersPage };
+                    return { Component: WorkspaceMembersRoute };
                   },
                 },
               ],
