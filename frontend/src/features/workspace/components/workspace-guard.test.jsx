@@ -13,8 +13,15 @@ import { WorkspaceGuard } from '@/features/workspace/components/workspace-guard'
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 
 function WorkspaceProbe() {
-  const { workspace } = useWorkspaceContext();
-  return <h1>{workspace.name}</h1>;
+  const { can, membership, workspace } = useWorkspaceContext();
+
+  return (
+    <div>
+      <h1>{workspace.name}</h1>
+      <p>{membership.role.name}</p>
+      <p>{can('member:read') ? 'Membres autorisés' : 'Membres interdits'}</p>
+    </div>
+  );
 }
 
 function renderGuard() {
@@ -41,9 +48,16 @@ describe('WorkspaceGuard', () => {
     cleanup();
   });
 
-  it('fournit le workspace chargé aux routes enfants', async () => {
+  it('fournit le workspace, le membership et les permissions aux routes enfants', async () => {
     useGetWorkspaceByIdQueryMock.mockReturnValue({
-      data: { id: 'workspace-1', name: 'Acme', status: 'active' },
+      data: {
+        workspace: { id: 'workspace-1', name: 'Acme', status: 'active' },
+        membership: {
+          id: 'membership-1',
+          role: { key: 'admin', name: 'Administrateur' },
+        },
+        permissions: ['workspace:read', 'member:read'],
+      },
       error: undefined,
       isLoading: false,
       isFetching: false,
@@ -53,6 +67,8 @@ describe('WorkspaceGuard', () => {
     renderGuard();
 
     expect(await screen.findByRole('heading', { name: 'Acme' })).toBeInTheDocument();
+    expect(screen.getByText('Administrateur')).toBeInTheDocument();
+    expect(screen.getByText('Membres autorisés')).toBeInTheDocument();
     expect(useGetWorkspaceByIdQueryMock).toHaveBeenCalledWith('workspace-1', {
       skip: false,
     });
