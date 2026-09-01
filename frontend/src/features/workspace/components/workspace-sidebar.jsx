@@ -18,6 +18,7 @@ const administrationNavigationItems = [
     label: 'Membres',
     Icon: Users,
     permission: WORKSPACE_PERMISSION.MEMBER_READ,
+    path: 'members',
   },
   {
     label: 'Fichiers',
@@ -49,9 +50,7 @@ function SidebarLabel({ collapsed, children }) {
 }
 
 function SidebarTooltip({ collapsed, label }) {
-  if (!collapsed) {
-    return null;
-  }
+  if (!collapsed) return null;
 
   return (
     <span
@@ -79,14 +78,10 @@ function WorkspaceSidebar({ collapsed, onToggle, workspace }) {
       <div className="flex h-16 items-center border-b border-border px-4">
         <div className="min-w-0 flex-1 overflow-hidden">
           <div
-            className={`transition-opacity duration-200 ${
-              collapsed ? 'opacity-0' : 'opacity-100'
-            }`}
+            className={`transition-opacity duration-200 ${collapsed ? 'opacity-0' : 'opacity-100'}`}
             aria-hidden={collapsed}
           >
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Workspace
-            </p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Workspace</p>
             <p className="truncate font-semibold text-card-foreground">{workspace.name}</p>
           </div>
         </div>
@@ -141,19 +136,42 @@ function WorkspaceSidebar({ collapsed, onToggle, workspace }) {
               Administration
             </p>
 
-            {visibleAdministrationItems.map(({ label, Icon }) => (
-              <span
-                aria-disabled="true"
-                aria-label={collapsed ? label : undefined}
-                className="group relative flex min-h-10 cursor-not-allowed items-center gap-2 rounded-md px-3 text-sm text-muted-foreground/60 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                key={label}
-                tabIndex={0}
-              >
-                <Icon aria-hidden="true" className="size-4 shrink-0" />
-                <SidebarLabel collapsed={collapsed}>{label}</SidebarLabel>
-                <SidebarTooltip collapsed={collapsed} label={label} />
-              </span>
-            ))}
+            {visibleAdministrationItems.map(({ label, Icon, path }) => {
+              if (path) {
+                return (
+                  <NavLink
+                    aria-label={collapsed ? label : undefined}
+                    className={({ isActive }) =>
+                      `group relative flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      }`
+                    }
+                    key={label}
+                    to={`/workspaces/${workspace.id}/${path}`}
+                  >
+                    <Icon aria-hidden="true" className="size-4 shrink-0" />
+                    <SidebarLabel collapsed={collapsed}>{label}</SidebarLabel>
+                    <SidebarTooltip collapsed={collapsed} label={label} />
+                  </NavLink>
+                );
+              }
+
+              return (
+                <span
+                  aria-disabled="true"
+                  aria-label={collapsed ? label : undefined}
+                  className="group relative flex min-h-10 cursor-not-allowed items-center gap-2 rounded-md px-3 text-sm text-muted-foreground/60 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  key={label}
+                  tabIndex={0}
+                >
+                  <Icon aria-hidden="true" className="size-4 shrink-0" />
+                  <SidebarLabel collapsed={collapsed}>{label}</SidebarLabel>
+                  <SidebarTooltip collapsed={collapsed} label={label} />
+                </span>
+              );
+            })}
           </div>
         )}
       </nav>
