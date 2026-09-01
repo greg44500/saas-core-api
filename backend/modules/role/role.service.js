@@ -53,10 +53,9 @@ const createSystemRolesForWorkspace = async ({
 /**
  * Liste les rôles appartenant à un workspace.
  *
- * Le DTO reste volontairement limité aux informations nécessaires au frontend
- * pour afficher et attribuer un rôle. Les permissions détaillées ne sont pas
- * exposées ici : l'autorisation effective du membre courant provient du
- * contexte workspace dédié.
+ * Cette lecture est protégée par role:read au niveau de la route. Les
+ * permissions sont exposées afin que le frontend puisse expliquer précisément
+ * ce qu'un rôle accorde avant une invitation ou une modification de membre.
  */
 const listWorkspaceRoles = async ({ workspaceId }) => {
     if (!workspaceId) {
@@ -68,7 +67,7 @@ const listWorkspaceRoles = async ({ workspaceId }) => {
     const roles = await Role.find({
         workspace: workspaceId,
     })
-        .select('_id key name description isSystem isEditable')
+        .select('_id key name description permissions isSystem isEditable')
         .sort({ isSystem: -1, name: 1, _id: 1 })
         .lean();
 
@@ -77,6 +76,9 @@ const listWorkspaceRoles = async ({ workspaceId }) => {
         key: role.key,
         name: role.name,
         description: role.description ?? null,
+        permissions: Array.isArray(role.permissions)
+            ? [...role.permissions]
+            : [],
         isSystem: role.isSystem,
         isEditable: role.isEditable,
     }));
