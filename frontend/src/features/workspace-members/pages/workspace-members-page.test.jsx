@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -73,6 +74,7 @@ describe('WorkspaceMembersPage', () => {
           {
             id: 'membership-member',
             status: 'active',
+            joinedAt: '2026-08-20T10:00:00.000Z',
             user: { id: 'user-member', firstName: 'Jane', lastName: 'Doe' },
             role: { id: 'role-member', key: 'member', name: 'Membre' },
           },
@@ -85,9 +87,40 @@ describe('WorkspaceMembersPage', () => {
     });
     mocks.useListWorkspaceRolesQuery.mockReturnValue({
       data: [
-        { id: 'role-owner', key: 'owner', name: 'Propriétaire' },
-        { id: 'role-admin', key: 'admin', name: 'Administrateur' },
-        { id: 'role-member', key: 'member', name: 'Membre' },
+        {
+          id: 'role-owner',
+          key: 'owner',
+          name: 'Propriétaire',
+          isSystem: true,
+          permissions: [
+            WORKSPACE_PERMISSION.WORKSPACE_READ,
+            WORKSPACE_PERMISSION.MEMBER_READ,
+            WORKSPACE_PERMISSION.MEMBER_INVITE,
+            WORKSPACE_PERMISSION.ROLE_READ,
+          ],
+        },
+        {
+          id: 'role-admin',
+          key: 'admin',
+          name: 'Administrateur',
+          description: 'Administre les accès du workspace.',
+          isSystem: true,
+          permissions: [
+            WORKSPACE_PERMISSION.MEMBER_READ,
+            WORKSPACE_PERMISSION.MEMBER_INVITE,
+            WORKSPACE_PERMISSION.ROLE_READ,
+          ],
+        },
+        {
+          id: 'role-member',
+          key: 'member',
+          name: 'Membre',
+          isSystem: true,
+          permissions: [
+            WORKSPACE_PERMISSION.MEMBER_READ,
+            WORKSPACE_PERMISSION.ROLE_READ,
+          ],
+        },
       ],
     });
     mocks.useListWorkspaceInvitationsQuery.mockReturnValue({
@@ -135,5 +168,65 @@ describe('WorkspaceMembersPage', () => {
     expect(screen.getByLabelText('Email du membre')).toBeInTheDocument();
     expect(screen.getByLabelText('Rôle du membre')).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: 'Propriétaire' })).not.toBeInTheDocument();
+  });
+
+  it('ouvre le détail du membre avec les permissions de son rôle', async () => {
+    const user = userEvent.setup();
+
+    renderPage([
+      WORKSPACE_PERMISSION.MEMBER_READ,
+      WORKSPACE_PERMISSION.ROLE_READ,
+    ]);
+
+    const viewButtons = screen.getAllByRole('button', { name: 'Voir' });
+    await user.click(viewButtons[1]);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Jane Doe' })).toBeInTheDocument();
+    expect(screen.getByText('Consulter les membres')).toBeInTheDocument();
+    expect(screen.getByText('member:read')).toBeInTheDocument();
+  });
+
+  it('permet de consulter les permissions du rôle choisi avant invitation', async () => {
+    const user = userEvent.setup();
+
+    renderPage([
+      WORKSPACE_PERMISSION.MEMBER_READ,
+      WORKSPACE_PERMISSION.MEMBER_INVITE,
+      WORKSPACE_PERMISSION.ROLE_READ,
+    ]);
+
+    await user.selectOptions(screen.getByLabelText('Rôle du membre'), 'role-admin');
+    await user.click(screen.getByRole('button', { name: 'Voir les permissions détaillées' }));
+
+    expect(screen.getByRole('heading', { name: 'Administrateur' })).toBeInTheDocument();
+    expect(screen.getByText('Inviter des membres')).toBeInTheDocument();
+    expect(screen.getByText('member:invite')).toBeInTheDocument();
+  });
+
+  it('masque un rôle qui déléguerait une permission absente chez l’acteur', () => {
+    mocks.useListWorkspaceRolesQuery.mockReturnValue({
+      data: [
+        {
+          id: 'role-stronger',
+          key: 'stronger',
+          name: 'Rôle trop puissant',
+          permissions: [
+            WORKSPACE_PERMISSION.MEMBER_READ,
+            WORKSPACE_PERMISSION.MEMBER_INVITE,
+            WORKSPACE_PERMISSION.MEMBER_REMOVE,
+            WORKSPACE_PERMISSION.ROLE_READ,
+          ],
+        },
+      ],
+    });
+
+    renderPage([
+      WORKSPACE_PERMISSION.MEMBER_READ,
+      WORKSPACE_PERMISSION.MEMBER_INVITE,
+      WORKSPACE_PERMISSION.ROLE_READ,
+    ]);
+
+    expect(screen.queryByRole('option', { name: 'Rôle trop puissant' })).not.toBeInTheDocument();
   });
 });

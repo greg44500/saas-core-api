@@ -14,6 +14,8 @@ import {
   useSuspendWorkspaceMemberMutation,
   useUpdateWorkspaceMemberRoleMutation,
 } from '@/features/workspace-members/api/workspace-members-api';
+import { MemberDetailsDrawer } from '@/features/workspace-members/components/member-details-drawer';
+import { RolePermissionsDrawer } from '@/features/workspace-members/components/role-permissions-drawer';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
@@ -89,7 +91,7 @@ function ConfirmationDialog({ action, onCancel, onConfirm, pending }) {
 }
 
 function WorkspaceMembersPage() {
-  const { workspace, membership, can } = useWorkspaceContext();
+  const { workspace, permissions, can } = useWorkspaceContext();
   const { data: currentUser } = useGetCurrentUserQuery();
   const [memberPage, setMemberPage] = useState(1);
   const [invitationPage, setInvitationPage] = useState(1);
@@ -97,6 +99,8 @@ function WorkspaceMembersPage() {
   const [inviteRoleId, setInviteRoleId] = useState('');
   const [feedback, setFeedback] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedRole, setSelectedRole] = useState(null);
 
   const membersQuery = useListWorkspaceMembersQuery({
     workspaceId: workspace.id,
@@ -122,9 +126,29 @@ function WorkspaceMembersPage() {
   const [suspendMember, suspendState] = useSuspendWorkspaceMemberMutation();
   const [removeMember, removeState] = useRemoveWorkspaceMemberMutation();
 
+  const actorPermissionSet = useMemo(() => new Set(permissions), [permissions]);
+
   const assignableRoles = useMemo(
-    () => (rolesQuery.data ?? []).filter((role) => role.key !== 'owner'),
-    [rolesQuery.data],
+    () =>
+      (rolesQuery.data ?? []).filter(
+        (role) =>
+          role.key !== 'owner' &&
+          (role.permissions ?? []).every((permission) => actorPermissionSet.has(permission)),
+      ),
+    [actorPermissionSet, rolesQuery.data],
+  );
+
+  const selectedInviteRole = useMemo(
+    () => (rolesQuery.data ?? []).find((role) => role.id === inviteRoleId) ?? null,
+    [inviteRoleId, rolesQuery.data],
+  );
+
+  const selectedMemberRole = useMemo(
+    () =>
+      selectedMember
+        ? (rolesQuery.data ?? []).find((role) => role.id === selectedMember.role.id) ?? null
+        : null,
+    [rolesQuery.data, selectedMember],
   );
 
   async function handleInvite(event) {
@@ -222,7 +246,7 @@ function WorkspaceMembersPage() {
       {can(WORKSPACE_PERMISSION.MEMBER_INVITE) && can(WORKSPACE_PERMISSION.ROLE_READ) && (
         <section className="rounded-xl border border-border bg-card p-5">
           <h2 className="text-lg font-semibold">Inviter un membre</h2>
-          <form className="mt-4 grid gap-3 md:grid-cols-[1fr_220px_auto]" onSubmit={handleInvite}>
+          <form className="mt-4 grid gap-3 md:grid-cols-[1fr_260px_auto]" onSubmit={handleInvite}>
             <Input
               aria-label="Email du membre"
               autoComplete="email"
@@ -232,18 +256,30 @@ function WorkspaceMembersPage() {
               onChange={(event) => setInviteEmail(event.target.value)}
               placeholder="membre@entreprise.fr"
             />
-            <select
-              aria-label="Rôle du membre"
-              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-              required
-              value={inviteRoleId}
-              onChange={(event) => setInviteRoleId(event.target.value)}
-            >
-              <option value="">Choisir un rôle</option>
-              {assignableRoles.map((role) => (
-                <option key={role.id} value={role.id}>{role.name}</option>
-              ))}
-            </select>
+            <div className="space-y-2">
+              <select
+                aria-label="Rôle du membre"
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                required
+                value={inviteRoleId}
+                onChange={(event) => setInviteRoleId(event.target.value)}
+              >
+                <option value="">Choisir un rôle</option>
+                {assignableRoles.map((role) => (
+                  <option key={role.id} value={role.id}>{role.name}</option>
+                ))}
+              </select>
+              {selectedInviteRole && (
+                <Button
+                  className="h-auto px-0 py-0 text-xs"
+                  onClick={() => setSelectedRole(selectedInviteRole)}
+                  type="button"
+                  variant="link"
+                >
+                  Voir les permissions détaillées
+                </Button>
+              )}
+            </div>
             <Button type="submit" disabled={createInvitationState.isLoading || !inviteEmail || !inviteRoleId}>
               {createInvitationState.isLoading ? 'Envoi…' : 'Inviter'}
             </Button>
@@ -295,6 +331,14 @@ function WorkspaceMembersPage() {
                     <td className="px-5 py-4 capitalize">{member.status}</td>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedMember(member)}
+                        >
+                          Voir
+                        </Button>
                         {can(WORKSPACE_PERMISSION.MEMBER_SUSPEND) && !protectedMember && member.status === 'active' && (
                           <Button
                             type="button"
@@ -323,7 +367,7 @@ function WorkspaceMembersPage() {
                             Retirer
                           </Button>
                         )}
-                        {protectedMember && <span className="text-xs text-muted-foreground">Protégé</span>}
+                        {protectedMember && <span className="self-center text-xs text-muted-foreground">Protégé</span>}
                       </div>
                     </td>
                   </tr>
@@ -410,6 +454,19 @@ function WorkspaceMembersPage() {
         onCancel={() => setPendingAction(null)}
         onConfirm={confirmPendingAction}
         pending={mutationPending}
+      />
+
+      <MemberDetailsDrawer
+        member={selectedMember}
+        onClose={() => setSelectedMember(null)}
+        open={Boolean(selectedMember)}
+        role={selectedMemberRole}
+      />
+
+      <RolePermissionsDrawer
+        onClose={() => setSelectedRole(null)}
+        open={Boolean(selectedRole)}
+        role={selectedRole}
       />
     </div>
   );
