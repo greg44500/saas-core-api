@@ -10,16 +10,38 @@ import {
 import { NavLink } from 'react-router';
 
 import { Button } from '@/components/ui/button';
+import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
+import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
-const futureNavigationItems = [
-  { label: 'Membres', Icon: Users },
-  { label: 'Fichiers', Icon: Files },
-  { label: 'Abonnement', Icon: CreditCard },
-  { label: 'Paramètres', Icon: Settings },
+const administrationNavigationItems = [
+  {
+    label: 'Membres',
+    Icon: Users,
+    permission: WORKSPACE_PERMISSION.MEMBER_READ,
+  },
+  {
+    label: 'Fichiers',
+    Icon: Files,
+    permission: WORKSPACE_PERMISSION.FILE_READ,
+  },
+  {
+    label: 'Abonnement',
+    Icon: CreditCard,
+    permission: WORKSPACE_PERMISSION.SUBSCRIPTION_READ,
+  },
+  {
+    label: 'Paramètres',
+    Icon: Settings,
+    permission: WORKSPACE_PERMISSION.WORKSPACE_UPDATE,
+  },
 ];
 
 function WorkspaceSidebar({ collapsed, onToggle, workspace }) {
+  const { can } = useWorkspaceContext();
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
+  const visibleAdministrationItems = administrationNavigationItems.filter(
+    ({ permission }) => can(permission),
+  );
 
   return (
     <aside
@@ -68,27 +90,29 @@ function WorkspaceSidebar({ collapsed, onToggle, workspace }) {
           </NavLink>
         </div>
 
-        <div className="space-y-1">
-          {!collapsed && (
-            <p className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Administration
-            </p>
-          )}
-          {futureNavigationItems.map(({ label, Icon }) => (
-            <span
-              aria-disabled="true"
-              className="flex min-h-10 cursor-not-allowed items-center gap-2 rounded-md px-3 text-sm text-muted-foreground/60"
-              key={label}
-              title={`${label} — lot futur`}
-            >
-              <Icon aria-hidden="true" className="size-4 shrink-0" />
-              {!collapsed && <span>{label}</span>}
-            </span>
-          ))}
-        </div>
+        {visibleAdministrationItems.length > 0 && (
+          <div className="space-y-1">
+            {!collapsed && (
+              <p className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Administration
+              </p>
+            )}
+            {visibleAdministrationItems.map(({ label, Icon }) => (
+              <span
+                aria-disabled="true"
+                className="flex min-h-10 cursor-not-allowed items-center gap-2 rounded-md px-3 text-sm text-muted-foreground/60"
+                key={label}
+                title={`${label} — lot futur`}
+              >
+                <Icon aria-hidden="true" className="size-4 shrink-0" />
+                {!collapsed && <span>{label}</span>}
+              </span>
+            ))}
+          </div>
+        )}
       </nav>
     </aside>
   );
 }
 
-export { WorkspaceSidebar };
+export { WorkspaceSidebar, administrationNavigationItems };
