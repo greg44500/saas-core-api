@@ -50,7 +50,24 @@ describe('application routing', () => {
     useGetWorkspaceByIdQueryMock.mockReset();
     useListWorkspacesQueryMock.mockReset();
     useGetWorkspaceByIdQueryMock.mockReturnValue({
-      data: { id: 'workspace-123', name: 'Workspace Démo', status: 'active' },
+      data: {
+        workspace: {
+          id: 'workspace-123',
+          name: 'Workspace Démo',
+          status: 'active',
+        },
+        membership: {
+          id: 'membership-123',
+          role: { key: 'owner', name: 'Propriétaire' },
+        },
+        permissions: [
+          'workspace:read',
+          'workspace:update',
+          'member:read',
+          'file:read',
+          'subscription:read',
+        ],
+      },
       error: undefined,
       isLoading: false,
       isFetching: false,
