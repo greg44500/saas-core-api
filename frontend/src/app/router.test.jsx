@@ -2,7 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMemoryRouter } from 'react-router';
+import { createMemoryRouter, Outlet } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 
 const useGetWorkspaceByIdQueryMock = vi.hoisted(() => vi.fn());
@@ -15,6 +15,10 @@ vi.mock('@/features/workspace/api/workspace-api', () => ({
 
 vi.mock('@/features/auth/components/user-menu', () => ({
   UserMenu: () => <button type="button">Compte test</button>,
+}));
+
+vi.mock('@/features/platform/components/platform-guard', () => ({
+  PlatformGuard: () => <Outlet />,
 }));
 
 import { createAppRoutes } from '@/app/router';
