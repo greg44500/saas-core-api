@@ -34,11 +34,12 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[90]">
+    <div className="fixed inset-x-0 bottom-0 top-16 z-[90]">
       <button
         aria-label="Fermer le panneau de détails"
         className="absolute inset-0 bg-black/45"
         onClick={onClose}
+        title="Fermer le panneau"
         type="button"
       />
 
@@ -66,6 +67,7 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
             onClick={onClose}
             ref={closeButtonRef}
             size="icon"
+            title="Fermer"
             type="button"
             variant="ghost"
           >
