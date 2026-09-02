@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -149,7 +149,9 @@ describe('PlatformUsersPage', () => {
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
     expect(screen.getByText('jane@example.com')).toBeInTheDocument();
     expect(screen.getByText('Actif')).toBeInTheDocument();
-    expect(screen.getByText('Utilisateur')).toBeInTheDocument();
+
+    const table = screen.getByRole('table');
+    expect(within(table).getByRole('cell', { name: 'Utilisateur' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Suivant' }));
 
@@ -204,14 +206,16 @@ describe('PlatformUsersPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Voir' }));
 
-    expect(screen.getByRole('dialog', { name: 'Jane Doe' })).toBeInTheDocument();
-    expect(screen.getByText('jane@example.com')).toBeInTheDocument();
+    const drawer = screen.getByRole('dialog', { name: 'Jane Doe' });
+    expect(within(drawer).getByText('jane@example.com')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Désactiver' }));
-    await user.click(screen.getByRole('button', { name: 'Confirmer' }));
+    await user.click(within(drawer).getByRole('button', { name: 'Désactiver' }));
+
+    const confirmation = screen.getByRole('dialog', { name: 'Confirmer l’action' });
+    await user.click(within(confirmation).getByRole('button', { name: 'Confirmer' }));
 
     expect(
-      screen.getByText('Le motif doit contenir au minimum 3 caractères.'),
+      within(confirmation).getByText('Le motif doit contenir au minimum 3 caractères.'),
     ).toBeInTheDocument();
     expect(mocks.disableUser).not.toHaveBeenCalled();
   });
@@ -221,17 +225,25 @@ describe('PlatformUsersPage', () => {
     renderPage();
 
     await user.click(screen.getByRole('button', { name: 'Voir' }));
-    await user.click(screen.getByRole('button', { name: 'Désactiver' }));
-    await user.type(
-      screen.getByLabelText('Motif de désactivation'),
-      'Incident de sécurité',
-    );
-    await user.click(screen.getByRole('button', { name: 'Confirmer' }));
 
-    expect(mocks.disableUser).toHaveBeenCalledWith({
-      userId: listedUser.id,
-      disabledReason: 'Incident de sécurité',
+    const drawer = screen.getByRole('dialog', { name: 'Jane Doe' });
+    await user.click(within(drawer).getByRole('button', { name: 'Désactiver' }));
+
+    const confirmation = screen.getByRole('dialog', { name: 'Confirmer l’action' });
+    const reasonField = within(confirmation).getByLabelText('Motif de désactivation');
+
+    await user.type(reasonField, 'Incident de sécurité');
+    expect(reasonField).toHaveValue('Incident de sécurité');
+
+    await user.click(within(confirmation).getByRole('button', { name: 'Confirmer' }));
+
+    await waitFor(() => {
+      expect(mocks.disableUser).toHaveBeenCalledWith({
+        userId: listedUser.id,
+        disabledReason: 'Incident de sécurité',
+      });
     });
+
     expect(await screen.findByText('Utilisateur désactivé')).toBeInTheDocument();
   });
 });
