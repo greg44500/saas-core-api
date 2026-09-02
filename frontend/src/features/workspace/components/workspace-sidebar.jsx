@@ -31,6 +31,7 @@ const administrationNavigationItems = [
     label: 'Fichiers',
     Icon: Files,
     permission: WORKSPACE_PERMISSION.FILE_READ,
+    path: 'files',
   },
   {
     label: 'Abonnement',
