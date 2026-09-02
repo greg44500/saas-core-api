@@ -20,6 +20,8 @@ const baseApi = createApi({
     'WorkspaceSubscription',
     'PlatformUsers',
     'PlatformWorkspaces',
+    'PlatformPlans',
+    'PlatformPlanCapabilities',
   ],
   endpoints: () => ({}),
 });
