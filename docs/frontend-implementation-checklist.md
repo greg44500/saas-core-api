@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Frontend Core
 
-Dernière consolidation : 2026-09-02 — F8.6.3, F8.7 et F8.8.1 validés ; F8.8.2 Dashboard Core ouvert
+Dernière consolidation : 2026-09-02 — F8.6.3, F8.7 et F8.8.1 validés ; F8.8.2 Dashboard Core implémenté, validation à exécuter
 
 ## 1. Rôle du document
 
@@ -169,12 +169,16 @@ Référence : `docs/functional-debt-file-trash-restore.md`.
 
 ### F8.8.2 — Dashboard Core
 
-- [ ] EN COURS — auditer les données réellement exposées par le backend avant toute carte ou KPI.
-- [ ] À FAIRE — afficher uniquement des indicateurs dérivables de contrats backend existants et autorisés.
-- [ ] À FAIRE — respecter les permissions de lecture de chaque source ; aucune requête additionnelle ne doit contourner le RBAC.
-- [ ] À FAIRE — privilégier la composition de composants de synthèse réutilisables plutôt qu’une logique lourde dans la page.
-- [ ] À FAIRE — prévoir états loading / error / unavailable par section sans rendre le dashboard inutilisable si une permission manque.
-- [ ] À FAIRE — tests ciblés + régression frontend + build Vite avant clôture.
+- [x] TERMINÉ — audit des contrats backend disponibles effectué avant implémentation ; aucune nouvelle route backend requise.
+- [ ] EN COURS — synthèse implémentée à partir du workspace courant, membres, invitations, fichiers, abonnement et activité selon permissions ; validation locale à exécuter.
+- [x] TERMINÉ — requêtes Membres/Fichiers/Invitations limitées à `limit=1` pour exploiter uniquement `meta.total` sans charger les listes complètes.
+- [x] TERMINÉ — chaque requête RTK Query est `skip` lorsque la permission correspondante manque ; aucun contournement RBAC.
+- [x] TERMINÉ — composants de synthèse séparés de la page et hook de composition `useWorkspaceDashboardData` dédié.
+- [x] TERMINÉ — états loading / error / unavailable isolés afin qu’une source indisponible ne bloque pas tout le dashboard.
+- [x] TERMINÉ — activité récente limitée aux cinq derniers événements et lien vers l’historique complet.
+- [x] TERMINÉ — plan et mode d’accès lus exclusivement depuis `effectiveEntitlement` et formatters Subscription existants.
+- [x] TERMINÉ — `storage_bytes` et `file_uploads_monthly` ne sont pas affichés : les métriques existent en interne mais aucun contrat de lecture dédié n’expose leur valeur courante au frontend.
+- [ ] EN COURS — tests ciblés ajoutés ; régression frontend globale et build Vite requis avant clôture du lot.
 
 ## 7. Ordre de production frontend restant
 
@@ -185,7 +189,7 @@ F8.6.2    Trial / changement de plan                  TERMINÉ
 F8.6.3    Résiliation / downgrade                     TERMINÉ
 F8.7      Workspace Settings / Ownership frontend     TERMINÉ
 F8.8.1    Audit Workspace frontend                    TERMINÉ
-F8.8.2    Dashboard Core frontend                     EN COURS
+F8.8.2    Dashboard Core frontend                     VALIDATION EN COURS
 F8.9      Account / Security frontend                 À FAIRE
 F8-AUDIT  Maintenabilité + commentaires + JSDoc       OBLIGATOIRE AVANT F9
 F9.x      Platform Admin frontend réel
