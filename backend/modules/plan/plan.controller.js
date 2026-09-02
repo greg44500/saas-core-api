@@ -30,6 +30,10 @@ const serializePlanLimits = (limits) => {
  *
  * Le contrôleur construit explicitement le contrat public afin qu'un nouveau
  * champ interne ajouté au modèle Plan ne soit pas exposé automatiquement.
+ *
+ * La configuration du trial fait partie du contrat commercial public : le
+ * frontend doit pouvoir expliquer si un plan propose un essai et sa durée sans
+ * tenter de déduire cette règle à partir du prix ou de la clé du Plan.
  */
 const list = async (req, res) => {
     const plans = await listPublicPlans();
@@ -48,6 +52,8 @@ const list = async (req, res) => {
                     plan.priceMonthlyExclTaxMinor,
                 priceYearlyExclTaxMinor:
                     plan.priceYearlyExclTaxMinor,
+                trialEnabled: plan.trialEnabled,
+                trialDurationDays: plan.trialDurationDays,
                 features: plan.features,
                 limits: serializePlanLimits(plan.limits),
             })),
