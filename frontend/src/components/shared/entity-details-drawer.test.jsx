@@ -31,6 +31,7 @@ describe('EntityDetailsDrawer', () => {
     expect(drawer).toHaveClass('shadow-lg');
     expect(drawer).toHaveClass('transition-transform');
     expect(drawer).toHaveClass('duration-300');
+    expect(drawer).toHaveClass('ease-in-out');
     expect(drawer).toHaveClass('translate-x-0');
 
     rerender(
@@ -42,6 +43,7 @@ describe('EntityDetailsDrawer', () => {
     const closingDrawer = screen.getByRole('dialog', { hidden: true });
 
     expect(closingDrawer).toHaveAttribute('aria-hidden', 'true');
+    expect(closingDrawer).toHaveClass('ease-in-out');
     expect(closingDrawer).toHaveClass('translate-x-full');
 
     act(() => {
@@ -57,17 +59,31 @@ describe('EntityDetailsDrawer', () => {
     expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument();
   });
 
-  it('anime également le voile de fond', () => {
-    render(
+  it('anime également le voile de fond à l’ouverture et à la fermeture', () => {
+    const { rerender } = render(
       <EntityDetailsDrawer onClose={vi.fn()} open title="Détails">
         <p>Contenu</p>
       </EntityDetailsDrawer>,
     );
 
-    expect(screen.getByRole('button', { name: 'Fermer le panneau de détails' })).toHaveClass(
+    const overlay = screen.getByRole('button', { name: 'Fermer le panneau de détails' });
+
+    expect(overlay).toHaveClass(
       'transition-opacity',
       'duration-300',
+      'ease-in-out',
       'opacity-100',
+    );
+
+    rerender(
+      <EntityDetailsDrawer onClose={vi.fn()} open={false} title="Détails">
+        <p>Contenu</p>
+      </EntityDetailsDrawer>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Fermer le panneau de détails' })).toHaveClass(
+      'ease-in-out',
+      'opacity-0',
     );
   });
 });
