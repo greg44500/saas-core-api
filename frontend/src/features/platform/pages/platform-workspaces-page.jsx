@@ -28,12 +28,12 @@ const PAGE_SIZE = 20;
 const suspendWorkspaceSchema = z
   .strictObject({
     statusReason: z.enum(Object.values(PLATFORM_WORKSPACE_STATUS_REASON)),
-    statusReasonDetails: z.string().trim().max(500).optional(),
+    statusReasonDetails: z.string().trim().min(3, 'Les détails doivent contenir au minimum 3 caractères.').max(500).optional(),
   })
   .superRefine((data, context) => {
     if (
       data.statusReason === PLATFORM_WORKSPACE_STATUS_REASON.OTHER
-      && (!data.statusReasonDetails || data.statusReasonDetails.length < 3)
+      && !data.statusReasonDetails
     ) {
       context.addIssue({
         code: 'custom',
