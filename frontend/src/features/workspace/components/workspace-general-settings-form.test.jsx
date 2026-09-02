@@ -2,6 +2,8 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ToastProvider } from '@/components/shared/toast-provider';
+
 const updateWorkspaceMock = vi.hoisted(() => vi.fn());
 const updateUnwrapMock = vi.hoisted(() => vi.fn());
 
@@ -19,6 +21,14 @@ const workspace = {
   name: 'Workspace Démo',
 };
 
+function renderForm() {
+  return render(
+    <ToastProvider>
+      <WorkspaceGeneralSettingsForm canUpdate workspace={workspace} />
+    </ToastProvider>,
+  );
+}
+
 describe('WorkspaceGeneralSettingsForm', () => {
   beforeEach(() => {
     updateWorkspaceMock.mockReset();
@@ -30,14 +40,14 @@ describe('WorkspaceGeneralSettingsForm', () => {
     cleanup();
   });
 
-  it('envoie uniquement le nouveau nom au contrat workspace', async () => {
+  it('envoie uniquement le nouveau nom et confirme le succès par toast', async () => {
     const user = userEvent.setup();
     updateUnwrapMock.mockResolvedValue({
       ...workspace,
       name: 'Nouveau nom',
     });
 
-    render(<WorkspaceGeneralSettingsForm canUpdate workspace={workspace} />);
+    renderForm();
 
     const nameInput = screen.getByLabelText('Nom du workspace');
     await user.clear(nameInput);
@@ -50,12 +60,13 @@ describe('WorkspaceGeneralSettingsForm', () => {
         name: 'Nouveau nom',
       });
     });
-    expect(
-      await screen.findByText('Le nom du workspace a été mis à jour.'),
-    ).toBeInTheDocument();
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Nom du workspace mis à jour',
+    );
   });
 
-  it('présente un refus backend sans reconstruire la règle côté frontend', async () => {
+  it('présente un refus backend dans un toast sans reconstruire la règle côté frontend', async () => {
     const user = userEvent.setup();
     updateUnwrapMock.mockRejectedValue({
       data: {
@@ -63,13 +74,15 @@ describe('WorkspaceGeneralSettingsForm', () => {
       },
     });
 
-    render(<WorkspaceGeneralSettingsForm canUpdate workspace={workspace} />);
+    renderForm();
 
     const nameInput = screen.getByLabelText('Nom du workspace');
     await user.clear(nameInput);
     await user.type(nameInput, 'Nouveau nom');
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
 
-    expect(await screen.findByText('Workspace indisponible')).toBeInTheDocument();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Modification impossible');
+    expect(alert).toHaveTextContent('Workspace indisponible');
   });
 });
