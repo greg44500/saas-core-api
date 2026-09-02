@@ -6,15 +6,6 @@ import { PLAN_STATUS } from '../../constants/plan.constants.js';
 import { AppError } from '../../utils/appError.js';
 
 
-/**
- * Extrait les clés de limites quelle que soit la représentation reçue.
- *
- * Une Map est utilisée par le document Mongoose, tandis qu'un objet simple
- * peut provenir d'une requête HTTP ou d'un seed avant l'instanciation du Plan.
- *
- * @param {Map<string, number> | object | undefined} limits
- * @returns {string[]}
- */
 const getLimitKeys = (limits) => {
     if (limits instanceof Map) {
         return [...limits.keys()];
@@ -33,32 +24,19 @@ const getLimitKeys = (limits) => {
 
 
 /**
- * Vérifie que les fonctionnalités et métriques d'un plan sont déclarées
- * dans le registre actif de l'application.
+ * Vérifie les capabilities d'un plan contre le registre actif.
  *
- * Le modèle Plan contrôle la structure des clés. Le service contrôle ici
- * leur existence fonctionnelle afin qu'une faute de frappe ou une capability
- * non installée ne puisse pas être enregistrée silencieusement.
- *
- * Le registre est injectable pour permettre à une future application métier
- * d'ajouter ses propres capabilities sans modifier le socle SaaS.
- *
- * @param {object} planData
- * @param {string[]} [planData.features]
- * @param {Map<string, number> | object} [planData.limits]
- * @param {{
- *     features: Set<string>,
- *     metrics: Set<string>
- * }} [registry]
- * @returns {void}
+ * Lorsqu'un objet `limits` est fourni, il doit décrire toutes les métriques
+ * actives. Le moteur de quotas distingue volontairement `null` (illimité),
+ * `0` (aucune consommation) et une clé absente (configuration invalide).
  */
 const validatePlanCapabilities = (
-    {
-        features = [],
-        limits = {},
-    },
+    planData,
     registry = DEFAULT_PLAN_CAPABILITY_REGISTRY,
 ) => {
+    const features = planData?.features ?? [];
+    const limits = planData?.limits ?? {};
+
     const unknownFeatures = features.filter(
         (feature) => !registry.features.has(feature),
     );
@@ -70,7 +48,8 @@ const validatePlanCapabilities = (
         );
     }
 
-    const unknownMetrics = getLimitKeys(limits).filter(
+    const limitKeys = getLimitKeys(limits);
+    const unknownMetrics = limitKeys.filter(
         (metric) => !registry.metrics.has(metric),
     );
 
@@ -80,27 +59,29 @@ const validatePlanCapabilities = (
             400,
         );
     }
+
+    if (Object.hasOwn(planData ?? {}, 'limits')) {
+        const configuredMetrics = new Set(limitKeys);
+        const missingMetrics = [...registry.metrics].filter(
+            (metric) => !configuredMetrics.has(metric),
+        );
+
+        if (missingMetrics.length > 0) {
+            throw new AppError(
+                `Limites de plan non configurées : ${missingMetrics.join(', ')}.`,
+                400,
+            );
+        }
+    }
 };
 
+
 /**
- * Crée une nouvelle offre commerciale après validation de ses capabilities.
+ * Crée une offre commerciale après validation de ses capabilities.
  *
- * `actorId` peut être null lorsqu'un plan est créé par un processus système,
- * notamment par le futur seed des plans initiaux.
- *
- * Une session MongoDB peut être injectée lorsqu'une création doit participer
- * à une transaction plus large. Elle reste facultative pour une création
- * administrative simple.
- *
- * @param {object} params
- * @param {object} params.planData
- * @param {import('mongoose').Types.ObjectId | null} [params.actorId]
- * @param {{
- *     features: Set<string>,
- *     metrics: Set<string>
- * }} [params.registry]
- * @param {import('mongoose').ClientSession} [params.session]
- * @returns {Promise<import('mongoose').Document>}
+ * Une création doit toujours définir toutes les limites actives : un plan
+ * incomplet ne doit pas pouvoir atteindre le moteur de quotas puis échouer
+ * tardivement en production.
  */
 const createPlan = async ({
     planData,
@@ -108,7 +89,13 @@ const createPlan = async ({
     registry = DEFAULT_PLAN_CAPABILITY_REGISTRY,
     session,
 }) => {
-    validatePlanCapabilities(planData, registry);
+    validatePlanCapabilities(
+        {
+            ...planData,
+            limits: planData?.limits ?? {},
+        },
+        registry,
+    );
 
     const plan = new Plan({
         ...planData,
@@ -116,8 +103,6 @@ const createPlan = async ({
         updatedBy: actorId,
     });
 
-    // La session est transmise uniquement lorsqu'elle existe afin de conserver
-    // une création simple hors transaction pour l'administration courante.
     const saveOptions = session
         ? { session }
         : undefined;
@@ -125,18 +110,10 @@ const createPlan = async ({
     return plan.save(saveOptions);
 };
 
+
 /**
- * Retourne le catalogue des plans visibles publiquement.
- *
- * Seuls les plans actifs et explicitement publics sont exposés. Un plan
- * inactif, archivé ou réservé à l'administration ne doit jamais apparaître
- * simplement parce qu'il existe encore dans la base.
- *
- * La projection limite volontairement les données retournées aux informations
- * nécessaires à la présentation commerciale. Les champs de traçabilité et
- * d'administration restent internes à la plateforme.
- *
- * @returns {Promise<object[]>}
+ * Retourne uniquement les plans actifs et publics destinés au catalogue
+ * commercial. Les données d'administration restent dans le périmètre Platform.
  */
 const listPublicPlans = async () => {
     return Plan.find({
@@ -148,6 +125,8 @@ const listPublicPlans = async () => {
             'name',
             'description',
             'displayOrder',
+            'trialEnabled',
+            'trialDurationDays',
             'currency',
             'priceMonthlyExclTaxMinor',
             'priceYearlyExclTaxMinor',
