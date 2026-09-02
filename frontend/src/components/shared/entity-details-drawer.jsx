@@ -23,8 +23,13 @@ const DRAWER_TRANSITION_MS = 300;
 function EntityDetailsDrawer({ children, description, onClose, open, title }) {
   const closeButtonRef = useRef(null);
   const previousFocusRef = useRef(null);
+  const onCloseRef = useRef(onClose);
   const [isMounted, setIsMounted] = useState(open);
   const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (open) {
@@ -68,7 +73,7 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
 
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
-        onClose();
+        onCloseRef.current?.();
       }
     };
 
@@ -79,7 +84,7 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
       document.removeEventListener('keydown', handleKeyDown);
       previousFocusRef.current?.focus?.();
     };
-  }, [onClose, open]);
+  }, [open]);
 
   if (!isMounted) return null;
 
