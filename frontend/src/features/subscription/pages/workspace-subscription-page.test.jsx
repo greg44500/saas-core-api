@@ -24,6 +24,17 @@ import { WorkspaceProvider } from '@/features/workspace/components/workspace-con
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
 const workspace = { id: 'workspace-1', name: 'Acme', status: 'active' };
+const premiumPlan = {
+  id: 'plan-premium',
+  key: 'premium',
+  name: 'Premium',
+  features: ['file_upload', 'team_management', 'audit_logs'],
+  limits: {
+    members: 5,
+    storage_bytes: 104857600,
+    file_uploads_monthly: 50,
+  },
+};
 
 const subscription = {
   baseline: {
@@ -36,7 +47,7 @@ const subscription = {
     id: 'commercial-1',
     kind: 'commercial',
     status: 'trialing',
-    plan: { id: 'plan-premium', key: 'premium', name: 'Premium', features: [], limits: {} },
+    plan: premiumPlan,
     currentPeriodStart: '2026-09-01T00:00:00.000Z',
     currentPeriodEnd: '2026-09-15T00:00:00.000Z',
     trialEndsAt: '2026-09-15T00:00:00.000Z',
@@ -45,7 +56,7 @@ const subscription = {
     scheduledChange: null,
   },
   effectiveEntitlement: {
-    plan: { id: 'plan-premium', key: 'premium', name: 'Premium', features: [], limits: {} },
+    plan: premiumPlan,
     subscriptionKind: 'commercial',
     subscriptionStatus: 'trialing',
     accessMode: 'normal',
@@ -94,12 +105,17 @@ describe('WorkspaceSubscriptionPage', () => {
     vi.clearAllMocks();
   });
 
-  it('affiche le plan effectif, le trial actif et le catalogue', () => {
+  it('affiche le plan effectif, ses capabilities, le trial actif et le catalogue', () => {
     renderPage();
 
     expect(mocks.useGetWorkspaceSubscriptionQuery).toHaveBeenCalledWith('workspace-1');
     expect(screen.getByRole('heading', { name: 'Abonnement' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Premium' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Fonctionnalités et limites' })).toBeInTheDocument();
+    expect(screen.getByText('Téléversement de fichiers')).toBeInTheDocument();
+    expect(screen.getByText('Gestion d’équipe')).toBeInTheDocument();
+    expect(screen.getByText('Journal d’activité')).toBeInTheDocument();
+    expect(screen.getByText('100 Mo')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Période d’essai en cours' })).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Offres disponibles' })).toBeInTheDocument();
