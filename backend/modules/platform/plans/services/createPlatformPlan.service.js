@@ -15,23 +15,6 @@ import {
 } from '../../../plan/plan.service.js';
 
 
-/**
- * Crée un plan depuis le périmètre d'administration Platform.
- *
- * La création du plan et son AuditLog participent à la même transaction :
- * un plan ne doit pas être persisté sans sa trace d'administration associée.
- *
- * La validation structurelle du payload est assurée en amont par Zod.
- * La validation fonctionnelle des features et métriques reste déléguée
- * à `createPlan()`, qui utilise le registre de capabilities du socle.
- *
- * @param {object} params
- * @param {object} params.planData
- * @param {import('mongoose').Types.ObjectId|string} params.actorId
- * @param {string|null} [params.ipAddress]
- * @param {string|null} [params.userAgent]
- * @returns {Promise<object>}
- */
 const createPlatformPlan = async ({
     planData,
     actorId,
@@ -62,14 +45,6 @@ const createPlatformPlan = async ({
                 status: AUDIT_STATUS.SUCCESS,
                 ipAddress,
                 userAgent,
-
-                /**
-                 * L'audit conserve uniquement les informations utiles pour
-                 * comprendre la création sans recopier tout le document Plan.
-                 *
-                 * Les prix, features et limites restent consultables sur
-                 * l'entité elle-même et pourront évoluer ultérieurement.
-                 */
                 metadata: {
                     key: createdPlan.key,
                     name: createdPlan.name,
@@ -89,6 +64,8 @@ const createPlatformPlan = async ({
         status: createdPlan.status,
         isPublic: createdPlan.isPublic,
         displayOrder: createdPlan.displayOrder,
+        trialEnabled: createdPlan.trialEnabled,
+        trialDurationDays: createdPlan.trialDurationDays ?? null,
         currency: createdPlan.currency,
         priceMonthlyExclTaxMinor:
             createdPlan.priceMonthlyExclTaxMinor,
