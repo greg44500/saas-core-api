@@ -37,6 +37,7 @@ const administrationNavigationItems = [
     label: 'Abonnement',
     Icon: CreditCard,
     permission: WORKSPACE_PERMISSION.SUBSCRIPTION_READ,
+    path: 'subscription',
   },
   {
     label: 'Paramètres',
