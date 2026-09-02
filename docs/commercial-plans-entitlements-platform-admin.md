@@ -1,68 +1,148 @@
 # SAAS-CORE-API — Plans commerciaux, entitlements et administration Platform
 
-**Date :** 1 septembre 2026  
-**Statut :** décisions d’architecture figées avant implémentation  
-**Périmètre :** plans commerciaux, multi-workspace commercial, features, quotas, trials, overrides, administration Platform
+**Date :** 2 septembre 2026  
+**Statut :** décisions consolidées — remplace le cadrage commercial multi-workspace du 1er septembre 2026  
+**Périmètre :** Plans, Subscription, Trial, capabilities, quotas, overrides et administration Platform
 
 ---
 
 ## 1. Objet
 
-Ce document fige les décisions prises avant la poursuite du bloc Multi-workspace UX.
+Ce document remplace la version du 1er septembre 2026 qui introduisait un abonnement commercial couvrant plusieurs Workspaces via un futur `CommercialAccount`.
 
-Il complète les documents existants relatifs à `Plan`, `Subscription`, `UsageMetric`, au contrat frontend/backend Subscription et à l’administration Platform.
+Cette architecture est désormais **supplantée** et ne doit plus servir de base d’implémentation V1.
 
-La règle de sécurité reste :
+Les principes toujours valides sont conservés :
 
 ```text
-Backend security
-→ contrat API
-→ frontend
-→ tests
+features ≠ limits
+entitlement commercial ≠ permission RBAC
+backend = autorité
+capabilities et métriques extensibles
+exceptions commerciales administrées depuis Platform
 ```
 
-Le frontend ne constitue jamais la barrière réelle d’accès à une fonctionnalité, un quota, un workspace ou une opération commerciale.
+Le SaaS Core reste générique et ne connaît aucune fonctionnalité propre à une application métier.
 
 ---
 
-## 2. Distinction fondamentale des responsabilités
+## 2. Décisions explicitement abandonnées
 
-Le système doit conserver cinq notions distinctes :
+Les décisions suivantes de la version précédente sont annulées pour la V1 :
+
+```text
+Free = 1 workspace inclus commercialement
+Premium = 5 workspaces inclus commercialement
+1 abonnement Premium couvre plusieurs workspaces
+CommercialAccount obligatoire
+BillingAccount obligatoire
+Subscription déplacée au-dessus du Workspace
+metricKey = workspaces
+scope = commercial_account
+quota atomique de création de workspaces basé sur le Plan
+roadmap C1 → C9 dédiée au CommercialAccount
+```
+
+En conséquence, ne pas refactorer actuellement :
+
+```text
+Subscription.workspace
+UsageMetric.workspace
+Workspace ownership
+TrialEligibility
+résolution d’entitlement existante
+```
+
+pour introduire un périmètre commercial supérieur au Workspace.
+
+---
+
+## 3. Modèle commercial V1 retenu
+
+Le Workspace reste l’unité commerciale et multi-tenant autonome du Core V1 :
+
+```text
+Workspace
+├── Subscription
+├── Plan
+├── UsageMetric
+├── WorkspaceMember
+├── Role
+├── Files
+└── AuditLog
+```
+
+`Subscription` reste Workspace-scoped.
+
+`UsageMetric` reste Workspace-scoped.
+
+Cette décision est cohérente avec l’architecture actuellement implémentée et évite une migration structurelle sans besoin produit suffisamment établi.
+
+---
+
+## 4. Multi-workspace : capacité technique ≠ politique commerciale
+
+Un `User` peut toujours appartenir à plusieurs Workspaces via `WorkspaceMember`.
+
+Cette capacité structurelle est nécessaire pour des situations légitimes :
+
+```text
+invitation dans un workspace tiers
+consultant membre de plusieurs workspaces clients
+utilisateur participant à plusieurs organisations
+```
+
+Le frontend ne doit donc jamais supposer qu’un utilisateur n’a qu’un seul membership.
+
+En revanche, la politique commerciale permettant à une même identité de **créer** plusieurs Workspaces n’est pas définie dans ce document.
+
+Ne pas ouvrir un parcours public de création illimitée ou plan-dépendante sans une politique serveur explicite.
+
+Cette question peut être traitée ultérieurement sans introduire maintenant un `CommercialAccount`.
+
+---
+
+## 5. Distinction fondamentale des responsabilités
+
+Le système conserve les notions suivantes :
 
 ```text
 Feature
-→ capacité fonctionnelle disponible ou non
+→ une capacité fonctionnelle existe ou non
 
 Plan
-→ offre commerciale catalogue : features + limites standards
+→ offre catalogue : features + limites standards
 
 Subscription
-→ état contractuel réel d’un client
+→ état contractuel réel d’un Workspace
 
 Entitlement effectif
 → capacités et limites réellement applicables maintenant
 
 UsageMetric
 → consommation réelle d’une métrique
+
+RBAC
+→ actions autorisées pour un membre précis
 ```
 
-Le système RBAC reste indépendant :
+Deux contrôles restent donc distincts :
 
 ```text
-Entitlement commercial
-→ le client/workspace possède-t-il cette capacité ?
+Entitlement
+→ le Workspace possède-t-il commercialement la capacité ?
 
 Permission RBAC
-→ cet utilisateur précis peut-il effectuer cette action ?
+→ ce membre peut-il l’utiliser ?
 ```
 
-Une feature commercialement disponible ne donne jamais automatiquement la permission à tous les membres du workspace.
+Une feature disponible dans le Plan ne donne jamais automatiquement la permission à tous les membres du Workspace.
 
 ---
 
-## 3. Plans commerciaux V1 figés
+## 6. Plans commerciaux actuellement envisagés
 
-Les offres commerciales V1 sont :
+Les familles commerciales envisagées restent :
 
 ```text
 free
@@ -70,153 +150,130 @@ premium
 ai
 ```
 
-Les anciennes possibilités `starter`, `business`, `enterprise` restent des évolutions futures possibles mais ne constituent pas des offres V1 à implémenter tant qu’un besoin commercial réel ne les justifie pas.
+Les anciennes possibilités `starter`, `business` et `enterprise` ne sont pas des offres V1 actives tant qu’un besoin commercial réel ne les justifie pas.
 
 ### Free
 
-Prix :
+Le plan Free constitue la baseline du Workspace.
 
-```text
-0 € HT / mois
-```
-
-Décision figée :
-
-```text
-maximum de workspaces : 1
-```
-
-Le plan Free sert à la découverte et à l’usage individuel limité.
+Il doit rester limité et ne bénéficie pas de trial.
 
 ### Premium
 
-Prix mensuel figé :
+Le cadrage précédent a retenu :
 
 ```text
 79 € HT / mois
 ```
 
-Décision figée :
+Ce montant reste une référence commerciale historique du projet, mais l’ancienne signification :
 
 ```text
-maximum de workspaces : 5
+79 € HT / mois → jusqu’à 5 workspaces
 ```
 
-Premium constitue l’offre professionnelle principale.
+est abandonnée.
+
+Avant une facturation réelle, il faudra confirmer explicitement que le prix Premium correspond bien à l’abonnement d’un Workspace et finaliser ses limites commerciales.
 
 ### IA
 
-Le plan IA est une offre supérieure incluant les capacités Premium et des capacités IA.
+Le plan IA reste envisagé comme une offre supérieure avec des capacités IA.
 
-Son prix n’est pas encore figé. Il devra être déterminé après mesure réaliste des coûts : modèles, tokens, agents, RAG, stockage éventuel, traitements documentaires et autres consommations IA.
+Son prix n’est pas figé.
 
-Le quota IA devra être exprimé via une métrique stable, de préférence abstraite, par exemple :
-
-```text
-ai_credits_monthly
-```
-
-et non par un simple nombre de prompts.
+Il devra être défini après mesure réaliste des coûts d’usage : modèles, tokens, agents, RAG, stockage et traitements documentaires éventuels.
 
 ---
 
-## 4. Valeurs commerciales encore à arbitrer
+## 7. Features et limites
 
-Les limites ci-dessous doivent être déterminées avant finalisation des seeds commerciaux :
-
-```text
-members
-storage_bytes
-file_uploads_monthly
-max_file_size_bytes
-ai_credits_monthly
-```
-
-ainsi que les futures métriques métier ajoutées par une application utilisant le core.
-
-Les valeurs provisoires proposées pendant le cadrage ne sont pas des décisions contractuelles tant qu’elles ne sont pas explicitement validées.
-
----
-
-## 5. Plan.features reste la source catalogue des capacités
-
-Le modèle `Plan` actuel conserve :
+Le modèle `Plan` conserve :
 
 ```text
 features[]
 limits
 ```
 
-Cette architecture est confirmée.
+Règle fondamentale :
 
-Les routes métier ne doivent jamais tester directement :
+```text
+feature
+→ capacité disponible ou non
+
+limit
+→ quantité autorisée
+```
+
+Ne jamais coder une fonctionnalité métier avec une condition telle que :
 
 ```text
 plan.key === "premium"
 ```
 
-Elles doivent demander si une capability précise est disponible.
+Le code doit contrôler une capability ou une limite stable.
 
-Exemple :
+---
+
+## 8. Extensibilité des capabilities métier
+
+Le registre de capabilities du Core constitue le point d’extension pour les futures applications.
+
+Le Core connaît uniquement ses capabilities génériques actuelles.
+
+Une application pourra ajouter ses propres features et métriques sans modifier la sémantique du Core.
+
+Exemples conceptuels uniquement :
 
 ```text
+features
+technical_sheet
 price_history
 advanced_exports
 ai_analysis
+
+metrics
+client_sites
+training_groups
+active_projects
 ```
+
+Ces clés ne doivent pas être ajoutées au Core tant qu’un module métier réel ne les exige pas.
 
 ---
 
-## 6. Extension par les modules métier
+## 9. Plan.limits et UsageMetric
 
-Le core SaaS ne doit connaître aucune fonctionnalité spécifique aux produits alimentaires, à l’immobilier ou à un autre métier.
+`Plan.limits` reste une `Map` afin de permettre des métriques extensibles.
 
-Les modules métier doivent enrichir le registre de capabilities existant.
-
-Exemple pour un futur domaine alimentaire :
+`UsageMetric` conserve la portée :
 
 ```text
-product_catalog
-supplier_management
-price_history
-price_import
-advanced_cost_analysis
+workspace
+metricKey
+value
+periodType
+periodStart
+periodEnd
 ```
 
-Métriques possibles :
+Le moteur générique `enforcePlanLimit()` continue à résoudre :
 
 ```text
-products
-suppliers
-price_imports_monthly
-price_history_entries
+Workspace
+→ entitlement
+→ Plan
+→ limite
+→ réservation atomique UsageMetric
 ```
 
-Le module métier demande au core de contrôler une feature ou une métrique ; il ne doit pas coder une connaissance directe de `free`, `premium` ou `ai`.
+Ne pas introduire de scope `commercial_account` dans ce moteur.
 
 ---
 
-## 7. Modèle MongoDB Feature : décision
+## 10. Trial
 
-Le modèle optionnel `Feature` avait été anticipé dans la documentation initiale.
-
-Décision actuelle :
-
-```text
-ne pas créer encore une collection MongoDB Feature
-```
-
-Le registre de capabilities actuellement implémenté est suffisant pour le stade actuel et permet déjà les extensions métier.
-
-Un véritable modèle `Feature` ne sera introduit que si la plateforme a besoin d’un catalogue dynamique de fonctionnalités administrables en base.
-
----
-
-## 8. Trials
-
-Une période de découverte complète ne doit jamais modifier temporairement le plan Free.
-
-Le mécanisme existant est conservé :
+Le mécanisme existant reste la référence :
 
 ```text
 baseline Free
@@ -225,39 +282,78 @@ Subscription commerciale trialing
 → entitlement commercial temporaire
 ```
 
-À l’expiration, le backend retombe vers la baseline Free selon les règles Subscription déjà stabilisées.
+Règles conservées :
 
-Le frontend ne recalcule jamais lui-même la validité d’un trial.
+- Free n’a pas de trial ;
+- seuls les plans payants explicitement éligibles peuvent démarrer un trial ;
+- aucun moyen de paiement n’est actuellement requis pour commencer le trial ;
+- l’éligibilité est consommée une seule fois selon le mécanisme `TrialEligibility` ;
+- changer de plan pendant un trial ne réinitialise jamais `trialEndsAt` ;
+- le transfert d’ownership ne recrée ni ne prolonge le trial ;
+- revenir volontairement au Free termine définitivement le trial ;
+- l’expiration fait retomber l’entitlement vers la baseline Free selon le contrat Subscription ;
+- le frontend ne décide jamais de la validité effective du trial.
 
 ---
 
-## 9. EntitlementOverride — nouvelle brique à implémenter
+## 11. EntitlementOverride — décision conservée avec cible corrigée
 
-Une exception commerciale ne doit jamais modifier le Plan catalogue partagé par tous les clients.
+Une exception commerciale ne doit jamais modifier le `Plan` catalogue partagé par tous les clients.
 
-Il faut introduire un mécanisme dédié d’override permettant de :
+Le concept `EntitlementOverride` reste pertinent pour permettre au `SUPER_ADMIN` d’accorder ou de restreindre exceptionnellement une capacité.
+
+La cible recommandée du Core V1 est désormais :
+
+```text
+Workspace
+```
+
+et non :
+
+```text
+CommercialAccount
+User individuel arbitraire
+```
+
+Résolution cible :
+
+```text
+Plan catalogue
++
+Subscription effective / trial
++
+Workspace EntitlementOverride actif
+=
+ENTITLEMENT EFFECTIF
+```
+
+---
+
+## 12. Capacités d’un EntitlementOverride
+
+Le futur mécanisme pourra permettre :
 
 ```text
 activer une feature absente du plan
 restreindre exceptionnellement une feature présente
-augmenter ou diminuer une limite
-borner une dérogation dans le temps
-accorder une dérogation permanente lorsqu’elle est explicitement voulue
+augmenter une limite
+réduire une limite
+borner une exception dans le temps
+accorder explicitement une exception durable
 ```
 
-Exemples :
+Exemples génériques :
 
 ```text
-Premium + ai_analysis pendant 30 jours
-Premium + 10 Go de stockage temporaire
-Premium : workspaces 5 → 8 selon contrat
-Free + price_history pendant une période de découverte
+Workspace Premium + feature IA pendant 30 jours
+Workspace Premium + capacité de stockage temporairement augmentée
+Workspace Free + feature de découverte pendant une période déterminée
 ```
 
-Un override doit notamment conserver :
+Le modèle devra notamment conserver :
 
 ```text
-cible commerciale
+workspace
 featureKey ou metricKey
 valeur / état effectif
 type de dérogation
@@ -269,16 +365,15 @@ createdAt
 updatedAt
 ```
 
-Une dérogation temporaire doit avoir une date de fin explicite par défaut.
+Une dérogation sensible doit toujours conserver son motif et son auteur.
 
 ---
 
-## 10. Origine commerciale d’un override
+## 13. Origine commerciale d’un override
 
-Les sources recommandées sont :
+Les origines possibles peuvent notamment inclure :
 
 ```text
-trial
 promotion
 commercial_gesture
 support
@@ -287,73 +382,73 @@ incident
 administrative
 ```
 
-La raison métier doit être obligatoire pour toute création ou modification d’override.
+Le trial reste un mécanisme Subscription distinct et ne doit pas être simulé par un override.
 
 ---
 
-## 11. Administration Platform
+## 14. Administration Platform
 
-Le `super_admin` doit disposer dans l’administration Platform d’une vision commerciale complète du client.
+Le `SUPER_ADMIN` doit disposer d’une vue commerciale du Workspace suffisante pour comprendre et administrer l’entitlement réel.
 
-L’administration Platform doit permettre de consulter :
+La future administration Platform pourra consulter :
 
 ```text
-plan
-subscription
+Workspace
+Plan catalogue
+Subscription
 statut
-workspaces utilisés / autorisés
+trial
 features catalogue
 features effectives
 limites catalogue
 limites effectives
-usage
-trials
+UsageMetric
 overrides actifs et expirés
 historique des changements
 ```
 
-Et permettre :
+Et, lorsque `EntitlementOverride` sera implémenté :
 
 ```text
-activer une feature exceptionnellement
-restreindre une feature exceptionnellement
+créer une exception
+restreindre une feature
 modifier temporairement une limite
-modifier durablement une limite selon contrat
+accorder une exception durable explicitement voulue
 révoquer un override
-consulter le motif et l’auteur
+consulter son motif et son auteur
 ```
 
-Ces actions sont des actions Platform. Elles ne sont pas accessibles à un admin workspace client.
+Ces actions restent réservées à Platform et ne sont pas des permissions d’administration Workspace ordinaires.
 
 ---
 
-## 12. Séparation Platform / Workspace
+## 15. Séparation Platform / Workspace
 
 ### Platform
 
-Le propriétaire/éditeur du SaaS décide :
+La plateforme détermine :
 
 ```text
-ce que le client a commercialement acheté
-ce qui lui est accordé temporairement
-ses limites commerciales exceptionnelles
+ce que le Workspace a commercialement acquis
+les exceptions commerciales accordées
+les restrictions commerciales exceptionnelles
 ```
 
 ### Workspace
 
-Le owner/admin du client décide uniquement, selon ses permissions :
+Le owner/admin du Workspace détermine uniquement, selon ses permissions :
 
 ```text
-quel membre peut utiliser une capacité déjà autorisée commercialement
+quel membre peut utiliser une capacité déjà disponible commercialement
 ```
 
-Un admin workspace ne peut jamais s’auto-activer une capacité payante, modifier un quota commercial ni augmenter son nombre de workspaces.
+Un admin Workspace ne doit jamais pouvoir s’auto-activer une feature payante ni augmenter lui-même un quota commercial.
 
 ---
 
-## 13. Audit obligatoire
+## 16. Audit obligatoire
 
-Toute modification d’entitlement ou d’override doit être auditée.
+Toute future création, modification ou révocation d’un `EntitlementOverride` devra être auditée.
 
 Actions recommandées :
 
@@ -363,11 +458,11 @@ ENTITLEMENT_OVERRIDE_UPDATED
 ENTITLEMENT_OVERRIDE_REVOKED
 ```
 
-L’audit doit permettre de retrouver au minimum :
+L’audit devra permettre de retrouver au minimum :
 
 ```text
 actor
-cible commerciale
+workspace
 featureKey ou metricKey
 ancienne valeur
 nouvelle valeur
@@ -381,299 +476,73 @@ createdAt
 
 ---
 
-## 14. Résolution cible d’un entitlement
+## 17. Ordre d’implémentation retenu
 
-La résolution cible devient :
+`EntitlementOverride` ne bloque pas immédiatement la reprise du frontend Files.
+
+Ordre actuel :
 
 ```text
-Plan catalogue
-        ↓
-Subscription effective / trial
-        ↓
-EntitlementOverride actif
-        ↓
-ENTITLEMENT EFFECTIF
-        ↓
-contrôle feature
-        ↓
-contrôle quota
-        ↓
-permission RBAC
-        ↓
-service métier
+RBAC-EXT
+→ finalisation frontend Core
+→ EntitlementOverride pendant le bloc commercial / Platform
+→ frontend Platform correspondant
 ```
 
-Le backend reste l’unique autorité de cette résolution.
+Ne pas relancer la roadmap `CommercialAccount` C1–C9 de l’ancienne version.
 
 ---
 
-## 15. Problème architectural multi-workspace identifié
-
-Le modèle `Subscription` actuel appartient directement à un `workspace`.
-
-Cette architecture convient à :
-
-```text
-1 workspace = 1 abonnement
-```
-
-mais elle ne représente pas proprement la nouvelle décision :
-
-```text
-1 abonnement Premium à 79 € HT / mois
-→ jusqu’à 5 workspaces
-```
-
-Il faut donc introduire un périmètre commercial supérieur au workspace avant d’autoriser définitivement la création de workspaces supplémentaires selon le plan.
-
----
-
-## 16. Périmètre commercial supérieur
-
-Décision d’architecture :
-
-```text
-un abonnement commercial multi-workspace ne doit pas être porté directement par un User ni dépendre arbitrairement d’un premier workspace
-```
-
-Il faut créer un propriétaire commercial stable, conceptuellement :
-
-```text
-CommercialAccount / BillingAccount / Organization commerciale
-```
-
-Le nom final sera figé lors du mini-lot de conception.
-
-Architecture cible :
-
-```text
-CommercialAccount
-    │
-    ├── Subscription Premium
-    │
-    ├── Workspace A
-    ├── Workspace B
-    ├── Workspace C
-    ├── Workspace D
-    └── Workspace E
-```
-
-Le contrat commercial reste ainsi stable même en cas de transfert d’ownership utilisateur.
-
----
-
-## 17. Portée des métriques
-
-Chaque métrique doit pouvoir déclarer sa portée.
-
-Exemples :
-
-```text
-workspaces
-→ commercial account
-
-members
-→ workspace
-
-storage_bytes
-→ portée à décider selon politique commerciale
-
-file_uploads_monthly
-→ portée à décider selon politique commerciale
-
-ai_credits_monthly
-→ probablement commercial account
-```
-
-Le registre actuel décrit déjà la période et le comportement des métriques ; il devra être enrichi avec une notion de scope.
-
-Valeurs conceptuelles :
-
-```text
-commercial_account
-workspace
-```
-
----
-
-## 18. Conséquence immédiate sur le bloc Multi-workspace UX
-
-Le frontend ne doit pas encore rendre la création du deuxième workspace libre uniquement sur la base d’un bouton.
-
-Avant le bloc UI :
-
-```text
-1. créer le périmètre commercial
-2. rattacher l’abonnement commercial au bon propriétaire
-3. implémenter le quota workspaces
-4. sécuriser POST /api/workspaces côté backend
-5. exposer le droit / quota au frontend
-6. seulement ensuite activer “Créer un workspace”
-```
-
----
-
-## 19. Roadmap d’implémentation figée
-
-### C1 — Conception CommercialAccount
-
-Définir :
-
-```text
-modèle
-ownership commercial
-relation User / Workspace / Subscription
-cycle de vie
-index
-transfert
-migration des workspaces existants
-```
-
-### C2 — Migration Subscription
-
-Faire évoluer Subscription pour qu’une souscription commerciale puisse appartenir au périmètre commercial retenu sans casser l’historique `baseline/commercial`, le trial ni le contrat existant.
-
-Prévoir une migration explicite et des tests de non-régression.
-
-### C3 — Metric scope + quota workspaces
-
-Ajouter la notion de scope au registre de métriques.
-
-Ajouter :
-
-```text
-workspaces
-```
-
-comme métrique commerciale.
-
-Sécuriser la création de workspace avec contrôle atomique du quota.
-
-### C4 — Plans commerciaux V1
-
-Finaliser les seeds :
-
-```text
-Free
-Premium
-IA
-```
-
-avec prix et limites validées.
-
-Ne pas coder encore un prix IA arbitraire.
-
-### C5 — EntitlementOverride backend
-
-Créer le module dédié :
-
-```text
-model
-validation Zod
-service
-controller
-routes Platform
-audit
-tests
-```
-
-Le service d’entitlement doit appliquer les overrides actifs.
-
-### C6 — API Platform commerciale
-
-Exposer au super_admin :
-
-```text
-lecture du compte commercial
-usage
-features/limits catalogue
-entitlement effectif
-overrides
-création / modification / révocation override
-```
-
-### C7 — Frontend Platform
-
-Créer une interface d’administration permettant :
-
-```text
-fiche client
-abonnement
-usage
-features
-limites
-overrides
-historique
-```
-
-Réutiliser Drawer, tables, ActionIconButton, Tooltip et patterns existants lorsque pertinent.
-
-### C8 — Multi-workspace frontend
-
-Une fois le backend sécurisé :
-
-```text
-bouton créer workspace
-contrôle quota
-messages Free 1/1
-Premium X/5
-redirection upgrade si limite atteinte
-WorkspaceSwitcher
-```
-
-### C9 — Tests finaux
-
-Backend :
-
-```text
-unitaires
-intégration
-concurrence quota
-multi-tenant
-audit
-overrides expirés
-transferts ownership
-trial + overrides
-```
-
-Frontend :
-
-```text
-Vitest
-React Testing Library
-Playwright sur parcours critiques
-```
-
----
-
-## 20. Garde-fous définitifs
+## 18. Garde-fous
 
 Ne jamais :
 
 ```text
-modifier un Plan catalogue pour un seul client
-coder plan.key === premium dans un module métier
+modifier un Plan catalogue pour un seul Workspace
+coder plan.key === premium dans une fonctionnalité
 faire confiance au frontend pour appliquer un quota
 confondre entitlement commercial et permission RBAC
-faire dépendre un abonnement commercial multi-workspace d’un simple owner User
+introduire CommercialAccount sans nouveau besoin produit démontré
+créer une permission métier dans le Core uniquement pour anticipation
 laisser un override sensible sans audit ni motif
 ```
 
 Toujours :
 
 ```text
-résoudre côté backend l’entitlement effectif
-protéger les quotas de façon atomique
+résoudre l’entitlement côté backend
+protéger les quotas atomiquement
 conserver la traçabilité
-séparer core et modules métier
-mettre à jour les contrats frontend/backend lorsque l’API observable change
+séparer le Core des modules métier
+conserver le Workspace comme frontière tenant
+mettre à jour les contrats frontend/backend si l’API observable change
 ```
 
 ---
 
-## 21. Documents liés
+## 19. Points encore ouverts
 
-À relire avant toute implémentation de ce domaine :
+Avant commercialisation réelle, il reste notamment à figer :
+
+```text
+prix définitifs
+limites exactes de Free / Premium / IA
+prix du plan IA
+provider de paiement
+moyens de paiement
+TVA / fiscalité
+factures
+webhooks de paiement
+cycle définitif past_due
+```
+
+Ces sujets ne doivent pas être devinés dans le frontend actuel.
+
+---
+
+## 20. Documents liés
+
+Références à maintenir ensemble :
 
 ```text
 docs/backend-implementation-checklist.md
@@ -683,4 +552,4 @@ docs/frontend-backend-roles-permissions-contract.md
 docs/commercial-plans-entitlements-platform-admin.md
 ```
 
-Ce document devient la référence de décision pour les travaux commerciaux multi-workspace, les entitlements et les overrides Platform.
+La présente version est la référence active pour les décisions commerciales du Core V1. Toute mention historique incompatible de `Premium = 5 workspaces`, de `CommercialAccount` obligatoire ou de métriques au scope `commercial_account` doit être considérée comme supplantée.
