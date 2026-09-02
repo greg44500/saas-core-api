@@ -37,7 +37,8 @@ app.use('/platform', platformRouter);
 
 describe('GET /platform/plans/capabilities', () => {
     beforeEach(() => {
-        vi.clearAllMocks();
+        authenticate.mockClear();
+        platformRoleMiddleware.mockClear();
     });
 
     it('reste protégé par l’authentification Platform et le rôle super-admin', async () => {
