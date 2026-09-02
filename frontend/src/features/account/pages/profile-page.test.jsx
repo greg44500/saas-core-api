@@ -2,6 +2,8 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ToastProvider } from '@/components/shared/toast-provider';
+
 const useGetCurrentUserQueryMock = vi.hoisted(() => vi.fn());
 const useUpdateCurrentUserMutationMock = vi.hoisted(() => vi.fn());
 
@@ -16,6 +18,14 @@ describe('ProfilePage', () => {
   const updateCurrentUserMock = vi.fn();
   const unwrapMock = vi.fn();
   const refetchMock = vi.fn();
+
+  function renderPage() {
+    return render(
+      <ToastProvider>
+        <ProfilePage />
+      </ToastProvider>,
+    );
+  }
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -48,7 +58,7 @@ describe('ProfilePage', () => {
   afterEach(() => cleanup());
 
   it('affiche le profil et garde l’email non modifiable', async () => {
-    render(<ProfilePage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Prénom')).toHaveValue('Greg');
@@ -59,9 +69,9 @@ describe('ProfilePage', () => {
     expect(screen.getByText('Adresse email vérifiée.')).toBeInTheDocument();
   });
 
-  it('envoie uniquement le champ réellement modifié', async () => {
+  it('envoie uniquement le champ réellement modifié et confirme par toast', async () => {
     const user = userEvent.setup();
-    render(<ProfilePage />);
+    renderPage();
 
     const firstNameInput = await screen.findByLabelText('Prénom');
     await user.clear(firstNameInput);
@@ -74,6 +84,21 @@ describe('ProfilePage', () => {
       });
     });
     expect(unwrapMock).toHaveBeenCalledTimes(1);
-    expect(await screen.findByRole('status')).toHaveTextContent('Profil mis à jour.');
+    expect(await screen.findByRole('status')).toHaveTextContent('Profil mis à jour');
+  });
+
+  it('présente une erreur serveur de mise à jour dans un toast', async () => {
+    const user = userEvent.setup();
+    unwrapMock.mockRejectedValue({ data: { message: 'Profil indisponible' } });
+    renderPage();
+
+    const firstNameInput = await screen.findByLabelText('Prénom');
+    await user.clear(firstNameInput);
+    await user.type(firstNameInput, 'Gregory');
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Mise à jour impossible');
+    expect(alert).toHaveTextContent('Profil indisponible');
   });
 });
