@@ -1,0 +1,171 @@
+import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+  downloadBlob: vi.fn(),
+  downloadWorkspaceFile: vi.fn(),
+  useDownloadWorkspaceFileMutation: vi.fn(),
+  useListWorkspaceFilesQuery: vi.fn(),
+}));
+
+vi.mock('@/features/files/api/files-api', () => ({
+  useDownloadWorkspaceFileMutation: mocks.useDownloadWorkspaceFileMutation,
+  useListWorkspaceFilesQuery: mocks.useListWorkspaceFilesQuery,
+}));
+
+vi.mock('@/features/files/lib/download-blob', () => ({
+  downloadBlob: mocks.downloadBlob,
+}));
+
+import { WorkspaceFilesPage } from '@/features/files/pages/workspace-files-page';
+import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
+import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
+
+const workspace = { id: 'workspace-1', name: 'Acme', status: 'active' };
+const membership = { id: 'membership-1', role: { key: 'member', name: 'Membre' } };
+const file = {
+  id: 'file-1',
+  originalName: 'contrat.pdf',
+  mimeType: 'application/pdf',
+  extension: 'pdf',
+  sizeBytes: 2048,
+  category: 'document',
+  status: 'active',
+  uploadedBy: 'user-1',
+  createdAt: '2026-09-02T10:00:00.000Z',
+  updatedAt: '2026-09-02T10:00:00.000Z',
+};
+
+function renderPage() {
+  return render(
+    <WorkspaceProvider
+      membership={membership}
+      permissions={[WORKSPACE_PERMISSION.FILE_READ]}
+      workspace={workspace}
+    >
+      <WorkspaceFilesPage />
+    </WorkspaceProvider>,
+  );
+}
+
+describe('WorkspaceFilesPage', () => {
+  beforeEach(() => {
+    mocks.downloadWorkspaceFile.mockReset();
+    mocks.downloadBlob.mockReset();
+    mocks.useListWorkspaceFilesQuery.mockReset();
+    mocks.useDownloadWorkspaceFileMutation.mockReset();
+
+    mocks.useListWorkspaceFilesQuery.mockReturnValue({
+      data: {
+        files: [file],
+        pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+      },
+      error: undefined,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    mocks.useDownloadWorkspaceFileMutation.mockReturnValue([
+      mocks.downloadWorkspaceFile,
+      { isLoading: false },
+    ]);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it('affiche le listing paginé du workspace', () => {
+    renderPage();
+
+    expect(mocks.useListWorkspaceFilesQuery).toHaveBeenCalledWith({
+      workspaceId: 'workspace-1',
+      page: 1,
+      limit: 20,
+    });
+    expect(screen.getByRole('heading', { name: 'Fichiers' })).toBeInTheDocument();
+    expect(screen.getByText('contrat.pdf')).toBeInTheDocument();
+    expect(screen.getByText('Document')).toBeInTheDocument();
+    expect(screen.getByText('PDF')).toBeInTheDocument();
+    expect(screen.getByText('2 Ko')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Télécharger contrat.pdf' }),
+    ).toBeInTheDocument();
+  });
+
+  it('change de page via la pagination serveur', async () => {
+    const user = userEvent.setup();
+
+    mocks.useListWorkspaceFilesQuery.mockReturnValue({
+      data: {
+        files: [file],
+        pagination: { page: 1, limit: 20, total: 25, totalPages: 2 },
+      },
+      error: undefined,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+    await user.click(screen.getByRole('button', { name: 'Suivant' }));
+
+    expect(mocks.useListWorkspaceFilesQuery).toHaveBeenLastCalledWith({
+      workspaceId: 'workspace-1',
+      page: 2,
+      limit: 20,
+    });
+  });
+
+  it('télécharge via RTK Query puis délègue le Blob au navigateur', async () => {
+    const user = userEvent.setup();
+    const blob = new Blob(['pdf'], { type: 'application/pdf' });
+    const unwrap = vi.fn().mockResolvedValue(blob);
+
+    mocks.downloadWorkspaceFile.mockReturnValue({ unwrap });
+
+    renderPage();
+    await user.click(screen.getByRole('button', { name: 'Télécharger contrat.pdf' }));
+
+    expect(mocks.downloadWorkspaceFile).toHaveBeenCalledWith({
+      workspaceId: 'workspace-1',
+      fileId: 'file-1',
+    });
+    expect(mocks.downloadBlob).toHaveBeenCalledWith(blob, 'contrat.pdf');
+  });
+
+  it('affiche un état vide explicite', () => {
+    mocks.useListWorkspaceFilesQuery.mockReturnValue({
+      data: {
+        files: [],
+        pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+      },
+      error: undefined,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(screen.getByText('Aucun fichier actif')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('permet de relancer la requête après une erreur', async () => {
+    const user = userEvent.setup();
+    const refetch = vi.fn();
+
+    mocks.useListWorkspaceFilesQuery.mockReturnValue({
+      data: undefined,
+      error: { status: 500 },
+      isLoading: false,
+      refetch,
+    });
+
+    renderPage();
+    await user.click(screen.getByRole('button', { name: 'Réessayer' }));
+
+    expect(screen.getByText('Impossible de charger les fichiers du workspace.')).toBeInTheDocument();
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+});
