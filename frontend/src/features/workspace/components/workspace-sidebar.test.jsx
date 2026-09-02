@@ -51,6 +51,7 @@ describe('WorkspaceSidebar', () => {
     expect(screen.queryByText('Membres')).not.toBeInTheDocument();
     expect(screen.queryByText('Fichiers')).not.toBeInTheDocument();
     expect(screen.queryByText('Abonnement')).not.toBeInTheDocument();
+    expect(screen.queryByText('Activité')).not.toBeInTheDocument();
     expect(screen.queryByText('Paramètres')).not.toBeInTheDocument();
   });
 
@@ -65,6 +66,7 @@ describe('WorkspaceSidebar', () => {
     expect(screen.getByText('Membres')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Abonnement' })).toBeInTheDocument();
     expect(screen.queryByText('Fichiers')).not.toBeInTheDocument();
+    expect(screen.queryByText('Activité')).not.toBeInTheDocument();
     expect(screen.queryByText('Paramètres')).not.toBeInTheDocument();
   });
 
@@ -90,6 +92,18 @@ describe('WorkspaceSidebar', () => {
 
     expect(subscriptionLink).toBeInTheDocument();
     expect(subscriptionLink).toHaveAttribute('href', '/workspaces/workspace-1/subscription');
+  });
+
+  it('rend Activité navigable uniquement avec audit:read', () => {
+    renderSidebar([
+      WORKSPACE_PERMISSION.WORKSPACE_READ,
+      WORKSPACE_PERMISSION.AUDIT_READ,
+    ]);
+
+    const activityLink = screen.getByRole('link', { name: 'Activité' });
+
+    expect(activityLink).toBeInTheDocument();
+    expect(activityLink).toHaveAttribute('href', '/workspaces/workspace-1/activity');
   });
 
   it('rend Paramètres navigable uniquement avec workspace:update', () => {
