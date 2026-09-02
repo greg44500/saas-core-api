@@ -1,4 +1,4 @@
-import { DATA_TABLE_STYLES } from '@/components/data-display/data-table-styles';
+import { DataTable } from '@/components/data-display/data-table';
 import {
   formatAuditAbsoluteDate,
   formatAuditRelativeDate,
@@ -24,54 +24,69 @@ function AuditStatusBadge({ status }) {
   );
 }
 
+const AUDIT_LOG_COLUMNS = [
+  {
+    id: 'action',
+    header: 'Action',
+    cellClassName: 'font-medium text-foreground',
+    cell: (auditLog) => getAuditActionLabel(auditLog.action),
+  },
+  {
+    id: 'actor',
+    header: 'Acteur',
+    cell: (auditLog) => (
+      <>
+        <p className="font-medium text-foreground">{getAuditActorLabel(auditLog.actor)}</p>
+        {auditLog.actor?.email && (
+          <p className="mt-1 text-xs text-muted-foreground">{auditLog.actor.email}</p>
+        )}
+      </>
+    ),
+  },
+  {
+    id: 'resource',
+    header: 'Ressource',
+    cellClassName: 'text-muted-foreground',
+    cell: (auditLog) => (
+      auditLog.entity
+        ? getAuditEntityTypeLabel(auditLog.entity.type)
+        : 'Non renseignée'
+    ),
+  },
+  {
+    id: 'status',
+    header: 'Statut',
+    cell: (auditLog) => <AuditStatusBadge status={auditLog.status} />,
+  },
+  {
+    id: 'date',
+    header: 'Date',
+    cellClassName: 'text-muted-foreground',
+    cell: (auditLog) => {
+      const absoluteDate = formatAuditAbsoluteDate(auditLog.createdAt);
+
+      return (
+        <>
+          <time dateTime={auditLog.createdAt} title={absoluteDate}>
+            {formatAuditRelativeDate(auditLog.createdAt)}
+          </time>
+          <p className="mt-1 text-xs">{absoluteDate}</p>
+        </>
+      );
+    },
+  },
+];
+
 function AuditLogTable({ auditLogs }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] text-left text-sm">
-        <thead className="border-b border-border bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`} scope="col">Action</th>
-            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`} scope="col">Acteur</th>
-            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`} scope="col">Ressource</th>
-            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`} scope="col">Statut</th>
-            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`} scope="col">Date</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {auditLogs.map((auditLog) => {
-            const absoluteDate = formatAuditAbsoluteDate(auditLog.createdAt);
-
-            return (
-              <tr className="align-top" key={auditLog.id}>
-                <td className={`${DATA_TABLE_STYLES.bodyCell} font-medium text-foreground`}>
-                  {getAuditActionLabel(auditLog.action)}
-                </td>
-                <td className={DATA_TABLE_STYLES.bodyCell}>
-                  <p className="font-medium text-foreground">{getAuditActorLabel(auditLog.actor)}</p>
-                  {auditLog.actor?.email && (
-                    <p className="mt-1 text-xs text-muted-foreground">{auditLog.actor.email}</p>
-                  )}
-                </td>
-                <td className={`${DATA_TABLE_STYLES.bodyCell} text-muted-foreground`}>
-                  {auditLog.entity
-                    ? getAuditEntityTypeLabel(auditLog.entity.type)
-                    : 'Non renseignée'}
-                </td>
-                <td className={DATA_TABLE_STYLES.bodyCell}>
-                  <AuditStatusBadge status={auditLog.status} />
-                </td>
-                <td className={`${DATA_TABLE_STYLES.bodyCell} text-muted-foreground`}>
-                  <time dateTime={auditLog.createdAt} title={absoluteDate}>
-                    {formatAuditRelativeDate(auditLog.createdAt)}
-                  </time>
-                  <p className="mt-1 text-xs">{absoluteDate}</p>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={AUDIT_LOG_COLUMNS}
+      data={auditLogs}
+      getRowKey={(auditLog) => auditLog.id}
+      headerClassName="border-b border-border bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground"
+      rowClassName="align-top"
+      tableClassName="min-w-[760px]"
+    />
   );
 }
 
