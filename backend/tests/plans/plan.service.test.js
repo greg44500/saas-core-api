@@ -21,14 +21,12 @@ import {
 
 describe('Plan service', () => {
     afterEach(() => {
-        // Restaure les véritables méthodes Mongoose après chaque test afin
-        // qu'un mock ne puisse pas modifier le comportement du test suivant.
         vi.restoreAllMocks();
     });
 
 
     describe('validatePlanCapabilities', () => {
-        it('accepte les capabilities déclarées dans un registre étendu', () => {
+        it('accepte les capabilities déclarées et toutes les limites du registre étendu', () => {
             const registry = createPlanCapabilityRegistry({
                 features: ['custom_feature'],
                 metrics: ['custom_metric'],
@@ -43,7 +41,9 @@ describe('Plan service', () => {
                         ],
                         limits: {
                             members: 5,
-                            custom_metric: 100,
+                            storage_bytes: 1073741824,
+                            file_uploads_monthly: 100,
+                            custom_metric: null,
                         },
                     },
                     registry,
@@ -74,6 +74,20 @@ describe('Plan service', () => {
                 'Métriques de plan inconnues : unknown_metric.',
             );
         });
+
+
+        it('refuse une configuration de limites incomplète', () => {
+            expect(() => {
+                validatePlanCapabilities({
+                    limits: {
+                        members: 5,
+                        storage_bytes: null,
+                    },
+                });
+            }).toThrow(
+                'Limites de plan non configurées : file_uploads_monthly.',
+            );
+        });
     });
 
 
@@ -85,8 +99,8 @@ describe('Plan service', () => {
                 key: 'starter',
                 name: 'Starter',
                 currency: 'EUR',
-                priceMonthlyExclTraxMinor: 1990,
-                priceYearlyExclTraxMinor: 19900,
+                priceMonthlyExclTaxMinor: 1990,
+                priceYearlyExclTaxMinor: 19900,
                 features: [
                     'file_upload',
                     'team_management',
@@ -94,16 +108,10 @@ describe('Plan service', () => {
                 limits: {
                     members: 5,
                     storage_bytes: 1073741824,
+                    file_uploads_monthly: 100,
                 },
             };
 
-            /*
-             * La sauvegarde réelle est remplacée afin de tester uniquement
-             * l'orchestration du service sans ouvrir de connexion MongoDB.
-             *
-             * Une fonction classique est utilisée pour conserver `this`,
-             * qui représente ici le document Plan créé par le service.
-             */
             const saveSpy = vi
                 .spyOn(Plan.prototype, 'save')
                 .mockImplementation(async function savePlan() {
@@ -116,10 +124,34 @@ describe('Plan service', () => {
             });
 
             expect(saveSpy).toHaveBeenCalledOnce();
-
             expect(result.key).toBe('starter');
             expect(result.createdBy.toString()).toBe(actorId);
             expect(result.updatedBy.toString()).toBe(actorId);
+        });
+
+
+        it('refuse la création d’un plan sans toutes les limites actives', async () => {
+            const saveSpy = vi.spyOn(Plan.prototype, 'save');
+
+            await expect(
+                createPlan({
+                    planData: {
+                        key: 'incomplete-plan',
+                        name: 'Incomplete plan',
+                        currency: 'EUR',
+                        priceMonthlyExclTaxMinor: 1000,
+                        priceYearlyExclTaxMinor: 10000,
+                        features: [],
+                        limits: {
+                            members: 1,
+                        },
+                    },
+                }),
+            ).rejects.toThrow(
+                'Limites de plan non configurées : storage_bytes, file_uploads_monthly.',
+            );
+
+            expect(saveSpy).not.toHaveBeenCalled();
         });
 
 
@@ -132,8 +164,8 @@ describe('Plan service', () => {
                         key: 'invalid-plan',
                         name: 'Invalid plan',
                         currency: 'EUR',
-                        priceMonthlyExclTraxMinor: 1000,
-                        priceYearlyExclTraxMinor: 10000,
+                        priceMonthlyExclTaxMinor: 1000,
+                        priceYearlyExclTaxMinor: 10000,
                         features: ['unknown_feature'],
                     },
                 }),
@@ -141,11 +173,11 @@ describe('Plan service', () => {
                 'Fonctionnalités de plan inconnues : unknown_feature.',
             );
 
-            // La validation fonctionnelle doit toujours précéder l'écriture.
             expect(saveSpy).not.toHaveBeenCalled();
         });
     });
 });
+
 
 describe('listPublicPlans', () => {
     it('retourne uniquement le catalogue actif et public dans l’ordre attendu', async () => {
@@ -162,10 +194,6 @@ describe('listPublicPlans', () => {
             },
         ];
 
-        /*
-         * Simule uniquement la chaîne Mongoose utilisée par le service :
-         * find → select → sort → lean.
-         */
         const leanMock = vi
             .fn()
             .mockResolvedValue(publicPlans);
@@ -201,6 +229,8 @@ describe('listPublicPlans', () => {
                 'name',
                 'description',
                 'displayOrder',
+                'trialEnabled',
+                'trialDurationDays',
                 'currency',
                 'priceMonthlyExclTaxMinor',
                 'priceYearlyExclTaxMinor',
