@@ -15,13 +15,6 @@ const workspaceMembersApi = baseApi.injectEndpoints({
         { type: 'WorkspaceMembers', id: workspaceId },
       ],
     }),
-    listWorkspaceRoles: build.query({
-      query: (workspaceId) => `/workspaces/${workspaceId}/roles`,
-      transformResponse: (response) => response?.data?.roles ?? [],
-      providesTags: (_result, _error, workspaceId) => [
-        { type: 'WorkspaceRoles', id: workspaceId },
-      ],
-    }),
     listWorkspaceInvitations: build.query({
       query: ({ workspaceId, page = 1, limit = 20 }) => ({
         url: `/workspaces/${workspaceId}/invitations`,
@@ -100,7 +93,6 @@ export const {
   useCreateWorkspaceInvitationMutation,
   useListWorkspaceInvitationsQuery,
   useListWorkspaceMembersQuery,
-  useListWorkspaceRolesQuery,
   useRemoveWorkspaceMemberMutation,
   useResendWorkspaceInvitationMutation,
   useRevokeWorkspaceInvitationMutation,
