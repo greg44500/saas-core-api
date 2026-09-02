@@ -98,12 +98,9 @@ const authApi = baseApi.injectEndpoints({
         responseHandler: 'text',
       }),
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
-        try {
-          await queryFulfilled;
-        } finally {
-          dispatch(sessionTerminated());
-          dispatch(baseApi.util.resetApiState());
-        }
+        await queryFulfilled;
+        dispatch(sessionTerminated());
+        dispatch(baseApi.util.resetApiState());
       },
     }),
     changePassword: build.mutation({
