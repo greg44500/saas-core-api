@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,8 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
   const closeButtonRef = useRef(null);
   const previousFocusRef = useRef(null);
   const onCloseRef = useRef(onClose);
+  const titleId = useId();
+  const descriptionId = useId();
   const [isMounted, setIsMounted] = useState(open);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -103,9 +105,9 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
       />
 
       <aside
-        aria-describedby={description ? 'entity-details-description' : undefined}
+        aria-describedby={description ? descriptionId : undefined}
         aria-hidden={!open}
-        aria-labelledby="entity-details-title"
+        aria-labelledby={titleId}
         aria-modal="true"
         className={`absolute inset-y-0 right-0 flex w-full max-w-xl transform-gpu flex-col border-l border-border bg-background text-foreground shadow-lg transition-transform duration-300 ease-in-out will-change-transform motion-reduce:transition-none ${
           isVisible ? 'translate-x-0' : 'translate-x-full'
@@ -114,11 +116,11 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
       >
         <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold" id="entity-details-title">
+            <h2 className="text-lg font-semibold" id={titleId}>
               {title}
             </h2>
             {description && (
-              <p className="mt-1 text-sm text-muted-foreground" id="entity-details-description">
+              <p className="mt-1 text-sm text-muted-foreground" id={descriptionId}>
                 {description}
               </p>
             )}
