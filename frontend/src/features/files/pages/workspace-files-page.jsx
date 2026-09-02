@@ -95,7 +95,7 @@ function WorkspaceFilesPage() {
           <div>
             <h2 className="text-lg font-semibold">Fichiers actifs</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              {totalFiles} fichier{totalFiles > 1 ? 's' : ''}
+              {totalFiles} fichier{totalFiles === 1 ? '' : 's'}
             </p>
           </div>
         </div>
