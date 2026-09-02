@@ -21,13 +21,6 @@ const serializePlanLimits = (limits) => {
 };
 
 
-/**
- * Crée un nouveau plan depuis l'administration Platform.
- *
- * La requête a déjà été validée par le middleware Zod avant d'atteindre
- * le contrôleur. Celui-ci reste donc volontairement limité à l'orchestration
- * HTTP et délègue toute logique métier au service Platform.
- */
 const createPlan = async (req, res) => {
     const plan = await createPlatformPlan({
         planData: req.validated.body,
@@ -38,18 +31,14 @@ const createPlan = async (req, res) => {
 
     res.status(201).json({
         status: 'success',
-        data: {
-            plan,
-        },
+        data: { plan },
     });
 };
 
 
 /**
- * Retourne le catalogue administratif des plans.
- *
- * Le contrôleur construit explicitement le DTO afin de ne pas exposer
- * accidentellement un futur champ interne ajouté au modèle Plan.
+ * Construit explicitement le DTO administratif afin que l'ajout futur d'un
+ * champ interne au modèle Plan ne l'expose jamais automatiquement au frontend.
  */
 const listPlans = async (req, res) => {
     const { plans, pagination } = await listPlatformPlans({
@@ -68,6 +57,8 @@ const listPlans = async (req, res) => {
                 status: plan.status,
                 isPublic: plan.isPublic,
                 displayOrder: plan.displayOrder,
+                trialEnabled: plan.trialEnabled,
+                trialDurationDays: plan.trialDurationDays ?? null,
                 currency: plan.currency,
                 priceMonthlyExclTaxMinor:
                     plan.priceMonthlyExclTaxMinor,
@@ -85,12 +76,7 @@ const listPlans = async (req, res) => {
     });
 };
 
-/**
- * Met à jour un plan depuis l'administration Platform.
- *
- * Le contrôleur reste limité à l'orchestration HTTP :
- * validation et règles métier sont déjà prises en charge en amont.
- */
+
 const updatePlan = async (req, res) => {
     const plan = await updatePlatformPlan({
         planId: req.validated.params.planId,
@@ -102,18 +88,11 @@ const updatePlan = async (req, res) => {
 
     res.status(200).json({
         status: 'success',
-        data: {
-            plan,
-        },
+        data: { plan },
     });
 };
 
-/**
- * Archive un plan depuis l'administration Platform.
- *
- * L'archivage est une action métier dédiée et reste donc séparé
- * de la mise à jour partielle classique.
- */
+
 const archivePlan = async (req, res) => {
     const plan = await archivePlatformPlan({
         planId: req.validated.params.planId,
@@ -124,9 +103,7 @@ const archivePlan = async (req, res) => {
 
     res.status(200).json({
         status: 'success',
-        data: {
-            plan,
-        },
+        data: { plan },
     });
 };
 
