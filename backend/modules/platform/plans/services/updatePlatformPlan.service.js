@@ -27,20 +27,6 @@ import {
 } from '../../../plan/plan.service.js';
 
 
-/**
- * Met à jour une offre commerciale depuis l'administration Platform.
- *
- * L'archivage est volontairement exclu de ce service : il constitue une
- * transition métier distincte qui sera exposée par une action dédiée.
- *
- * @param {object} params
- * @param {string} params.planId
- * @param {object} params.planData
- * @param {import('mongoose').Types.ObjectId|string} params.actorId
- * @param {string|null} [params.ipAddress]
- * @param {string|null} [params.userAgent]
- * @returns {Promise<object>}
- */
 const updatePlatformPlan = async ({
     planId,
     planData,
@@ -55,9 +41,7 @@ const updatePlatformPlan = async ({
         );
     }
 
-    if (
-        planData.status === PLAN_STATUS.ARCHIVED
-    ) {
+    if (planData.status === PLAN_STATUS.ARCHIVED) {
         throw new AppError(
             'Un plan doit être archivé via l’action dédiée',
             409,
@@ -116,8 +100,7 @@ const updatePlatformPlan = async ({
                 ipAddress,
                 userAgent,
                 metadata: {
-                    updatedFields:
-                        Object.keys(planData),
+                    updatedFields: Object.keys(planData),
                 },
             },
             { session },
@@ -128,24 +111,21 @@ const updatePlatformPlan = async ({
         id: updatedPlan._id.toString(),
         key: updatedPlan.key,
         name: updatedPlan.name,
-        description:
-            updatedPlan.description ?? null,
+        description: updatedPlan.description ?? null,
         status: updatedPlan.status,
         isPublic: updatedPlan.isPublic,
-        displayOrder:
-            updatedPlan.displayOrder,
+        displayOrder: updatedPlan.displayOrder,
+        trialEnabled: updatedPlan.trialEnabled,
+        trialDurationDays: updatedPlan.trialDurationDays ?? null,
         currency: updatedPlan.currency,
         priceMonthlyExclTaxMinor:
             updatedPlan.priceMonthlyExclTaxMinor,
         priceYearlyExclTaxMinor:
             updatedPlan.priceYearlyExclTaxMinor,
         features: updatedPlan.features,
-        limits:
-            updatedPlan.limits instanceof Map
-                ? Object.fromEntries(
-                    updatedPlan.limits,
-                )
-                : updatedPlan.limits ?? {},
+        limits: updatedPlan.limits instanceof Map
+            ? Object.fromEntries(updatedPlan.limits)
+            : updatedPlan.limits ?? {},
         createdAt: updatedPlan.createdAt,
         updatedAt: updatedPlan.updatedAt,
     };
