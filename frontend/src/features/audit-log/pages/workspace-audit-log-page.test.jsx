@@ -75,9 +75,9 @@ describe('WorkspaceAuditLogPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Historique d’activité' })).toBeInTheDocument();
     expect(screen.getByText('Acme')).toBeInTheDocument();
-    expect(screen.getByText('Workspace modifié')).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Workspace modifié' })).toBeInTheDocument();
     expect(screen.getByText('Jean Dupont')).toBeInTheDocument();
-    expect(screen.getByText('Réussie')).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Réussie' })).toBeInTheDocument();
   });
 
   it('transmet pagination et filtres URL au contrat RTK Query', () => {
@@ -114,6 +114,16 @@ describe('WorkspaceAuditLogPage', () => {
     );
 
     expect(filters).toEqual({
+      action: '',
+      entityType: '',
+      status: '',
+      from: '',
+      to: '2026-01-01',
+    });
+
+    expect(
+      readFilters(new URLSearchParams('from=2026-09-10&to=2026-09-01')),
+    ).toEqual({
       action: '',
       entityType: '',
       status: '',
