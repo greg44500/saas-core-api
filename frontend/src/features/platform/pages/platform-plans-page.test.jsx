@@ -118,7 +118,7 @@ describe('PlatformPlansPage', () => {
     const table = screen.getByRole('table');
     expect(within(table).getByText('Premium')).toBeInTheDocument();
     expect(within(table).getByText('Actif')).toBeInTheDocument();
-    expect(within(table).getByText('79,00 €')).toBeInTheDocument();
+    expect(within(table).getByText(/79,00\s*€/)).toBeInTheDocument();
     expect(within(table).getByText('14 jour(s)')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Suivant' }));
@@ -169,6 +169,34 @@ describe('PlatformPlansPage', () => {
     expect(screen.getByText(/registre des fonctionnalités et limites n’est pas disponible/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Réessayer' }));
     expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it('crée un plan via le formulaire partagé', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: 'Créer un plan' }));
+    const drawer = screen.getByRole('dialog', { name: 'Créer un plan' });
+    await user.type(within(drawer).getByLabelText('Clé technique'), 'starter');
+    await user.type(within(drawer).getByLabelText('Nom'), 'Starter');
+    await user.click(within(drawer).getByRole('button', { name: 'Créer le plan' }));
+
+    await waitFor(() => {
+      expect(mocks.createPlan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          key: 'starter',
+          name: 'Starter',
+          trialEnabled: false,
+          trialDurationDays: null,
+          limits: {
+            members: 0,
+            storage_bytes: 0,
+            file_uploads_monthly: 0,
+          },
+        }),
+      );
+    });
+    expect(await screen.findByText('Plan créé')).toBeInTheDocument();
   });
 
   it('ouvre les détails puis archive avec confirmation', async () => {
