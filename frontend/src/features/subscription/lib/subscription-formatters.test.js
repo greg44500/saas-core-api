@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   formatAccessMode,
+  formatAccessReason,
   formatLimitLabel,
   formatSubscriptionStatus,
   getTrialProgress,
@@ -11,7 +12,10 @@ describe('subscription formatters', () => {
   it('traduit les valeurs métier connues sans masquer une valeur future', () => {
     expect(formatSubscriptionStatus('trialing')).toBe('Période d’essai');
     expect(formatAccessMode('remediation')).toBe('Mise en conformité requise');
-    expect(formatLimitLabel('storage_bytes')).toBe('Stockage');
+    expect(formatAccessReason('plan_limits_exceeded')).toBe(
+      'La consommation actuelle dépasse une ou plusieurs limites du plan effectif.',
+    );
+    expect(formatLimitLabel({ key: 'storage_bytes', usage: 1200, limit: 1000 })).toBe('Stockage');
     expect(formatLimitLabel('future_metric')).toBe('future_metric');
   });
 
