@@ -24,6 +24,20 @@ La direction produit souhaitée est une corbeille utilisateur inspirée du fonct
 
 Cette orientation ne modifie pas les invariants backend actuels. Elle devra être recadrée explicitement au moment du lot frontend de soft-delete avant d'ajouter les endpoints de consultation/restauration nécessaires.
 
+## Décision au checkpoint F8.5.3
+
+Le soft-delete frontend est ouvert sans étendre artificiellement son périmètre vers Trash / Restore.
+
+Le parcours F8.5.3 :
+
+- expose l'action uniquement avec `file:delete` ;
+- explique avant confirmation que le fichier quitte immédiatement le listing actif ;
+- rappelle que le contenu physique reste conservé pendant au maximum 30 jours avant purge ;
+- indique explicitement que la restauration utilisateur n'est pas encore disponible ;
+- n'emploie pas le libellé « placé dans la corbeille » tant qu'une vue Corbeille réellement consultable n'existe pas.
+
+La Corbeille / Restore reste donc un lot séparé. Cette séparation évite de présenter à l'utilisateur une capacité de restauration qui n'existe pas encore et évite également d'introduire prématurément des règles backend de quota, permissions et restauration dans le mini-lot de suppression.
+
 ## Pourquoi la restauration nécessite un cadrage backend
 
 Ajouter une restauration n'est pas une simple transition `deleted -> active`. Elle réintroduit une ressource dans la consommation fonctionnelle du workspace et doit donc être cadrée avec les quotas, les permissions et le mode de remédiation.
@@ -64,4 +78,4 @@ Le développement courant ne doit donc pas ajouter prématurément :
 
 ## Point de reprise obligatoire
 
-Lors du lot frontend qui introduira le soft-delete utilisateur, avant de considérer ce parcours comme finalisé, il faudra rappeler explicitement cette dette et décider si la Corbeille / Restore entre immédiatement dans le périmètre ou reste un lot séparé. La suppression simple ne doit pas faire oublier que le contenu physique est conservé pendant 30 jours et que l'architecture est volontairement compatible avec cette future corbeille.
+Lors du lot Trash / Restore, il faudra repartir de cette dette, vérifier les invariants backend de restauration, puis seulement exposer une vraie vue Corbeille et employer ce vocabulaire dans l'interface.
