@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router';
 
 import App from '@/App';
+import { AccountLayout } from '@/app/layouts/account-layout';
 import { AuthLayout } from '@/app/layouts/auth-layout';
 import { OnboardingLayout } from '@/app/layouts/onboarding-layout';
 import { PlatformLayout } from '@/app/layouts/platform-layout';
@@ -44,8 +45,53 @@ function createAppRoutes() {
       ],
     },
     {
+      Component: AuthLayout,
+      HydrateFallback: PageLoader,
+      children: [
+        {
+          path: 'forgot-password',
+          lazy: async () => {
+            const { ForgotPasswordPage } = await import(
+              '@/features/auth/pages/forgot-password-page'
+            );
+            return { Component: ForgotPasswordPage };
+          },
+        },
+        {
+          path: 'reset-password',
+          lazy: async () => {
+            const { ResetPasswordPage } = await import(
+              '@/features/auth/pages/reset-password-page'
+            );
+            return { Component: ResetPasswordPage };
+          },
+        },
+      ],
+    },
+    {
       Component: AuthGuard,
       children: [
+        {
+          path: 'account',
+          Component: AccountLayout,
+          HydrateFallback: PageLoader,
+          children: [
+            {
+              path: 'profile',
+              lazy: async () => {
+                const { ProfilePage } = await import('@/features/account/pages/profile-page');
+                return { Component: ProfilePage };
+              },
+            },
+            {
+              path: 'security',
+              lazy: async () => {
+                const { SecurityPage } = await import('@/features/account/pages/security-page');
+                return { Component: SecurityPage };
+              },
+            },
+          ],
+        },
         {
           path: 'invitations/accept',
           HydrateFallback: PageLoader,
