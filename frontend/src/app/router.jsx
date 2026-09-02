@@ -144,6 +144,15 @@ function createAppRoutes() {
                     return { Component: WorkspaceSubscriptionRoute };
                   },
                 },
+                {
+                  path: 'settings',
+                  lazy: async () => {
+                    const { WorkspaceSettingsPage } = await import(
+                      '@/features/workspace/pages/workspace-settings-page'
+                    );
+                    return { Component: WorkspaceSettingsPage };
+                  },
+                },
               ],
             },
           ],
