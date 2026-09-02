@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Ban, Eye, UserMinus } from 'lucide-react';
 
+import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { Tooltip } from '@/components/shared/tooltip';
@@ -32,38 +33,6 @@ const PAGE_SIZE = 20;
 
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
-}
-
-function Pagination({ page, pagination, onPageChange }) {
-  const totalPages = pagination?.totalPages ?? 1;
-
-  if (totalPages <= 1) return null;
-
-  return (
-    <div className="flex items-center justify-between gap-3 pt-4">
-      <p className="text-sm text-muted-foreground">
-        Page {page} sur {totalPages}
-      </p>
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-        >
-          Précédent
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
-        >
-          Suivant
-        </Button>
-      </div>
-    </div>
-  );
 }
 
 function ConfirmationDialog({ action, onCancel, onConfirm, pending }) {
@@ -407,7 +376,7 @@ function WorkspaceMembersPage() {
           getRowKey={(member) => member.id}
         />
         <div className="px-5 pb-5">
-          <Pagination
+          <DataPagination
             page={memberPage}
             pagination={membersQuery.data?.pagination}
             onPageChange={setMemberPage}
@@ -470,7 +439,7 @@ function WorkspaceMembersPage() {
             )}
           </div>
           <div className="px-5 pb-5">
-            <Pagination
+            <DataPagination
               page={invitationPage}
               pagination={invitationsQuery.data?.pagination}
               onPageChange={setInvitationPage}
@@ -502,4 +471,4 @@ function WorkspaceMembersPage() {
   );
 }
 
-export { ConfirmationDialog, Pagination, WorkspaceMembersPage };
+export { ConfirmationDialog, WorkspaceMembersPage };
