@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { userIdentityInputSchema } from '../../modules/users/user.validation.js';
+import {
+  updateCurrentUserProfileSchema,
+  userIdentityInputSchema,
+} from '../../modules/users/user.validation.js';
 
 describe('userIdentityInputSchema', () => {
   const validPayload = {
@@ -103,5 +106,30 @@ describe('userIdentityInputSchema', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe('updateCurrentUserProfileSchema', () => {
+  it('accepte une mise à jour partielle et trim les noms', () => {
+    expect(
+      updateCurrentUserProfileSchema.parse({
+        firstName: '  Greg  ',
+      }),
+    ).toEqual({ firstName: 'Greg' });
+  });
+
+  it('refuse un body vide', () => {
+    expect(() => updateCurrentUserProfileSchema.parse({})).toThrow();
+  });
+
+  it('refuse email et tout champ sensible inconnu', () => {
+    expect(() => updateCurrentUserProfileSchema.parse({
+      email: 'new@example.com',
+    })).toThrow();
+
+    expect(() => updateCurrentUserProfileSchema.parse({
+      firstName: 'Greg',
+      platformRole: 'super_admin',
+    })).toThrow();
   });
 });
