@@ -152,13 +152,20 @@ describe('getPlatformWorkspace', () => {
         ).toHaveBeenCalledWith(
             'workspace-1',
         );
-        expect(trustedSpy).toHaveBeenCalledWith({
-            $in: [
-                workspaceDocument.statusChangedBy,
-                workspaceDocument.createdBy,
-                workspaceDocument.updatedBy,
-            ],
-        });
+        expect(trustedSpy).toHaveBeenCalledOnce();
+
+        /*
+         * mongoose.trusted() ajoute un symbole interne à l'objet reçu. Le test
+         * vérifie donc uniquement notre contrat ($in borné) et ne se couple pas
+         * à ce détail d'implémentation de Mongoose.
+         */
+        const trustedFilter = trustedSpy.mock.calls[0][0];
+
+        expect(trustedFilter.$in).toEqual([
+            workspaceDocument.statusChangedBy,
+            workspaceDocument.createdBy,
+            workspaceDocument.updatedBy,
+        ]);
         expect(User.find).toHaveBeenCalledOnce();
         expect(User.find.mock.calls[0][0]._id.$in).toEqual([
             workspaceDocument.statusChangedBy,
