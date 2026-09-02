@@ -40,6 +40,7 @@ function WorkspaceRolesPage() {
   const [formMode, setFormMode] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
   const roles = rolesQuery.data ?? [];
   const actorPermissionSet = useMemo(() => new Set(permissions), [permissions]);
@@ -52,6 +53,17 @@ function WorkspaceRolesPage() {
   function openEdit(role) {
     setEditingRole(role);
     setFormMode('edit');
+  }
+
+  function openDelete(role) {
+    setDeleteError(null);
+    setDeleteCandidate(role);
+  }
+
+  function closeDelete() {
+    if (deleteState.isLoading) return;
+    setDeleteError(null);
+    setDeleteCandidate(null);
   }
 
   function closeForm() {
@@ -85,6 +97,7 @@ function WorkspaceRolesPage() {
 
   async function confirmDelete() {
     if (!deleteCandidate) return;
+    setDeleteError(null);
 
     try {
       await deleteRole({
@@ -99,14 +112,12 @@ function WorkspaceRolesPage() {
         variant: 'success',
       });
     } catch (error) {
-      toast({
-        title: 'Suppression du rôle impossible',
-        description: getApiMessage(
+      setDeleteError(
+        getApiMessage(
           error,
           "Le rôle ne peut pas être supprimé. Vérifiez qu’il n’est plus utilisé.",
         ),
-        variant: 'error',
-      });
+      );
     }
   }
 
@@ -186,7 +197,7 @@ function WorkspaceRolesPage() {
               <ActionIconButton
                 Icon={Trash2}
                 label="Supprimer"
-                onClick={() => setDeleteCandidate(role)}
+                onClick={() => openDelete(role)}
                 variant="destructive"
               />
             )}
@@ -218,6 +229,11 @@ function WorkspaceRolesPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             La suppression sera refusée s’il est encore attribué à un membre actif ou suspendu, ou utilisé par une invitation en attente.
           </p>
+          {deleteError && (
+            <p className="mt-3 text-sm text-destructive" role="alert">
+              {deleteError}
+            </p>
+          )}
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
               disabled={deleteState.isLoading}
@@ -229,7 +245,7 @@ function WorkspaceRolesPage() {
             </Button>
             <Button
               disabled={deleteState.isLoading}
-              onClick={() => setDeleteCandidate(null)}
+              onClick={closeDelete}
               type="button"
               variant="outline"
             >
