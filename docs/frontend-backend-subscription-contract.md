@@ -1,50 +1,51 @@
 # SAAS-CORE-API — Contrat d’intégration frontend/backend Subscription
 
-**Statut :** contrat frontend stabilisé — lot F4  
-**Date :** 29 août 2026  
+**Statut :** F8.6.2 stabilisé — F8.6.3 frontend en validation  
+**Date :** 2 septembre 2026  
 **Backend de référence :** `saas-core-api`  
 **Frontend cible :** React + Vite, JavaScript, Tailwind CSS, shadcn/ui, Redux Toolkit, RTK Query
 
 ## 1. Objet
 
-Ce document fige le contrat HTTP actuellement exposé au frontend pour le domaine **Subscription d’un workspace**.
+Ce document fige le contrat HTTP observable par le frontend pour le domaine **Subscription d’un workspace**.
 
-Il documente uniquement les comportements réellement implémentés et testés :
+Il couvre :
 
-- lecture consolidée de la Subscription d’un workspace ;
-- entitlement effectif ;
-- trial commercial ;
-- retour volontaire au plan Free pendant un trial ;
-- résiliation programmée ;
-- révocation d’une résiliation programmée ;
-- downgrade programmé ;
-- révocation d’un downgrade programmé ;
-- autorisation owner/admin ;
-- frontière multi-tenant ;
-- remédiation liée aux limites de plan.
+- le catalogue public des plans ;
+- la lecture consolidée de la Subscription ;
+- l’entitlement effectif ;
+- l’éligibilité à la période d’essai ;
+- le démarrage ou changement de plan pendant une période d’essai ;
+- le retour volontaire vers Free pendant l’essai ;
+- la programmation/révocation d’une résiliation ;
+- la programmation/révocation d’un downgrade ;
+- les règles owner/admin ;
+- la frontière multi-tenant ;
+- la remédiation liée aux limites de plan.
 
-Ce contrat **n’est pas un contrat Billing/Payment**. Les moyens de paiement, identifiants client d’un provider, factures, taxes, remboursements, crédits, webhooks de paiement et preuves d’encaissement restent hors périmètre de F4.
+Ce contrat **n’est pas un contrat Billing/Payment**. Les moyens de paiement, factures, taxes, remboursements, crédits, webhooks provider et preuves d’encaissement restent hors de ce domaine.
 
 ---
 
 ## 2. Principes d’autorité
 
-Le frontend ne doit jamais reconstruire les règles de Subscription à partir de données partielles.
-
 Le backend reste l’autorité pour :
 
-- le statut contractuel de la Subscription ;
-- le choix de la Subscription qui fournit réellement les droits ;
-- l’expiration temporelle d’un trial ou d’une période commerciale ;
+- le statut contractuel d’une Subscription ;
+- la Subscription qui fournit réellement les droits ;
+- la validité temporelle d’une période commerciale ou d’un essai ;
 - le fallback vers la baseline Free ;
 - le mode `normal` ou `remediation` ;
 - les limites bloquantes et non bloquantes ;
-- l’éligibilité au trial ;
-- les transitions de résiliation et de downgrade ;
+- l’éligibilité à la période d’essai ;
+- la validité d’un changement de plan ;
+- la validité d’une résiliation ou d’un downgrade ;
 - les autorisations owner/admin ;
 - l’appartenance d’une Subscription à un workspace.
 
-Le frontend peut adapter l’UX, mais toute mutation doit accepter qu’une décision serveur refuse l’opération si l’état a changé depuis le dernier affichage.
+Le frontend peut simplifier l’affichage et masquer les actions manifestement impossibles, mais cette logique reste uniquement une aide UX. Toute mutation doit accepter qu’une décision serveur la refuse si l’état a changé depuis la dernière lecture.
+
+Après une mutation Subscription réussie, le frontend doit invalider/refetch la vue consolidée au lieu de reconstruire localement l’entitlement.
 
 ---
 
@@ -58,18 +59,18 @@ baseline
 → actuellement le plan Free
 
 commercial
-→ trial ou souscription payante
+→ période d’essai ou souscription payante
 → peut coexister avec la baseline
 ```
 
-Les valeurs de `kind` stabilisées sont :
+Valeurs de `kind` :
 
 ```text
 baseline
 commercial
 ```
 
-Les statuts stabilisés sont :
+Statuts :
 
 ```text
 trialing
@@ -79,15 +80,11 @@ canceled
 expired
 ```
 
-`kind` décrit le rôle de la Subscription. `status` décrit son état dans le cycle de vie.
-
-Le frontend ne doit pas modéliser ces deux notions comme un unique champ « plan courant ».
+`kind` et `status` sont deux notions distinctes. Le frontend ne doit pas les fusionner dans une machine d’état cliente autonome.
 
 ---
 
 ## 4. Entitlement effectif
-
-Le backend résout le plan réellement applicable au workspace.
 
 Règle stabilisée :
 
@@ -102,41 +99,88 @@ sinon baseline active
 → fallback
 ```
 
-Le frontend ne doit jamais décider lui-même qu’une Subscription commerciale est encore utilisable.
+Un document commercial encore persisté avec `status = trialing` ou `status = active` peut ne plus fournir de droits lorsque son échéance temporelle est dépassée.
 
-Un trial dont `trialEndsAt` est atteint ne fournit plus de droits commerciaux, même si son statut persistant n’a pas encore été réconcilié vers `expired`.
-
-Une Subscription `active` dont la période est terminée ne doit pas être considérée comme utilisable uniquement parce que son champ `status` vaut encore `active`.
+Le frontend doit utiliser `effectiveEntitlement` comme source de vérité des droits réellement applicables.
 
 ---
 
-## 5. Base URL Subscription workspace
+## 5. Catalogue public des plans
 
-Les routes sont réellement montées sous :
+## GET `/api/plans`
+
+Cette route alimente l’affichage des offres et tarifs catalogue.
+
+Le DTO public est explicitement projeté par le backend. Un nouveau champ interne ajouté au modèle Plan n’est jamais exposé automatiquement.
+
+### Exemple
+
+```json
+{
+  "status": "success",
+  "data": {
+    "plans": [
+      {
+        "id": "...",
+        "key": "premium",
+        "name": "Premium",
+        "description": "...",
+        "displayOrder": 10,
+        "currency": "EUR",
+        "priceMonthlyExclTaxMinor": 7900,
+        "priceYearlyExclTaxMinor": 79000,
+        "trialEnabled": true,
+        "trialDurationDays": 14,
+        "features": [],
+        "limits": {}
+      }
+    ]
+  }
+}
+```
+
+### Règle frontend F8.6.2
+
+Le frontend ne doit jamais déduire qu’un plan possède une période d’essai à partir de sa clé (`premium`, `ai`, etc.).
+
+Une action de démarrage d’essai peut être présentée uniquement lorsque :
+
+```text
+trialEnabled = true
+ET trialDurationDays > 0
+```
+
+Ces données renseignent les caractéristiques du plan. Elles ne prouvent pas que l’identité courante est encore éligible : cette information provient de la vue Subscription du workspace.
+
+---
+
+## 6. Base URL Subscription workspace
+
+Les routes Subscription workspace sont montées sous :
 
 ```text
 /api/workspaces/:workspaceId/subscription
 ```
 
-Toutes les routes sont protégées par authentification.
+Toutes sont protégées par authentification.
 
-`workspaceId` et, lorsqu’il existe, `subscriptionId` doivent être des ObjectId MongoDB représentés par 24 caractères hexadécimaux.
+`workspaceId` et `subscriptionId` sont des ObjectId MongoDB sous forme de 24 caractères hexadécimaux.
 
 ---
 
-## 6. Matrice d’autorisation
+## 7. Matrice d’autorisation
 
 | Action | Owner | Admin | Manager | Member | Reader |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Lire l’état Subscription | Oui | Oui | Non | Non | Non |
-| Démarrer/changer un trial | Oui | Non | Non | Non | Non |
-| Quitter volontairement le trial vers Free | Oui | Non | Non | Non | Non |
+| Démarrer/changer un essai | Oui | Non | Non | Non | Non |
+| Quitter l’essai vers Free | Oui | Non | Non | Non | Non |
 | Programmer une résiliation | Oui | Non | Non | Non | Non |
-| Révoquer une résiliation programmée | Oui | Non | Non | Non | Non |
+| Révoquer une résiliation | Oui | Non | Non | Non | Non |
 | Programmer un downgrade | Oui | Non | Non | Non | Non |
-| Révoquer un downgrade programmé | Oui | Non | Non | Non | Non |
+| Révoquer un downgrade | Oui | Non | Non | Non | Non |
 
-La lecture utilise la permission :
+La lecture utilise :
 
 ```text
 subscription:read
@@ -144,29 +188,26 @@ subscription:read
 
 Cette permission est attribuée aux rôles système `owner` et `admin`.
 
-Les commandes commerciales **n’utilisent pas une permission délégable**. Elles passent par une barrière owner-only qui exige le rôle système `owner`. Un admin ou un rôle personnalisé ne peut donc pas recevoir indirectement le droit d’engager, modifier ou résilier le contrat commercial.
-
-Cette séparation devra être conservée lors de l’introduction future de Billing/Payment.
+Les commandes commerciales n’utilisent pas une permission délégable : elles passent par `authorizeWorkspaceOwner`. Un rôle personnalisé ou un admin ne doit donc jamais être considéré comme habilité à engager, modifier ou résilier le contrat commercial.
 
 ---
 
-## 7. Frontière multi-tenant
+## 8. Frontière multi-tenant
 
-Pour les commandes qui utilisent un `subscriptionId`, le backend vérifie que :
+Pour les commandes utilisant `subscriptionId`, le backend vérifie :
 
 ```text
 subscription._id = subscriptionId
-ET
-subscription.workspace = workspaceId
+ET subscription.workspace = workspaceId
 ```
 
-Une Subscription appartenant à un autre workspace est donc traitée comme introuvable dans le workspace courant.
+Une Subscription d’un autre workspace est traitée comme introuvable dans le workspace courant.
 
-Le frontend ne doit jamais considérer un identifiant de Subscription comme une preuve d’accès.
+Un identifiant de Subscription n’est jamais une preuve d’autorisation.
 
 ---
 
-# 8. Lecture consolidée
+# 9. Lecture consolidée
 
 ## GET `/api/workspaces/:workspaceId/subscription`
 
@@ -174,9 +215,7 @@ Le frontend ne doit jamais considérer un identifiant de Subscription comme une 
 **Rôles système actuels :** owner, admin  
 **Disponible en remédiation :** oui
 
-### Succès
-
-`200 OK`
+### Exemple
 
 ```json
 {
@@ -216,6 +255,9 @@ Le frontend ne doit jamais considérer un identifiant de Subscription comme une 
         "reason": null,
         "blockingLimits": [],
         "nonBlockingLimits": []
+      },
+      "trialEligibility": {
+        "consumed": false
       }
     }
   }
@@ -224,7 +266,21 @@ Le frontend ne doit jamais considérer un identifiant de Subscription comme une 
 
 `commercial` peut être `null`.
 
-### DTO Plan public dans cette vue
+### `trialEligibility`
+
+F8.6.2 expose uniquement :
+
+```json
+{
+  "consumed": true
+}
+```
+
+Ce booléen permet au frontend de ne pas reproposer artificiellement un nouvel essai après consommation.
+
+L’empreinte HMAC d’identité, l’email canonique et tout autre détail interne de `TrialEligibility` restent hors contrat public.
+
+### DTO Plan dans cette vue
 
 ```json
 {
@@ -236,11 +292,11 @@ Le frontend ne doit jamais considérer un identifiant de Subscription comme une 
 }
 ```
 
-La vue Subscription ne réexpose volontairement pas les prix catalogue ni la devise du Plan. Le catalogue public `/api/plans` reste la source prévue pour l’affichage des offres et tarifs catalogue.
+Cette vue ne réexpose pas les prix catalogue. `/api/plans` reste la source d’affichage des tarifs et conditions commerciales publiques.
 
-### `scheduledChange` dans la vue consolidée
+### `scheduledChange`
 
-Lorsqu’un changement est programmé :
+Lorsqu’un downgrade est programmé :
 
 ```json
 {
@@ -258,15 +314,13 @@ Lorsqu’un changement est programmé :
 }
 ```
 
-Les champs internes `targetCurrency`, `targetPriceExclTaxMinor` et `requestedBy` ne sont pas exposés dans cette **vue de lecture owner/admin**.
+Les champs internes de snapshot commercial et `requestedBy` ne sont pas exposés dans cette vue owner/admin.
 
 ---
 
-## 9. `effectiveEntitlement`
+## 10. `effectiveEntitlement`
 
-Le frontend doit utiliser `effectiveEntitlement` pour savoir quel plan et quelles limites sont réellement applicables.
-
-### Champs
+Champs :
 
 ```text
 plan
@@ -278,52 +332,38 @@ blockingLimits
 nonBlockingLimits
 ```
 
-### `accessMode`
-
-Valeurs stabilisées :
+`accessMode` :
 
 ```text
 normal
 remediation
 ```
 
-`remediation` indique que le contrat a bien évolué mais que la consommation actuelle dépasse une ou plusieurs limites bloquantes du plan effectif.
+`remediation` signifie que le contrat est valide mais que la consommation actuelle dépasse une ou plusieurs limites bloquantes du plan effectif.
 
-La Subscription peut donc rester `active` tout en ayant :
-
-```text
-accessMode = remediation
-```
-
-Le frontend ne doit pas transformer cette situation en statut Subscription artificiel.
-
-### Limites actuellement classées
-
-Bloquantes/réductibles :
+Limites actuellement bloquantes/réductibles :
 
 ```text
 members
 storage_bytes
 ```
 
-Non bloquante globalement :
+Limite non bloquante globalement :
 
 ```text
 file_uploads_monthly
 ```
 
-Un dépassement de `file_uploads_monthly` bloque une consommation supplémentaire de cette métrique mais ne déclenche pas à lui seul le mode global `remediation`.
-
-Le frontend ne doit pas calculer seul le mode de remédiation à partir des limites catalogue.
+Le frontend ne doit pas recalculer seul le mode de remédiation à partir du catalogue.
 
 ---
 
-# 10. Démarrer ou changer un trial
+# 11. Démarrer ou changer une période d’essai
 
 ## POST `/api/workspaces/:workspaceId/subscription/trial`
 
 **Autorisation :** owner-only  
-**Statut de succès :** `201 Created`
+**Succès :** `201 Created`
 
 ### Body
 
@@ -334,115 +374,63 @@ Le frontend ne doit pas calculer seul le mode de remédiation à partir des limi
 }
 ```
 
-`billingInterval` accepte uniquement :
+`billingInterval` :
 
 ```text
 monthly
 yearly
 ```
 
-Le body est strict : tout champ inconnu est rejeté.
+Body strict.
 
-### Règles métier stabilisées
+### Règles
 
 - Free ne peut pas recevoir de trial ;
-- le Plan doit être actif ;
+- le plan doit être actif ;
 - `trialEnabled` doit être `true` ;
-- `trialDurationDays` doit être un entier strictement positif ;
-- aucun moyen de paiement n’est requis ;
-- l’éligibilité au trial est consommée une seule fois par identité ;
-- un trial commercial existant peut changer vers un autre plan éligible ;
-- un changement de plan pendant le trial ne modifie jamais `trialEndsAt` ;
-- une Subscription commerciale `active` ou `past_due` empêche l’ouverture d’un nouveau trial ;
+- `trialDurationDays` doit être strictement positif ;
+- aucun moyen de paiement n’est requis pendant l’essai ;
+- l’éligibilité est consommée une seule fois par identité ;
+- un essai en cours peut changer vers un autre plan éligible ;
+- ce changement ne modifie jamais `trialEndsAt` ;
+- une Subscription commerciale `active` ou `past_due` interdit l’ouverture d’un nouvel essai ;
 - la baseline Free reste active en parallèle.
 
-### Réponse
-
-```json
-{
-  "status": "success",
-  "data": {
-    "subscription": {
-      "id": "...",
-      "workspace": "...",
-      "plan": "...",
-      "kind": "commercial",
-      "status": "trialing",
-      "currentPeriodStart": "...",
-      "currentPeriodEnd": "...",
-      "trialEndsAt": "...",
-      "billingInterval": "monthly",
-      "currency": "EUR",
-      "priceExclTaxMinor": 0,
-      "provider": "manual",
-      "createdAt": "...",
-      "updatedAt": "..."
-    }
-  }
-}
-```
-
-`currency`, `priceExclTaxMinor` et `provider` décrivent ici le snapshot contractuel de la Subscription. Ils ne prouvent aucun encaissement et ne remplacent pas le futur contrat Billing/Payment.
-
-Après succès, le frontend doit invalider/refetch la lecture consolidée du workspace au lieu de reconstruire localement l’entitlement.
+Après succès, le frontend invalide `WorkspaceSubscription(workspaceId)`.
 
 ---
 
-# 11. Retour volontaire vers Free pendant un trial
+# 12. Retour volontaire vers Free pendant l’essai
 
 ## POST `/api/workspaces/:workspaceId/subscription/trial/end-to-free`
 
 **Autorisation :** owner-only  
 **Body :** aucun  
-**Statut de succès :** `200 OK`
+**Succès :** `200 OK`
 
-### Règles métier stabilisées
+### Règles
 
-- seule une Subscription commerciale réellement `trialing` peut utiliser cette commande ;
-- le trial doit encore être temporellement valide ;
+- la Subscription commerciale doit être réellement `trialing` ;
+- l’essai doit encore être temporellement valide ;
 - la Subscription commerciale devient `canceled` ;
-- la baseline Free existante redevient l’offre effective ;
+- la baseline Free redevient effective ;
 - `trialEndsAt` est conservé historiquement ;
-- l’éligibilité déjà consommée n’est jamais restaurée ;
-- un retour ultérieur vers un plan payant ne crée donc pas un nouveau trial pour cette identité.
+- l’éligibilité reste consommée définitivement.
 
-### Réponse
-
-```json
-{
-  "status": "success",
-  "data": {
-    "subscription": {
-      "id": "...",
-      "kind": "commercial",
-      "status": "canceled",
-      "currentPeriodEnd": "...",
-      "trialEndsAt": "...",
-      "effectiveSubscription": {
-        "id": "...",
-        "kind": "baseline",
-        "status": "active"
-      },
-      "updatedAt": "..."
-    }
-  }
-}
-```
-
-Le frontend doit refetch la vue consolidée après succès.
+L’interface doit avertir explicitement l’owner de cette irréversibilité avant confirmation.
 
 ---
 
-# 12. Programmer une résiliation en fin de période
+# 13. Programmer une résiliation en fin de période
 
 ## POST `/api/workspaces/:workspaceId/subscription/:subscriptionId/cancellation`
 
 **Autorisation :** owner-only  
-**Statut de succès :** `200 OK`
+**Succès :** `200 OK`
 
 ### Body
 
-Le body peut être omis.
+Le body peut être vide.
 
 ```json
 {
@@ -454,77 +442,52 @@ Le body peut être omis.
 
 - facultatif ;
 - `null` accepté ;
-- chaîne trimée ;
-- 1 à 500 caractères lorsqu’une chaîne est fournie.
+- trimé ;
+- 1 à 500 caractères lorsqu’une chaîne non vide est envoyée.
 
-Le body est strict : tout champ inconnu est rejeté.
+Body strict.
 
-### Règles métier stabilisées
+### Règles
 
-- la Subscription doit appartenir au workspace courant ;
-- elle doit être `commercial` ;
-- elle doit être `active` ;
-- sa période contractuelle doit être encore ouverte ;
-- une résiliation déjà programmée ne peut pas être programmée une seconde fois ;
+- Subscription du workspace courant ;
+- `kind = commercial` ;
+- `status = active` ;
+- période encore ouverte ;
+- aucune résiliation déjà programmée ;
 - la Subscription reste `active` jusqu’à `currentPeriodEnd` ;
 - `cancelAtPeriodEnd` devient `true` ;
-- les droits commerciaux cessent temporellement à l’échéance même si le job de persistance est retardé.
+- les droits commerciaux cessent à l’échéance même si le job de persistance est retardé.
 
-### Réponse
+### UX F8.6.3
 
-```json
-{
-  "status": "success",
-  "data": {
-    "subscription": {
-      "id": "...",
-      "workspace": "...",
-      "plan": "...",
-      "kind": "commercial",
-      "status": "active",
-      "currentPeriodStart": "...",
-      "currentPeriodEnd": "...",
-      "trialEndsAt": "...",
-      "cancelAtPeriodEnd": true,
-      "billingInterval": "monthly",
-      "currency": "EUR",
-      "priceExclTaxMinor": 0,
-      "provider": "manual",
-      "updatedAt": "..."
-    }
-  }
-}
-```
+La date `currentPeriodEnd` doit être affichée avant confirmation. Le frontend ne doit pas présenter cette commande comme une interruption immédiate.
 
 ---
 
-# 13. Révoquer une résiliation programmée
+# 14. Révoquer une résiliation programmée
 
 ## DELETE `/api/workspaces/:workspaceId/subscription/:subscriptionId/cancellation`
 
 **Autorisation :** owner-only  
 **Body :** aucun  
-**Statut de succès :** `200 OK`
+**Succès :** `200 OK`
 
-### Règles métier stabilisées
+### Règles
 
-- la Subscription doit appartenir au workspace courant ;
-- elle doit encore être une Subscription commerciale `active` ;
-- `cancelAtPeriodEnd` doit être `true` ;
-- la période ne doit pas être terminée ;
-- cette commande ne ressuscite jamais une Subscription déjà `canceled` ou `expired` ;
+- Subscription commerciale `active` du workspace courant ;
+- `cancelAtPeriodEnd = true` ;
+- période non terminée ;
+- ne ressuscite jamais une Subscription `canceled` ou `expired` ;
 - `cancelAtPeriodEnd` repasse à `false`.
-
-La réponse utilise le même DTO de cycle de vie que la programmation de résiliation, avec `cancelAtPeriodEnd: false`.
 
 ---
 
-# 14. Programmer un downgrade
+# 15. Programmer un downgrade
 
 ## POST `/api/workspaces/:workspaceId/subscription/:subscriptionId/downgrade`
 
 **Autorisation :** owner-only  
-**Statut de succès :** `200 OK`
+**Succès :** `200 OK`
 
 ### Body
 
@@ -534,133 +497,88 @@ La réponse utilise le même DTO de cycle de vie que la programmation de résili
 }
 ```
 
-Le body est strict.
+Body strict.
 
-### Règles métier stabilisées
+### Règles
 
-- la Subscription doit appartenir au workspace courant ;
-- elle doit être commerciale et `active` ;
-- la période doit être encore ouverte ;
-- aucune résiliation ne doit déjà être programmée ;
-- aucun autre `scheduledChange` ne doit déjà exister ;
-- le plan cible doit être différent ;
-- le plan cible doit être actif ;
-- le plan cible ne peut pas être Free ;
-- la devise doit rester identique ;
-- la périodicité reste identique ;
-- `monthly ↔ yearly` n’est pas géré par ce contrat ;
-- le prix catalogue cible doit être strictement inférieur au prix catalogue du plan actuel pour la même périodicité ;
-- le changement prend effet à `currentPeriodEnd` ;
-- aucun remboursement ni crédit automatique n’est calculé ;
-- le prix et la devise cibles sont snapshotés au moment de la programmation ;
-- un dépassement futur des limites du plan cible n’empêche pas la programmation du downgrade.
+- Subscription commerciale `active` du workspace courant ;
+- période encore ouverte ;
+- aucune résiliation programmée ;
+- aucun autre `scheduledChange` ;
+- plan cible différent et actif ;
+- plan cible non Free ;
+- même devise ;
+- même périodicité ;
+- `monthly ↔ yearly` hors de ce contrat ;
+- prix catalogue cible strictement inférieur au plan actuel pour la même périodicité ;
+- effet à `currentPeriodEnd` ;
+- aucun remboursement/crédit/prorata calculé par Subscription ;
+- prix et devise cibles snapshotés côté backend ;
+- un dépassement futur des limites du plan cible n’empêche pas la programmation.
 
-### Réponse
+### UX F8.6.3
 
-```json
-{
-  "status": "success",
-  "data": {
-    "subscription": {
-      "id": "...",
-      "workspace": "...",
-      "plan": "...",
-      "status": "active",
-      "billingInterval": "monthly",
-      "currentPeriodEnd": "...",
-      "cancelAtPeriodEnd": false,
-      "scheduledChange": {
-        "type": "downgrade",
-        "targetPlan": "...",
-        "targetBillingInterval": "monthly",
-        "targetCurrency": "EUR",
-        "targetPriceExclTaxMinor": 0,
-        "effectiveAt": "...",
-        "requestedAt": "...",
-        "requestedBy": "..."
-      }
-    }
-  }
-}
-```
+Le frontend peut filtrer le catalogue pour ne présenter que les plans manifestement moins chers, non Free et de même devise. Ce filtrage est uniquement une aide UX : le backend revalide toutes les règles au moment du POST.
 
-La réponse de cette commande est owner-only. Les snapshots commerciaux internes exposés ici ne doivent pas être confondus avec une facture ou une preuve de paiement.
+La date d’effet doit être visible avant confirmation.
 
 ---
 
-# 15. Révoquer un downgrade programmé
+# 16. Révoquer un downgrade programmé
 
 ## DELETE `/api/workspaces/:workspaceId/subscription/:subscriptionId/downgrade`
 
 **Autorisation :** owner-only  
 **Body :** aucun  
-**Statut de succès :** `200 OK`
+**Succès :** `200 OK`
 
-### Règles métier stabilisées
+### Règles
 
-- la Subscription doit appartenir au workspace courant ;
-- elle doit être commerciale et `active` ;
-- un `scheduledChange` doit exister ;
-- ce changement doit être de type `downgrade` ;
-- son échéance ne doit pas avoir été atteinte ;
-- la révocation retire `scheduledChange` sans restaurer artificiellement d’anciennes données contractuelles.
-
-La réponse utilise le DTO de downgrade avec :
-
-```json
-{
-  "scheduledChange": null
-}
-```
+- Subscription commerciale `active` du workspace courant ;
+- `scheduledChange.type = downgrade` ;
+- échéance non atteinte ;
+- la révocation retire `scheduledChange` sans recréer artificiellement un ancien état contractuel.
 
 ---
 
-## 16. Résiliation et downgrade sont mutuellement exclusifs
+## 17. Résiliation et downgrade sont mutuellement exclusifs
 
-Le backend protège l’invariant suivant :
+L’état suivant ne doit jamais être considéré comme valide :
 
 ```text
 cancelAtPeriodEnd = true
 ET scheduledChange != null
 ```
 
-ne doivent pas coexister sur la même Subscription.
+Le frontend F8.6.3 masque les actions incompatibles pour rendre l’interface lisible, mais le backend conserve l’invariant de sécurité/métier.
 
-Le frontend peut désactiver les actions incompatibles pour l’UX mais ne doit jamais considérer cette désactivation comme une validation métier suffisante.
-
-Après chaque commande réussie, un refetch de la vue consolidée reste la source de vérité.
+Après programmation ou révocation, un refetch de la vue consolidée reste obligatoire.
 
 ---
 
-## 17. Remédiation et commandes Subscription
+## 18. Remédiation et commandes Subscription
 
-La vue Subscription est disponible pendant la remédiation afin de permettre à l’interface d’expliquer :
+La lecture Subscription reste disponible en remédiation afin d’expliquer :
 
 - le plan effectif ;
 - les limites dépassées ;
-- les actions permettant un retour à la conformité.
+- les actions de retour à conformité.
 
-Les routes commerciales F3 ne sont pas protégées par le middleware général de blocage des mutations de workspace. Leur admissibilité est déterminée par les règles métier propres aux services Subscription.
-
-Le frontend ne doit donc pas masquer systématiquement toute gestion de Subscription lorsque `accessMode === "remediation"`.
-
-Exemple important : un workspace en remédiation à la suite d’un downgrade doit pouvoir conserver l’accès aux informations nécessaires pour comprendre et corriger son dépassement.
+Les commandes Subscription owner-only obéissent à leurs propres règles métier et ne doivent pas être masquées globalement uniquement parce que `accessMode === "remediation"`.
 
 ---
 
-## 18. Erreurs HTTP à gérer
+## 19. Erreurs HTTP à gérer
 
-Le frontend doit piloter sa logique en priorité avec le statut HTTP et l’endpoint concerné, jamais par parsing du texte libre du message.
+Le frontend pilote sa logique avec le statut HTTP et l’endpoint concerné, pas avec le parsing du texte libre.
 
 ### `400 Bad Request`
 
-Validation HTTP/Zod invalide :
-
 - ObjectId invalide ;
 - body incomplet ;
-- valeur de `billingInterval` invalide ;
-- champ inconnu dans un body strict ;
-- `reason` invalide.
+- `billingInterval` invalide ;
+- champ inconnu ;
+- motif invalide.
 
 ### `401 Unauthorized`
 
@@ -668,215 +586,250 @@ Authentification absente ou invalide.
 
 ### `403 Forbidden`
 
-Exemples :
-
-- absence de `subscription:read` pour la lecture ;
-- commande commerciale appelée par un utilisateur qui n’est pas le rôle système `owner`.
+- absence de `subscription:read` ;
+- mutation appelée par un utilisateur non owner.
 
 ### `404 Not Found`
 
-Exemples :
-
-- plan demandé introuvable/indisponible lorsqu’un service expose ce cas en 404 ;
+- plan introuvable/indisponible selon le service ;
 - Subscription inexistante ;
-- `subscriptionId` appartenant à un autre workspace.
+- Subscription appartenant à un autre workspace.
 
 ### `409 Conflict`
 
-Conflit avec l’état métier courant, par exemple :
-
-- trial non disponible ou déjà consommé ;
-- trial expiré ;
-- Subscription commerciale incompatible avec l’action ;
+- essai non disponible/déjà consommé/expiré ;
+- Subscription incompatible avec l’action ;
 - résiliation déjà programmée ;
 - aucune résiliation à révoquer ;
-- downgrade impossible ou déjà programmé ;
-- échéance déjà atteinte ;
-- modification concurrente détectée.
+- downgrade impossible/déjà programmé ;
+- échéance atteinte ;
+- modification concurrente.
 
 ### `500 Internal Server Error`
 
-Incohérence interne ou erreur technique. Le frontend ne doit pas tenter de réparer lui-même l’état métier.
+Erreur technique ou incohérence interne. Le frontend ne répare jamais lui-même l’état métier.
 
 ---
 
-## 19. Données explicitement hors contrat de lecture owner/admin
+## 20. Données hors contrat de lecture owner/admin
 
-`GET /subscription` ne doit pas être utilisé pour obtenir :
+`GET /subscription` n’expose pas :
 
-- un moyen de paiement ;
-- une identité de facturation ;
-- un `providerCustomerId` ;
-- un `providerSubscriptionId` ;
-- une remise/coupon ;
-- le montant réellement encaissé ;
-- une taxe ;
-- une facture ;
-- un remboursement ;
-- un crédit commercial ;
-- une preuve de paiement.
+- moyen de paiement ;
+- identité de facturation ;
+- `providerCustomerId` ;
+- `providerSubscriptionId` ;
+- coupon/remise ;
+- montant réellement encaissé ;
+- taxe ;
+- facture ;
+- remboursement ;
+- crédit ;
+- preuve de paiement.
 
-Le fait qu’un modèle interne Subscription possède ou acquière de nouveaux champs ne les rend jamais publics automatiquement. Les DTO sont des projections explicites.
+Les DTO restent des projections explicites.
 
 ---
 
-## 20. Séparation Subscription / Billing / Payment
-
-Le frontend devra conserver trois responsabilités conceptuelles distinctes :
+## 21. Séparation Subscription / Billing / Payment
 
 ```text
 Subscription
-→ état du contrat d’accès et périodes
+→ contrat d’accès, plan, périodes et transitions
 
 Billing
 → montants financiers, taxes, factures, crédits, remboursements
 
 Payment
-→ interaction avec le provider et preuve de paiement
+→ provider et preuve de paiement
 ```
 
-F4 ne crée que le contrat frontend du premier domaine.
-
-Les données futures Billing/Payment seront réservées au propriétaire du workspace ou, lorsqu’un modèle Organization existera, au représentant explicitement autorisé de l’organisation propriétaire.
-
-Aucune permission générique administrable ne doit être supposée pour accéder à ces futures données.
+F8.6 ne doit pas fusionner ces responsabilités.
 
 ---
 
-## 21. Recommandation RTK Query
+## 22. RTK Query
 
 Les données Subscription sont des données serveur.
 
-Structure cible :
-
-```text
-features/subscription/api/
-```
-
-La query principale devra représenter :
+Query principale :
 
 ```text
 GET /api/workspaces/:workspaceId/subscription
 ```
 
-Les six commandes doivent être implémentées comme mutations RTK Query.
-
-Recommandation de cache :
+Mutations workspace :
 
 ```text
-Subscription + workspaceId
+POST   /trial
+POST   /trial/end-to-free
+POST   /:subscriptionId/cancellation
+DELETE /:subscriptionId/cancellation
+POST   /:subscriptionId/downgrade
+DELETE /:subscriptionId/downgrade
+```
+
+Cache recommandé :
+
+```text
+WorkspaceSubscription + workspaceId
 ```
 
 Après toute mutation réussie :
 
 ```text
-invalidate/refetch Subscription(workspaceId)
+invalidate/refetch WorkspaceSubscription(workspaceId)
 ```
 
-Éviter les mises à jour optimistes complexes du cycle de vie Subscription. Les règles de fallback, de remédiation, de concurrence et de temporalité rendent un refetch serveur plus fiable qu’une reconstruction locale.
-
-Le catalogue `/api/plans` peut conserver son propre cache car une mutation Subscription ne modifie pas le catalogue.
+Éviter les mises à jour optimistes complexes : fallback, temporalité, remédiation et concurrence rendent le refetch serveur plus fiable.
 
 ---
 
-## 22. États UI à prévoir
+## 23. Répartition de state frontend
 
-Le frontend devra au minimum pouvoir représenter :
+### RTK Query
+
+Pour :
+
+- catalogue Plans ;
+- lecture Subscription ;
+- mutations Trial/Cancellation/Downgrade.
+
+### `useState`
+
+Pour :
+
+- ouverture/fermeture des dialogues ;
+- motif facultatif de résiliation ;
+- plan cible sélectionné ;
+- feedback transitoire ;
+- choix local de périodicité pendant l’essai.
+
+Ces valeurs ne doivent pas être placées dans Redux global.
+
+---
+
+## 24. États UI minimum
 
 ```text
-loading
-success
-error
-unauthenticated
-forbidden
-no commercial subscription
-trial active
-trial expired / no longer usable
+chargement
+succès
+erreur
+interdit
+aucune subscription commerciale
+période d’essai active
+essai expiré/non utilisable
 commercial active
-cancellation scheduled
-downgrade scheduled
-remediation
-plan limits exceeded
-subscription unavailable
+résiliation programmée
+downgrade programmé
+remédiation
+limites dépassées
+subscription indisponible
 ```
 
-Ces états sont des traductions UX. Ils ne deviennent jamais une machine d’état métier autonome côté client.
+Les libellés visibles par l’utilisateur doivent être localisés en français. Les clés techniques (`trialing`, `downgrade`, etc.) restent internes au code/API et passent par une couche de présentation lorsqu’elles doivent être affichées.
 
 ---
 
-## 23. Ce que le frontend ne doit pas calculer
+## 25. Ce que le frontend ne calcule pas
 
 Le frontend ne doit pas :
 
-- recalculer `trialEndsAt` depuis `trialDurationDays` ;
-- prolonger un trial après un changement de plan ;
+- recalculer `trialEndsAt` ;
+- prolonger un essai après changement de plan ;
 - déterminer seul la Subscription effective ;
 - recalculer `currentPeriodEnd` ;
-- appliquer lui-même un downgrade arrivé à échéance ;
-- décider qu’une période active reste utilisable après sa borne temporelle ;
-- transformer un dépassement de limites en statut Subscription ;
+- appliquer un downgrade arrivé à échéance ;
+- décider qu’une période reste valide après sa borne temporelle ;
+- transformer un dépassement en statut Subscription ;
 - calculer seul la remédiation ;
 - calculer un prorata financier ;
-- considérer `priceExclTaxMinor` comme montant réellement encaissé ;
-- déduire un paiement du champ `provider` ;
-- permettre à un admin de simuler une autorité commerciale owner-only.
+- considérer un snapshot de prix comme montant encaissé ;
+- déduire un paiement du provider ;
+- accorder à un admin une autorité commerciale owner-only.
 
 ---
 
-## 24. Endpoints Subscription non exposés au frontend workspace
+## 26. Endpoints non exposés au frontend workspace
 
-Les primitives internes et opérations plateforme ne doivent pas être appelées ou reproduites par le frontend workspace en inventant des URLs.
+Ne font pas partie de F8.6 :
 
-Ne font notamment pas partie de F4 :
-
-- activation payante réelle après confirmation de paiement ;
+- activation payante réelle après paiement ;
 - upgrade payant avec prorata ;
 - changement `monthly ↔ yearly` ;
 - annulation administrative immédiate ;
 - jobs d’expiration de trial ;
 - jobs de finalisation des résiliations ;
 - jobs d’application des downgrades ;
-- gestion de `past_due` liée au futur provider ;
+- gestion réelle de `past_due` liée au provider ;
 - moyens de paiement ;
 - factures ;
 - remboursements ;
 - webhooks Billing/Payment.
 
-Ces éléments seront documentés uniquement lorsqu’un contrat HTTP réel les exposera.
-
 ---
 
-## 25. Règle de maintenance de ce contrat
+## 27. Outil de développement pour rejouer les essais
 
-Ce document doit être modifié lorsqu’un comportement observable par le frontend Subscription change :
-
-- nouvel endpoint ;
-- endpoint supprimé ;
-- méthode HTTP modifiée ;
-- validation de paramètres/body modifiée ;
-- rôle ou permission modifié ;
-- statut HTTP modifié ;
-- DTO modifié ;
-- champ public ajouté/supprimé ;
-- changement de règle d’entitlement visible par le frontend ;
-- évolution du comportement de remédiation.
-
-Un refactor interne, un changement de helper privé, une réorganisation des tests ou un changement de job sans effet sur le contrat HTTP ne nécessitent pas à eux seuls une nouvelle version de ce document.
-
----
-
-## 26. Checkpoint F4
-
-À la clôture de F4, le frontend peut considérer comme stabilisés les endpoints suivants :
+L’outil :
 
 ```text
+npm run dev:reset-trial
+```
+
+est une commande d’exploitation de développement, pas un endpoint HTTP et pas une règle du contrat utilisateur.
+
+Il ne doit jamais être reproduit dans le frontend.
+
+Référence : `docs/development-trial-reset.md`.
+
+---
+
+## 28. Règle de maintenance
+
+Mettre ce document à jour lorsqu’un comportement observable change :
+
+- nouvel endpoint ;
+- méthode HTTP ;
+- validation params/body ;
+- rôle/permission ;
+- statut HTTP ;
+- DTO public ;
+- champ public ajouté/supprimé ;
+- règle d’entitlement ;
+- règle de remédiation ;
+- comportement de transition commerciale.
+
+Un refactor interne sans effet observable ne nécessite pas à lui seul une nouvelle version du contrat.
+
+---
+
+## 29. Checkpoint F8.6
+
+### Stabilisé et validé
+
+```text
+GET    /api/plans
 GET    /api/workspaces/:workspaceId/subscription
 POST   /api/workspaces/:workspaceId/subscription/trial
 POST   /api/workspaces/:workspaceId/subscription/trial/end-to-free
+```
+
+Le frontend F8.6.2 consomme également :
+
+```text
+trialEnabled
+trialDurationDays
+trialEligibility.consumed
+```
+
+### Backend stabilisé — frontend F8.6.3 en validation
+
+```text
 POST   /api/workspaces/:workspaceId/subscription/:subscriptionId/cancellation
 DELETE /api/workspaces/:workspaceId/subscription/:subscriptionId/cancellation
 POST   /api/workspaces/:workspaceId/subscription/:subscriptionId/downgrade
 DELETE /api/workspaces/:workspaceId/subscription/:subscriptionId/downgrade
 ```
 
-Le prochain domaine à cadrer après ce checkpoint est **Billing**, sans fusionner ses responsabilités avec Subscription.
+Aucune intégration Billing/Payment réelle n’est incluse dans ce checkpoint.
