@@ -62,6 +62,10 @@ vi.mock('@/features/platform/components/platform-guard', () => ({
   PlatformGuard: () => <Outlet />,
 }));
 
+vi.mock('@/features/platform/pages/platform-users-page', () => ({
+  PlatformUsersPage: () => <h1>Utilisateurs</h1>,
+}));
+
 import { createAppRoutes } from '@/app/router';
 import { ThemeProvider } from '@/components/shared/theme-provider';
 import { createAppStore } from '@/store/store';
