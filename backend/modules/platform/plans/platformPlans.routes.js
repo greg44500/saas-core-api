@@ -17,6 +17,10 @@ import {
 } from '../../../utils/validations/pagination.validation.js';
 
 import {
+    listPlanCapabilities,
+} from './platformPlanCapabilities.controller.js';
+
+import {
     archivePlan,
     createPlan,
     listPlans,
@@ -43,6 +47,16 @@ platformPlansRouter.use(
     authorizePlatformRole(
         PLATFORM_ROLE.SUPER_ADMIN,
     ),
+);
+
+
+/**
+ * Expose le registre actif des capabilities afin que l'administration
+ * construise ses formulaires depuis la même source de vérité que le backend.
+ */
+platformPlansRouter.get(
+    '/capabilities',
+    listPlanCapabilities,
 );
 
 
