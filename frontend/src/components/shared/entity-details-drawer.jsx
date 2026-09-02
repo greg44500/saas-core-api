@@ -5,6 +5,21 @@ import { Button } from '@/components/ui/button';
 
 const DRAWER_TRANSITION_MS = 300;
 
+/**
+ * Panneau de détails latéral partagé pour les entités du Core.
+ *
+ * Le contenu reste monté pendant la fermeture afin de préserver l'animation de
+ * sortie et le focus est rendu à l'élément qui avait ouvert le panneau. Les
+ * features fournissent uniquement leur contenu métier et ne réimplémentent pas
+ * la mécanique de dialog, de focus ou de transition.
+ *
+ * @param {object} props
+ * @param {import('react').ReactNode} props.children
+ * @param {string} [props.description]
+ * @param {() => void} props.onClose
+ * @param {boolean} props.open
+ * @param {string} props.title
+ */
 function EntityDetailsDrawer({ children, description, onClose, open, title }) {
   const closeButtonRef = useRef(null);
   const previousFocusRef = useRef(null);
