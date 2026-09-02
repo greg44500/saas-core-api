@@ -1,25 +1,25 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { FormField } from '@/components/forms/form-field';
+import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { profileSchema } from '@/features/account/validation/account-schemas';
 import {
   useGetCurrentUserQuery,
   useUpdateCurrentUserMutation,
 } from '@/features/auth/api/auth-api';
-import { profileSchema } from '@/features/account/validation/account-schemas';
 
 function ProfilePage() {
+  const { toast } = useToast();
   const { data: user, isError, isLoading, refetch } = useGetCurrentUserQuery();
   const [updateCurrentUser, { isLoading: isSaving }] = useUpdateCurrentUserMutation();
-  const [successMessage, setSuccessMessage] = useState('');
   const {
     register,
     handleSubmit,
     reset,
-    setError,
     formState: { dirtyFields, errors, isDirty },
   } = useForm({
     resolver: zodResolver(profileSchema),
@@ -48,19 +48,21 @@ function ProfilePage() {
 
     if (Object.keys(payload).length === 0) return;
 
-    setSuccessMessage('');
-
     try {
       const updatedUser = await updateCurrentUser(payload).unwrap();
       reset({
         firstName: updatedUser.firstName ?? '',
         lastName: updatedUser.lastName ?? '',
       });
-      setSuccessMessage('Profil mis à jour.');
+      toast({
+        title: 'Profil mis à jour',
+        variant: 'success',
+      });
     } catch (error) {
-      setError('root.server', {
-        type: 'server',
-        message: error?.data?.message ?? 'Impossible de mettre à jour le profil.',
+      toast({
+        title: 'Mise à jour impossible',
+        description: error?.data?.message ?? 'Impossible de mettre à jour le profil.',
+        variant: 'error',
       });
     }
   };
@@ -122,13 +124,6 @@ function ProfilePage() {
           <p className="text-sm text-muted-foreground">
             {user.emailVerifiedAt ? 'Adresse email vérifiée.' : 'Adresse email en attente de vérification.'}
           </p>
-
-          {errors.root?.server && (
-            <p className="text-sm text-destructive" role="alert">{errors.root.server.message}</p>
-          )}
-          {successMessage && (
-            <p className="text-sm text-success" role="status">{successMessage}</p>
-          )}
 
           <div className="flex justify-end">
             <Button disabled={!isDirty || isSaving} type="submit">
