@@ -68,6 +68,18 @@ describe('WorkspaceSidebar', () => {
     expect(screen.queryByText('Paramètres')).not.toBeInTheDocument();
   });
 
+  it('rend Fichiers navigable uniquement avec file:read', () => {
+    renderSidebar([
+      WORKSPACE_PERMISSION.WORKSPACE_READ,
+      WORKSPACE_PERMISSION.FILE_READ,
+    ]);
+
+    const filesLink = screen.getByRole('link', { name: 'Fichiers' });
+
+    expect(filesLink).toBeInTheDocument();
+    expect(filesLink).toHaveAttribute('href', '/workspaces/workspace-1/files');
+  });
+
   it('conserve des libellés accessibles et expose des tooltips en mode réduit', () => {
     renderSidebar(
       [
