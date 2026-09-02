@@ -2,6 +2,8 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ToastProvider } from '@/components/shared/toast-provider';
+
 const mocks = vi.hoisted(() => ({
   deleteWorkspaceFile: vi.fn(),
   downloadBlob: vi.fn(),
@@ -45,13 +47,15 @@ const file = {
 
 function renderPage(permissions = [WORKSPACE_PERMISSION.FILE_READ]) {
   return render(
-    <WorkspaceProvider
-      membership={membership}
-      permissions={permissions}
-      workspace={workspace}
-    >
-      <WorkspaceFilesPage />
-    </WorkspaceProvider>,
+    <ToastProvider>
+      <WorkspaceProvider
+        membership={membership}
+        permissions={permissions}
+        workspace={workspace}
+      >
+        <WorkspaceFilesPage />
+      </WorkspaceProvider>
+    </ToastProvider>,
   );
 }
 
@@ -140,7 +144,7 @@ describe('WorkspaceFilesPage', () => {
     expect(screen.getByRole('button', { name: 'Retirer contrat.pdf' })).toBeInTheDocument();
   });
 
-  it('confirme le soft-delete puis transmet workspaceId et fileId', async () => {
+  it('confirme le soft-delete puis affiche le succès en toast', async () => {
     const user = userEvent.setup();
     const unwrap = vi.fn().mockResolvedValue('');
 
@@ -162,9 +166,9 @@ describe('WorkspaceFilesPage', () => {
       workspaceId: 'workspace-1',
       fileId: 'file-1',
     });
-    expect(
-      await screen.findByText(/contrat.pdf a été retiré des fichiers actifs/i),
-    ).toBeInTheDocument();
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent('Fichier retiré');
+    expect(status).toHaveTextContent('contrat.pdf');
   });
 
   it('conserve le dialogue ouvert et affiche le refus backend', async () => {
@@ -228,6 +232,22 @@ describe('WorkspaceFilesPage', () => {
       fileId: 'file-1',
     });
     expect(mocks.downloadBlob).toHaveBeenCalledWith(blob, 'contrat.pdf');
+  });
+
+  it('présente une erreur de téléchargement dans un toast', async () => {
+    const user = userEvent.setup();
+    const unwrap = vi.fn().mockRejectedValue({
+      data: { message: 'Téléchargement interdit' },
+    });
+
+    mocks.downloadWorkspaceFile.mockReturnValue({ unwrap });
+
+    renderPage();
+    await user.click(screen.getByRole('button', { name: 'Télécharger contrat.pdf' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Téléchargement impossible');
+    expect(alert).toHaveTextContent('Téléchargement interdit');
   });
 
   it('affiche un état vide explicite', () => {
