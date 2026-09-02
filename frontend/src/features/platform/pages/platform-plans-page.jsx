@@ -85,7 +85,6 @@ function PlatformPlansPage() {
       setFormError(
         getApiMessage(error, "Le plan n’a pas pu être enregistré."),
       );
-      throw error;
     }
   }
 
