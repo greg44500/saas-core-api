@@ -14,6 +14,7 @@ function ForgotPasswordPage() {
   const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
   const [successMessage, setSuccessMessage] = useState('');
   const returnTo = location.state?.returnTo;
+  const accountReturnTo = location.state?.accountReturnTo;
   const {
     register,
     handleSubmit,
@@ -79,7 +80,11 @@ function ForgotPasswordPage() {
       </form>
 
       <p className="text-center text-sm text-muted-foreground">
-        <Link className="font-medium text-primary hover:underline" to={returnTo ?? '/login'}>
+        <Link
+          className="font-medium text-primary hover:underline"
+          state={returnTo && accountReturnTo ? { accountReturnTo } : undefined}
+          to={returnTo ?? '/login'}
+        >
           {returnTo ? 'Retour aux paramètres de sécurité' : 'Retour à la connexion'}
         </Link>
       </p>
