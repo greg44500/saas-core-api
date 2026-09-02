@@ -19,6 +19,9 @@ vi.mock('react-router', async (importOriginal) => {
 
 vi.mock('@/features/workspace-members/api/workspace-members-api', () => ({
   useListWorkspaceMembersQuery: useListWorkspaceMembersQueryMock,
+}));
+
+vi.mock('@/features/workspace-roles/api/workspace-roles-api', () => ({
   useListWorkspaceRolesQuery: useListWorkspaceRolesQueryMock,
 }));
 
