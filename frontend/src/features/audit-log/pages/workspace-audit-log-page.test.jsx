@@ -8,7 +8,11 @@ vi.mock('@/features/audit-log/api/audit-log-api', () => ({
   useListWorkspaceAuditLogsQuery: useListWorkspaceAuditLogsQueryMock,
 }));
 
-import { WorkspaceAuditLogPage } from '@/features/audit-log/pages/workspace-audit-log-page';
+import {
+  parsePage,
+  readFilters,
+  WorkspaceAuditLogPage,
+} from '@/features/audit-log/pages/workspace-audit-log-page';
 import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
 
 const workspace = { id: 'workspace-1', name: 'Acme', status: 'active' };
@@ -97,6 +101,25 @@ describe('WorkspaceAuditLogPage', () => {
     expect(Date.parse(query.from)).not.toBeNaN();
     expect(Date.parse(query.to)).not.toBeNaN();
     expect(Date.parse(query.from)).toBeLessThan(Date.parse(query.to));
+  });
+
+  it('normalise les paramètres URL invalides avant tout appel API', () => {
+    expect(parsePage('2foo')).toBe(1);
+    expect(parsePage('0')).toBe(1);
+
+    const filters = readFilters(
+      new URLSearchParams(
+        'action=UNKNOWN&status=invalid&entityType=Secret&from=2026-02-31&to=2026-01-01',
+      ),
+    );
+
+    expect(filters).toEqual({
+      action: '',
+      entityType: '',
+      status: '',
+      from: '',
+      to: '',
+    });
   });
 
   it('affiche un état vide sans inventer d’événement', () => {
