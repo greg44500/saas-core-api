@@ -4,6 +4,7 @@ import { Ban, Eye, UserMinus } from 'lucide-react';
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
+import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { Tooltip } from '@/components/shared/tooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,39 +34,6 @@ const PAGE_SIZE = 20;
 
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
-}
-
-function ConfirmationDialog({ action, onCancel, onConfirm, pending }) {
-  if (!action) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-[80] grid place-items-center bg-black/50 px-4"
-      role="presentation"
-    >
-      <section
-        aria-labelledby="member-action-title"
-        aria-modal="true"
-        className="w-full max-w-md rounded-xl border border-border bg-popover p-5 text-popover-foreground shadow-xl"
-        role="dialog"
-      >
-        <div className="space-y-2">
-          <h2 id="member-action-title" className="text-lg font-semibold">
-            Confirmer l’action
-          </h2>
-          <p className="text-sm text-muted-foreground">{action.message}</p>
-        </div>
-        <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>
-            Annuler
-          </Button>
-          <Button type="button" variant="destructive" onClick={onConfirm} disabled={pending}>
-            {pending ? 'Traitement…' : 'Confirmer'}
-          </Button>
-        </div>
-      </section>
-    </div>
-  );
 }
 
 function WorkspaceMembersPage() {
@@ -99,7 +67,7 @@ function WorkspaceMembersPage() {
 
   const [createInvitation, createInvitationState] = useCreateWorkspaceInvitationMutation();
   const [resendInvitation] = useResendWorkspaceInvitationMutation();
-  const [revokeInvitation] = useRevokeWorkspaceInvitationMutation();
+  const [revokeInvitation, revokeInvitationState] = useRevokeWorkspaceInvitationMutation();
   const [updateMemberRole, updateRoleState] = useUpdateWorkspaceMemberRoleMutation();
   const [suspendMember, suspendState] = useSuspendWorkspaceMemberMutation();
   const [removeMember, removeState] = useRemoveWorkspaceMemberMutation();
@@ -183,7 +151,8 @@ function WorkspaceMembersPage() {
     }
   }
 
-  const mutationPending = suspendState.isLoading || removeState.isLoading;
+  const mutationPending =
+    suspendState.isLoading || removeState.isLoading || revokeInvitationState.isLoading;
 
   if (membersQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Chargement des membres…</p>;
@@ -449,10 +418,12 @@ function WorkspaceMembersPage() {
       )}
 
       <ConfirmationDialog
-        action={pendingAction}
+        description={pendingAction?.message}
         onCancel={() => setPendingAction(null)}
         onConfirm={confirmPendingAction}
+        open={Boolean(pendingAction)}
         pending={mutationPending}
+        title="Confirmer l’action"
       />
 
       <MemberDetailsDrawer
@@ -471,4 +442,4 @@ function WorkspaceMembersPage() {
   );
 }
 
-export { ConfirmationDialog, WorkspaceMembersPage };
+export { WorkspaceMembersPage };
