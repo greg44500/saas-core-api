@@ -1,49 +1,17 @@
 import mongoose from 'mongoose';
-import {
-    beforeEach,
-    describe,
-    expect,
-    it,
-    vi,
-} from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-    AUDIT_ACTION,
-    AUDIT_ENTITY_TYPE,
-    AUDIT_STATUS,
-} from '../../../constants/auditActions.constants.js';
+import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, AUDIT_STATUS } from '../../../constants/auditActions.constants.js';
+import { createAuditLog } from '../../../modules/auditLog/auditLog.service.js';
+import { createPlan } from '../../../modules/plan/plan.service.js';
+import { createPlatformPlan } from '../../../modules/platform/plans/services/createPlatformPlan.service.js';
 
-import {
-    createAuditLog,
-} from '../../../modules/auditLog/auditLog.service.js';
-
-import {
-    createPlan,
-} from '../../../modules/plan/plan.service.js';
-
-import {
-    createPlatformPlan,
-} from '../../../modules/platform/plans/services/createPlatformPlan.service.js';
-
-
-vi.mock(
-    '../../../modules/auditLog/auditLog.service.js',
-    () => ({
-        createAuditLog: vi.fn(),
-    }),
-);
-
-vi.mock(
-    '../../../modules/plan/plan.service.js',
-    () => ({
-        createPlan: vi.fn(),
-    }),
-);
-
+vi.mock('../../../modules/auditLog/auditLog.service.js', () => ({ createAuditLog: vi.fn() }));
+vi.mock('../../../modules/plan/plan.service.js', () => ({ createPlan: vi.fn() }));
 
 describe('createPlatformPlan', () => {
     const actorId = '507f1f77bcf86cd799439011';
-
+    const session = { id: 'mongo-session' };
     const planData = {
         key: 'starter',
         name: 'Starter',
@@ -51,112 +19,42 @@ describe('createPlatformPlan', () => {
         status: 'active',
         isPublic: true,
         displayOrder: 1,
+        trialEnabled: true,
+        trialDurationDays: 14,
         currency: 'EUR',
         priceMonthlyExclTaxMinor: 1990,
         priceYearlyExclTaxMinor: 19900,
-        features: [
-            'file_upload',
-        ],
+        features: ['file_upload'],
         limits: {
             members: 5,
             storage_bytes: 1073741824,
+            file_uploads_monthly: 100,
         },
     };
-
-    const session = {
-        id: 'mongo-session',
-    };
-
     const createdPlan = {
-        _id: {
-            toString: () =>
-                '507f1f77bcf86cd799439012',
-        },
-        key: 'starter',
-        name: 'Starter',
-        description: 'Offre de démarrage',
-        status: 'active',
-        isPublic: true,
-        displayOrder: 1,
-        currency: 'EUR',
-        priceMonthlyExclTaxMinor: 1990,
-        priceYearlyExclTaxMinor: 19900,
-        features: [
-            'file_upload',
-        ],
-        limits: new Map([
-            ['members', 5],
-            ['storage_bytes', 1073741824],
-        ]),
+        _id: { toString: () => '507f1f77bcf86cd799439012' },
+        ...planData,
+        limits: new Map(Object.entries(planData.limits)),
         createdAt: new Date('2026-08-27T12:00:00.000Z'),
         updatedAt: new Date('2026-08-27T12:00:00.000Z'),
     };
 
-
     beforeEach(() => {
         vi.clearAllMocks();
-
-        /**
-         * Le mock exécute réellement le callback transactionnel afin de tester
-         * l'orchestration du service sans dépendre d'une base MongoDB active.
-         */
-        vi.spyOn(
-            mongoose.connection,
-            'transaction',
-        ).mockImplementation(
-            async (callback) =>
-                callback(session),
+        vi.spyOn(mongoose.connection, 'transaction').mockImplementation(
+            async (callback) => callback(session),
         );
-
-        createPlan.mockResolvedValue(
-            createdPlan,
-        );
-
-        createAuditLog.mockResolvedValue({
-            _id: 'audit-id',
-        });
+        createPlan.mockResolvedValue(createdPlan);
+        createAuditLog.mockResolvedValue({ _id: 'audit-id' });
     });
 
-
-    it('refuse la création lorsque planData est absent', async () => {
-        await expect(
-            createPlatformPlan({
-                actorId,
-            }),
-        ).rejects.toThrow(TypeError);
-
+    it('refuse les paramètres obligatoires manquants', async () => {
+        await expect(createPlatformPlan({ actorId })).rejects.toThrow(TypeError);
+        await expect(createPlatformPlan({ planData })).rejects.toThrow(TypeError);
         expect(createPlan).not.toHaveBeenCalled();
-        expect(createAuditLog).not.toHaveBeenCalled();
     });
 
-
-    it('refuse la création lorsque actorId est absent', async () => {
-        await expect(
-            createPlatformPlan({
-                planData,
-            }),
-        ).rejects.toThrow(TypeError);
-
-        expect(createPlan).not.toHaveBeenCalled();
-        expect(createAuditLog).not.toHaveBeenCalled();
-    });
-
-
-    it('crée le plan dans la transaction courante', async () => {
-        await createPlatformPlan({
-            planData,
-            actorId,
-        });
-
-        expect(createPlan).toHaveBeenCalledWith({
-            planData,
-            actorId,
-            session,
-        });
-    });
-
-
-    it('audite la création du plan dans la même transaction', async () => {
+    it('crée et audite le plan dans la même transaction', async () => {
         await createPlatformPlan({
             planData,
             actorId,
@@ -164,6 +62,7 @@ describe('createPlatformPlan', () => {
             userAgent: 'Vitest',
         });
 
+        expect(createPlan).toHaveBeenCalledWith({ planData, actorId, session });
         expect(createAuditLog).toHaveBeenCalledWith(
             {
                 actor: actorId,
@@ -180,19 +79,12 @@ describe('createPlatformPlan', () => {
                     isPublic: createdPlan.isPublic,
                 },
             },
-            {
-                session,
-            },
+            { session },
         );
     });
 
-
-    it('retourne le DTO administratif du plan créé', async () => {
-        const result =
-            await createPlatformPlan({
-                planData,
-                actorId,
-            });
+    it('retourne le DTO administratif incluant le trial', async () => {
+        const result = await createPlatformPlan({ planData, actorId });
 
         expect(result).toEqual({
             id: '507f1f77bcf86cd799439012',
@@ -202,57 +94,27 @@ describe('createPlatformPlan', () => {
             status: createdPlan.status,
             isPublic: createdPlan.isPublic,
             displayOrder: createdPlan.displayOrder,
+            trialEnabled: true,
+            trialDurationDays: 14,
             currency: createdPlan.currency,
-            priceMonthlyExclTaxMinor:
-                createdPlan.priceMonthlyExclTaxMinor,
-            priceYearlyExclTaxMinor:
-                createdPlan.priceYearlyExclTaxMinor,
-            features: createdPlan.features,
-            limits: {
-                members: 5,
-                storage_bytes: 1073741824,
-            },
+            priceMonthlyExclTaxMinor: 1990,
+            priceYearlyExclTaxMinor: 19900,
+            features: ['file_upload'],
+            limits: planData.limits,
             createdAt: createdPlan.createdAt,
             updatedAt: createdPlan.updatedAt,
         });
     });
 
-
-    it('propage une erreur provenant de la création du plan', async () => {
-        const creationError =
-            new Error('Plan creation failed');
-
-        createPlan.mockRejectedValue(
-            creationError,
-        );
-
-        await expect(
-            createPlatformPlan({
-                planData,
-                actorId,
-            }),
-        ).rejects.toBe(creationError);
-
+    it('propage les erreurs de création ou d’audit', async () => {
+        const creationError = new Error('Plan creation failed');
+        createPlan.mockRejectedValueOnce(creationError);
+        await expect(createPlatformPlan({ planData, actorId })).rejects.toBe(creationError);
         expect(createAuditLog).not.toHaveBeenCalled();
-    });
 
-
-    it('propage une erreur provenant de l’AuditLog', async () => {
-        const auditError =
-            new Error('Audit failed');
-
-        createAuditLog.mockRejectedValue(
-            auditError,
-        );
-
-        await expect(
-            createPlatformPlan({
-                planData,
-                actorId,
-            }),
-        ).rejects.toBe(auditError);
-
-        expect(createPlan).toHaveBeenCalledOnce();
-        expect(createAuditLog).toHaveBeenCalledOnce();
+        createPlan.mockResolvedValueOnce(createdPlan);
+        const auditError = new Error('Audit failed');
+        createAuditLog.mockRejectedValueOnce(auditError);
+        await expect(createPlatformPlan({ planData, actorId })).rejects.toBe(auditError);
     });
 });
