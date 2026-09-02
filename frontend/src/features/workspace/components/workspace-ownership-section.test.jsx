@@ -176,11 +176,8 @@ describe('WorkspaceOwnershipSection', () => {
     await user.click(screen.getByRole('button', { name: 'Transférer la propriété' }));
 
     expect(
-      await screen.findByRole('alert', {
-        name: '',
-      }).catch(() => screen.getByText('Le mot de passe actuel est incorrect')),
+      await screen.findByText('Le mot de passe actuel est incorrect'),
     ).toBeInTheDocument();
-    expect(screen.getByText('Le mot de passe actuel est incorrect')).toBeInTheDocument();
     expect(navigateMock).not.toHaveBeenCalled();
   });
 });
