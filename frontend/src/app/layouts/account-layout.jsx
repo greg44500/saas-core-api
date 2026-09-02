@@ -29,25 +29,19 @@ function AccountLayout() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 py-2 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <Button
-              aria-label="Retour à l’application"
-              onClick={handleReturn}
-              size="icon"
-              type="button"
-              variant="ghost"
-            >
+            <Button onClick={handleReturn} type="button" variant="ghost">
               <ArrowLeft aria-hidden="true" />
+              Retour à l’application
             </Button>
-            <div className="min-w-0">
+            <div className="hidden min-w-0 border-l border-border pl-3 sm:block">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Compte</p>
               <p className="truncate font-semibold">Paramètres personnels</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="hidden text-sm text-muted-foreground sm:inline">Retour à l’application</span>
             <ThemeToggle />
             <UserMenu />
           </div>
