@@ -30,6 +30,14 @@ vi.mock('@/features/plan/components/plan-card', () => ({
   ),
 }));
 
+vi.mock('@/features/subscription/components/commercial-lifecycle-section', () => ({
+  CommercialLifecycleSection: ({ commercial, isOwner }) => (
+    isOwner && commercial?.status === 'active'
+      ? <section>Gestion du contrat commercial</section>
+      : null
+  ),
+}));
+
 import { WorkspaceSubscriptionPage } from '@/features/subscription/pages/workspace-subscription-page';
 import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
