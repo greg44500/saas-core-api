@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Upload } from 'lucide-react';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
+import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import {
   useDeleteWorkspaceFileMutation,
@@ -23,8 +24,8 @@ function getApiMessage(error, fallback) {
 
 function WorkspaceFilesPage() {
   const { workspace, can } = useWorkspaceContext();
+  const { toast } = useToast();
   const [page, setPage] = useState(1);
-  const [feedback, setFeedback] = useState(null);
   const [downloadingFileId, setDownloadingFileId] = useState(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [filePendingDeletion, setFilePendingDeletion] = useState(null);
@@ -39,7 +40,6 @@ function WorkspaceFilesPage() {
   const [deleteWorkspaceFile, deleteState] = useDeleteWorkspaceFileMutation();
 
   async function handleDownload(file) {
-    setFeedback(null);
     setDownloadingFileId(file.id);
 
     try {
@@ -50,9 +50,10 @@ function WorkspaceFilesPage() {
 
       downloadBlob(blob, file.originalName);
     } catch (error) {
-      setFeedback({
-        type: 'error',
-        message: getApiMessage(error, 'Le téléchargement du fichier a échoué.'),
+      toast({
+        title: 'Téléchargement impossible',
+        description: getApiMessage(error, 'Le téléchargement du fichier a échoué.'),
+        variant: 'error',
       });
     } finally {
       setDownloadingFileId(null);
@@ -60,7 +61,6 @@ function WorkspaceFilesPage() {
   }
 
   function openDeleteDialog(file) {
-    setFeedback(null);
     setDeleteError(null);
     setFilePendingDeletion(file);
   }
@@ -89,9 +89,10 @@ function WorkspaceFilesPage() {
       // première garantit qu'une invalidation RTK Query ne laisse pas l'UI sur
       // une page devenue inexistante ou vide.
       setPage(1);
-      setFeedback({
-        type: 'success',
-        message: `${deletedFileName} a été retiré des fichiers actifs. Son contenu reste temporairement conservé avant purge.`,
+      toast({
+        title: 'Fichier retiré',
+        description: `${deletedFileName} a été retiré des fichiers actifs. Son contenu reste temporairement conservé avant purge.`,
+        variant: 'success',
       });
     } catch (error) {
       setDeleteError(
@@ -136,10 +137,7 @@ function WorkspaceFilesPage() {
 
         {canUpload && (
           <Button
-            onClick={() => {
-              setFeedback(null);
-              setUploadDialogOpen(true);
-            }}
+            onClick={() => setUploadDialogOpen(true)}
             type="button"
           >
             <Upload aria-hidden="true" className="size-4" />
@@ -147,19 +145,6 @@ function WorkspaceFilesPage() {
           </Button>
         )}
       </div>
-
-      {feedback && (
-        <p
-          className={`rounded-md border p-3 text-sm ${
-            feedback.type === 'error'
-              ? 'border-destructive/30 bg-destructive/10 text-destructive'
-              : 'border-success/30 bg-success/10'
-          }`}
-          role="status"
-        >
-          {feedback.message}
-        </p>
-      )}
 
       <section className="rounded-xl border border-border bg-card">
         <div className="flex items-center justify-between gap-4 border-b border-border p-5">
@@ -202,11 +187,12 @@ function WorkspaceFilesPage() {
           onClose={() => setUploadDialogOpen(false)}
           onUploaded={(uploadedFile) => {
             setPage(1);
-            setFeedback({
-              type: 'success',
-              message: uploadedFile?.originalName
-                ? `${uploadedFile.originalName} a été ajouté.`
-                : 'Le fichier a été ajouté.',
+            toast({
+              title: 'Fichier ajouté',
+              description: uploadedFile?.originalName
+                ? `${uploadedFile.originalName} est maintenant disponible dans le workspace.`
+                : undefined,
+              variant: 'success',
             });
           }}
           open={uploadDialogOpen}
