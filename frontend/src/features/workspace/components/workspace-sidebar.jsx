@@ -1,6 +1,7 @@
 import {
   CreditCard,
   Files,
+  History,
   LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
@@ -38,6 +39,12 @@ const administrationNavigationItems = [
     Icon: CreditCard,
     permission: WORKSPACE_PERMISSION.SUBSCRIPTION_READ,
     path: 'subscription',
+  },
+  {
+    label: 'Activité',
+    Icon: History,
+    permission: WORKSPACE_PERMISSION.AUDIT_READ,
+    path: 'activity',
   },
   {
     label: 'Paramètres',
@@ -155,7 +162,6 @@ function WorkspaceSidebar({ collapsed, onToggle, workspace }) {
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   }`
-                }
                 key={label}
                 to={`/workspaces/${workspace.id}/${path}`}
               >
