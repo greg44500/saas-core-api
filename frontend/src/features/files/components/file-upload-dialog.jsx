@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Upload } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useUploadWorkspaceFileMutation } from '@/features/files/api/files-api';
 import {
   FILE_INPUT_ACCEPT,
@@ -88,11 +87,17 @@ function FileUploadDialog({ onClose, onUploaded, open }) {
 
         <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="workspace-file-upload">
-              Fichier
-            </label>
-            <Input
+            <p className="text-sm font-medium">Fichier</p>
+
+            {/*
+             * Le libellé natif d'un input file dépend du navigateur et du système
+             * d'exploitation. Le contrôle reste accessible mais est masqué afin de
+             * garantir une interface française quel que soit l'environnement client.
+             */}
+            <input
               accept={FILE_INPUT_ACCEPT}
+              aria-label="Fichier"
+              className="sr-only"
               disabled={uploadState.isLoading}
               id="workspace-file-upload"
               name="file"
@@ -103,6 +108,24 @@ function FileUploadDialog({ onClose, onUploaded, open }) {
               }}
               type="file"
             />
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Button asChild type="button" variant="outline">
+                <label
+                  aria-disabled={uploadState.isLoading || undefined}
+                  className={uploadState.isLoading ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  htmlFor="workspace-file-upload"
+                >
+                  Choisir un fichier
+                </label>
+              </Button>
+              <p
+                className="min-w-0 truncate text-sm text-muted-foreground"
+                title={file?.name ?? undefined}
+              >
+                {file?.name ?? 'Aucun fichier sélectionné.'}
+              </p>
+            </div>
           </div>
 
           <div className="space-y-2">
