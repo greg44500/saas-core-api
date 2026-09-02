@@ -147,7 +147,7 @@ describe('PlatformWorkspacesPage', () => {
     expect(refetch).toHaveBeenCalledOnce();
   });
 
-  it('affiche les acteurs lisibles dans le drawer en conservant leur identifiant', async () => {
+  it('affiche les acteurs lisibles sans exposer leurs identifiants techniques', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -156,7 +156,7 @@ describe('PlatformWorkspacesPage', () => {
 
     expect(within(drawer).getAllByText('Greg Martin')).toHaveLength(3);
     expect(within(drawer).getAllByText('greg@example.com')).toHaveLength(3);
-    expect(within(drawer).getAllByText(`ID : ${actor.id}`)).toHaveLength(3);
+    expect(within(drawer).queryByText(`ID : ${actor.id}`)).not.toBeInTheDocument();
   });
 
   it('exige des détails pour le motif autre', async () => {
