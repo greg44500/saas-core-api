@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -45,8 +45,12 @@ describe('AuditLogFilters', () => {
       />,
     );
 
-    await user.type(screen.getByLabelText('Du'), '2026-09-10');
-    await user.type(screen.getByLabelText('Au'), '2026-09-01');
+    fireEvent.change(screen.getByLabelText('Du'), {
+      target: { value: '2026-09-10' },
+    });
+    fireEvent.change(screen.getByLabelText('Au'), {
+      target: { value: '2026-09-01' },
+    });
     await user.click(screen.getByRole('button', { name: 'Appliquer les filtres' }));
 
     expect(
