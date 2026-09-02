@@ -8,6 +8,7 @@ import {
   useGetWorkspaceSubscriptionQuery,
   useStartOrChangeWorkspaceTrialMutation,
 } from '@/features/subscription/api/subscription-api';
+import { CommercialLifecycleSection } from '@/features/subscription/components/commercial-lifecycle-section';
 import { EffectivePlanCapabilities } from '@/features/subscription/components/effective-plan-capabilities';
 import { EndTrialToFreeDialog } from '@/features/subscription/components/end-trial-to-free-dialog';
 import { SubscriptionSummaryCard } from '@/features/subscription/components/subscription-summary-card';
@@ -201,6 +202,14 @@ function WorkspaceSubscriptionPage() {
         active={trialIsEffective}
         startAt={commercial?.currentPeriodStart}
         endAt={commercial?.trialEndsAt}
+      />
+
+      <CommercialLifecycleSection
+        commercial={commercial}
+        isOwner={isOwner}
+        onFeedback={setFeedback}
+        plans={plansQuery.data ?? []}
+        workspaceId={workspace.id}
       />
 
       <section className="space-y-4" aria-labelledby="plan-catalog-title">
