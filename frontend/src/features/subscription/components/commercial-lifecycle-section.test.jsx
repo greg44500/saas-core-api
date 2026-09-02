@@ -21,6 +21,7 @@ vi.mock('@/features/subscription/api/subscription-api', () => ({
 }));
 
 import { CommercialLifecycleSection } from '@/features/subscription/components/commercial-lifecycle-section';
+import { formatSubscriptionDate } from '@/features/subscription/lib/subscription-formatters';
 
 const plans = [
   {
@@ -112,13 +113,14 @@ describe('CommercialLifecycleSection', () => {
     const user = userEvent.setup();
     const onFeedback = vi.fn();
     const unwrap = vi.fn().mockResolvedValue({});
+    const effectiveDate = formatSubscriptionDate(commercial.currentPeriodEnd);
     mocks.scheduleCancellation.mockReturnValue({ unwrap });
 
     renderSection({ onFeedback });
 
     await user.click(screen.getByRole('button', { name: 'Programmer la résiliation' }));
 
-    expect(screen.getByRole('dialog')).toHaveTextContent('01/10/2026');
+    expect(screen.getByRole('dialog')).toHaveTextContent(effectiveDate);
 
     await user.type(
       screen.getByLabelText('Motif facultatif'),
@@ -133,7 +135,7 @@ describe('CommercialLifecycleSection', () => {
     });
     expect(onFeedback).toHaveBeenCalledWith({
       type: 'success',
-      message: 'La résiliation est programmée pour le 01/10/2026.',
+      message: `La résiliation est programmée pour le ${effectiveDate}.`,
     });
   });
 
