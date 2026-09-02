@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,19 @@ function RoleFormDrawer({ actorPermissions, mode, onClose, onSubmit, open, pendi
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedPermissions, setSelectedPermissions] = useState([]);
+  const presentationRef = useRef({ mode, role });
+
+  /*
+   * Le parent réinitialise mode et role dès la demande de fermeture. Leur
+   * dernière valeur reste utilisée uniquement pour la présentation pendant la
+   * sortie, afin d'éviter que le titre change avant la fin de l'animation.
+   */
+  if (open) {
+    presentationRef.current = { mode, role };
+  }
+
+  const displayedMode = open ? mode : presentationRef.current.mode;
+  const displayedRole = open ? role : presentationRef.current.role;
 
   const availablePermissions = useMemo(
     () =>
@@ -65,7 +78,7 @@ function RoleFormDrawer({ actorPermissions, mode, onClose, onSubmit, open, pendi
     });
   }
 
-  const editing = mode === 'edit';
+  const editing = displayedMode === 'edit';
 
   return (
     <EntityDetailsDrawer
@@ -76,7 +89,7 @@ function RoleFormDrawer({ actorPermissions, mode, onClose, onSubmit, open, pendi
       }
       onClose={onClose}
       open={open}
-      title={editing ? `Modifier ${role?.name ?? 'le rôle'}` : 'Créer un rôle'}
+      title={editing ? `Modifier ${displayedRole?.name ?? 'le rôle'}` : 'Créer un rôle'}
     >
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-2">
