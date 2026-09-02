@@ -79,7 +79,7 @@ function SubscriptionSummaryCard({ subscription }) {
 
       {commercial?.scheduledChange?.type === 'downgrade' && (
         <p className="mt-4 rounded-md border border-border bg-muted/50 p-3 text-sm">
-          Downgrade programmé vers {commercial.scheduledChange.targetPlan?.name ?? 'un autre plan'} le{' '}
+          Changement de plan programmé vers {commercial.scheduledChange.targetPlan?.name ?? 'un autre plan'} le{' '}
           {formatSubscriptionDate(commercial.scheduledChange.effectiveAt)}.
         </p>
       )}
