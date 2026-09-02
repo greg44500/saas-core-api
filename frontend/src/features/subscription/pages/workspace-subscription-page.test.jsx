@@ -142,8 +142,11 @@ describe('WorkspaceSubscriptionPage', () => {
         effectiveEntitlement: {
           ...subscription.effectiveEntitlement,
           accessMode: 'remediation',
-          reason: 'Réduisez la consommation du workspace.',
-          blockingLimits: ['members', 'storage_bytes'],
+          reason: 'plan_limits_exceeded',
+          blockingLimits: [
+            { key: 'members', usage: 8, limit: 5, excess: 3 },
+            { key: 'storage_bytes', usage: 1200, limit: 1000, excess: 200 },
+          ],
         },
       },
       error: undefined,
@@ -154,7 +157,9 @@ describe('WorkspaceSubscriptionPage', () => {
     renderPage();
 
     expect(screen.getByText('Mise en conformité requise')).toBeInTheDocument();
-    expect(screen.getByText('Réduisez la consommation du workspace.')).toBeInTheDocument();
+    expect(
+      screen.getByText('La consommation actuelle dépasse une ou plusieurs limites du plan effectif.'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Limites concernées : Membres, Stockage.')).toBeInTheDocument();
   });
 
