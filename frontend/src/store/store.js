@@ -11,6 +11,9 @@ const sessionListenerMiddleware = createListenerMiddleware();
 sessionListenerMiddleware.startListening({
   actionCreator: sessionTerminated,
   effect: async (_action, listenerApi) => {
+    // Le cache RTK Query peut contenir des données multi-tenant du compte qui
+    // vient de se déconnecter. Le vider au niveau du store évite qu'un compte
+    // authentifié ensuite dans le même onglet voie brièvement ces données.
     listenerApi.dispatch(baseApi.util.resetApiState());
   },
 });
