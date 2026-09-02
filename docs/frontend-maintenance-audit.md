@@ -55,6 +55,26 @@ Ajouter du JSDoc lorsque cela améliore réellement le contrat de maintenance, n
 
 Ne pas transformer chaque fonction React simple en bloc JSDoc inutile.
 
+## Cohérence linguistique et densité UX
+
+L'interface utilisateur du Core est francophone. Cette règle concerne toute chaîne réellement visible par l'utilisateur :
+
+- labels ;
+- placeholders ;
+- aides de formulaire ;
+- boutons ;
+- messages d'état ;
+- statuts affichés ;
+- textes issus d'un contrôle navigateur lorsqu'ils peuvent être remplacés par une UI maîtrisée.
+
+Les clés techniques du contrat (`active`, `pending`, `subscription:read`, `monthly`, etc.) restent inchangées côté API et dans le code. Lorsqu'elles doivent être présentées, une couche de formatage frontend fournit leur libellé français sans modifier la valeur métier.
+
+Un contrôle natif dont le texte dépend du navigateur ou du système d'exploitation, comme `<input type="file">`, ne doit pas imposer une interface partiellement anglaise. Si son libellé visible n'est pas maîtrisable, le contrôle natif reste accessible mais son habillage visible est remplacé par une UI française.
+
+Les tableaux ne doivent pas répéter des états techniques sans valeur décisionnelle. Par exemple, une règle serveur qui rend une ligne non modifiable ne justifie pas nécessairement l'affichage de « Protégé » à chaque ligne : l'absence d'action, accompagnée d'une explication globale lorsqu'elle est utile, est préférable.
+
+Cette simplification visuelle ne remplace jamais la sécurité backend : masquer une action est uniquement une décision UX.
+
 ## Périmètre de l'audit F8-AUDIT
 
 Auditer au minimum :
@@ -87,6 +107,10 @@ Le périmètre devra être étendu à tout nouveau fichier créé pendant la sui
 - [ ] Aucun commentaire ne paraphrase inutilement le code.
 - [ ] Aucun commentaire obsolète ou contradictoire avec le backend n'est conservé.
 - [ ] Les commentaires ne décrivent jamais le backend comme une sécurité secondaire : le serveur reste l'autorité.
+- [ ] Toutes les chaînes réellement visibles sont en français, sauf terme produit volontairement conservé.
+- [ ] Les contrôles natifs dont le texte visible n'est pas maîtrisable disposent d'un habillage localisé lorsque nécessaire.
+- [ ] Les clés/statuts techniques visibles passent par un formateur de présentation adapté.
+- [ ] Les tableaux n'affichent pas de badges ou mentions techniques répétitives sans utilité pour l'utilisateur.
 - [ ] La documentation `docs/` associée au frontend est cohérente avec le code réel.
 - [ ] Les tests frontend ciblés restent verts après l'audit.
 - [ ] La suite frontend globale reste verte.
