@@ -1,75 +1,54 @@
 # SAAS-CORE-API — Rapport F8-AUDIT frontend
 
 **Date :** 2 septembre 2026  
-**Statut :** EN COURS — checkpoint bloquant avant F9
+**Statut :** EN COURS — checkpoint avant F9
 
 ## Objectif
 
-Tracer les fichiers relus, les écarts détectés et les corrections appliquées pendant l'audit transversal de maintenabilité du frontend Core.
-
-L'audit ne doit ajouter aucune fonctionnalité métier. Il vérifie la séparation des responsabilités, RTK Query, Redux, permissions, composants partagés, localisation, accessibilité, documentation du « pourquoi », code mort, tests et build.
+Tracer la revue transversale du frontend Core sans ajouter de fonctionnalité métier : responsabilités, RTK Query, permissions, composants partagés, accessibilité, code mort, tests et build.
 
 ## Phase 1 — socle transversal
 
-### Périmètre relu
+Relus : `app/`, `services/api/`, `store/`, `components/data-display/`, `components/shared/` et inventaire de `features/`.
 
-- `frontend/src/app/` — structure des providers et du router ;
-- `frontend/src/services/api/base-api.js` ;
-- `frontend/src/services/api/base-query.js` ;
-- `frontend/src/store/store.js` ;
-- `frontend/src/components/data-display/data-table.jsx` ;
-- `frontend/src/components/data-display/data-table-styles.js` ;
-- `frontend/src/components/shared/entity-details-drawer.jsx` ;
-- inventaire de `frontend/src/components/shared/` ;
-- inventaire de `frontend/src/features/`.
+Constats validés :
 
-### Constats validés
-
-1. Les données serveur sont centralisées dans une API slice RTK Query unique et ne sont pas recopiées dans des slices Redux métier.
-2. La réauthentification est centralisée dans `base-query.js` avec mutex afin d'éviter les refresh concurrents.
-3. La fin de session réinitialise le cache RTK Query, ce qui protège l'isolation des données lorsqu'un autre compte se connecte dans le même onglet.
-4. Les routes importantes sont lazy-loadées au niveau des pages/modules, sans lazy loading artificiel des petits composants.
-5. Le Drawer d'entité est une primitive partagée ; les features ne doivent pas recréer sa mécanique d'animation, focus et dialog.
-6. Les tableaux Core utilisent désormais la primitive partagée `components/data-display/data-table.jsx`. Les espacements restent centralisés dans `data-table-styles.js`.
-7. L'absence d'un dossier global `hooks/` n'est pas un défaut : aucun dossier vide ne doit être créé sans responsabilité transversale réelle.
-
-### Corrections appliquées
-
-- documentation de la raison de la purge RTK Query lors de `sessionTerminated` dans `store.js` ;
-- documentation du choix d'une API slice RTK Query commune dans `base-api.js` ;
-- ajout du contrat JSDoc et des invariants de maintenance au Drawer partagé ;
-- le composant `DataTable` et son contrat restent la primitive obligatoire pour les tableaux futurs.
-
-### Aucun changement fonctionnel
-
-Cette phase ne modifie ni endpoint, ni permission, ni logique métier, ni espace/densité UI, ni navigation.
+- une seule API slice RTK Query ;
+- refresh centralisé avec mutex ;
+- purge du cache à `sessionTerminated` centralisée dans le store ;
+- lazy loading au niveau pages/modules ;
+- `EntityDetailsDrawer` partagé ;
+- `DataTable` obligatoire pour les tableaux compatibles ;
+- aucun dossier global vide créé sans responsabilité réelle.
 
 ## Phase 2 — features Core
 
-**À poursuivre avant clôture de F8-AUDIT.**
+Relus à ce stade : `auth`, `account`, `workspace`, `workspace-members`, `workspace-roles`, `workspace-invitation`, `files`, `plan`, `subscription`, `audit-log` et socle `platform`.
 
-Périmètre à relire :
+### Corrections appliquées
 
-- `features/auth/` ;
-- `features/account/` ;
-- `features/workspace/` ;
-- `features/workspace-members/` ;
-- `features/workspace-roles/` ;
-- `features/workspace-invitation/` ;
-- `features/files/` ;
-- `features/plan/` ;
-- `features/subscription/` ;
-- `features/audit-log/` ;
-- `features/platform/` pour vérifier uniquement le socle/placeholder existant avant F9.
+1. **Fin de session** — suppression des purges RTK Query répétées dans `auth-api.js`. Les mutations déclarent `sessionTerminated`; le store reste propriétaire de la purge.
+2. **Pagination** — création de `components/data-display/data-pagination.jsx`. Membres, Files et Audit utilisent désormais cette primitive ; les anciennes paginations spécifiques ont été supprimées.
+3. **Confirmations** — création de `components/shared/confirmation-dialog.jsx`. La mécanique de modale, focus, Escape, navigation Tab et verrouillage du scroll est centralisée ; les règles métier restent dans les features.
+4. **Membres** — la révocation d'une invitation participe désormais à l'état pending de la confirmation.
+5. **Roles** — `workspace-roles/api` possède désormais le listing et les mutations `/roles`. Le cache reste unique via `baseApi`; la dépendance inversée vers `workspace-members/api` est supprimée.
+6. **Code mort Auth** — suppression des anciens placeholders Login/Register de F5.
+7. **Socle Platform** — suppression des wrappers de placeholders non utilisés ; le composant générique reste en place jusqu'à F9.
 
-À rechercher explicitement : appels réseau hors RTK Query, duplication de primitives, logique d'autorisation non documentée, chaînes techniques visibles, calendriers locaux, code mort, commentaires inutiles/obsolètes et responsabilités trop lourdes dans les pages.
+### Décisions conservées
 
-## Validation finale requise
+- le Dashboard reste orchestré par `useWorkspaceDashboardData`, avec requêtes RTK Query conditionnées par permissions ;
+- les paramètres Workspace restent composés de composants métier dédiés ;
+- Audit utilise le `DatePicker` partagé ; la validation des dates issues de l'URL reste une sanitation de routing ;
+- `PlanCard` conserve les actions injectées par le consommateur afin de ne pas mélanger onboarding, catalogue et abonnement ;
+- les placeholders Platform encore routés restent intentionnels jusqu'à F9.
 
-F8-AUDIT ne pourra être déclaré terminé qu'après :
+## Reste à clôturer
 
-- revue de toutes les features du périmètre ;
-- tests ciblés des fichiers modifiés ;
-- suite frontend globale verte ;
-- build Vite vert ;
-- mise à jour de `docs/frontend-implementation-checklist.md`.
+- derniers contrôles ciblés de code mort et de messages techniques ;
+- tests ciblés des refactors F8-AUDIT ;
+- suite frontend globale ;
+- build Vite ;
+- mise à jour de `docs/frontend-implementation-checklist.md` après validation.
+
+F9 ne démarre pas avant clôture de ces validations.
