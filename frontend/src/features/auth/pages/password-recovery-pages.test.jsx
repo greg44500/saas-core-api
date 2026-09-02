@@ -70,13 +70,14 @@ describe('password recovery pages', () => {
     );
   });
 
-  it('préremplit l’email et permet de revenir à Sécurité depuis le compte', async () => {
+  it('préremplit l’email et conserve la destination d’origine en revenant à Sécurité', async () => {
     const user = userEvent.setup();
     const router = renderRecoveryRoute({
       pathname: '/forgot-password',
       state: {
         email: 'greg@example.com',
         returnTo: '/account/security',
+        accountReturnTo: '/workspaces/workspace-1/dashboard',
       },
     });
 
@@ -85,6 +86,9 @@ describe('password recovery pages', () => {
 
     expect(await screen.findByRole('heading', { name: 'Sécurité cible' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/account/security');
+    expect(router.state.location.state).toEqual({
+      accountReturnTo: '/workspaces/workspace-1/dashboard',
+    });
   });
 
   it('transmet uniquement le token du lien et le nouveau mot de passe au reset', async () => {
