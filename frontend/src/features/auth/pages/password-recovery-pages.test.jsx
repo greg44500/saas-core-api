@@ -18,6 +18,7 @@ import { ResetPasswordPage } from '@/features/auth/pages/reset-password-page';
 function renderRecoveryRoute(initialEntry) {
   const router = createMemoryRouter(
     [
+      { path: '/account/security', Component: () => <h1>Sécurité cible</h1> },
       { path: '/forgot-password', Component: ForgotPasswordPage },
       { path: '/reset-password', Component: ResetPasswordPage },
       { path: '/login', Component: () => <h1>Connexion cible</h1> },
@@ -67,6 +68,23 @@ describe('password recovery pages', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Si un compte correspond à cette adresse email',
     );
+  });
+
+  it('préremplit l’email et permet de revenir à Sécurité depuis le compte', async () => {
+    const user = userEvent.setup();
+    const router = renderRecoveryRoute({
+      pathname: '/forgot-password',
+      state: {
+        email: 'greg@example.com',
+        returnTo: '/account/security',
+      },
+    });
+
+    expect(screen.getByLabelText('Email')).toHaveValue('greg@example.com');
+    await user.click(screen.getByRole('link', { name: 'Retour aux paramètres de sécurité' }));
+
+    expect(await screen.findByRole('heading', { name: 'Sécurité cible' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/account/security');
   });
 
   it('transmet uniquement le token du lien et le nouveau mot de passe au reset', async () => {
