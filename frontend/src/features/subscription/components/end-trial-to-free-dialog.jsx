@@ -2,8 +2,8 @@ import { Button } from '@/components/ui/button';
 
 /**
  * Confirme une transition irréversible du point de vue de l'éligibilité : le
- * retour vers Free arrête immédiatement le trial et ne redonne jamais droit à
- * un nouvel essai pour la même identité.
+ * retour vers Free arrête immédiatement la période d'essai et ne redonne jamais
+ * droit à un nouvel essai pour la même identité.
  */
 function EndTrialToFreeDialog({ onCancel, onConfirm, open, pending }) {
   if (!open) return null;
@@ -24,7 +24,7 @@ function EndTrialToFreeDialog({ onCancel, onConfirm, open, pending }) {
             Revenir au plan Free ?
           </h2>
           <p className="text-sm text-muted-foreground">
-            Le trial prendra fin immédiatement. Votre éligibilité restera consommée :
+            La période d’essai prendra fin immédiatement. Votre éligibilité restera consommée :
             vous ne pourrez pas démarrer un nouvel essai avec cette identité.
           </p>
         </div>
