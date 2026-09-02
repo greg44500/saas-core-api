@@ -63,7 +63,7 @@ describe('WorkspaceSidebar', () => {
 
     expect(screen.getByText('Administration')).toBeInTheDocument();
     expect(screen.getByText('Membres')).toBeInTheDocument();
-    expect(screen.getByText('Abonnement')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Abonnement' })).toBeInTheDocument();
     expect(screen.queryByText('Fichiers')).not.toBeInTheDocument();
     expect(screen.queryByText('Paramètres')).not.toBeInTheDocument();
   });
@@ -78,6 +78,18 @@ describe('WorkspaceSidebar', () => {
 
     expect(filesLink).toBeInTheDocument();
     expect(filesLink).toHaveAttribute('href', '/workspaces/workspace-1/files');
+  });
+
+  it('rend Abonnement navigable uniquement avec subscription:read', () => {
+    renderSidebar([
+      WORKSPACE_PERMISSION.WORKSPACE_READ,
+      WORKSPACE_PERMISSION.SUBSCRIPTION_READ,
+    ]);
+
+    const subscriptionLink = screen.getByRole('link', { name: 'Abonnement' });
+
+    expect(subscriptionLink).toBeInTheDocument();
+    expect(subscriptionLink).toHaveAttribute('href', '/workspaces/workspace-1/subscription');
   });
 
   it('conserve des libellés accessibles et expose des tooltips en mode réduit', () => {
