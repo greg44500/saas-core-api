@@ -28,7 +28,7 @@ describe('EntityDetailsDrawer', () => {
 
     const drawer = screen.getByRole('dialog');
 
-    expect(drawer).toHaveClass('shadow-xl');
+    expect(drawer).toHaveClass('shadow-lg');
     expect(drawer).toHaveClass('transition-transform');
     expect(drawer).toHaveClass('duration-300');
     expect(drawer).toHaveClass('translate-x-0');
