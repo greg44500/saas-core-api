@@ -182,4 +182,34 @@ describe('PlatformWorkspacesPage', () => {
     });
     expect(await screen.findByText('Workspace suspendu')).toBeInTheDocument();
   });
+
+  it('réactive un workspace suspendu', async () => {
+    const user = userEvent.setup();
+    const suspendedWorkspace = {
+      ...detailedWorkspace,
+      status: 'suspended',
+      statusReason: 'administrative_review',
+      statusReasonDetails: 'Contrôle en cours',
+    };
+    mocks.useGetPlatformWorkspaceQuery.mockReturnValue({
+      data: suspendedWorkspace,
+      error: undefined,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+    await user.click(screen.getByRole('button', { name: 'Voir' }));
+    const drawer = screen.getByRole('dialog', { name: 'Workspace Démo' });
+    await user.click(within(drawer).getByRole('button', { name: 'Réactiver' }));
+
+    const confirmation = screen.getByRole('dialog', { name: 'Confirmer l’action' });
+    await user.click(within(confirmation).getByRole('button', { name: 'Confirmer' }));
+
+    await waitFor(() => {
+      expect(mocks.reactivateWorkspace).toHaveBeenCalledWith(listedWorkspace.id);
+    });
+    expect(await screen.findByText('Workspace réactivé')).toBeInTheDocument();
+  });
 });
