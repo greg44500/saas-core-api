@@ -3,6 +3,7 @@ import { Eye, Pencil, Trash2 } from 'lucide-react';
 
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
+import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
@@ -29,6 +30,7 @@ function RoleTypeBadge({ role }) {
 
 function WorkspaceRolesPage() {
   const { can, permissions, workspace } = useWorkspaceContext();
+  const { toast } = useToast();
   const rolesQuery = useListWorkspaceRolesQuery(workspace.id);
   const [createRole, createState] = useCreateWorkspaceRoleMutation();
   const [updateRole, updateState] = useUpdateWorkspaceRoleMutation();
@@ -38,7 +40,6 @@ function WorkspaceRolesPage() {
   const [formMode, setFormMode] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
-  const [feedback, setFeedback] = useState(null);
 
   const roles = rolesQuery.data ?? [];
   const actorPermissionSet = useMemo(() => new Set(permissions), [permissions]);
@@ -60,8 +61,6 @@ function WorkspaceRolesPage() {
   }
 
   async function handleFormSubmit(values) {
-    setFeedback(null);
-
     try {
       if (formMode === 'edit' && editingRole) {
         await updateRole({
@@ -69,38 +68,44 @@ function WorkspaceRolesPage() {
           roleId: editingRole.id,
           ...values,
         }).unwrap();
-        setFeedback({ type: 'success', message: 'Rôle mis à jour.' });
+        toast({ title: 'Rôle mis à jour', variant: 'success' });
       } else {
         await createRole({ workspaceId: workspace.id, ...values }).unwrap();
-        setFeedback({ type: 'success', message: 'Rôle créé.' });
+        toast({ title: 'Rôle créé', variant: 'success' });
       }
       closeForm();
     } catch (error) {
-      setFeedback({
-        type: 'error',
-        message: getApiMessage(error, "Le rôle n’a pas pu être enregistré."),
+      toast({
+        title: 'Enregistrement du rôle impossible',
+        description: getApiMessage(error, "Le rôle n’a pas pu être enregistré."),
+        variant: 'error',
       });
     }
   }
 
   async function confirmDelete() {
     if (!deleteCandidate) return;
-    setFeedback(null);
 
     try {
       await deleteRole({
         workspaceId: workspace.id,
         roleId: deleteCandidate.id,
       }).unwrap();
+      const deletedRoleName = deleteCandidate.name;
       setDeleteCandidate(null);
-      setFeedback({ type: 'success', message: 'Rôle supprimé.' });
+      toast({
+        title: 'Rôle supprimé',
+        description: `${deletedRoleName} n’est plus disponible dans ce workspace.`,
+        variant: 'success',
+      });
     } catch (error) {
-      setFeedback({
-        type: 'error',
-        message: getApiMessage(
+      toast({
+        title: 'Suppression du rôle impossible',
+        description: getApiMessage(
           error,
           "Le rôle ne peut pas être supprimé. Vérifiez qu’il n’est plus utilisé.",
         ),
+        variant: 'error',
       });
     }
   }
@@ -206,19 +211,6 @@ function WorkspaceRolesPage() {
           </Button>
         )}
       </header>
-
-      {feedback && (
-        <p
-          className={`rounded-md border p-3 text-sm ${
-            feedback.type === 'error'
-              ? 'border-destructive/30 bg-destructive/10 text-destructive'
-              : 'border-success/30 bg-success/10'
-          }`}
-          role="status"
-        >
-          {feedback.message}
-        </p>
-      )}
 
       {deleteCandidate && (
         <section className="rounded-xl border border-destructive/30 bg-destructive/10 p-4">
