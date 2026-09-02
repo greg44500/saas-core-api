@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Frontend Core
 
-Dernière consolidation : 2026-09-02 — F8.6.3, F8.7 et F8.8.1 validés ; F8.8.2 Dashboard Core implémenté, validation à exécuter
+Dernière consolidation : 2026-09-02 — F8.8.2 et F8.9 implémentés ; validation finale F8 et correctifs UX transversaux à exécuter
 
 ## 1. Rôle du document
 
@@ -28,6 +28,8 @@ Elle doit être mise à jour à la fin de chaque lot frontend validé.
 - [ ] AUDIT — supprimer les commentaires redondants, obsolètes ou contradictoires avec le backend.
 - [ ] AUDIT — toutes les chaînes visibles par l’utilisateur doivent être en français ; les clés techniques restent internes ou passent par un formateur de présentation.
 - [ ] AUDIT — les contrôles natifs dont le libellé dépend du navigateur doivent disposer d’un habillage localisé lorsqu’il est pertinent.
+- [ ] AUDIT — les saisies de date utilisent la primitive partagée `components/forms/date-picker.jsx` : présentation `jj/mm/aaaa`, calendrier français, valeur technique `YYYY-MM-DD` ; aucune feature ne recrée son propre calendrier sans besoin nouveau explicite.
+- [ ] AUDIT — la densité des tableaux Core doit utiliser `components/data-display/data-table-styles.js` afin d’éviter des espacements dupliqués dans chaque feature.
 - [ ] AUDIT — éviter les mentions techniques répétitives sans valeur décisionnelle dans les tableaux ; masquer une action reste une décision UX et ne remplace jamais la sécurité backend.
 - [ ] AUDIT — relire tous les fichiers frontend dans le checkpoint `F8-AUDIT` avant F9.
 
@@ -107,7 +109,7 @@ Référence : `docs/functional-debt-file-trash-restore.md`.
 - [x] TERMINÉ — catalogue public backend étendu avec `trialEnabled` et `trialDurationDays` afin que le frontend ne déduise jamais l’éligibilité d’un plan.
 - [x] TERMINÉ — vue Subscription backend étendue avec `trialEligibility.consumed` sans exposer l’empreinte d’identité.
 - [x] TERMINÉ — démarrage/changement de trial owner-only.
-- [x] TERMINÉ — changement de plan pendant trial sans promesse de prolongation de `trialEndsAt`.
+- [x] TERMINÉ — changement de Plan pendant trial sans promesse de prolongation de `trialEndsAt`.
 - [x] TERMINÉ — retour volontaire vers Free avec confirmation explicite de consommation définitive de l’éligibilité.
 - [x] TERMINÉ — invalidation systématique de `WorkspaceSubscription` après mutation au lieu de reconstruire localement l’entitlement.
 - [x] TERMINÉ — périodicité mensuelle/annuelle choisie explicitement, sans moyen de paiement requis pendant le trial.
@@ -170,7 +172,7 @@ Référence : `docs/functional-debt-file-trash-restore.md`.
 ### F8.8.2 — Dashboard Core
 
 - [x] TERMINÉ — audit des contrats backend disponibles effectué avant implémentation ; aucune nouvelle route backend requise.
-- [ ] EN COURS — synthèse implémentée à partir du workspace courant, membres, invitations, fichiers, abonnement et activité selon permissions ; validation locale à exécuter.
+- [ ] EN COURS — synthèse implémentée à partir du workspace courant, membres, invitations, fichiers, abonnement et activité selon permissions ; validation locale finale à exécuter.
 - [x] TERMINÉ — requêtes Membres/Fichiers/Invitations limitées à `limit=1` pour exploiter uniquement `meta.total` sans charger les listes complètes.
 - [x] TERMINÉ — chaque requête RTK Query est `skip` lorsque la permission correspondante manque ; aucun contournement RBAC.
 - [x] TERMINÉ — composants de synthèse séparés de la page et hook de composition `useWorkspaceDashboardData` dédié.
@@ -179,8 +181,33 @@ Référence : `docs/functional-debt-file-trash-restore.md`.
 - [x] TERMINÉ — plan et mode d’accès lus exclusivement depuis `effectiveEntitlement` et formatters Subscription existants.
 - [x] TERMINÉ — `storage_bytes` et `file_uploads_monthly` ne sont pas affichés : les métriques existent en interne mais aucun contrat de lecture dédié n’expose leur valeur courante au frontend.
 - [ ] EN COURS — tests ciblés ajoutés ; régression frontend globale et build Vite requis avant clôture du lot.
+- [x] DÉCISION FIGÉE — ce Dashboard Core est provisoire ; aucun enrichissement supplémentaire avant cadrage des modules métier. Le futur Dashboard Workspace sera prioritairement orienté données métier.
 
-## 7. Ordre de production frontend restant
+## 7. Account / Security frontend — F8.9
+
+- [x] IMPLÉMENTÉ — routes protégées `/account/profile` et `/account/security` avec layout Account global indépendant du workspace.
+- [x] IMPLÉMENTÉ — `PATCH /api/users/me` raccordé au frontend pour `firstName` / `lastName` uniquement ; email en lecture seule.
+- [x] IMPLÉMENTÉ — cache `CurrentUser` RTK Query invalidé après modification du profil.
+- [x] IMPLÉMENTÉ — changement de mot de passe raccordé au contrat backend et reconnexion obligatoire après succès.
+- [x] IMPLÉMENTÉ — `logout-all` avec confirmation explicite ; aucune annonce de succès lorsque le backend refuse la révocation.
+- [x] IMPLÉMENTÉ — pages publiques `/forgot-password` et `/reset-password` raccordées au workflow backend sécurisé.
+- [x] IMPLÉMENTÉ — lien « Mot de passe actuel oublié ? » depuis Sécurité ; réutilisation du workflow de reset existant sans contournement de la réauthentification.
+- [x] IMPLÉMENTÉ — email courant prérempli dans le parcours forgot-password lorsqu’il vient de la page Sécurité.
+- [x] IMPLÉMENTÉ — bouton explicite « Retour à l’application » depuis Account ; retour exact au Workspace/Platform d’origine lorsque connu, fallback `/workspaces` ou `/platform/overview` selon le contexte.
+- [x] IMPLÉMENTÉ — destination de retour conservée entre Profil/Sécurité et à travers le détour forgot-password.
+- [ ] EN COURS — tests backend ciblés du nouveau contrat profil, tests frontend ciblés Account/Auth, régressions globales et build Vite à confirmer avant clôture F8.9.
+
+### Correctifs UX transversaux de finalisation F8
+
+- [x] IMPLÉMENTÉ — `components/forms/date-picker.jsx` devient la primitive date partagée : interface française, placeholder `jj/mm/aaaa`, navigation calendrier française, valeur technique ISO locale `YYYY-MM-DD`.
+- [x] IMPLÉMENTÉ — filtres Audit migrés du `type="date"` natif vers le DatePicker partagé.
+- [x] IMPLÉMENTÉ — `components/data-display/data-table-styles.js` centralise les espacements des tableaux Core (`headerCell`, `bodyCell`, `actionGroup`).
+- [x] IMPLÉMENTÉ — tableaux Rôles, Membres, Fichiers et Audit raccordés à cette densité partagée.
+- [x] IMPLÉMENTÉ — `components/shared/tooltip.jsx` ne dépend plus de `group-focus-within`; un tooltip d’action est masqué après activation même si le bouton conserve le focus pendant l’ouverture d’un Drawer.
+- [x] IMPLÉMENTÉ — le Tooltip conserve néanmoins son accessibilité au focus clavier.
+- [ ] EN COURS — tests ciblés DatePicker / Tooltip / tableaux / Account et validation visuelle à exécuter avant clôture du Core F8.
+
+## 8. Ordre de production frontend restant
 
 ```text
 F8.5      Files frontend                              TERMINÉ
@@ -190,14 +217,14 @@ F8.6.3    Résiliation / downgrade                     TERMINÉ
 F8.7      Workspace Settings / Ownership frontend     TERMINÉ
 F8.8.1    Audit Workspace frontend                    TERMINÉ
 F8.8.2    Dashboard Core frontend                     VALIDATION EN COURS
-F8.9      Account / Security frontend                 À FAIRE
-F8-AUDIT  Maintenabilité + commentaires + JSDoc       OBLIGATOIRE AVANT F9
-F9.x      Platform Admin frontend réel
+F8.9      Account / Security frontend                 VALIDATION EN COURS
+F8-AUDIT  Maintenabilité + commentaires + JSDoc       PROCHAIN BLOC APRÈS VALIDATION F8
+F9.x      Platform Admin frontend réel                APRÈS F8-AUDIT
 F10       EntitlementOverride Workspace-scoped + Platform
 F11       Consolidation frontend + E2E
 ```
 
-## 8. Règle de validation de fin de lot
+## 9. Règle de validation de fin de lot
 
 Un lot frontend ne doit être marqué TERMINÉ qu’après :
 
@@ -209,6 +236,8 @@ Un lot frontend ne doit être marqué TERMINÉ qu’après :
 6. documentation des décisions ou dettes nouvelles ;
 7. absence de modification hors périmètre.
 
-## 9. Gate avant modules métier
+## 10. Gate avant modules métier
 
 Aucun module métier ne doit démarrer avant la finalisation du Core frontend, le checkpoint F8-AUDIT et les validations E2E prévues dans le Gate A du projet.
+
+Le Dashboard Workspace actuel reste un prototype Core technique. Sa refonte orientée données métier est explicitement reportée au cadrage du premier domaine métier.
