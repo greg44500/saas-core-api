@@ -6,6 +6,7 @@ const baseApi = createApi({
   reducerPath: 'coreApi',
   baseQuery: baseQueryWithReauth,
   tagTypes: [
+    'CurrentUser',
     'WorkspaceList',
     'Workspace',
     'PlanCatalog',
