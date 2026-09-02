@@ -2,6 +2,8 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ToastProvider } from '@/components/shared/toast-provider';
+
 const mocks = vi.hoisted(() => ({
   revokeCancellation: vi.fn(),
   revokeDowngrade: vi.fn(),
@@ -81,14 +83,15 @@ function setupMutationMocks() {
 
 function renderSection(overrides = {}) {
   return render(
-    <CommercialLifecycleSection
-      commercial={commercial}
-      isOwner
-      onFeedback={vi.fn()}
-      plans={plans}
-      workspaceId="workspace-1"
-      {...overrides}
-    />,
+    <ToastProvider>
+      <CommercialLifecycleSection
+        commercial={commercial}
+        isOwner
+        plans={plans}
+        workspaceId="workspace-1"
+        {...overrides}
+      />
+    </ToastProvider>,
   );
 }
 
@@ -109,14 +112,13 @@ describe('CommercialLifecycleSection', () => {
     expect(screen.queryByRole('heading', { name: 'Gestion du contrat commercial' })).not.toBeInTheDocument();
   });
 
-  it('programme une résiliation avec une date d’effet explicite et un motif trimé', async () => {
+  it('programme une résiliation avec une date d’effet explicite et confirme par toast', async () => {
     const user = userEvent.setup();
-    const onFeedback = vi.fn();
     const unwrap = vi.fn().mockResolvedValue({});
     const effectiveDate = formatSubscriptionDate(commercial.currentPeriodEnd);
     mocks.scheduleCancellation.mockReturnValue({ unwrap });
 
-    renderSection({ onFeedback });
+    renderSection();
 
     await user.click(screen.getByRole('button', { name: 'Programmer la résiliation' }));
 
@@ -133,10 +135,26 @@ describe('CommercialLifecycleSection', () => {
       subscriptionId: 'subscription-1',
       reason: 'Offre devenue inutile',
     });
-    expect(onFeedback).toHaveBeenCalledWith({
-      type: 'success',
-      message: `La résiliation est programmée pour le ${effectiveDate}.`,
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent('Résiliation programmée');
+    expect(status).toHaveTextContent(effectiveDate);
+  });
+
+  it('garde un refus serveur de résiliation dans le dialogue', async () => {
+    const user = userEvent.setup();
+    mocks.scheduleCancellation.mockReturnValue({
+      unwrap: vi.fn().mockRejectedValue({
+        data: { message: 'Résiliation refusée' },
+      }),
     });
+
+    renderSection();
+
+    await user.click(screen.getByRole('button', { name: 'Programmer la résiliation' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmer la résiliation' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Résiliation refusée');
   });
 
   it('programme uniquement un downgrade présenté comme compatible', async () => {
