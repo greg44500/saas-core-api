@@ -24,4 +24,25 @@ const registerSchema = z
     path: ['confirmPassword'],
   });
 
-export { emailSchema, loginSchema, passwordSchema, registerSchema };
+const forgotPasswordFormSchema = z.strictObject({
+  email: emailSchema,
+});
+
+const resetPasswordFormSchema = z
+  .strictObject({
+    newPassword: passwordSchema,
+    confirmPassword: passwordSchema,
+  })
+  .refine((values) => values.newPassword === values.confirmPassword, {
+    message: 'Les mots de passe ne correspondent pas.',
+    path: ['confirmPassword'],
+  });
+
+export {
+  emailSchema,
+  forgotPasswordFormSchema,
+  loginSchema,
+  passwordSchema,
+  registerSchema,
+  resetPasswordFormSchema,
+};
