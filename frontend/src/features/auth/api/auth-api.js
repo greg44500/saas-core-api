@@ -86,8 +86,9 @@ const authApi = baseApi.injectEndpoints({
         try {
           await queryFulfilled;
         } finally {
+          // `sessionTerminated` est l'unique signal de fin de session. Le store
+          // se charge de purger le cache RTK Query pour tous les workflows.
           dispatch(sessionTerminated());
-          dispatch(baseApi.util.resetApiState());
         }
       },
     }),
@@ -100,7 +101,6 @@ const authApi = baseApi.injectEndpoints({
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         await queryFulfilled;
         dispatch(sessionTerminated());
-        dispatch(baseApi.util.resetApiState());
       },
     }),
     changePassword: build.mutation({
@@ -113,7 +113,6 @@ const authApi = baseApi.injectEndpoints({
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         await queryFulfilled;
         dispatch(sessionTerminated());
-        dispatch(baseApi.util.resetApiState());
       },
     }),
     forgotPassword: build.mutation({
@@ -134,7 +133,6 @@ const authApi = baseApi.injectEndpoints({
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         await queryFulfilled;
         dispatch(sessionTerminated());
-        dispatch(baseApi.util.resetApiState());
       },
     }),
   }),
