@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Frontend Core
 
-Dernière consolidation : 2026-09-02 — F8.6.1 validé, F8.6.2 Trial / changement de plan en validation
+Dernière consolidation : 2026-09-02 — F8.6.2 Trial / changement de plan validé, F8.6.3 cycle de vie commercial en cours
 
 ## 1. Rôle du document
 
@@ -73,9 +73,9 @@ Référence : `docs/frontend-maintenance-audit.md`.
 
 ### Correctifs UX transversaux appliqués après F8.5
 
-- [ ] EN COURS — sélecteur de fichier natif habillé par une UI entièrement française ; validation locale à effectuer.
-- [ ] EN COURS — suppression des mentions répétitives « Protégé » / « Niveau supérieur » dans les tableaux Rôles et Membres ; validation locale à effectuer.
-- [ ] EN COURS — statuts Membres/Invitations localisés en français par une couche de présentation ; validation locale à effectuer.
+- [x] TERMINÉ — sélecteur de fichier natif habillé par une UI entièrement française ; tests/régression validés le 2026-09-02.
+- [x] TERMINÉ — suppression des mentions répétitives « Protégé » / « Niveau supérieur » dans les tableaux Rôles et Membres ; tests/régression validés le 2026-09-02.
+- [x] TERMINÉ — statuts Membres/Invitations localisés en français par une couche de présentation ; tests/régression validés le 2026-09-02.
 
 ### Dette Files conservée
 
@@ -104,30 +104,32 @@ Référence : `docs/functional-debt-file-trash-restore.md`.
 
 ### F8.6.2 — Trial et changement de plan
 
-- [ ] EN COURS — catalogue public backend étendu avec `trialEnabled` et `trialDurationDays` afin que le frontend ne déduise jamais l’éligibilité d’un plan.
-- [ ] EN COURS — vue Subscription backend étendue avec `trialEligibility.consumed` sans exposer l’empreinte d’identité.
-- [ ] EN COURS — démarrage/changement de trial owner-only.
-- [ ] EN COURS — changement de plan pendant trial sans promesse de prolongation de `trialEndsAt`.
-- [ ] EN COURS — retour volontaire vers Free avec confirmation explicite de consommation définitive de l’éligibilité.
-- [ ] EN COURS — invalidation systématique de `WorkspaceSubscription` après mutation au lieu de reconstruire localement l’entitlement.
-- [ ] EN COURS — périodicité mensuelle/annuelle choisie explicitement, sans moyen de paiement requis pendant le trial.
-- [ ] EN COURS — outil CLI `dev:reset-trial` ajouté pour rejouer les scénarios en développement sans bypass de la règle métier ; environnement development + cible explicite + confirmation obligatoires.
-- [ ] EN COURS — tests backend/frontend ciblés, régression globale et build à valider avant clôture.
+- [x] TERMINÉ — catalogue public backend étendu avec `trialEnabled` et `trialDurationDays` afin que le frontend ne déduise jamais l’éligibilité d’un plan.
+- [x] TERMINÉ — vue Subscription backend étendue avec `trialEligibility.consumed` sans exposer l’empreinte d’identité.
+- [x] TERMINÉ — démarrage/changement de trial owner-only.
+- [x] TERMINÉ — changement de plan pendant trial sans promesse de prolongation de `trialEndsAt`.
+- [x] TERMINÉ — retour volontaire vers Free avec confirmation explicite de consommation définitive de l’éligibilité.
+- [x] TERMINÉ — invalidation systématique de `WorkspaceSubscription` après mutation au lieu de reconstruire localement l’entitlement.
+- [x] TERMINÉ — périodicité mensuelle/annuelle choisie explicitement, sans moyen de paiement requis pendant le trial.
+- [x] TERMINÉ — outil CLI `dev:reset-trial` ajouté pour rejouer les scénarios en développement sans bypass de la règle métier ; `NODE_ENV=development`, `ALLOW_DEVELOPMENT_DATA_RESET=true`, cible explicite et confirmation obligatoires.
+- [x] TERMINÉ — tests backend/frontend ciblés, régressions globales et builds signalés verts le 2026-09-02.
 
 ### F8.6.3 — Cycle de vie commercial
 
-- [ ] À FAIRE — programmation/révocation de résiliation owner-only.
-- [ ] À FAIRE — programmation/révocation de downgrade owner-only.
-- [ ] À FAIRE — affichage et confirmation des dates effectives.
-- [ ] À FAIRE — conserver Billing/Payment réel hors périmètre tant que le provider n’est pas intégré.
+- [ ] EN COURS — programmation/révocation de résiliation owner-only.
+- [ ] EN COURS — programmation/révocation de downgrade owner-only.
+- [ ] EN COURS — affichage et confirmation des dates effectives.
+- [ ] EN COURS — actions incompatibles masquées/désactivées pour l’UX sans remplacer les invariants backend.
+- [ ] EN COURS — invalidation/refetch de `WorkspaceSubscription` après chaque mutation.
+- [ ] EN COURS — conserver Billing/Payment réel hors périmètre tant que le provider n’est pas intégré.
 
 ## 5. Ordre de production frontend restant
 
 ```text
 F8.5      Files frontend                              TERMINÉ
 F8.6.1    Subscription / Plan / Trial — lecture       TERMINÉ
-F8.6.2    Trial / changement de plan                  EN VALIDATION
-F8.6.3    Résiliation / downgrade                     À FAIRE
+F8.6.2    Trial / changement de plan                  TERMINÉ
+F8.6.3    Résiliation / downgrade                     EN COURS
 F8.7      Workspace Settings / Ownership frontend
 F8.8      Audit / Dashboard Core frontend
 F8.9      Account / Security frontend
