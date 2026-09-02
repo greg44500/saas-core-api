@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Frontend Core
 
-Dernière consolidation : 2026-09-02 — F8.6.3 implémenté, correctif Drawer partagé ajouté, validation finale post-correctif à exécuter
+Dernière consolidation : 2026-09-02 — F8.6.3, F8.7 et F8.8.1 validés ; F8.8.2 Dashboard Core ouvert
 
 ## 1. Rôle du document
 
@@ -116,41 +116,84 @@ Référence : `docs/functional-debt-file-trash-restore.md`.
 
 ### F8.6.3 — Cycle de vie commercial
 
-Implémentation fonctionnelle terminée. Les tests du bloc ont été signalés verts avant le correctif UX transversal du Drawer. Le lot reste en validation finale tant que la régression frontend et le build n’ont pas été relancés après ce correctif partagé.
-
-- [ ] EN COURS — programmation/révocation de résiliation owner-only implémentées ; validation finale post-Drawer à clôturer.
-- [ ] EN COURS — programmation/révocation de downgrade owner-only implémentées ; validation finale post-Drawer à clôturer.
-- [ ] EN COURS — affichage et confirmation des dates effectives implémentés ; validation finale post-Drawer à clôturer.
-- [ ] EN COURS — actions incompatibles filtrées côté UX sans remplacer les invariants backend ; validation finale post-Drawer à clôturer.
-- [ ] EN COURS — invalidation/refetch de `WorkspaceSubscription` après chaque mutation implémenté ; validation finale post-Drawer à clôturer.
-- [ ] EN COURS — Billing/Payment réel reste explicitement hors périmètre tant que le provider n’est pas intégré.
+- [x] TERMINÉ — programmation/révocation de résiliation owner-only validées.
+- [x] TERMINÉ — programmation/révocation de downgrade owner-only validées.
+- [x] TERMINÉ — affichage et confirmation des dates effectives validés.
+- [x] TERMINÉ — actions incompatibles filtrées côté UX sans remplacer les invariants backend.
+- [x] TERMINÉ — invalidation/refetch de `WorkspaceSubscription` après chaque mutation validé.
+- [x] TERMINÉ — Billing/Payment réel reste explicitement hors périmètre tant que le provider n’est pas intégré.
+- [x] TERMINÉ — tests ciblés, régression frontend globale et build Vite signalés verts le 2026-09-02 après correction Drawer.
 
 ### Correctif UX transversal — Drawer partagé
 
-- [ ] EN COURS — `frontend/src/components/shared/entity-details-drawer.jsx` anime désormais l’ouverture et la fermeture depuis la droite avec une transition de 300 ms.
-- [ ] EN COURS — le voile de fond possède un fondu synchronisé.
-- [ ] EN COURS — le Drawer reste monté pendant la transition de fermeture afin de rendre l’animation de sortie réellement visible.
-- [ ] EN COURS — interactions désactivées pendant la phase de sortie et `aria-hidden` positionné sur le panneau fermé.
-- [ ] EN COURS — ombre partagée légère `shadow-lg` appliquée au composant générique, et non à un usage métier.
-- [ ] EN COURS — test partagé `entity-details-drawer.test.jsx` ajouté pour la transition, le démontage différé et l’ombre ; exécution locale encore requise après pull.
+- [x] TERMINÉ — `frontend/src/components/shared/entity-details-drawer.jsx` anime ouverture et fermeture depuis la droite avec transition de 300 ms.
+- [x] TERMINÉ — voile de fond avec fondu synchronisé.
+- [x] TERMINÉ — contenu métier conservé pendant la phase de sortie afin d’éviter le démontage instantané des wrappers.
+- [x] TERMINÉ — interactions désactivées pendant la sortie et `aria-hidden` positionné sur le panneau fermé.
+- [x] TERMINÉ — ombre partagée légère appliquée au composant générique.
+- [x] TERMINÉ — tests partagés et tests réels Membres/Rôles validés ; vérification visuelle de fermeture smooth confirmée le 2026-09-02.
 
-## 5. Ordre de production frontend restant
+## 5. Workspace Settings / Ownership frontend — F8.7
+
+- [x] TERMINÉ — contrat backend `PATCH /workspaces/:workspaceId` audité avant raccordement frontend.
+- [x] TERMINÉ — modification limitée au champ `name` réellement accepté par la validation backend.
+- [x] TERMINÉ — accès UI à la modification conditionné par `workspace:update`.
+- [x] TERMINÉ — transfert de propriété raccordé à `PATCH /workspaces/:workspaceId/ownership`.
+- [x] TERMINÉ — transfert exposé uniquement avec `workspace:ownership:transfer`.
+- [x] TERMINÉ — sélection du nouveau propriétaire limitée aux membres actifs non-owner.
+- [x] TERMINÉ — rôle de remplacement de l’ancien owner explicitement choisi.
+- [x] TERMINÉ — confirmation forte par mot de passe courant conservée conformément au backend.
+- [x] TERMINÉ — confirmation explicite des conséquences avant soumission.
+- [x] TERMINÉ — invalidation RTK Query du workspace et des membres après transfert.
+- [x] TERMINÉ — redirection vers le dashboard après transfert réussi afin de recharger le contexte de permissions.
+- [x] TERMINÉ — limitation connue des comptes Google-only conservée en dette existante ; aucun contournement frontend introduit.
+- [x] TERMINÉ — tests ciblés, régression frontend globale et build Vite signalés verts le 2026-09-02.
+
+## 6. Audit / Dashboard Core frontend — F8.8
+
+### F8.8.1 — Historique d’activité Workspace
+
+- [x] TERMINÉ — feature `frontend/src/features/audit-log/` créée selon l’architecture par fonctionnalité.
+- [x] TERMINÉ — consommation de `GET /workspaces/:workspaceId/audit-logs` via RTK Query.
+- [x] TERMINÉ — accès UI et route protégés par `audit:read`.
+- [x] TERMINÉ — entrée `Activité` ajoutée à la navigation Workspace uniquement selon permission effective.
+- [x] TERMINÉ — affichage paginé de l’action, acteur, ressource, statut et dates.
+- [x] TERMINÉ — libellés techniques traduits par une couche de présentation dédiée sans altérer les clés backend.
+- [x] TERMINÉ — date relative complétée par une date absolue lisible.
+- [x] TERMINÉ — filtres Action / Ressource / Statut / Période alignés sur le contrat backend.
+- [x] TERMINÉ — état des filtres et pagination conservé dans l’URL.
+- [x] TERMINÉ — paramètres URL invalides normalisés avant l’appel API sans remplacer la validation backend.
+- [x] TERMINÉ — aucune IP, user-agent ou metadata sensible exposée côté frontend.
+- [x] TERMINÉ — filtre `actorId` volontairement non exposé tant qu’aucun contrat de recherche d’acteurs autonome à `audit:read` n’existe.
+- [x] TERMINÉ — tests ciblés, régression frontend globale et build Vite signalés verts le 2026-09-02.
+
+### F8.8.2 — Dashboard Core
+
+- [ ] EN COURS — auditer les données réellement exposées par le backend avant toute carte ou KPI.
+- [ ] À FAIRE — afficher uniquement des indicateurs dérivables de contrats backend existants et autorisés.
+- [ ] À FAIRE — respecter les permissions de lecture de chaque source ; aucune requête additionnelle ne doit contourner le RBAC.
+- [ ] À FAIRE — privilégier la composition de composants de synthèse réutilisables plutôt qu’une logique lourde dans la page.
+- [ ] À FAIRE — prévoir états loading / error / unavailable par section sans rendre le dashboard inutilisable si une permission manque.
+- [ ] À FAIRE — tests ciblés + régression frontend + build Vite avant clôture.
+
+## 7. Ordre de production frontend restant
 
 ```text
 F8.5      Files frontend                              TERMINÉ
 F8.6.1    Subscription / Plan / Trial — lecture       TERMINÉ
 F8.6.2    Trial / changement de plan                  TERMINÉ
-F8.6.3    Résiliation / downgrade                     VALIDATION FINALE POST-DRAWER
-F8.7      Workspace Settings / Ownership frontend
-F8.8      Audit / Dashboard Core frontend
-F8.9      Account / Security frontend
+F8.6.3    Résiliation / downgrade                     TERMINÉ
+F8.7      Workspace Settings / Ownership frontend     TERMINÉ
+F8.8.1    Audit Workspace frontend                    TERMINÉ
+F8.8.2    Dashboard Core frontend                     EN COURS
+F8.9      Account / Security frontend                 À FAIRE
 F8-AUDIT  Maintenabilité + commentaires + JSDoc       OBLIGATOIRE AVANT F9
 F9.x      Platform Admin frontend réel
 F10       EntitlementOverride Workspace-scoped + Platform
 F11       Consolidation frontend + E2E
 ```
 
-## 6. Règle de validation de fin de lot
+## 8. Règle de validation de fin de lot
 
 Un lot frontend ne doit être marqué TERMINÉ qu’après :
 
@@ -162,17 +205,6 @@ Un lot frontend ne doit être marqué TERMINÉ qu’après :
 6. documentation des décisions ou dettes nouvelles ;
 7. absence de modification hors périmètre.
 
-Pour clôturer F8.6.3 après le correctif Drawer partagé :
-
-```bash
-cd frontend
-npm test -- src/components/shared/entity-details-drawer.test.jsx
-npm test
-npm run build
-```
-
-Si ces trois commandes sont vertes, marquer F8.6.3 et le correctif Drawer `TERMINÉ`, puis démarrer F8.7.
-
-## 7. Gate avant modules métier
+## 9. Gate avant modules métier
 
 Aucun module métier ne doit démarrer avant la finalisation du Core frontend, le checkpoint F8-AUDIT et les validations E2E prévues dans le Gate A du projet.
