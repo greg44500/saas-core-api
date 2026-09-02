@@ -20,8 +20,10 @@ const auditEntityTypeValues = new Set(AUDIT_ENTITY_TYPE_OPTIONS.map(([value]) =>
 const auditStatusValues = new Set(AUDIT_STATUS_OPTIONS.map(([value]) => value));
 
 function parsePage(value) {
-  const page = Number.parseInt(value ?? '1', 10);
-  return Number.isInteger(page) && page >= 1 ? page : 1;
+  if (!/^\d+$/.test(value ?? '')) return 1;
+
+  const page = Number(value);
+  return Number.isSafeInteger(page) && page >= 1 ? page : 1;
 }
 
 function readAllowedValue(searchParams, key, allowedValues) {
@@ -43,15 +45,22 @@ function isValidDateInput(value) {
 }
 
 function readFilters(searchParams) {
-  const from = searchParams.get('from') ?? '';
-  const to = searchParams.get('to') ?? '';
+  const rawFrom = searchParams.get('from') ?? '';
+  const rawTo = searchParams.get('to') ?? '';
+  let from = isValidDateInput(rawFrom) ? rawFrom : '';
+  let to = isValidDateInput(rawTo) ? rawTo : '';
+
+  if (from && to && from > to) {
+    from = '';
+    to = '';
+  }
 
   return {
     action: readAllowedValue(searchParams, 'action', auditActionValues),
     entityType: readAllowedValue(searchParams, 'entityType', auditEntityTypeValues),
     status: readAllowedValue(searchParams, 'status', auditStatusValues),
-    from: isValidDateInput(from) ? from : '',
-    to: isValidDateInput(to) ? to : '',
+    from,
+    to,
   };
 }
 
