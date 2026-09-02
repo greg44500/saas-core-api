@@ -5,14 +5,18 @@ import { Button } from '@/components/ui/button';
  *
  * La navigation précédente/suivante ne dépend d'aucun métier : les features
  * fournissent seulement la page courante, les métadonnées du backend et, si
- * nécessaire, un résumé plus riche. Cela évite que chaque écran réimplémente
- * les mêmes bornes et les mêmes boutons.
+ * nécessaire, un résumé ou des libellés contextualisés. Cela évite que chaque
+ * écran réimplémente les mêmes bornes et les mêmes boutons.
  */
 function DataPagination({
+  buttonSize,
   className = 'flex items-center justify-between gap-3 pt-4',
+  disabled = false,
+  nextLabel = 'Suivant',
   onPageChange,
   page,
   pagination,
+  previousLabel = 'Précédent',
   summary,
 }) {
   const totalPages = pagination?.totalPages ?? 1;
@@ -28,20 +32,22 @@ function DataPagination({
 
       <div className="flex gap-2">
         <Button
-          disabled={page <= 1}
+          disabled={disabled || page <= 1}
           onClick={() => onPageChange(Math.max(1, page - 1))}
+          size={buttonSize}
           type="button"
           variant="outline"
         >
-          Précédent
+          {previousLabel}
         </Button>
         <Button
-          disabled={page >= totalPages}
+          disabled={disabled || page >= totalPages}
           onClick={() => onPageChange(page + 1)}
+          size={buttonSize}
           type="button"
           variant="outline"
         >
-          Suivant
+          {nextLabel}
         </Button>
       </div>
     </div>
