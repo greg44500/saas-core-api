@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { DataPagination } from '@/components/data-display/data-pagination';
 import { Button } from '@/components/ui/button';
 import { useListWorkspaceAuditLogsQuery } from '@/features/audit-log/api/audit-log-api';
 import { AuditLogFilters, EMPTY_FILTERS } from '@/features/audit-log/components/audit-log-filters';
-import { AuditLogPagination } from '@/features/audit-log/components/audit-log-pagination';
 import { AuditLogTable } from '@/features/audit-log/components/audit-log-table';
 import {
   AUDIT_ACTION_OPTIONS,
@@ -184,10 +184,17 @@ function WorkspaceAuditLogPage() {
         )}
 
         <div className="px-5 pb-5">
-          <AuditLogPagination
+          <DataPagination
+            className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between"
             onPageChange={changePage}
             page={page}
             pagination={pagination}
+            summary={pagination ? (
+              <>
+                Page {pagination.page} sur {pagination.totalPages} · {pagination.total} événement
+                {pagination.total === 1 ? '' : 's'}
+              </>
+            ) : undefined}
           />
         </div>
       </section>
