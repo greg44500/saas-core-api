@@ -36,6 +36,11 @@ function ConfirmationDialog({
   const dialogRef = useRef(null);
   const cancelButtonRef = useRef(null);
   const previousFocusRef = useRef(null);
+  const onCancelRef = useRef(onCancel);
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  }, [onCancel]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -49,7 +54,7 @@ function ConfirmationDialog({
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onCancel();
+        onCancelRef.current?.();
         return;
       }
 
@@ -84,7 +89,7 @@ function ConfirmationDialog({
       document.removeEventListener('keydown', handleKeyDown);
       previousFocusRef.current?.focus?.();
     };
-  }, [onCancel, open]);
+  }, [open]);
 
   if (!open) return null;
 
