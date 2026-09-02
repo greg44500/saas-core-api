@@ -151,10 +151,12 @@ describe('WorkspaceOwnershipSection', () => {
         currentPassword: '123456789012345',
       });
     });
-    expect(navigateMock).toHaveBeenCalledWith(
-      `/workspaces/${workspaceId}/dashboard`,
-      { replace: true },
-    );
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith(
+        `/workspaces/${workspaceId}/dashboard`,
+        { replace: true },
+      );
+    });
   });
 
   it('présente le message d’erreur opérationnel renvoyé par le backend', async () => {
