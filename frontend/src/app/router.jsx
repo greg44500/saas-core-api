@@ -241,10 +241,10 @@ function createAppRoutes() {
                 {
                   path: 'workspaces',
                   lazy: async () => {
-                    const { PlatformSectionPlaceholderPage } = await import(
-                      '@/features/platform/pages/platform-section-placeholder-page'
+                    const { PlatformWorkspacesPage } = await import(
+                      '@/features/platform/pages/platform-workspaces-page'
                     );
-                    return { Component: () => <PlatformSectionPlaceholderPage title="Workspaces" /> };
+                    return { Component: PlatformWorkspacesPage };
                   },
                 },
                 {
