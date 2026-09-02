@@ -92,6 +92,18 @@ describe('WorkspaceSidebar', () => {
     expect(subscriptionLink).toHaveAttribute('href', '/workspaces/workspace-1/subscription');
   });
 
+  it('rend Paramètres navigable uniquement avec workspace:update', () => {
+    renderSidebar([
+      WORKSPACE_PERMISSION.WORKSPACE_READ,
+      WORKSPACE_PERMISSION.WORKSPACE_UPDATE,
+    ]);
+
+    const settingsLink = screen.getByRole('link', { name: 'Paramètres' });
+
+    expect(settingsLink).toBeInTheDocument();
+    expect(settingsLink).toHaveAttribute('href', '/workspaces/workspace-1/settings');
+  });
+
   it('conserve des libellés accessibles et expose des tooltips en mode réduit', () => {
     renderSidebar(
       [
