@@ -1,4 +1,6 @@
+import mongoose from 'mongoose';
 import {
+    afterEach,
     beforeEach,
     describe,
     expect,
@@ -54,6 +56,10 @@ describe('getPlatformWorkspace', () => {
         vi.clearAllMocks();
     });
 
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     it('retourne le détail avec des acteurs lisibles et une projection User minimale', async () => {
         const workspaceDocument = {
             _id: createId('workspace-1'),
@@ -98,6 +104,7 @@ describe('getPlatformWorkspace', () => {
             },
         ];
         const userQuery = createUserQuery(actorUsers);
+        const trustedSpy = vi.spyOn(mongoose, 'trusted');
 
         Workspace.findById.mockReturnValue(workspaceQuery);
         User.find.mockReturnValue(userQuery);
@@ -145,7 +152,19 @@ describe('getPlatformWorkspace', () => {
         ).toHaveBeenCalledWith(
             'workspace-1',
         );
+        expect(trustedSpy).toHaveBeenCalledWith({
+            $in: [
+                workspaceDocument.statusChangedBy,
+                workspaceDocument.createdBy,
+                workspaceDocument.updatedBy,
+            ],
+        });
         expect(User.find).toHaveBeenCalledOnce();
+        expect(User.find.mock.calls[0][0]._id.$in).toEqual([
+            workspaceDocument.statusChangedBy,
+            workspaceDocument.createdBy,
+            workspaceDocument.updatedBy,
+        ]);
         expect(userQuery.select).toHaveBeenCalledWith(
             '_id firstName lastName email',
         );
