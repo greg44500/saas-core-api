@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Frontend Core
 
-Dernière consolidation : 2026-09-02 — F8.5 Files frontend validé
+Dernière consolidation : 2026-09-02 — F8.6.1 Subscription / Plan / Trial en validation
 
 ## 1. Rôle du document
 
@@ -77,11 +77,43 @@ Référence : `docs/frontend-maintenance-audit.md`.
 
 Référence : `docs/functional-debt-file-trash-restore.md`.
 
-## 4. Ordre de production frontend restant
+## 4. Subscription / Plan / Trial frontend — F8.6
+
+### F8.6.1 — Lecture consolidée
+
+- [ ] EN COURS — feature `frontend/src/features/subscription/` créée par fonctionnalité.
+- [ ] EN COURS — lecture consolidée via `GET /workspaces/:workspaceId/subscription` et RTK Query.
+- [ ] EN COURS — route `/workspaces/:workspaceId/subscription` protégée par `subscription:read`.
+- [ ] EN COURS — navigation Abonnement activée uniquement avec `subscription:read`.
+- [ ] EN COURS — affichage du plan effectif depuis `effectiveEntitlement`, sans reconstruction frontend du fallback commercial → baseline.
+- [ ] EN COURS — affichage du mode `normal` / `remediation` et des limites bloquantes réellement fournies par le backend.
+- [ ] EN COURS — barre de progression du trial uniquement lorsque l’entitlement serveur confirme que le trial commercial est encore effectif.
+- [ ] EN COURS — catalogue public des plans affiché en lecture seule avec les tarifs existants.
+- [ ] EN COURS — distinction UX owner/admin : lecture pour les deux, commandes commerciales réservées au propriétaire.
+- [ ] EN COURS — tests ciblés à valider.
+- [ ] EN COURS — régression frontend globale et build Vite à valider.
+
+### F8.6.2 — Trial et changement de plan
+
+- [ ] À FAIRE — démarrage/changement de trial owner-only.
+- [ ] À FAIRE — retour volontaire vers Free pendant trial avec confirmation explicite de consommation définitive de l’éligibilité.
+- [ ] À FAIRE — étendre le contrat backend du catalogue avant UX de trial : `/api/plans` n’expose actuellement ni `trialEnabled` ni `trialDurationDays`, donc le frontend ne doit pas deviner l’éligibilité d’un plan.
+- [ ] À FAIRE — invalidation/refetch systématique de `WorkspaceSubscription` après mutation au lieu de reconstruire localement l’entitlement.
+
+### F8.6.3 — Cycle de vie commercial
+
+- [ ] À FAIRE — programmation/révocation de résiliation owner-only.
+- [ ] À FAIRE — programmation/révocation de downgrade owner-only.
+- [ ] À FAIRE — affichage et confirmation des dates effectives.
+- [ ] À FAIRE — conserver Billing/Payment réel hors périmètre tant que le provider n’est pas intégré.
+
+## 5. Ordre de production frontend restant
 
 ```text
 F8.5      Files frontend                              TERMINÉ
-F8.6      Subscription / Plan / Trial frontend         PROCHAINE ÉTAPE
+F8.6.1    Subscription / Plan / Trial — lecture        EN VALIDATION
+F8.6.2    Trial / changement de plan                  À FAIRE
+F8.6.3    Résiliation / downgrade                     À FAIRE
 F8.7      Workspace Settings / Ownership frontend
 F8.8      Audit / Dashboard Core frontend
 F8.9      Account / Security frontend
@@ -91,7 +123,7 @@ F10       EntitlementOverride Workspace-scoped + Platform
 F11       Consolidation frontend + E2E
 ```
 
-## 5. Règle de validation de fin de lot
+## 6. Règle de validation de fin de lot
 
 Un lot frontend ne doit être marqué TERMINÉ qu’après :
 
@@ -103,6 +135,6 @@ Un lot frontend ne doit être marqué TERMINÉ qu’après :
 6. documentation des décisions ou dettes nouvelles ;
 7. absence de modification hors périmètre.
 
-## 6. Gate avant modules métier
+## 7. Gate avant modules métier
 
 Aucun module métier ne doit démarrer avant la finalisation du Core frontend, le checkpoint F8-AUDIT et les validations E2E prévues dans le Gate A du projet.
