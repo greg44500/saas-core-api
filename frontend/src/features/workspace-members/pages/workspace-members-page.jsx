@@ -5,6 +5,7 @@ import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
+import { useToast } from '@/components/shared/toast-provider';
 import { Tooltip } from '@/components/shared/tooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,13 +39,14 @@ function getApiMessage(error, fallback) {
 
 function WorkspaceMembersPage() {
   const { workspace, permissions, can } = useWorkspaceContext();
+  const { toast } = useToast();
   const { data: currentUser } = useGetCurrentUserQuery();
   const [memberPage, setMemberPage] = useState(1);
   const [invitationPage, setInvitationPage] = useState(1);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRoleId, setInviteRoleId] = useState('');
-  const [feedback, setFeedback] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
+  const [pendingActionError, setPendingActionError] = useState(null);
   const [selectedMember, setSelectedMember] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
 
@@ -99,7 +101,6 @@ function WorkspaceMembersPage() {
 
   async function handleInvite(event) {
     event.preventDefault();
-    setFeedback(null);
 
     try {
       await createInvitation({
@@ -109,45 +110,62 @@ function WorkspaceMembersPage() {
       }).unwrap();
       setInviteEmail('');
       setInviteRoleId('');
-      setFeedback({ type: 'success', message: 'Invitation envoyée.' });
+      toast({ title: 'Invitation envoyée', variant: 'success' });
     } catch (error) {
-      setFeedback({
-        type: 'error',
-        message: getApiMessage(error, "L’invitation n’a pas pu être envoyée."),
+      toast({
+        title: 'Envoi de l’invitation impossible',
+        description: getApiMessage(error, "L’invitation n’a pas pu être envoyée."),
+        variant: 'error',
       });
     }
   }
 
   async function handleRoleChange(memberId, roleId) {
-    setFeedback(null);
     try {
       await updateMemberRole({ workspaceId: workspace.id, memberId, roleId }).unwrap();
-      setFeedback({ type: 'success', message: 'Rôle mis à jour.' });
+      toast({ title: 'Rôle du membre mis à jour', variant: 'success' });
     } catch (error) {
-      setFeedback({ type: 'error', message: getApiMessage(error, 'Le rôle n’a pas pu être modifié.') });
+      toast({
+        title: 'Modification du rôle impossible',
+        description: getApiMessage(error, 'Le rôle n’a pas pu être modifié.'),
+        variant: 'error',
+      });
     }
+  }
+
+  function openPendingAction(action) {
+    setPendingActionError(null);
+    setPendingAction(action);
+  }
+
+  function closePendingAction() {
+    if (mutationPending) return;
+    setPendingActionError(null);
+    setPendingAction(null);
   }
 
   async function confirmPendingAction() {
     if (!pendingAction) return;
-    setFeedback(null);
+    setPendingActionError(null);
 
     try {
       if (pendingAction.type === 'suspend') {
         await suspendMember({ workspaceId: workspace.id, memberId: pendingAction.id }).unwrap();
-        setFeedback({ type: 'success', message: 'Membre suspendu.' });
+        toast({ title: 'Membre suspendu', variant: 'success' });
       }
       if (pendingAction.type === 'remove') {
         await removeMember({ workspaceId: workspace.id, memberId: pendingAction.id }).unwrap();
-        setFeedback({ type: 'success', message: 'Membre retiré du workspace.' });
+        toast({ title: 'Membre retiré du workspace', variant: 'success' });
       }
       if (pendingAction.type === 'revoke-invitation') {
         await revokeInvitation({ workspaceId: workspace.id, invitationId: pendingAction.id }).unwrap();
-        setFeedback({ type: 'success', message: 'Invitation révoquée.' });
+        toast({ title: 'Invitation révoquée', variant: 'success' });
       }
       setPendingAction(null);
     } catch (error) {
-      setFeedback({ type: 'error', message: getApiMessage(error, "L’action n’a pas pu être effectuée.") });
+      setPendingActionError(
+        getApiMessage(error, "L’action n’a pas pu être effectuée."),
+      );
     }
   }
 
@@ -243,7 +261,7 @@ function WorkspaceMembersPage() {
               <ActionIconButton
                 Icon={Ban}
                 label="Suspendre"
-                onClick={() => setPendingAction({
+                onClick={() => openPendingAction({
                   type: 'suspend',
                   id: member.id,
                   message: `Suspendre ${memberName} ?`,
@@ -255,7 +273,7 @@ function WorkspaceMembersPage() {
               <ActionIconButton
                 Icon={UserMinus}
                 label="Retirer"
-                onClick={() => setPendingAction({
+                onClick={() => openPendingAction({
                   type: 'remove',
                   id: member.id,
                   message: `Retirer ${memberName} de ce workspace ?`,
@@ -277,19 +295,6 @@ function WorkspaceMembersPage() {
           Gérez les accès à {workspace.name} selon les permissions de votre rôle.
         </p>
       </div>
-
-      {feedback && (
-        <p
-          className={`rounded-md border p-3 text-sm ${
-            feedback.type === 'error'
-              ? 'border-destructive/30 bg-destructive/10 text-destructive'
-              : 'border-success/30 bg-success/10'
-          }`}
-          role="status"
-        >
-          {feedback.message}
-        </p>
-      )}
 
       {can(WORKSPACE_PERMISSION.MEMBER_INVITE) && can(WORKSPACE_PERMISSION.ROLE_READ) && (
         <section className="rounded-xl border border-border bg-card p-5">
@@ -380,9 +385,13 @@ function WorkspaceMembersPage() {
                           onClick={async () => {
                             try {
                               await resendInvitation({ workspaceId: workspace.id, invitationId: invitation.id }).unwrap();
-                              setFeedback({ type: 'success', message: 'Invitation renvoyée.' });
+                              toast({ title: 'Invitation renvoyée', variant: 'success' });
                             } catch (error) {
-                              setFeedback({ type: 'error', message: getApiMessage(error, "L’invitation n’a pas pu être renvoyée.") });
+                              toast({
+                                title: 'Renvoi de l’invitation impossible',
+                                description: getApiMessage(error, "L’invitation n’a pas pu être renvoyée."),
+                                variant: 'error',
+                              });
                             }
                           }}
                         >
@@ -392,7 +401,7 @@ function WorkspaceMembersPage() {
                           type="button"
                           size="sm"
                           variant="destructive"
-                          onClick={() => setPendingAction({
+                          onClick={() => openPendingAction({
                             type: 'revoke-invitation',
                             id: invitation.id,
                             message: `Révoquer l’invitation envoyée à ${invitation.email} ?`,
@@ -419,7 +428,8 @@ function WorkspaceMembersPage() {
 
       <ConfirmationDialog
         description={pendingAction?.message}
-        onCancel={() => setPendingAction(null)}
+        errorMessage={pendingActionError}
+        onCancel={closePendingAction}
         onConfirm={confirmPendingAction}
         open={Boolean(pendingAction)}
         pending={mutationPending}
