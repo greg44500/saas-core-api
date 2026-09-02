@@ -21,7 +21,6 @@ vi.mock('@/features/auth/api/auth-api', () => ({
 
 vi.mock('@/features/workspace-members/api/workspace-members-api', () => ({
   useListWorkspaceMembersQuery: mocks.useListWorkspaceMembersQuery,
-  useListWorkspaceRolesQuery: mocks.useListWorkspaceRolesQuery,
   useListWorkspaceInvitationsQuery: mocks.useListWorkspaceInvitationsQuery,
   useCreateWorkspaceInvitationMutation: mocks.useCreateWorkspaceInvitationMutation,
   useResendWorkspaceInvitationMutation: mocks.useResendWorkspaceInvitationMutation,
@@ -29,6 +28,10 @@ vi.mock('@/features/workspace-members/api/workspace-members-api', () => ({
   useUpdateWorkspaceMemberRoleMutation: mocks.useUpdateWorkspaceMemberRoleMutation,
   useSuspendWorkspaceMemberMutation: mocks.useSuspendWorkspaceMemberMutation,
   useRemoveWorkspaceMemberMutation: mocks.useRemoveWorkspaceMemberMutation,
+}));
+
+vi.mock('@/features/workspace-roles/api/workspace-roles-api', () => ({
+  useListWorkspaceRolesQuery: mocks.useListWorkspaceRolesQuery,
 }));
 
 import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
