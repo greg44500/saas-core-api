@@ -13,7 +13,6 @@ import {
   useCreateWorkspaceInvitationMutation,
   useListWorkspaceInvitationsQuery,
   useListWorkspaceMembersQuery,
-  useListWorkspaceRolesQuery,
   useRemoveWorkspaceMemberMutation,
   useResendWorkspaceInvitationMutation,
   useRevokeWorkspaceInvitationMutation,
@@ -27,6 +26,7 @@ import {
   formatInvitationStatus,
   formatMemberStatus,
 } from '@/features/workspace-members/lib/workspace-member-formatters';
+import { useListWorkspaceRolesQuery } from '@/features/workspace-roles/api/workspace-roles-api';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
