@@ -15,6 +15,7 @@ describe('audit log presentation', () => {
     expect(getAuditActionLabel('WORKSPACE_OWNERSHIP_TRANSFERRED')).toBe(
       'Propriété du workspace transférée',
     );
+    expect(getAuditActionLabel('USER_PROFILE_UPDATED')).toBe('Profil utilisateur modifié');
     expect(getAuditEntityTypeLabel('WorkspaceMember')).toBe('Membre');
     expect(getAuditStatusLabel('failed')).toBe('Échouée');
   });
