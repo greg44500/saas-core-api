@@ -139,7 +139,7 @@ describe('WorkspaceMembersPage', () => {
     vi.clearAllMocks();
   });
 
-  it('affiche les membres et protège le propriétaire courant', () => {
+  it('affiche les membres sans répéter un statut technique de protection', () => {
     renderPage([
       WORKSPACE_PERMISSION.MEMBER_READ,
       WORKSPACE_PERMISSION.MEMBER_UPDATE,
@@ -152,7 +152,8 @@ describe('WorkspaceMembersPage', () => {
     expect(screen.getByText('Owner User')).toBeInTheDocument();
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
     expect(screen.getByText('Vous')).toBeInTheDocument();
-    expect(screen.getByText('Protégé')).toBeInTheDocument();
+    expect(screen.queryByText('Protégé')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Actif')).toHaveLength(2);
     expect(screen.getByRole('button', { name: 'Suspendre' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Retirer' })).toBeInTheDocument();
   });
@@ -166,6 +167,7 @@ describe('WorkspaceMembersPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Inviter un membre' })).toBeInTheDocument();
     expect(screen.getByLabelText('Email du membre')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email du membre')).toHaveAttribute('placeholder', 'membre@entreprise.fr');
     expect(screen.getByLabelText('Rôle du membre')).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: 'Propriétaire' })).not.toBeInTheDocument();
   });
