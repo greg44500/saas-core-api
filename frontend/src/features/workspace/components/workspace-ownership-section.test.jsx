@@ -2,6 +2,8 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ToastProvider } from '@/components/shared/toast-provider';
+
 const navigateMock = vi.hoisted(() => vi.fn());
 const transferWorkspaceOwnershipMock = vi.hoisted(() => vi.fn());
 const transferUnwrapMock = vi.hoisted(() => vi.fn());
@@ -102,6 +104,14 @@ async function completeTransferForm(user) {
   );
 }
 
+function renderSection() {
+  return render(
+    <ToastProvider>
+      <WorkspaceOwnershipSection workspaceId={workspaceId} />
+    </ToastProvider>,
+  );
+}
+
 describe('WorkspaceOwnershipSection', () => {
   beforeEach(() => {
     navigateMock.mockReset();
@@ -126,7 +136,7 @@ describe('WorkspaceOwnershipSection', () => {
       newOwnerMemberId,
     });
 
-    render(<WorkspaceOwnershipSection workspaceId={workspaceId} />);
+    renderSection();
 
     expect(screen.getByRole('option', { name: 'Marie Martin — Administrateur' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /Greg Owner/ })).not.toBeInTheDocument();
@@ -154,6 +164,9 @@ describe('WorkspaceOwnershipSection', () => {
         currentPassword: '123456789012345',
       });
     });
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Propriété du workspace transférée',
+    );
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith(
         `/workspaces/${workspaceId}/dashboard`,
@@ -162,7 +175,7 @@ describe('WorkspaceOwnershipSection', () => {
     });
   });
 
-  it('présente le message d’erreur opérationnel renvoyé par le backend', async () => {
+  it('présente le message d’erreur opérationnel renvoyé par le backend dans le formulaire sensible', async () => {
     const user = userEvent.setup();
     transferUnwrapMock.mockRejectedValue({
       data: {
@@ -170,7 +183,7 @@ describe('WorkspaceOwnershipSection', () => {
       },
     });
 
-    render(<WorkspaceOwnershipSection workspaceId={workspaceId} />);
+    renderSection();
 
     await completeTransferForm(user);
     await user.click(
