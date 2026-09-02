@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 import { User } from '../../../users/user.model.js';
 import { Workspace } from '../../../workspace/workspace.model.js';
 
@@ -54,9 +56,11 @@ const getPlatformWorkspace = async ({ workspaceId }) => {
     if (!workspace) return null;
 
     /*
-     * Les trois références viennent du document Workspace et non d'une entrée
-     * utilisateur. Une seule requête bornée permet de résoudre leur identité
-     * sans multiplier les accès à la base et sans exposer d'autres champs User.
+     * Les trois références viennent exclusivement du document Workspace lu en
+     * base. Le filtre `$in` est donc construit par le backend et non par une
+     * entrée utilisateur. `mongoose.trusted()` autorise cet opérateur interne
+     * sans désactiver la protection globale `sanitizeFilter` contre les filtres
+     * MongoDB non fiables.
      */
     const actorIds = [
         workspace.statusChangedBy,
@@ -66,9 +70,9 @@ const getPlatformWorkspace = async ({ workspaceId }) => {
 
     const actorUsers = actorIds.length > 0
         ? await User.find({
-            _id: {
+            _id: mongoose.trusted({
                 $in: actorIds,
-            },
+            }),
         })
             .select('_id firstName lastName email')
             .lean()
