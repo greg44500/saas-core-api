@@ -2,7 +2,15 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ToastProvider } from '@/components/shared/toast-provider';
+
 const mocks = vi.hoisted(() => ({
+  createInvitation: vi.fn(),
+  removeMember: vi.fn(),
+  resendInvitation: vi.fn(),
+  revokeInvitation: vi.fn(),
+  suspendMember: vi.fn(),
+  updateMemberRole: vi.fn(),
   useGetCurrentUserQuery: vi.fn(),
   useListWorkspaceMembersQuery: vi.fn(),
   useListWorkspaceRolesQuery: vi.fn(),
@@ -44,19 +52,22 @@ const membership = {
   role: { key: 'owner', name: 'Propriétaire' },
 };
 
-function mutationMock() {
-  return [vi.fn(), { isLoading: false }];
+function resolvedMutation(mock) {
+  mock.mockReturnValue({ unwrap: vi.fn().mockResolvedValue({}) });
+  return [mock, { isLoading: false }];
 }
 
 function renderPage(permissions) {
   return render(
-    <WorkspaceProvider
-      workspace={workspace}
-      membership={membership}
-      permissions={permissions}
-    >
-      <WorkspaceMembersPage />
-    </WorkspaceProvider>,
+    <ToastProvider>
+      <WorkspaceProvider
+        workspace={workspace}
+        membership={membership}
+        permissions={permissions}
+      >
+        <WorkspaceMembersPage />
+      </WorkspaceProvider>
+    </ToastProvider>,
   );
 }
 
@@ -129,12 +140,25 @@ describe('WorkspaceMembersPage', () => {
     mocks.useListWorkspaceInvitationsQuery.mockReturnValue({
       data: { invitations: [], pagination: { page: 1, totalPages: 1 } },
     });
-    mocks.useCreateWorkspaceInvitationMutation.mockReturnValue(mutationMock());
-    mocks.useResendWorkspaceInvitationMutation.mockReturnValue(mutationMock());
-    mocks.useRevokeWorkspaceInvitationMutation.mockReturnValue(mutationMock());
-    mocks.useUpdateWorkspaceMemberRoleMutation.mockReturnValue(mutationMock());
-    mocks.useSuspendWorkspaceMemberMutation.mockReturnValue(mutationMock());
-    mocks.useRemoveWorkspaceMemberMutation.mockReturnValue(mutationMock());
+
+    mocks.useCreateWorkspaceInvitationMutation.mockReturnValue(
+      resolvedMutation(mocks.createInvitation),
+    );
+    mocks.useResendWorkspaceInvitationMutation.mockReturnValue(
+      resolvedMutation(mocks.resendInvitation),
+    );
+    mocks.useRevokeWorkspaceInvitationMutation.mockReturnValue(
+      resolvedMutation(mocks.revokeInvitation),
+    );
+    mocks.useUpdateWorkspaceMemberRoleMutation.mockReturnValue(
+      resolvedMutation(mocks.updateMemberRole),
+    );
+    mocks.useSuspendWorkspaceMemberMutation.mockReturnValue(
+      resolvedMutation(mocks.suspendMember),
+    );
+    mocks.useRemoveWorkspaceMemberMutation.mockReturnValue(
+      resolvedMutation(mocks.removeMember),
+    );
   });
 
   afterEach(() => {
@@ -173,6 +197,47 @@ describe('WorkspaceMembersPage', () => {
     expect(screen.getByLabelText('Email du membre')).toHaveAttribute('placeholder', 'membre@entreprise.fr');
     expect(screen.getByLabelText('Rôle du membre')).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: 'Propriétaire' })).not.toBeInTheDocument();
+  });
+
+  it('confirme une invitation envoyée par toast', async () => {
+    const user = userEvent.setup();
+    renderPage([
+      WORKSPACE_PERMISSION.MEMBER_READ,
+      WORKSPACE_PERMISSION.MEMBER_INVITE,
+      WORKSPACE_PERMISSION.ROLE_READ,
+    ]);
+
+    await user.type(screen.getByLabelText('Email du membre'), 'jane@example.com');
+    await user.selectOptions(screen.getByLabelText('Rôle du membre'), 'role-member');
+    await user.click(screen.getByRole('button', { name: 'Inviter' }));
+
+    expect(mocks.createInvitation).toHaveBeenCalledWith({
+      workspaceId: 'workspace-1',
+      email: 'jane@example.com',
+      roleId: 'role-member',
+    });
+    expect(await screen.findByRole('status')).toHaveTextContent('Invitation envoyée');
+  });
+
+  it('conserve une erreur de suspension dans la confirmation sensible', async () => {
+    const user = userEvent.setup();
+    mocks.suspendMember.mockReturnValue({
+      unwrap: vi.fn().mockRejectedValue({
+        data: { message: 'Suspension refusée' },
+      }),
+    });
+
+    renderPage([
+      WORKSPACE_PERMISSION.MEMBER_READ,
+      WORKSPACE_PERMISSION.MEMBER_SUSPEND,
+      WORKSPACE_PERMISSION.ROLE_READ,
+    ]);
+
+    await user.click(screen.getByRole('button', { name: 'Suspendre' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmer' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Suspension refusée');
   });
 
   it('ouvre le détail du membre avec les permissions de son rôle', async () => {
