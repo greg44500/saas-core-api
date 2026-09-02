@@ -17,6 +17,10 @@ vi.mock('@/features/auth/components/user-menu', () => ({
   UserMenu: () => <button type="button">Compte test</button>,
 }));
 
+vi.mock('@/features/files/components/workspace-files-route', () => ({
+  WorkspaceFilesRoute: () => <h1>Fichiers</h1>,
+}));
+
 vi.mock('@/features/platform/components/platform-guard', () => ({
   PlatformGuard: () => <Outlet />,
 }));
@@ -126,6 +130,15 @@ describe('application routing', () => {
       screen.getByRole('heading', { name: 'Tableau de bord' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Compte test' })).toBeInTheDocument();
+  });
+
+  it('rend la route Files dans le shell workspace', async () => {
+    renderRoute('/workspaces/workspace-123/files', 'authenticated');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Fichiers' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Fichiers' })).toBeInTheDocument();
   });
 
   it('rend le shell Platform et sa navigation pour une session authentifiée', async () => {
