@@ -120,6 +120,20 @@ Après succès :
 - le frontend termine sa session locale ;
 - une nouvelle authentification est obligatoire.
 
+### Mot de passe actuel oublié
+
+Le frontend ne contourne jamais la vérification du mot de passe actuel.
+
+Si l'utilisateur ne connaît plus ce secret, la page `/account/security` propose un lien vers le workflow existant :
+
+```text
+/forgot-password
+```
+
+L'adresse email du compte courant peut être préremplie dans le formulaire afin d'éviter une ressaisie inutile, mais elle reste modifiable côté formulaire public.
+
+Le workflow reste celui de récupération par email décrit aux sections 6 et 7. Après reset réussi, les sessions sont invalidées conformément au backend.
+
 ## 5. Révocation de toutes les sessions
 
 ```text
@@ -129,6 +143,8 @@ POST /api/auth/logout-all
 Route authentifiée, réponse `204 No Content`.
 
 Le frontend demande une confirmation explicite avant l'action. Après succès, l'utilisateur revient à la connexion.
+
+Le frontend ne doit pas annoncer la révocation globale comme réussie avant confirmation serveur. En cas d'échec HTTP, la session locale reste utilisable et un message d'erreur est présenté.
 
 Le Core V1 n'expose pas de listing des appareils/sessions actives. Une future gestion session-par-session nécessitera un contrat backend dédié ; le frontend ne doit pas inventer cette liste.
 
@@ -147,6 +163,8 @@ Body :
 ```
 
 Le frontend doit conserver la réponse générique fournie par le backend afin de ne pas révéler si le compte existe.
+
+Lorsque le workflow est ouvert depuis `/account/security`, le retour vers cette page doit conserver la destination d'origine du compte afin que l'utilisateur puisse ensuite revenir exactement au Workspace ou à la console Platform depuis lesquels il avait ouvert ses paramètres personnels.
 
 ## 7. Réinitialisation du mot de passe
 
@@ -175,7 +193,7 @@ Le token est opaque. Le frontend ne tente jamais d'en déduire l'identité, la v
 
 Après succès, les sessions existantes sont invalidées et l'utilisateur est redirigé vers la connexion.
 
-## 8. Routes frontend
+## 8. Routes frontend et navigation
 
 ```text
 /account/profile
@@ -188,12 +206,24 @@ Après succès, les sessions existantes sont invalidées et l'utilisateur est re
 
 Les deux parcours de récupération restent publics afin qu'un utilisateur puisse récupérer son compte indépendamment de l'état local de session du navigateur.
 
+Le shell Account est global et ne réutilise pas la Sidebar Workspace : un compte utilisateur n'appartient pas à un workspace particulier.
+
+Lorsqu'un utilisateur ouvre Profil ou Sécurité depuis le menu utilisateur, le frontend mémorise la route d'origine. Le layout Account expose un bouton visible `Retour à l’application` qui ramène exactement à cette route.
+
+Cette destination est conservée lors de la navigation interne Profil ↔ Sécurité et lors du détour Sécurité → Mot de passe oublié → Sécurité.
+
+Fallback en accès direct :
+
+- utilisateur standard → `/workspaces` ;
+- `super_admin` → `/platform/overview`.
+
 ## 9. Gestion d'état frontend
 
 - profil courant : RTK Query ;
 - mutation du profil : RTK Query avec invalidation `CurrentUser` ;
 - formulaires : React Hook Form + Zod ;
 - confirmation locale de `logout-all` : `useState` ;
+- destination de retour du shell Account : navigation React Router ;
 - aucun duplicat du User dans Redux Toolkit.
 
 ## 10. Hors périmètre F8.9
