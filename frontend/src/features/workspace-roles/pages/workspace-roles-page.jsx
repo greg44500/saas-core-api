@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 
+import { DATA_TABLE_STYLES } from '@/components/data-display/data-table-styles';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { Button } from '@/components/ui/button';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
@@ -191,10 +192,10 @@ function WorkspaceRolesPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
                 <tr>
-                  <th className="px-5 py-3 font-medium">Rôle</th>
-                  <th className="px-5 py-3 font-medium">Type</th>
-                  <th className="px-5 py-3 font-medium">Permissions</th>
-                  <th className="px-5 py-3 font-medium">Actions</th>
+                  <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Rôle</th>
+                  <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Type</th>
+                  <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Permissions</th>
+                  <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -207,18 +208,18 @@ function WorkspaceRolesPage() {
 
                   return (
                     <tr key={role.id}>
-                      <td className="px-5 py-4">
+                      <td className={DATA_TABLE_STYLES.bodyCell}>
                         <p className="font-medium">{role.name}</p>
                         <p className="mt-1 max-w-xl text-xs text-muted-foreground">
                           {role.description || 'Aucune description.'}
                         </p>
                       </td>
-                      <td className="px-5 py-4">
+                      <td className={DATA_TABLE_STYLES.bodyCell}>
                         <RoleTypeBadge role={role} />
                       </td>
-                      <td className="px-5 py-4">{role.permissions?.length ?? 0}</td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-wrap gap-2">
+                      <td className={DATA_TABLE_STYLES.bodyCell}>{role.permissions?.length ?? 0}</td>
+                      <td className={DATA_TABLE_STYLES.bodyCell}>
+                        <div className={`flex flex-wrap ${DATA_TABLE_STYLES.actionGroup}`}>
                           <ActionIconButton
                             Icon={Eye}
                             label="Voir"
