@@ -17,6 +17,15 @@ vi.mock('@/features/auth/components/user-menu', () => ({
   UserMenu: () => <button type="button">Compte test</button>,
 }));
 
+vi.mock('@/features/workspace/pages/workspace-dashboard-page', () => ({
+  WorkspaceDashboardPage: () => (
+    <>
+      <span>Workspace Démo</span>
+      <h1>Tableau de bord</h1>
+    </>
+  ),
+}));
+
 vi.mock('@/features/files/components/workspace-files-route', () => ({
   WorkspaceFilesRoute: () => <h1>Fichiers</h1>,
 }));
