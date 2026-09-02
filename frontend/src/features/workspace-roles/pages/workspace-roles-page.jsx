@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 
-import { DATA_TABLE_STYLES } from '@/components/data-display/data-table-styles';
+import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { Button } from '@/components/ui/button';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
@@ -121,6 +121,76 @@ function WorkspaceRolesPage() {
     );
   }
 
+  const columns = [
+    {
+      id: 'role',
+      header: 'Rôle',
+      cell: (role) => (
+        <>
+          <p className="font-medium">{role.name}</p>
+          <p className="mt-1 max-w-xl text-xs text-muted-foreground">
+            {role.description || 'Aucune description.'}
+          </p>
+        </>
+      ),
+    },
+    {
+      id: 'type',
+      header: 'Type',
+      cell: (role) => <RoleTypeBadge role={role} />,
+    },
+    {
+      id: 'permissions',
+      header: 'Permissions',
+      cell: (role) => role.permissions?.length ?? 0,
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: (role) => {
+        const editable = !role.isSystem && role.isEditable === true;
+        const actorCanAdminister = (role.permissions ?? []).every(
+          (permission) => actorPermissionSet.has(permission),
+        );
+        const administrable = editable && actorCanAdminister;
+
+        return (
+          <DataTableActions className="flex-wrap">
+            <ActionIconButton
+              Icon={Eye}
+              label="Voir"
+              onClick={() => setSelectedRole(role)}
+              variant="outline"
+            />
+
+            {/*
+             * L'absence d'action suffit à traduire la non-modifiabilité
+             * d'un rôle. Répéter des mentions techniques comme « Protégé »
+             * ou « Niveau supérieur » sur chaque ligne alourdit le tableau ;
+             * le backend reste l'autorité qui refuse toute escalade.
+             */}
+            {administrable && can(WORKSPACE_PERMISSION.ROLE_UPDATE) && (
+              <ActionIconButton
+                Icon={Pencil}
+                label="Modifier"
+                onClick={() => openEdit(role)}
+                variant="outline"
+              />
+            )}
+            {administrable && can(WORKSPACE_PERMISSION.ROLE_DELETE) && (
+              <ActionIconButton
+                Icon={Trash2}
+                label="Supprimer"
+                onClick={() => setDeleteCandidate(role)}
+                variant="destructive"
+              />
+            )}
+          </DataTableActions>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -188,75 +258,7 @@ function WorkspaceRolesPage() {
         {roles.length === 0 ? (
           <p className="p-5 text-sm text-muted-foreground">Aucun rôle disponible.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-muted/50 text-muted-foreground">
-                <tr>
-                  <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Rôle</th>
-                  <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Type</th>
-                  <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Permissions</th>
-                  <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {roles.map((role) => {
-                  const editable = !role.isSystem && role.isEditable === true;
-                  const actorCanAdminister = (role.permissions ?? []).every(
-                    (permission) => actorPermissionSet.has(permission),
-                  );
-                  const administrable = editable && actorCanAdminister;
-
-                  return (
-                    <tr key={role.id}>
-                      <td className={DATA_TABLE_STYLES.bodyCell}>
-                        <p className="font-medium">{role.name}</p>
-                        <p className="mt-1 max-w-xl text-xs text-muted-foreground">
-                          {role.description || 'Aucune description.'}
-                        </p>
-                      </td>
-                      <td className={DATA_TABLE_STYLES.bodyCell}>
-                        <RoleTypeBadge role={role} />
-                      </td>
-                      <td className={DATA_TABLE_STYLES.bodyCell}>{role.permissions?.length ?? 0}</td>
-                      <td className={DATA_TABLE_STYLES.bodyCell}>
-                        <div className={`flex flex-wrap ${DATA_TABLE_STYLES.actionGroup}`}>
-                          <ActionIconButton
-                            Icon={Eye}
-                            label="Voir"
-                            onClick={() => setSelectedRole(role)}
-                            variant="outline"
-                          />
-
-                          {/*
-                           * L'absence d'action suffit à traduire la non-modifiabilité
-                           * d'un rôle. Répéter des mentions techniques comme « Protégé »
-                           * ou « Niveau supérieur » sur chaque ligne alourdit le tableau ;
-                           * le backend reste l'autorité qui refuse toute escalade.
-                           */}
-                          {administrable && can(WORKSPACE_PERMISSION.ROLE_UPDATE) && (
-                            <ActionIconButton
-                              Icon={Pencil}
-                              label="Modifier"
-                              onClick={() => openEdit(role)}
-                              variant="outline"
-                            />
-                          )}
-                          {administrable && can(WORKSPACE_PERMISSION.ROLE_DELETE) && (
-                            <ActionIconButton
-                              Icon={Trash2}
-                              label="Supprimer"
-                              onClick={() => setDeleteCandidate(role)}
-                              variant="destructive"
-                            />
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DataTable columns={columns} data={roles} getRowKey={(role) => role.id} />
         )}
       </section>
 
