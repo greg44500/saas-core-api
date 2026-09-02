@@ -35,13 +35,17 @@ describe('audit log presentation', () => {
     expect(formatAuditAbsoluteDate(value)).not.toBe('Date inconnue');
   });
 
-  it('convertit les bornes de date locale en ISO sans fabriquer une valeur invalide', () => {
+  it('convertit les bornes de date locale en ISO sans dépendre du fuseau de test', () => {
     const start = dateInputToIsoBoundary('2026-09-01', 'start');
     const end = dateInputToIsoBoundary('2026-09-01', 'end');
+    const startTime = Date.parse(start);
+    const endTime = Date.parse(end);
 
-    expect(start).toMatch(/^2026-09-\d{2}T/);
-    expect(end).toMatch(/^2026-09-\d{2}T/);
-    expect(new Date(start).getTime()).toBeLessThan(new Date(end).getTime());
+    expect(Number.isNaN(startTime)).toBe(false);
+    expect(Number.isNaN(endTime)).toBe(false);
+    expect(start).toBe(new Date(startTime).toISOString());
+    expect(end).toBe(new Date(endTime).toISOString());
+    expect(startTime).toBeLessThan(endTime);
     expect(dateInputToIsoBoundary('', 'start')).toBeUndefined();
   });
 });
