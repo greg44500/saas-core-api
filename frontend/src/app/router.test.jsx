@@ -25,6 +25,10 @@ vi.mock('@/features/subscription/components/workspace-subscription-route', () =>
   WorkspaceSubscriptionRoute: () => <h1>Abonnement</h1>,
 }));
 
+vi.mock('@/features/workspace/pages/workspace-settings-page', () => ({
+  WorkspaceSettingsPage: () => <h1>Paramètres du workspace</h1>,
+}));
+
 vi.mock('@/features/platform/components/platform-guard', () => ({
   PlatformGuard: () => <Outlet />,
 }));
@@ -152,6 +156,15 @@ describe('application routing', () => {
       await screen.findByRole('heading', { name: 'Abonnement' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Abonnement' })).toBeInTheDocument();
+  });
+
+  it('rend la route Paramètres dans le shell workspace', async () => {
+    renderRoute('/workspaces/workspace-123/settings', 'authenticated');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Paramètres du workspace' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Paramètres' })).toBeInTheDocument();
   });
 
   it('rend le shell Platform et sa navigation pour une session authentifiée', async () => {
