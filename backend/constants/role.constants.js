@@ -40,11 +40,7 @@ const STANDARD_MEMBER_PERMISSIONS = Object.freeze([
 ]);
 
 
-/**
- * Définitions immuables des rôles créés automatiquement
- * dans chaque nouveau workspace.
- */
-const SYSTEM_ROLE_DEFINITIONS = Object.freeze([
+const CORE_SYSTEM_ROLE_DEFINITIONS = Object.freeze([
     Object.freeze({
         key: SYSTEM_ROLE_KEY.OWNER,
         name: 'Propriétaire',
@@ -95,7 +91,43 @@ const SYSTEM_ROLE_DEFINITIONS = Object.freeze([
 ]);
 
 
+/**
+ * Construit les rôles système d'un nouveau workspace.
+ *
+ * Une application peut enrichir explicitement chaque rôle avec des permissions
+ * qu'elle a enregistrées dans son registre RBAC. Le Core ne déduit jamais la
+ * sémantique d'une permission applicative et ne décide donc pas seul à quels
+ * rôles elle doit être accordée.
+ */
+const createSystemRoleDefinitions = ({
+    permissionExtensionsByRole = {},
+} = {}) => Object.freeze(
+    CORE_SYSTEM_ROLE_DEFINITIONS.map((definition) => {
+        const extensionPermissions =
+            permissionExtensionsByRole[definition.key] ?? [];
+
+        return Object.freeze({
+            ...definition,
+            permissions: Object.freeze([
+                ...new Set([
+                    ...definition.permissions,
+                    ...extensionPermissions,
+                ]),
+            ]),
+        });
+    }),
+);
+
+
+/**
+ * Définitions Core immuables des rôles créés automatiquement
+ * dans chaque nouveau workspace.
+ */
+const SYSTEM_ROLE_DEFINITIONS = createSystemRoleDefinitions();
+
+
 export {
     SYSTEM_ROLE_DEFINITIONS,
     SYSTEM_ROLE_KEY,
+    createSystemRoleDefinitions,
 };

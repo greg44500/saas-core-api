@@ -6,7 +6,7 @@ import {
     AUDIT_STATUS,
 } from '../../constants/auditActions.constants.js';
 import {
-    SYSTEM_ROLE_DEFINITIONS,
+    createSystemRoleDefinitions,
 } from '../../constants/role.constants.js';
 import {
     WORKSPACE_INVITATION_STATUS,
@@ -24,9 +24,9 @@ import {
 } from '../workspaceMember/workspaceMember.model.js';
 import { Role } from './role.model.js';
 import {
-    ACTIVE_ROLE_PERMISSIONS,
-    RESERVED_CUSTOM_ROLE_PERMISSIONS,
+    getActiveRolePermissionRegistry,
 } from './rolePermission.registry.js';
+
 
 const toRoleDto = (role) => ({
     id: role._id.toString(),
@@ -40,22 +40,32 @@ const toRoleDto = (role) => ({
     isEditable: role.isEditable,
 });
 
+
 const normalizePermissions = (permissions = []) => [
     ...new Set(permissions.map((permission) => permission.trim().toLowerCase())),
 ];
 
+
+const resolvePermissionRegistry = (permissionRegistry) =>
+    permissionRegistry ?? getActiveRolePermissionRegistry();
+
+
 const assertCustomRolePermissions = ({
     permissions,
     actorPermissions,
+    permissionRegistry = null,
 }) => {
     if (!Array.isArray(actorPermissions)) {
         throw new AppError('Contexte de permissions indisponible', 403);
     }
 
+    const activeRegistry = resolvePermissionRegistry(permissionRegistry);
     const normalizedPermissions = normalizePermissions(permissions);
-    const activePermissionSet = new Set(ACTIVE_ROLE_PERMISSIONS);
+    const activePermissionSet = new Set(activeRegistry.permissions);
     const actorPermissionSet = new Set(actorPermissions);
-    const reservedPermissionSet = new Set(RESERVED_CUSTOM_ROLE_PERMISSIONS);
+    const reservedPermissionSet = new Set(
+        activeRegistry.reservedPermissions,
+    );
 
     const unknownPermission = normalizedPermissions.find(
         (permission) => !activePermissionSet.has(permission),
@@ -93,6 +103,7 @@ const assertCustomRolePermissions = ({
     return normalizedPermissions;
 };
 
+
 const assertEditableCustomRole = (role) => {
     if (!role) {
         throw new AppError('Rôle introuvable dans ce workspace.', 404);
@@ -106,12 +117,41 @@ const assertEditableCustomRole = (role) => {
     }
 };
 
-const assertActorCanAdministerRole = ({ role, actorPermissions }) => {
+
+const assertActorCanAdministerRole = ({
+    role,
+    actorPermissions,
+    permissionRegistry = null,
+}) => {
     assertCustomRolePermissions({
         permissions: role.permissions ?? [],
         actorPermissions,
+        permissionRegistry,
     });
 };
+
+
+const assertSystemRoleDefinitionsRegistered = ({
+    systemRoleDefinitions,
+    permissionRegistry,
+}) => {
+    const activePermissionSet = new Set(
+        permissionRegistry.permissions,
+    );
+
+    for (const definition of systemRoleDefinitions) {
+        const unknownPermission = definition.permissions.find(
+            (permission) => !activePermissionSet.has(permission),
+        );
+
+        if (unknownPermission) {
+            throw new TypeError(
+                `System role "${definition.key}" contains an unregistered permission: ${unknownPermission}`,
+            );
+        }
+    }
+};
+
 
 /**
  * Crée les rôles système appartenant à un nouveau workspace.
@@ -120,6 +160,7 @@ const createSystemRolesForWorkspace = async ({
     workspaceId,
     actorId,
     session,
+    permissionRegistry = null,
 }) => {
     if (!workspaceId || !actorId || !session) {
         throw new TypeError(
@@ -127,7 +168,18 @@ const createSystemRolesForWorkspace = async ({
         );
     }
 
-    const rolesToCreate = SYSTEM_ROLE_DEFINITIONS.map((definition) => ({
+    const activeRegistry = resolvePermissionRegistry(permissionRegistry);
+    const systemRoleDefinitions = createSystemRoleDefinitions({
+        permissionExtensionsByRole:
+            activeRegistry.systemRolePermissions,
+    });
+
+    assertSystemRoleDefinitionsRegistered({
+        systemRoleDefinitions,
+        permissionRegistry: activeRegistry,
+    });
+
+    const rolesToCreate = systemRoleDefinitions.map((definition) => ({
         workspace: workspaceId,
         key: definition.key,
         name: definition.name,
@@ -143,6 +195,7 @@ const createSystemRolesForWorkspace = async ({
         session,
     });
 };
+
 
 const listWorkspaceRoles = async ({ workspaceId }) => {
     if (!workspaceId) {
@@ -162,6 +215,7 @@ const listWorkspaceRoles = async ({ workspaceId }) => {
     return roles.map(toRoleDto);
 };
 
+
 const createWorkspaceRole = async ({
     workspaceId,
     actorId,
@@ -171,10 +225,12 @@ const createWorkspaceRole = async ({
     permissions = [],
     ipAddress = null,
     userAgent = null,
+    permissionRegistry = null,
 }) => mongoose.connection.transaction(async (session) => {
     const normalizedPermissions = assertCustomRolePermissions({
         permissions,
         actorPermissions,
+        permissionRegistry,
     });
 
     const role = new Role({
@@ -208,6 +264,7 @@ const createWorkspaceRole = async ({
     return toRoleDto(role);
 });
 
+
 const updateWorkspaceRole = async ({
     workspaceId,
     roleId,
@@ -216,6 +273,7 @@ const updateWorkspaceRole = async ({
     changes,
     ipAddress = null,
     userAgent = null,
+    permissionRegistry = null,
 }) => mongoose.connection.transaction(async (session) => {
     const role = await Role.findOne({
         _id: roleId,
@@ -224,12 +282,17 @@ const updateWorkspaceRole = async ({
     }).session(session);
 
     assertEditableCustomRole(role);
-    assertActorCanAdministerRole({ role, actorPermissions });
+    assertActorCanAdministerRole({
+        role,
+        actorPermissions,
+        permissionRegistry,
+    });
 
     if (changes.permissions !== undefined) {
         role.permissions = assertCustomRolePermissions({
             permissions: changes.permissions,
             actorPermissions,
+            permissionRegistry,
         });
     }
 
@@ -261,6 +324,7 @@ const updateWorkspaceRole = async ({
     return toRoleDto(role);
 });
 
+
 const deleteWorkspaceRole = async ({
     workspaceId,
     roleId,
@@ -268,6 +332,7 @@ const deleteWorkspaceRole = async ({
     actorPermissions,
     ipAddress = null,
     userAgent = null,
+    permissionRegistry = null,
 }) => mongoose.connection.transaction(async (session) => {
     const role = await Role.findOne({
         _id: roleId,
@@ -276,7 +341,11 @@ const deleteWorkspaceRole = async ({
     }).session(session);
 
     assertEditableCustomRole(role);
-    assertActorCanAdministerRole({ role, actorPermissions });
+    assertActorCanAdministerRole({
+        role,
+        actorPermissions,
+        permissionRegistry,
+    });
 
     const activeMembership = await WorkspaceMember.findOne({
         workspace: workspaceId,
@@ -334,6 +403,7 @@ const deleteWorkspaceRole = async ({
 
     return role;
 });
+
 
 export {
     assertActorCanAdministerRole,
