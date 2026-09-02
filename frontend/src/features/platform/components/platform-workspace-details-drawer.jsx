@@ -16,6 +16,23 @@ function DetailRow({ label, value }) {
   );
 }
 
+function ActorValue({ actor }) {
+  if (!actor) return '—';
+
+  const fullName = [actor.firstName, actor.lastName].filter(Boolean).join(' ');
+  const isResolved = Boolean(fullName || actor.email);
+
+  return (
+    <div className="space-y-0.5">
+      <p>{isResolved ? fullName || actor.email : 'Utilisateur indisponible'}</p>
+      {fullName && actor.email && (
+        <p className="text-xs text-muted-foreground">{actor.email}</p>
+      )}
+      <p className="text-xs text-muted-foreground">ID : {actor.id}</p>
+    </div>
+  );
+}
+
 function PlatformWorkspaceDetailsDrawer({
   error,
   isLoading,
@@ -58,9 +75,9 @@ function PlatformWorkspaceDetailsDrawer({
               <DetailRow label="Motif" value={formatPlatformWorkspaceStatusReason(workspace.statusReason)} />
               <DetailRow label="Détails du motif" value={workspace.statusReasonDetails ?? '—'} />
               <DetailRow label="Statut modifié le" value={formatPlatformWorkspaceDate(workspace.statusChangedAt)} />
-              <DetailRow label="Statut modifié par" value={workspace.statusChangedBy ?? '—'} />
-              <DetailRow label="Créé par" value={workspace.createdBy ?? '—'} />
-              <DetailRow label="Mis à jour par" value={workspace.updatedBy ?? '—'} />
+              <DetailRow label="Statut modifié par" value={<ActorValue actor={workspace.statusChangedBy} />} />
+              <DetailRow label="Créé par" value={<ActorValue actor={workspace.createdBy} />} />
+              <DetailRow label="Mis à jour par" value={<ActorValue actor={workspace.updatedBy} />} />
               <DetailRow label="Créé le" value={formatPlatformWorkspaceDate(workspace.createdAt)} />
               <DetailRow label="Mis à jour le" value={formatPlatformWorkspaceDate(workspace.updatedAt)} />
             </dl>
