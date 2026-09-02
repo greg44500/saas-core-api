@@ -65,6 +65,16 @@ const authApi = baseApi.injectEndpoints({
     getCurrentUser: build.query({
       query: () => '/auth/me',
       transformResponse: (response) => response?.data?.user ?? null,
+      providesTags: ['CurrentUser'],
+    }),
+    updateCurrentUser: build.mutation({
+      query: (payload) => ({
+        url: '/users/me',
+        method: 'PATCH',
+        body: payload,
+      }),
+      transformResponse: (response) => response?.data?.user ?? null,
+      invalidatesTags: ['CurrentUser'],
     }),
     logout: build.mutation({
       query: () => ({
@@ -144,6 +154,7 @@ export const {
   useRefreshSessionMutation,
   useRegisterMutation,
   useResetPasswordMutation,
+  useUpdateCurrentUserMutation,
 } = authApi;
 
 export { authApi, getAccessTokenFromResponse };
