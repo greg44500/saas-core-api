@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Frontend Core
 
-Dernière consolidation : 2026-09-02 — F8.8.2 et F8.9 implémentés ; validation finale F8 et correctifs UX transversaux à exécuter
+Dernière consolidation : 2026-09-02 — F8 complet et F8-AUDIT validé ; F9 Platform Admin devient le prochain bloc
 
 ## 1. Rôle du document
 
@@ -22,18 +22,20 @@ Elle doit être mise à jour à la fin de chaque lot frontend validé.
 
 ## 2. Règles de maintenance frontend
 
-- [ ] AUDIT — appliquer systématiquement la règle « commenter le pourquoi, pas le quoi » sur l’ensemble du frontend existant.
-- [ ] AUDIT — ajouter du JSDoc lorsque le contrat d’un helper, composant partagé, adaptateur ou effet de bord non trivial le justifie.
-- [ ] AUDIT — documenter les invariants de permissions, de sécurité, de navigation, de cache RTK Query et de compatibilité backend lorsqu’ils ne sont pas évidents.
-- [ ] AUDIT — supprimer les commentaires redondants, obsolètes ou contradictoires avec le backend.
-- [ ] AUDIT — toutes les chaînes visibles par l’utilisateur doivent être en français ; les clés techniques restent internes ou passent par un formateur de présentation.
-- [ ] AUDIT — les contrôles natifs dont le libellé dépend du navigateur doivent disposer d’un habillage localisé lorsqu’il est pertinent.
-- [ ] AUDIT — les saisies de date utilisent la primitive partagée `components/forms/date-picker.jsx` : présentation `jj/mm/aaaa`, calendrier français, valeur technique `YYYY-MM-DD` ; aucune feature ne recrée son propre calendrier sans besoin nouveau explicite.
-- [ ] AUDIT — la densité des tableaux Core doit utiliser `components/data-display/data-table-styles.js` afin d’éviter des espacements dupliqués dans chaque feature.
-- [ ] AUDIT — éviter les mentions techniques répétitives sans valeur décisionnelle dans les tableaux ; masquer une action reste une décision UX et ne remplace jamais la sécurité backend.
-- [ ] AUDIT — relire tous les fichiers frontend dans le checkpoint `F8-AUDIT` avant F9.
+- [x] TERMINÉ — appliquer systématiquement la règle « commenter le pourquoi, pas le quoi » sur l’ensemble du frontend existant.
+- [x] TERMINÉ — ajouter du JSDoc lorsque le contrat d’un helper, composant partagé, adaptateur ou effet de bord non trivial le justifie.
+- [x] TERMINÉ — documenter les invariants de permissions, de sécurité, de navigation, de cache RTK Query et de compatibilité backend lorsqu’ils ne sont pas évidents.
+- [x] TERMINÉ — supprimer les commentaires redondants, obsolètes ou contradictoires avec le backend.
+- [x] TERMINÉ — toutes les chaînes visibles par l’utilisateur doivent être en français ; les clés techniques restent internes ou passent par un formateur de présentation.
+- [x] TERMINÉ — les contrôles natifs dont le libellé dépend du navigateur doivent disposer d’un habillage localisé lorsqu’il est pertinent.
+- [x] TERMINÉ — les saisies de date utilisent la primitive partagée `components/forms/date-picker.jsx` : présentation `jj/mm/aaaa`, calendrier français, valeur technique `YYYY-MM-DD` ; aucune feature ne recrée son propre calendrier sans besoin nouveau explicite.
+- [x] TERMINÉ — la densité des tableaux Core utilise `components/data-display/data-table-styles.js` et les tableaux compatibles utilisent `components/data-display/data-table.jsx` afin d’éviter les structures et espacements dupliqués.
+- [x] TERMINÉ — les listes paginées compatibles utilisent `components/data-display/data-pagination.jsx` afin de centraliser les bornes et contrôles de navigation.
+- [x] TERMINÉ — les confirmations bloquantes compatibles utilisent `components/shared/confirmation-dialog.jsx` afin de centraliser structure accessible, focus, Escape, navigation Tab et verrouillage du scroll.
+- [x] TERMINÉ — éviter les mentions techniques répétitives sans valeur décisionnelle dans les tableaux ; masquer une action reste une décision UX et ne remplace jamais la sécurité backend.
+- [x] TERMINÉ — checkpoint `F8-AUDIT` effectué avant F9.
 
-Référence : `docs/frontend-maintenance-audit.md`.
+Références : `docs/frontend-maintenance-audit.md`, `docs/frontend-maintenance-audit-report.md` et `docs/frontend-data-table-contract.md`.
 
 ## 3. Files frontend — F8.5
 
@@ -149,6 +151,8 @@ Référence : `docs/functional-debt-file-trash-restore.md`.
 - [x] TERMINÉ — invalidation RTK Query du workspace et des membres après transfert.
 - [x] TERMINÉ — redirection vers le dashboard après transfert réussi afin de recharger le contexte de permissions.
 - [x] TERMINÉ — limitation connue des comptes Google-only conservée en dette existante ; aucun contournement frontend introduit.
+- [x] TERMINÉ — import de `useListWorkspaceRolesQuery` aligné sur l’ownership du module `workspace-roles/api` ; régression détectée puis corrigée par le build F8-AUDIT.
+- [x] TERMINÉ — pagination de sélection des membres raccordée à `DataPagination` sans duplication locale.
 - [x] TERMINÉ — tests ciblés, régression frontend globale et build Vite signalés verts le 2026-09-02.
 
 ## 6. Audit / Dashboard Core frontend — F8.8
@@ -172,7 +176,7 @@ Référence : `docs/functional-debt-file-trash-restore.md`.
 ### F8.8.2 — Dashboard Core
 
 - [x] TERMINÉ — audit des contrats backend disponibles effectué avant implémentation ; aucune nouvelle route backend requise.
-- [ ] EN COURS — synthèse implémentée à partir du workspace courant, membres, invitations, fichiers, abonnement et activité selon permissions ; validation locale finale à exécuter.
+- [x] TERMINÉ — synthèse implémentée à partir du workspace courant, membres, invitations, fichiers, abonnement et activité selon permissions.
 - [x] TERMINÉ — requêtes Membres/Fichiers/Invitations limitées à `limit=1` pour exploiter uniquement `meta.total` sans charger les listes complètes.
 - [x] TERMINÉ — chaque requête RTK Query est `skip` lorsque la permission correspondante manque ; aucun contournement RBAC.
 - [x] TERMINÉ — composants de synthèse séparés de la page et hook de composition `useWorkspaceDashboardData` dédié.
@@ -180,34 +184,51 @@ Référence : `docs/functional-debt-file-trash-restore.md`.
 - [x] TERMINÉ — activité récente limitée aux cinq derniers événements et lien vers l’historique complet.
 - [x] TERMINÉ — plan et mode d’accès lus exclusivement depuis `effectiveEntitlement` et formatters Subscription existants.
 - [x] TERMINÉ — `storage_bytes` et `file_uploads_monthly` ne sont pas affichés : les métriques existent en interne mais aucun contrat de lecture dédié n’expose leur valeur courante au frontend.
-- [ ] EN COURS — tests ciblés ajoutés ; régression frontend globale et build Vite requis avant clôture du lot.
+- [x] TERMINÉ — tests ciblés, régression frontend globale et build Vite validés le 2026-09-02.
 - [x] DÉCISION FIGÉE — ce Dashboard Core est provisoire ; aucun enrichissement supplémentaire avant cadrage des modules métier. Le futur Dashboard Workspace sera prioritairement orienté données métier.
 
 ## 7. Account / Security frontend — F8.9
 
-- [x] IMPLÉMENTÉ — routes protégées `/account/profile` et `/account/security` avec layout Account global indépendant du workspace.
-- [x] IMPLÉMENTÉ — `PATCH /api/users/me` raccordé au frontend pour `firstName` / `lastName` uniquement ; email en lecture seule.
-- [x] IMPLÉMENTÉ — cache `CurrentUser` RTK Query invalidé après modification du profil.
-- [x] IMPLÉMENTÉ — changement de mot de passe raccordé au contrat backend et reconnexion obligatoire après succès.
-- [x] IMPLÉMENTÉ — `logout-all` avec confirmation explicite ; aucune annonce de succès lorsque le backend refuse la révocation.
-- [x] IMPLÉMENTÉ — pages publiques `/forgot-password` et `/reset-password` raccordées au workflow backend sécurisé.
-- [x] IMPLÉMENTÉ — lien « Mot de passe actuel oublié ? » depuis Sécurité ; réutilisation du workflow de reset existant sans contournement de la réauthentification.
-- [x] IMPLÉMENTÉ — email courant prérempli dans le parcours forgot-password lorsqu’il vient de la page Sécurité.
-- [x] IMPLÉMENTÉ — bouton explicite « Retour à l’application » depuis Account ; retour exact au Workspace/Platform d’origine lorsque connu, fallback `/workspaces` ou `/platform/overview` selon le contexte.
-- [x] IMPLÉMENTÉ — destination de retour conservée entre Profil/Sécurité et à travers le détour forgot-password.
-- [ ] EN COURS — tests backend ciblés du nouveau contrat profil, tests frontend ciblés Account/Auth, régressions globales et build Vite à confirmer avant clôture F8.9.
+- [x] TERMINÉ — routes protégées `/account/profile` et `/account/security` avec layout Account global indépendant du workspace.
+- [x] TERMINÉ — `PATCH /api/users/me` raccordé au frontend pour `firstName` / `lastName` uniquement ; email en lecture seule.
+- [x] TERMINÉ — cache `CurrentUser` RTK Query invalidé après modification du profil.
+- [x] TERMINÉ — changement de mot de passe raccordé au contrat backend et reconnexion obligatoire après succès.
+- [x] TERMINÉ — `logout-all` avec confirmation explicite ; aucune annonce de succès lorsque le backend refuse la révocation.
+- [x] TERMINÉ — pages publiques `/forgot-password` et `/reset-password` raccordées au workflow backend sécurisé.
+- [x] TERMINÉ — lien « Mot de passe actuel oublié ? » depuis Sécurité ; réutilisation du workflow de reset existant sans contournement de la réauthentification.
+- [x] TERMINÉ — email courant prérempli dans le parcours forgot-password lorsqu’il vient de la page Sécurité.
+- [x] TERMINÉ — bouton explicite « Retour à l’application » depuis Account ; retour exact au Workspace/Platform d’origine lorsque connu, fallback `/workspaces` ou `/platform/overview` selon le contexte.
+- [x] TERMINÉ — destination de retour conservée entre Profil/Sécurité et à travers le détour forgot-password.
+- [x] TERMINÉ — tests ciblés Account/Auth, régression frontend globale et build Vite validés avant clôture F8.
 
 ### Correctifs UX transversaux de finalisation F8
 
-- [x] IMPLÉMENTÉ — `components/forms/date-picker.jsx` devient la primitive date partagée : interface française, placeholder `jj/mm/aaaa`, navigation calendrier française, valeur technique ISO locale `YYYY-MM-DD`.
-- [x] IMPLÉMENTÉ — filtres Audit migrés du `type="date"` natif vers le DatePicker partagé.
-- [x] IMPLÉMENTÉ — `components/data-display/data-table-styles.js` centralise les espacements des tableaux Core (`headerCell`, `bodyCell`, `actionGroup`).
-- [x] IMPLÉMENTÉ — tableaux Rôles, Membres, Fichiers et Audit raccordés à cette densité partagée.
-- [x] IMPLÉMENTÉ — `components/shared/tooltip.jsx` ne dépend plus de `group-focus-within`; un tooltip d’action est masqué après activation même si le bouton conserve le focus pendant l’ouverture d’un Drawer.
-- [x] IMPLÉMENTÉ — le Tooltip conserve néanmoins son accessibilité au focus clavier.
-- [ ] EN COURS — tests ciblés DatePicker / Tooltip / tableaux / Account et validation visuelle à exécuter avant clôture du Core F8.
+- [x] TERMINÉ — `components/forms/date-picker.jsx` devient la primitive date partagée : interface française, placeholder `jj/mm/aaaa`, navigation calendrier française, valeur technique ISO locale `YYYY-MM-DD`.
+- [x] TERMINÉ — filtres Audit migrés du `type="date"` natif vers le DatePicker partagé.
+- [x] TERMINÉ — `components/data-display/data-table-styles.js` centralise les espacements des tableaux Core (`headerCell`, `bodyCell`, `actionGroup`).
+- [x] TERMINÉ — `components/data-display/data-table.jsx` centralise la structure des tableaux compatibles ; Rôles, Membres, Fichiers et Audit l’utilisent.
+- [x] TERMINÉ — `components/data-display/data-pagination.jsx` centralise la pagination compatible ; Membres, Fichiers, Audit et Workspace Ownership l’utilisent.
+- [x] TERMINÉ — `components/shared/confirmation-dialog.jsx` centralise les confirmations bloquantes compatibles sans absorber les règles métier des features.
+- [x] TERMINÉ — `components/shared/tooltip.jsx` ne dépend plus de `group-focus-within`; un tooltip d’action est masqué après activation même si le bouton conserve le focus pendant l’ouverture d’un Drawer.
+- [x] TERMINÉ — le Tooltip conserve néanmoins son accessibilité au focus clavier.
+- [x] TERMINÉ — tests ciblés DatePicker / Tooltip / tableaux / pagination / confirmations / Account et validation globale signalés verts le 2026-09-02.
 
-## 8. Ordre de production frontend restant
+## 8. F8-AUDIT — Maintenabilité frontend
+
+- [x] TERMINÉ — revue transversale du socle `app`, `services/api`, `store`, composants partagés et data-display.
+- [x] TERMINÉ — revue des features `auth`, `account`, `workspace`, `workspace-members`, `workspace-roles`, `workspace-invitation`, `files`, `plan`, `subscription`, `audit-log` et du socle `platform`.
+- [x] TERMINÉ — purge RTK Query de fin de session centralisée uniquement dans le store.
+- [x] TERMINÉ — ownership de la ressource `/roles` déplacé dans `workspace-roles/api` tout en conservant une seule instance `baseApi`.
+- [x] TERMINÉ — code mort Auth et wrappers Platform inutilisés supprimés.
+- [x] TERMINÉ — primitives `DataPagination` et `ConfirmationDialog` introduites uniquement après duplication concrètement constatée.
+- [x] TERMINÉ — aucune modification des règles métier, endpoints, permissions backend ou densité des tableaux pendant l’audit.
+- [x] TERMINÉ — tests ciblés verts signalés le 2026-09-02.
+- [x] TERMINÉ — suite frontend globale verte signalée le 2026-09-02.
+- [x] TERMINÉ — build Vite production vert signalé le 2026-09-02 après correction de l’import Roles résiduel dans Workspace Ownership.
+
+Référence : `docs/frontend-maintenance-audit-report.md`.
+
+## 9. Ordre de production frontend restant
 
 ```text
 F8.5      Files frontend                              TERMINÉ
@@ -216,15 +237,15 @@ F8.6.2    Trial / changement de plan                  TERMINÉ
 F8.6.3    Résiliation / downgrade                     TERMINÉ
 F8.7      Workspace Settings / Ownership frontend     TERMINÉ
 F8.8.1    Audit Workspace frontend                    TERMINÉ
-F8.8.2    Dashboard Core frontend                     VALIDATION EN COURS
-F8.9      Account / Security frontend                 VALIDATION EN COURS
-F8-AUDIT  Maintenabilité + commentaires + JSDoc       PROCHAIN BLOC APRÈS VALIDATION F8
-F9.x      Platform Admin frontend réel                APRÈS F8-AUDIT
+F8.8.2    Dashboard Core frontend                     TERMINÉ
+F8.9      Account / Security frontend                 TERMINÉ
+F8-AUDIT  Maintenabilité + composants partagés        TERMINÉ
+F9.x      Platform Admin frontend réel                PROCHAIN BLOC
 F10       EntitlementOverride Workspace-scoped + Platform
 F11       Consolidation frontend + E2E
 ```
 
-## 9. Règle de validation de fin de lot
+## 10. Règle de validation de fin de lot
 
 Un lot frontend ne doit être marqué TERMINÉ qu’après :
 
@@ -236,8 +257,10 @@ Un lot frontend ne doit être marqué TERMINÉ qu’après :
 6. documentation des décisions ou dettes nouvelles ;
 7. absence de modification hors périmètre.
 
-## 10. Gate avant modules métier
+## 11. Gate avant modules métier
 
-Aucun module métier ne doit démarrer avant la finalisation du Core frontend, le checkpoint F8-AUDIT et les validations E2E prévues dans le Gate A du projet.
+Aucun module métier ne doit démarrer avant la finalisation du Core frontend et les validations E2E prévues dans le Gate A du projet.
+
+Le checkpoint F8-AUDIT est désormais validé. La production peut poursuivre avec F9 Platform Admin, puis F10 et F11 avant ouverture des modules métier.
 
 Le Dashboard Workspace actuel reste un prototype Core technique. Sa refonte orientée données métier est explicitement reportée au cadrage du premier domaine métier.
