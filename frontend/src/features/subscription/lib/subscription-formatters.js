@@ -8,6 +8,17 @@ const SUBSCRIPTION_STATUS_LABEL = Object.freeze({
   expired: 'Expiré',
 });
 
+const SUBSCRIPTION_KIND_LABEL = Object.freeze({
+  baseline: 'Plan de base',
+  commercial: 'Commercial',
+});
+
+const BILLING_INTERVAL_LABEL = Object.freeze({
+  none: 'Sans facturation',
+  monthly: 'Mensuel',
+  yearly: 'Annuel',
+});
+
 const ACCESS_MODE_LABEL = Object.freeze({
   normal: 'Accès normal',
   remediation: 'Mise en conformité requise',
@@ -31,6 +42,14 @@ const LIMIT_LABEL = Object.freeze({
 
 function formatSubscriptionStatus(status) {
   return SUBSCRIPTION_STATUS_LABEL[status] ?? status ?? 'Non renseigné';
+}
+
+function formatSubscriptionKind(kind) {
+  return SUBSCRIPTION_KIND_LABEL[kind] ?? kind ?? 'Non renseigné';
+}
+
+function formatBillingInterval(interval) {
+  return BILLING_INTERVAL_LABEL[interval] ?? interval ?? 'Non renseigné';
 }
 
 function formatAccessMode(accessMode) {
@@ -134,15 +153,19 @@ function getTrialProgress({ startAt, endAt, now = new Date() }) {
 export {
   ACCESS_MODE_LABEL,
   ACCESS_REASON_LABEL,
+  BILLING_INTERVAL_LABEL,
   FEATURE_LABEL,
   LIMIT_LABEL,
+  SUBSCRIPTION_KIND_LABEL,
   SUBSCRIPTION_STATUS_LABEL,
   formatAccessMode,
   formatAccessReason,
+  formatBillingInterval,
   formatFeatureLabel,
   formatLimitLabel,
   formatPlanLimitValue,
   formatSubscriptionDate,
+  formatSubscriptionKind,
   formatSubscriptionStatus,
   getTrialProgress,
 };
