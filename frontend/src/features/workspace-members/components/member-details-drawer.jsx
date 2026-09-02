@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
 import { PermissionList } from '@/features/workspace-roles/components/permission-list';
 
@@ -11,9 +13,23 @@ function DetailRow({ label, value }) {
 }
 
 function MemberDetailsDrawer({ member, onClose, open, role }) {
-  if (!member) return null;
+  const retainedDetailsRef = useRef(null);
 
-  const fullName = `${member.user.firstName} ${member.user.lastName}`.trim();
+  /*
+   * La page retire immédiatement la sélection lorsqu'elle ferme le panneau.
+   * On conserve donc les dernières données affichées afin que le Drawer reste
+   * rendu pendant sa transition de sortie au lieu de disparaître brutalement.
+   */
+  if (member) {
+    retainedDetailsRef.current = { member, role };
+  }
+
+  const displayedMember = member ?? retainedDetailsRef.current?.member ?? null;
+  const displayedRole = member ? role : retainedDetailsRef.current?.role ?? null;
+
+  if (!displayedMember) return null;
+
+  const fullName = `${displayedMember.user.firstName} ${displayedMember.user.lastName}`.trim();
 
   return (
     <EntityDetailsDrawer
@@ -25,12 +41,12 @@ function MemberDetailsDrawer({ member, onClose, open, role }) {
       <div className="space-y-6">
         <section className="rounded-lg border border-border bg-card px-4">
           <dl>
-            <DetailRow label="Statut" value={member.status} />
-            <DetailRow label="Rôle" value={member.role.name} />
-            {member.joinedAt && (
+            <DetailRow label="Statut" value={displayedMember.status} />
+            <DetailRow label="Rôle" value={displayedMember.role.name} />
+            {displayedMember.joinedAt && (
               <DetailRow
                 label="Membre depuis"
-                value={new Date(member.joinedAt).toLocaleDateString('fr-FR')}
+                value={new Date(displayedMember.joinedAt).toLocaleDateString('fr-FR')}
               />
             )}
           </dl>
@@ -42,8 +58,8 @@ function MemberDetailsDrawer({ member, onClose, open, role }) {
             Ces permissions proviennent du rôle actuellement attribué à ce membre.
           </p>
           <div className="mt-3">
-            {role ? (
-              <PermissionList permissions={role.permissions} />
+            {displayedRole ? (
+              <PermissionList permissions={displayedRole.permissions} />
             ) : (
               <p className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
                 Les permissions détaillées ne sont pas accessibles avec vos droits actuels.
