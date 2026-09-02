@@ -74,7 +74,7 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
     >
       <button
         aria-label="Fermer le panneau de détails"
-        className={`absolute inset-0 bg-black/45 transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+        className={`absolute inset-0 bg-black/45 transition-opacity duration-300 ease-in-out motion-reduce:transition-none ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
         onClick={onClose}
@@ -87,7 +87,7 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
         aria-hidden={!open}
         aria-labelledby="entity-details-title"
         aria-modal="true"
-        className={`absolute inset-y-0 right-0 flex w-full max-w-xl flex-col border-l border-border bg-background text-foreground shadow-lg transition-transform duration-300 ease-out motion-reduce:transition-none ${
+        className={`absolute inset-y-0 right-0 flex w-full max-w-xl flex-col border-l border-border bg-background text-foreground shadow-lg transition-transform duration-300 ease-in-out motion-reduce:transition-none ${
           isVisible ? 'translate-x-0' : 'translate-x-full'
         }`}
         role="dialog"
