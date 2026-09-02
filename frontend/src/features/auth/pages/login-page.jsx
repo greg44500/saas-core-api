@@ -24,9 +24,30 @@ function getRequestedDestination(location, user) {
   return '/workspaces';
 }
 
+function getLoginStatusMessage(location) {
+  if (location.state?.registrationSuccess) {
+    return 'Compte créé. Vous pouvez maintenant vous connecter.';
+  }
+
+  if (location.state?.resetPasswordSuccess) {
+    return 'Mot de passe réinitialisé. Vous pouvez maintenant vous connecter.';
+  }
+
+  if (location.state?.passwordChanged) {
+    return 'Mot de passe modifié. Reconnectez-vous avec votre nouveau mot de passe.';
+  }
+
+  if (location.state?.sessionsRevoked) {
+    return 'Toutes vos sessions ont été révoquées. Reconnectez-vous pour continuer.';
+  }
+
+  return null;
+}
+
 function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const statusMessage = getLoginStatusMessage(location);
   const [login, { isLoading }] = useLoginMutation();
   const {
     register,
@@ -59,9 +80,9 @@ function LoginPage() {
         <p className="text-sm text-muted-foreground">Accédez à votre espace SaaS Core.</p>
       </div>
 
-      {location.state?.registrationSuccess && (
+      {statusMessage && (
         <p className="rounded-md border border-success/30 bg-success/10 p-3 text-sm" role="status">
-          Compte créé. Vous pouvez maintenant vous connecter.
+          {statusMessage}
         </p>
       )}
 
@@ -88,7 +109,9 @@ function LoginPage() {
         </FormField>
 
         <div className="text-right">
-          <span className="text-sm text-muted-foreground">Mot de passe oublié ?</span>
+          <Link className="text-sm font-medium text-primary hover:underline" to="/forgot-password">
+            Mot de passe oublié ?
+          </Link>
         </div>
 
         {errors.root?.credentials && (
@@ -108,4 +131,4 @@ function LoginPage() {
   );
 }
 
-export { LoginPage, getRequestedDestination };
+export { LoginPage, getLoginStatusMessage, getRequestedDestination };
