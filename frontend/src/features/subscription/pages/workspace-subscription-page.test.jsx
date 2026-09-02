@@ -2,6 +2,8 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ToastProvider } from '@/components/shared/toast-provider';
+
 const mocks = vi.hoisted(() => ({
   endTrialToFree: vi.fn(),
   startOrChangeTrial: vi.fn(),
@@ -106,13 +108,15 @@ const subscription = {
 
 function renderPage({ roleKey = 'owner' } = {}) {
   return render(
-    <WorkspaceProvider
-      membership={{ id: 'membership-1', role: { key: roleKey, name: roleKey } }}
-      permissions={[WORKSPACE_PERMISSION.SUBSCRIPTION_READ]}
-      workspace={workspace}
-    >
-      <WorkspaceSubscriptionPage />
-    </WorkspaceProvider>,
+    <ToastProvider>
+      <WorkspaceProvider
+        membership={{ id: 'membership-1', role: { key: roleKey, name: roleKey } }}
+        permissions={[WORKSPACE_PERMISSION.SUBSCRIPTION_READ]}
+        workspace={workspace}
+      >
+        <WorkspaceSubscriptionPage />
+      </WorkspaceProvider>
+    </ToastProvider>,
   );
 }
 
@@ -170,7 +174,7 @@ describe('WorkspaceSubscriptionPage', () => {
     expect(screen.getByText('Aucun moyen de paiement n’est demandé pendant l’essai.')).toBeInTheDocument();
   });
 
-  it('change de plan pendant le trial sans promettre de nouvelle durée', async () => {
+  it('change de plan pendant le trial sans promettre de nouvelle durée et confirme par toast', async () => {
     const user = userEvent.setup();
     const unwrap = vi.fn().mockResolvedValue({ id: 'commercial-1' });
     mocks.startOrChangeTrial.mockReturnValue({ unwrap });
@@ -185,12 +189,14 @@ describe('WorkspaceSubscriptionPage', () => {
       planId: 'plan-ai',
       billingInterval: 'yearly',
     });
-    expect(screen.getByRole('status')).toHaveTextContent(
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent('Plan de l’essai mis à jour');
+    expect(status).toHaveTextContent(
       'La période d’essai utilise maintenant le plan IA. Sa date de fin reste inchangée.',
     );
   });
 
-  it('confirme le retour Free et rappelle la consommation définitive de l’éligibilité', async () => {
+  it('confirme le retour Free puis affiche le succès en toast', async () => {
     const user = userEvent.setup();
     const unwrap = vi.fn().mockResolvedValue({ id: 'commercial-1' });
     mocks.endTrialToFree.mockReturnValue({ unwrap });
@@ -207,6 +213,27 @@ describe('WorkspaceSubscriptionPage', () => {
     );
 
     expect(mocks.endTrialToFree).toHaveBeenCalledWith({ workspaceId: 'workspace-1' });
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent('Période d’essai terminée');
+    expect(status).toHaveTextContent('Le plan Free est de nouveau effectif.');
+  });
+
+  it('conserve le refus du retour Free dans le dialogue de confirmation', async () => {
+    const user = userEvent.setup();
+    mocks.endTrialToFree.mockReturnValue({
+      unwrap: vi.fn().mockRejectedValue({
+        data: { message: 'Retour Free refusé' },
+      }),
+    });
+
+    renderPage();
+    await user.click(screen.getByRole('button', { name: 'Revenir au plan Free' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Mettre fin à l’essai et revenir à Free' }),
+    );
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Retour Free refusé');
   });
 
   it('ne repropose pas un trial déjà consommé après fallback serveur vers Free', () => {
@@ -267,6 +294,7 @@ describe('WorkspaceSubscriptionPage', () => {
       planId: 'plan-premium',
       billingInterval: 'monthly',
     });
+    expect(await screen.findByRole('status')).toHaveTextContent('Période d’essai démarrée');
   });
 
   it('explique à un admin que les commandes commerciales restent owner-only', () => {
