@@ -127,6 +127,20 @@ describe('PlatformUsersPage', () => {
     vi.clearAllMocks();
   });
 
+  it('affiche l’état de chargement', () => {
+    mocks.useListPlatformUsersQuery.mockReturnValue({
+      data: undefined,
+      error: undefined,
+      isFetching: true,
+      isLoading: true,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(screen.getByText('Chargement des utilisateurs…')).toBeInTheDocument();
+  });
+
   it('affiche les utilisateurs avec le DataTable et pagine côté serveur', async () => {
     const user = userEvent.setup();
     renderPage();
@@ -218,6 +232,6 @@ describe('PlatformUsersPage', () => {
       userId: listedUser.id,
       disabledReason: 'Incident de sécurité',
     });
-    expect(screen.getByText('Utilisateur désactivé')).toBeInTheDocument();
+    expect(await screen.findByText('Utilisateur désactivé')).toBeInTheDocument();
   });
 });
