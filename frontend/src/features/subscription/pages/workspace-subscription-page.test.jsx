@@ -186,7 +186,7 @@ describe('WorkspaceSubscriptionPage', () => {
       billingInterval: 'yearly',
     });
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Le trial utilise maintenant le plan IA. Sa date de fin reste inchangée.',
+      'La période d’essai utilise maintenant le plan IA. Sa date de fin reste inchangée.',
     );
   });
 
