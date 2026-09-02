@@ -25,6 +25,7 @@ import { planRouter } from './modules/plan/plan.routes.js';
 import {
     subscriptionRouter,
 } from './modules/subscriptions/subscription.routes.js';
+import { userRouter } from './modules/users/user.routes.js';
 import { workspaceRouter } from './modules/workspace/workspace.routes.js';
 
 import { healthRouter } from './routes/health.routes.js';
@@ -42,6 +43,7 @@ app.use('/api', apiRateLimiter);
 app.use(express.json());
 
 app.use('/api/auth', authRouter);
+app.use('/api/users', userRouter);
 app.use('/api/platform', platformRouter);
 app.use('/api/plans', planRouter);
 /*
