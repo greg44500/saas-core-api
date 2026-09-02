@@ -232,10 +232,10 @@ function createAppRoutes() {
                 {
                   path: 'users',
                   lazy: async () => {
-                    const { PlatformSectionPlaceholderPage } = await import(
-                      '@/features/platform/pages/platform-section-placeholder-page'
+                    const { PlatformUsersPage } = await import(
+                      '@/features/platform/pages/platform-users-page'
                     );
-                    return { Component: () => <PlatformSectionPlaceholderPage title="Utilisateurs" /> };
+                    return { Component: PlatformUsersPage };
                   },
                 },
                 {
