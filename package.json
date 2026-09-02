@@ -33,7 +33,8 @@
     "job:expire-trials": "node backend/jobs/subscriptions/runExpireTrialsJob.js",
     "job:finalize-subscription-cancellations": "node backend/jobs/subscriptions/runFinalizeScheduledCancellationsJob.js",
     "job:apply-scheduled-downgrades": "node backend/jobs/subscriptions/runApplyScheduledDowngradesJob.js",
-    "job:purge-files": "node backend/jobs/files/runPurgeDeletedFilesJob.js"
+    "job:purge-files": "node backend/jobs/files/runPurgeDeletedFilesJob.js",
+    "dev:reset-trial": "node backend/operations/development/runResetTrialDevelopment.js"
   },
   "license": "UNLICENSED",
   "dependencies": {
