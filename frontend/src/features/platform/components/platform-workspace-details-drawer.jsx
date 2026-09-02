@@ -28,7 +28,6 @@ function ActorValue({ actor }) {
       {fullName && actor.email && (
         <p className="text-xs text-muted-foreground">{actor.email}</p>
       )}
-      <p className="text-xs text-muted-foreground">ID : {actor.id}</p>
     </div>
   );
 }
