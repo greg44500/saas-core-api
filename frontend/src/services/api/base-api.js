@@ -13,6 +13,7 @@ const baseApi = createApi({
     'WorkspaceRoles',
     'WorkspaceInvitations',
     'WorkspaceFiles',
+    'WorkspaceSubscription',
   ],
   endpoints: () => ({}),
 });
