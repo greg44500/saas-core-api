@@ -83,7 +83,7 @@ describe('UserMenu', () => {
     expect(screen.getByRole('menuitem', { name: 'Déconnexion' })).toBeEnabled();
   });
 
-  it('ouvre le profil depuis le menu utilisateur', async () => {
+  it('ouvre le profil en mémorisant la page d’origine', async () => {
     const user = userEvent.setup();
     const router = renderUserMenu();
 
@@ -92,6 +92,9 @@ describe('UserMenu', () => {
 
     expect(await screen.findByRole('heading', { name: 'Profil cible' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/account/profile');
+    expect(router.state.location.state).toEqual({
+      accountReturnTo: '/workspaces/workspace-1/dashboard',
+    });
   });
 
   it('affiche la Console plateforme uniquement au super_admin', async () => {
