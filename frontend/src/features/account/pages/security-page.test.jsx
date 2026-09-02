@@ -5,10 +5,12 @@ import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 
 const useChangePasswordMutationMock = vi.hoisted(() => vi.fn());
+const useGetCurrentUserQueryMock = vi.hoisted(() => vi.fn());
 const useLogoutAllMutationMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/features/auth/api/auth-api', () => ({
   useChangePasswordMutation: useChangePasswordMutationMock,
+  useGetCurrentUserQuery: useGetCurrentUserQueryMock,
   useLogoutAllMutation: useLogoutAllMutationMock,
 }));
 
@@ -18,6 +20,7 @@ function renderSecurityPage() {
   const router = createMemoryRouter(
     [
       { path: '/account/security', Component: SecurityPage },
+      { path: '/forgot-password', Component: () => <h1>Récupération cible</h1> },
       { path: '/login', Component: () => <h1>Connexion cible</h1> },
     ],
     { initialEntries: ['/account/security'] },
@@ -35,6 +38,9 @@ describe('SecurityPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    useGetCurrentUserQueryMock.mockReturnValue({
+      data: { email: 'greg@example.com' },
+    });
     changePasswordUnwrapMock.mockResolvedValue(undefined);
     changePasswordMock.mockReturnValue({ unwrap: changePasswordUnwrapMock });
     useChangePasswordMutationMock.mockReturnValue([
@@ -51,6 +57,20 @@ describe('SecurityPage', () => {
   });
 
   afterEach(() => cleanup());
+
+  it('propose le workflow de récupération si le mot de passe actuel est oublié', async () => {
+    const user = userEvent.setup();
+    const router = renderSecurityPage();
+
+    await user.click(screen.getByRole('link', { name: 'Mot de passe actuel oublié ?' }));
+
+    expect(await screen.findByRole('heading', { name: 'Récupération cible' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/forgot-password');
+    expect(router.state.location.state).toEqual({
+      email: 'greg@example.com',
+      returnTo: '/account/security',
+    });
+  });
 
   it('change le mot de passe sans envoyer le champ de confirmation puis impose la reconnexion', async () => {
     const user = userEvent.setup();
@@ -102,7 +122,9 @@ describe('SecurityPage', () => {
     await user.click(screen.getByRole('button', { name: 'Déconnecter tous les appareils' }));
     await user.click(screen.getByRole('button', { name: 'Confirmer' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Révocation indisponible.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Impossible de révoquer toutes les sessions pour le moment.',
+    );
     expect(router.state.location.pathname).toBe('/account/security');
   });
 });
