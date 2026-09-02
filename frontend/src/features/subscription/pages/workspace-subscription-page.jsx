@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { useListPublicPlansQuery } from '@/features/plan/api/plan-api';
 import { PlanCard } from '@/features/plan/components/plan-card';
@@ -21,9 +22,10 @@ function getApiMessage(error, fallback) {
 
 function WorkspaceSubscriptionPage() {
   const { workspace, membership } = useWorkspaceContext();
+  const { toast } = useToast();
   const [billingInterval, setBillingInterval] = useState('monthly');
-  const [feedback, setFeedback] = useState(null);
   const [endTrialDialogOpen, setEndTrialDialogOpen] = useState(false);
+  const [endTrialError, setEndTrialError] = useState(null);
 
   const subscriptionQuery = useGetWorkspaceSubscriptionQuery(workspace.id);
   const plansQuery = useListPublicPlansQuery();
@@ -67,8 +69,6 @@ function WorkspaceSubscriptionPage() {
   );
 
   async function handleTrialPlan(plan) {
-    setFeedback(null);
-
     try {
       await startOrChangeTrial({
         workspaceId: workspace.id,
@@ -76,35 +76,50 @@ function WorkspaceSubscriptionPage() {
         billingInterval,
       }).unwrap();
 
-      setFeedback({
-        type: 'success',
-        message: trialIsEffective
+      toast({
+        title: trialIsEffective
+          ? 'Plan de l’essai mis à jour'
+          : 'Période d’essai démarrée',
+        description: trialIsEffective
           ? `La période d’essai utilise maintenant le plan ${plan.name}. Sa date de fin reste inchangée.`
-          : `La période d’essai du plan ${plan.name} a démarré.`,
+          : `Le plan ${plan.name} est maintenant utilisé pendant la période d’essai.`,
+        variant: 'success',
       });
     } catch (error) {
-      setFeedback({
-        type: 'error',
-        message: getApiMessage(error, 'La période d’essai n’a pas pu être modifiée.'),
+      toast({
+        title: 'Modification de l’essai impossible',
+        description: getApiMessage(error, 'La période d’essai n’a pas pu être modifiée.'),
+        variant: 'error',
       });
     }
   }
 
+  function openEndTrialDialog() {
+    setEndTrialError(null);
+    setEndTrialDialogOpen(true);
+  }
+
+  function closeEndTrialDialog() {
+    if (endTrialMutation.isLoading) return;
+    setEndTrialError(null);
+    setEndTrialDialogOpen(false);
+  }
+
   async function handleEndTrialToFree() {
-    setFeedback(null);
+    setEndTrialError(null);
 
     try {
       await endTrialToFree({ workspaceId: workspace.id }).unwrap();
       setEndTrialDialogOpen(false);
-      setFeedback({
-        type: 'success',
-        message: 'La période d’essai est terminée. Le plan Free est de nouveau effectif.',
+      toast({
+        title: 'Période d’essai terminée',
+        description: 'Le plan Free est de nouveau effectif.',
+        variant: 'success',
       });
     } catch (error) {
-      setFeedback({
-        type: 'error',
-        message: getApiMessage(error, 'Le retour vers le plan Free a échoué.'),
-      });
+      setEndTrialError(
+        getApiMessage(error, 'Le retour vers le plan Free a échoué.'),
+      );
     }
   }
 
@@ -116,7 +131,7 @@ function WorkspaceSubscriptionPage() {
         return (
           <Button
             disabled={mutationPending}
-            onClick={() => setEndTrialDialogOpen(true)}
+            onClick={openEndTrialDialog}
             type="button"
             variant="outline"
           >
@@ -181,19 +196,6 @@ function WorkspaceSubscriptionPage() {
         </p>
       </div>
 
-      {feedback && (
-        <p
-          className={`rounded-md border p-3 text-sm ${
-            feedback.type === 'error'
-              ? 'border-destructive/30 bg-destructive/10 text-destructive'
-              : 'border-success/30 bg-success/10'
-          }`}
-          role="status"
-        >
-          {feedback.message}
-        </p>
-      )}
-
       <SubscriptionSummaryCard subscription={subscription} />
 
       <EffectivePlanCapabilities plan={entitlement?.plan} />
@@ -207,7 +209,6 @@ function WorkspaceSubscriptionPage() {
       <CommercialLifecycleSection
         commercial={commercial}
         isOwner={isOwner}
-        onFeedback={setFeedback}
         plans={plansQuery.data ?? []}
         workspaceId={workspace.id}
       />
@@ -276,7 +277,8 @@ function WorkspaceSubscriptionPage() {
       </section>
 
       <EndTrialToFreeDialog
-        onCancel={() => setEndTrialDialogOpen(false)}
+        errorMessage={endTrialError}
+        onCancel={closeEndTrialDialog}
         onConfirm={handleEndTrialToFree}
         open={endTrialDialogOpen}
         pending={endTrialMutation.isLoading}
