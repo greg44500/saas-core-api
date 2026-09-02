@@ -145,6 +145,15 @@ function createAppRoutes() {
                   },
                 },
                 {
+                  path: 'activity',
+                  lazy: async () => {
+                    const { WorkspaceAuditLogRoute } = await import(
+                      '@/features/audit-log/components/workspace-audit-log-route'
+                    );
+                    return { Component: WorkspaceAuditLogRoute };
+                  },
+                },
+                {
                   path: 'settings',
                   lazy: async () => {
                     const { WorkspaceSettingsPage } = await import(
