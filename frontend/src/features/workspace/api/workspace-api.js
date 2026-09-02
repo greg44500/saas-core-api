@@ -23,6 +23,34 @@ const workspaceApi = baseApi.injectEndpoints({
       transformResponse: (response) => response?.data?.workspace ?? null,
       invalidatesTags: ['WorkspaceList'],
     }),
+    updateWorkspace: build.mutation({
+      query: ({ workspaceId, name }) => ({
+        url: `/workspaces/${workspaceId}`,
+        method: 'PATCH',
+        body: { name },
+      }),
+      transformResponse: (response) => response?.data?.workspace ?? null,
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        'WorkspaceList',
+        { type: 'Workspace', id: workspaceId },
+      ],
+    }),
+    transferWorkspaceOwnership: build.mutation({
+      query: ({ workspaceId, newOwnerMemberId, previousOwnerRoleId, currentPassword }) => ({
+        url: `/workspaces/${workspaceId}/ownership`,
+        method: 'PATCH',
+        body: {
+          newOwnerMemberId,
+          previousOwnerRoleId,
+          currentPassword,
+        },
+      }),
+      transformResponse: (response) => response?.data?.ownership ?? null,
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        { type: 'Workspace', id: workspaceId },
+        { type: 'WorkspaceMembers', id: workspaceId },
+      ],
+    }),
   }),
 });
 
@@ -30,6 +58,8 @@ export const {
   useCreateWorkspaceMutation,
   useGetWorkspaceByIdQuery,
   useListWorkspacesQuery,
+  useTransferWorkspaceOwnershipMutation,
+  useUpdateWorkspaceMutation,
 } = workspaceApi;
 
 export { workspaceApi };
