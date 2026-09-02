@@ -71,6 +71,28 @@ Les clés techniques du contrat (`active`, `pending`, `subscription:read`, `mont
 
 Un contrôle natif dont le texte dépend du navigateur ou du système d'exploitation, comme `<input type="file">`, ne doit pas imposer une interface partiellement anglaise. Si son libellé visible n'est pas maîtrisable, le contrôle natif reste accessible mais son habillage visible est remplacé par une UI française.
 
+### Politique des dates et calendriers
+
+Les champs de date ne doivent pas dépendre du rendu local du navigateur via un `<input type="date">` lorsque l'interface doit garantir une présentation française.
+
+La primitive partagée de référence est :
+
+```text
+frontend/src/components/forms/date-picker.jsx
+```
+
+Règles obligatoires :
+
+- affichage utilisateur au format `jj/mm/aaaa` ;
+- placeholder visible `jj/mm/aaaa` ;
+- noms des mois, jours de semaine, boutons et libellés du calendrier en français ;
+- valeur échangée avec les features et les API sous forme ISO `YYYY-MM-DD` ;
+- validation d'une vraie date calendrier avant émission de la valeur ;
+- aucune feature ou page ne recrée son propre calendrier si le composant partagé couvre le besoin ;
+- toute extension future (date min/max, date-heure, intervalle, sélection multiple) doit d'abord être étudiée comme évolution du composant partagé ou comme nouvelle primitive commune clairement distincte.
+
+La séparation affichage français / valeur ISO évite que la localisation de l'interface contamine les contrats techniques ou les comparaisons de dates.
+
 Les tableaux ne doivent pas répéter des états techniques sans valeur décisionnelle. Par exemple, une règle serveur qui rend une ligne non modifiable ne justifie pas nécessairement l'affichage de « Protégé » à chaque ligne : l'absence d'action, accompagnée d'une explication globale lorsqu'elle est utile, est préférable.
 
 Cette simplification visuelle ne remplace jamais la sécurité backend : masquer une action est uniquement une décision UX.
@@ -82,6 +104,7 @@ Auditer au minimum :
 - `frontend/src/app/` ;
 - `frontend/src/components/` ;
 - `frontend/src/features/auth/` ;
+- `frontend/src/features/account/` ;
 - `frontend/src/features/workspace/` ;
 - `frontend/src/features/workspace-members/` ;
 - `frontend/src/features/workspace-roles/` ;
@@ -109,6 +132,8 @@ Le périmètre devra être étendu à tout nouveau fichier créé pendant la sui
 - [ ] Les commentaires ne décrivent jamais le backend comme une sécurité secondaire : le serveur reste l'autorité.
 - [ ] Toutes les chaînes réellement visibles sont en français, sauf terme produit volontairement conservé.
 - [ ] Les contrôles natifs dont le texte visible n'est pas maîtrisable disposent d'un habillage localisé lorsque nécessaire.
+- [ ] Les champs de date visibles utilisent une primitive partagée garantissant `jj/mm/aaaa` et un calendrier français lorsque le besoin correspond au composant commun.
+- [ ] Aucune page ne contient une implémentation locale du calendrier sans justification architecturale explicite.
 - [ ] Les clés/statuts techniques visibles passent par un formateur de présentation adapté.
 - [ ] Les tableaux n'affichent pas de badges ou mentions techniques répétitives sans utilité pour l'utilisateur.
 - [ ] La documentation `docs/` associée au frontend est cohérente avec le code réel.
