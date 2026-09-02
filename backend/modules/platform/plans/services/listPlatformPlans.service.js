@@ -1,17 +1,6 @@
 import { Plan } from '../../../plan/plan.model.js';
 
 
-/**
- * Retourne les plans administrables avec pagination.
- *
- * Contrairement au catalogue public, cette liste expose également les plans
- * non publics, inactifs ou archivés afin que la plateforme puisse les gérer.
- *
- * @param {object} params
- * @param {number} [params.page=1]
- * @param {number} [params.limit=20]
- * @returns {Promise<{plans: object[], pagination: object}>}
- */
 const listPlatformPlans = async ({
     page = 1,
     limit = 20,
@@ -40,6 +29,8 @@ const listPlatformPlans = async ({
                 'status',
                 'isPublic',
                 'displayOrder',
+                'trialEnabled',
+                'trialDurationDays',
                 'currency',
                 'priceMonthlyExclTaxMinor',
                 'priceYearlyExclTaxMinor',
