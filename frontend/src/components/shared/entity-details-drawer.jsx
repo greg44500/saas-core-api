@@ -87,7 +87,7 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
         aria-hidden={!open}
         aria-labelledby="entity-details-title"
         aria-modal="true"
-        className={`absolute inset-y-0 right-0 flex w-full max-w-xl flex-col border-l border-border bg-background text-foreground shadow-xl transition-transform duration-300 ease-out motion-reduce:transition-none ${
+        className={`absolute inset-y-0 right-0 flex w-full max-w-xl flex-col border-l border-border bg-background text-foreground shadow-lg transition-transform duration-300 ease-out motion-reduce:transition-none ${
           isVisible ? 'translate-x-0' : 'translate-x-full'
         }`}
         role="dialog"
