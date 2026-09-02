@@ -19,6 +19,11 @@ import {
 } from '@/features/workspace-members/api/workspace-members-api';
 import { MemberDetailsDrawer } from '@/features/workspace-members/components/member-details-drawer';
 import { RolePermissionsDrawer } from '@/features/workspace-members/components/role-permissions-drawer';
+import {
+  formatInvitationDeliveryStatus,
+  formatInvitationStatus,
+  formatMemberStatus,
+} from '@/features/workspace-members/lib/workspace-member-formatters';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
@@ -339,7 +344,7 @@ function WorkspaceMembersPage() {
                         </select>
                       ) : member.role.name}
                     </td>
-                    <td className="px-5 py-4 capitalize">{member.status}</td>
+                    <td className="px-5 py-4">{formatMemberStatus(member.status)}</td>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap gap-2">
                         <ActionIconButton
@@ -348,6 +353,12 @@ function WorkspaceMembersPage() {
                           onClick={() => setSelectedMember(member)}
                           variant="outline"
                         />
+
+                        {/*
+                         * L'utilisateur courant et l'owner restent protégés par les
+                         * règles serveur. L'interface masque simplement les actions
+                         * impossibles au lieu de répéter un statut technique à chaque ligne.
+                         */}
                         {can(WORKSPACE_PERMISSION.MEMBER_SUSPEND) && !protectedMember && member.status === 'active' && (
                           <ActionIconButton
                             Icon={Ban}
@@ -372,7 +383,6 @@ function WorkspaceMembersPage() {
                             variant="destructive"
                           />
                         )}
-                        {protectedMember && <span className="self-center text-xs text-muted-foreground">Protégé</span>}
                       </div>
                     </td>
                   </tr>
@@ -404,7 +414,7 @@ function WorkspaceMembersPage() {
                   <div>
                     <p className="font-medium">{invitation.email}</p>
                     <p className="text-xs text-muted-foreground">
-                      {invitation.status} · livraison {invitation.deliveryStatus}
+                      {formatInvitationStatus(invitation.status)} · Envoi : {formatInvitationDeliveryStatus(invitation.deliveryStatus)}
                     </p>
                   </div>
                   <div className="flex gap-2">
