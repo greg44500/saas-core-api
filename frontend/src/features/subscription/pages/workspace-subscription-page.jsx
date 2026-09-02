@@ -50,7 +50,7 @@ function WorkspaceSubscriptionPage() {
   const trialConsumed = subscription?.trialEligibility?.consumed === true;
 
   /*
-   * Le statut persistant `trialing` ne suffit pas. Un trial expiré peut rester
+   * Le statut persistant `trialing` ne suffit pas. Un essai expiré peut rester
    * temporairement stocké comme tel alors que l'entitlement serveur a déjà
    * basculé vers la baseline Free.
    */
@@ -79,13 +79,13 @@ function WorkspaceSubscriptionPage() {
       setFeedback({
         type: 'success',
         message: trialIsEffective
-          ? `Le trial utilise maintenant le plan ${plan.name}. Sa date de fin reste inchangée.`
-          : `Le trial du plan ${plan.name} a démarré.`,
+          ? `La période d’essai utilise maintenant le plan ${plan.name}. Sa date de fin reste inchangée.`
+          : `La période d’essai du plan ${plan.name} a démarré.`,
       });
     } catch (error) {
       setFeedback({
         type: 'error',
-        message: getApiMessage(error, 'Le trial n’a pas pu être modifié.'),
+        message: getApiMessage(error, 'La période d’essai n’a pas pu être modifiée.'),
       });
     }
   }
@@ -98,7 +98,7 @@ function WorkspaceSubscriptionPage() {
       setEndTrialDialogOpen(false);
       setFeedback({
         type: 'success',
-        message: 'Le trial est terminé. Le plan Free est de nouveau effectif.',
+        message: 'La période d’essai est terminée. Le plan Free est de nouveau effectif.',
       });
     } catch (error) {
       setFeedback({
@@ -177,7 +177,7 @@ function WorkspaceSubscriptionPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Abonnement</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Consultez le plan, le trial et les droits commerciaux effectifs de {workspace.name}.
+          Consultez le plan, la période d’essai et les droits commerciaux effectifs de {workspace.name}.
         </p>
       </div>
 
