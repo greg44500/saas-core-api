@@ -74,7 +74,7 @@ describe('WorkspaceRolesPage', () => {
     ];
   });
 
-  it('affiche les rôles système et personnalisés sans action de mutation sur le rôle système', () => {
+  it('affiche les rôles système et personnalisés sans bruit visuel ni action de mutation sur le rôle système', () => {
     render(<WorkspaceRolesPage />);
 
     expect(screen.getByText('Owner')).toBeInTheDocument();
@@ -83,9 +83,10 @@ describe('WorkspaceRolesPage', () => {
     expect(screen.getByText('Personnalisé')).toBeInTheDocument();
 
     const ownerRow = screen.getByText('Owner').closest('tr');
-    expect(ownerRow).toHaveTextContent('Protégé');
+    expect(ownerRow).not.toHaveTextContent('Protégé');
     expect(ownerRow).not.toHaveTextContent('Modifier');
     expect(ownerRow).not.toHaveTextContent('Supprimer');
+    expect(ownerRow).toHaveTextContent('Voir');
   });
 
   it('réutilise le drawer de permissions pour consulter un rôle personnalisé', () => {
@@ -123,7 +124,7 @@ describe('WorkspaceRolesPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('n’autorise pas l’administration d’un rôle personnalisé plus puissant que l’acteur', () => {
+  it('n’autorise pas l’administration d’un rôle personnalisé plus puissant que l’acteur sans afficher de statut technique', () => {
     mocks.rolesQuery.data = [
       {
         id: 'advanced-role',
@@ -139,7 +140,7 @@ describe('WorkspaceRolesPage', () => {
     render(<WorkspaceRolesPage />);
 
     const row = screen.getByText('Avancé').closest('tr');
-    expect(row).toHaveTextContent('Niveau supérieur');
+    expect(row).not.toHaveTextContent('Niveau supérieur');
     expect(row).not.toHaveTextContent('Modifier');
     expect(row).not.toHaveTextContent('Supprimer');
     expect(row).toHaveTextContent('Voir');
