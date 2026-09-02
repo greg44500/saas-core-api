@@ -2,9 +2,26 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { downloadBlob } from '@/features/files/lib/download-blob';
 
+const originalCreateObjectURL = URL.createObjectURL;
+const originalRevokeObjectURL = URL.revokeObjectURL;
+
+function restoreUrlMethod(name, originalValue) {
+  if (originalValue) {
+    Object.defineProperty(URL, name, {
+      configurable: true,
+      value: originalValue,
+    });
+    return;
+  }
+
+  delete URL[name];
+}
+
 describe('downloadBlob', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    restoreUrlMethod('createObjectURL', originalCreateObjectURL);
+    restoreUrlMethod('revokeObjectURL', originalRevokeObjectURL);
   });
 
   it('crée puis libère une URL temporaire de téléchargement', () => {
