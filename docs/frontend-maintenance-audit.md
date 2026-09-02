@@ -93,6 +93,28 @@ Règles obligatoires :
 
 La séparation affichage français / valeur ISO évite que la localisation de l'interface contamine les contrats techniques ou les comparaisons de dates.
 
+### Politique des tableaux
+
+La primitive partagée de référence est :
+
+```text
+frontend/src/components/data-display/data-table.jsx
+```
+
+Les features fournissent leurs données dynamiques, leurs colonnes, leurs cellules métier et leurs actions, mais ne reconstruisent pas chacune une structure complète `<table>/<thead>/<tbody>/<tr>/<th>/<td>` tant que le besoin est couvert par la primitive commune.
+
+La densité et les espacements restent centralisés dans :
+
+```text
+frontend/src/components/data-display/data-table-styles.js
+```
+
+Les actions de cellules utilisent `DataTableActions` afin que leur espacement reste également cohérent.
+
+Toute nouvelle table Platform ou métier doit d'abord utiliser `DataTable`. Si une nouvelle interaction ne peut réellement pas être couverte, étudier d'abord une évolution de la primitive partagée avant de créer une autre primitive transversale.
+
+Référence détaillée : `docs/frontend-data-table-contract.md`.
+
 Les tableaux ne doivent pas répéter des états techniques sans valeur décisionnelle. Par exemple, une règle serveur qui rend une ligne non modifiable ne justifie pas nécessairement l'affichage de « Protégé » à chaque ligne : l'absence d'action, accompagnée d'une explication globale lorsqu'elle est utile, est préférable.
 
 Cette simplification visuelle ne remplace jamais la sécurité backend : masquer une action est uniquement une décision UX.
@@ -134,6 +156,8 @@ Le périmètre devra être étendu à tout nouveau fichier créé pendant la sui
 - [ ] Les contrôles natifs dont le texte visible n'est pas maîtrisable disposent d'un habillage localisé lorsque nécessaire.
 - [ ] Les champs de date visibles utilisent une primitive partagée garantissant `jj/mm/aaaa` et un calendrier français lorsque le besoin correspond au composant commun.
 - [ ] Aucune page ne contient une implémentation locale du calendrier sans justification architecturale explicite.
+- [ ] Tous les tableaux compatibles utilisent `components/data-display/data-table.jsx` plutôt qu'une structure HTML locale dupliquée.
+- [ ] Les espacements de tableaux restent centralisés dans `components/data-display/data-table-styles.js` et ne sont pas recopiés dans les features.
 - [ ] Les clés/statuts techniques visibles passent par un formateur de présentation adapté.
 - [ ] Les tableaux n'affichent pas de badges ou mentions techniques répétitives sans utilité pour l'utilisateur.
 - [ ] La documentation `docs/` associée au frontend est cohérente avec le code réel.
