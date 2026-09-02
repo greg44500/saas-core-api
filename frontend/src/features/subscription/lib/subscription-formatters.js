@@ -17,6 +17,12 @@ const ACCESS_REASON_LABEL = Object.freeze({
   plan_limits_exceeded: 'La consommation actuelle dépasse une ou plusieurs limites du plan effectif.',
 });
 
+const FEATURE_LABEL = Object.freeze({
+  file_upload: 'Téléversement de fichiers',
+  team_management: 'Gestion d’équipe',
+  audit_logs: 'Journal d’activité',
+});
+
 const LIMIT_LABEL = Object.freeze({
   members: 'Membres',
   storage_bytes: 'Stockage',
@@ -47,6 +53,10 @@ function formatSubscriptionDate(value) {
   }).format(date);
 }
 
+function formatFeatureLabel(featureKey) {
+  return FEATURE_LABEL[featureKey] ?? featureKey;
+}
+
 /**
  * Accepte la clé seule ou l'objet détaillé renvoyé par le backend lors d'une
  * incompatibilité de plan. Cette tolérance évite de coupler le rendu à une
@@ -55,6 +65,34 @@ function formatSubscriptionDate(value) {
 function formatLimitLabel(limit) {
   const limitKey = typeof limit === 'string' ? limit : limit?.key;
   return LIMIT_LABEL[limitKey] ?? limitKey ?? 'Limite inconnue';
+}
+
+function formatBytes(value) {
+  if (!Number.isFinite(value) || value < 0) return '—';
+  if (value < 1024) return `${value} o`;
+
+  const units = ['Ko', 'Mo', 'Go', 'To'];
+  let amount = value / 1024;
+  let unitIndex = 0;
+
+  while (amount >= 1024 && unitIndex < units.length - 1) {
+    amount /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(amount)} ${units[unitIndex]}`;
+}
+
+/**
+ * Formate une valeur de limite sans en déduire une règle métier. `null` reste
+ * affiché comme illimité, conformément au contrat Plan qui utilise cette
+ * valeur pour l'absence de plafond fini.
+ */
+function formatPlanLimitValue(limitKey, value) {
+  if (value === null) return 'Illimité';
+  if (limitKey === 'storage_bytes') return formatBytes(Number(value));
+  if (Number.isFinite(Number(value))) return new Intl.NumberFormat('fr-FR').format(Number(value));
+  return '—';
 }
 
 /**
@@ -96,11 +134,14 @@ function getTrialProgress({ startAt, endAt, now = new Date() }) {
 export {
   ACCESS_MODE_LABEL,
   ACCESS_REASON_LABEL,
+  FEATURE_LABEL,
   LIMIT_LABEL,
   SUBSCRIPTION_STATUS_LABEL,
   formatAccessMode,
   formatAccessReason,
+  formatFeatureLabel,
   formatLimitLabel,
+  formatPlanLimitValue,
   formatSubscriptionDate,
   formatSubscriptionStatus,
   getTrialProgress,
