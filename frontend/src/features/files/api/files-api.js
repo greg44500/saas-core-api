@@ -1,5 +1,12 @@
 import { baseApi } from '@/services/api/base-api';
 
+function createFileUploadFormData({ file, category }) {
+  const body = new FormData();
+  body.append('file', file);
+  body.append('category', category);
+  return body;
+}
+
 const workspaceFilesApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     listWorkspaceFiles: build.query({
@@ -16,17 +23,11 @@ const workspaceFilesApi = baseApi.injectEndpoints({
       ],
     }),
     uploadWorkspaceFile: build.mutation({
-      query: ({ workspaceId, file, category }) => {
-        const body = new FormData();
-        body.append('file', file);
-        body.append('category', category);
-
-        return {
-          url: `/workspaces/${workspaceId}/files`,
-          method: 'POST',
-          body,
-        };
-      },
+      query: ({ workspaceId, file, category }) => ({
+        url: `/workspaces/${workspaceId}/files`,
+        method: 'POST',
+        body: createFileUploadFormData({ file, category }),
+      }),
       transformResponse: (response) => response?.data?.file ?? null,
       invalidatesTags: (_result, _error, { workspaceId }) => [
         { type: 'WorkspaceFiles', id: workspaceId },
@@ -48,4 +49,4 @@ export const {
   useUploadWorkspaceFileMutation,
 } = workspaceFilesApi;
 
-export { workspaceFilesApi };
+export { createFileUploadFormData, workspaceFilesApi };
