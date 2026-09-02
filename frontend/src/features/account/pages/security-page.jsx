@@ -15,6 +15,7 @@ import { changePasswordFormSchema } from '@/features/account/validation/account-
 function SecurityPage() {
   const navigate = useNavigate();
   const [confirmLogoutAll, setConfirmLogoutAll] = useState(false);
+  const [logoutAllError, setLogoutAllError] = useState('');
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
   const [logoutAll, { isLoading: isLoggingOutAll }] = useLogoutAllMutation();
   const {
@@ -49,13 +50,18 @@ function SecurityPage() {
   };
 
   const handleLogoutAll = async () => {
+    setLogoutAllError('');
+
     try {
       await logoutAll().unwrap();
-    } finally {
       navigate('/login', {
         replace: true,
         state: { sessionsRevoked: true },
       });
+    } catch (error) {
+      setLogoutAllError(
+        error?.data?.message ?? 'Impossible de révoquer toutes les sessions.',
+      );
     }
   };
 
@@ -134,7 +140,10 @@ function SecurityPage() {
         {!confirmLogoutAll ? (
           <div className="mt-4">
             <Button
-              onClick={() => setConfirmLogoutAll(true)}
+              onClick={() => {
+                setLogoutAllError('');
+                setConfirmLogoutAll(true);
+              }}
               type="button"
               variant="destructive"
             >
@@ -144,6 +153,9 @@ function SecurityPage() {
         ) : (
           <div className="mt-4 space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
             <p className="text-sm font-medium">Confirmez la révocation de toutes vos sessions.</p>
+            {logoutAllError && (
+              <p className="text-sm text-destructive" role="alert">{logoutAllError}</p>
+            )}
             <div className="flex flex-wrap gap-2">
               <Button
                 disabled={isLoggingOutAll}
@@ -155,7 +167,10 @@ function SecurityPage() {
               </Button>
               <Button
                 disabled={isLoggingOutAll}
-                onClick={() => setConfirmLogoutAll(false)}
+                onClick={() => {
+                  setLogoutAllError('');
+                  setConfirmLogoutAll(false);
+                }}
                 type="button"
                 variant="outline"
               >
