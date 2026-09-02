@@ -30,16 +30,24 @@ const RESETTABLE_COMMERCIAL_STATUSES = new Set([
 
 /**
  * Empêche qu'un outil destiné aux données locales puisse devenir un raccourci
- * métier en production. La confirmation explicite protège également contre une
- * exécution accidentelle depuis un terminal de développement.
+ * métier en production. Trois barrières indépendantes sont exigées :
+ * environnement development, activation explicite dans la configuration et
+ * confirmation volontaire à chaque exécution du runner.
  */
 const assertDevelopmentTrialResetAllowed = ({
     nodeEnv = env.NODE_ENV,
+    resetEnabled = env.ALLOW_DEVELOPMENT_DATA_RESET,
     confirmed = false,
 } = {}) => {
     if (nodeEnv !== 'development') {
         throw new Error(
             'La réinitialisation de trial est autorisée uniquement avec NODE_ENV=development.',
+        );
+    }
+
+    if (resetEnabled !== true) {
+        throw new Error(
+            'La réinitialisation de données de développement est désactivée. Activez ALLOW_DEVELOPMENT_DATA_RESET=true pour cette opération.',
         );
     }
 
@@ -64,6 +72,7 @@ const assertDevelopmentTrialResetAllowed = ({
  * @param {string} params.workspaceId
  * @param {boolean} params.confirmed
  * @param {string} [params.nodeEnv]
+ * @param {boolean} [params.resetEnabled]
  * @returns {Promise<{userId: string, workspaceId: string, removedCommercialSubscription: boolean, removedTrialEligibility: boolean}>}
  */
 const resetDevelopmentTrial = async ({
@@ -71,9 +80,11 @@ const resetDevelopmentTrial = async ({
     workspaceId,
     confirmed,
     nodeEnv = env.NODE_ENV,
+    resetEnabled = env.ALLOW_DEVELOPMENT_DATA_RESET,
 }) => {
     assertDevelopmentTrialResetAllowed({
         nodeEnv,
+        resetEnabled,
         confirmed,
     });
 
