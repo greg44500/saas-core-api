@@ -178,7 +178,12 @@ describe('CommercialLifecycleSection', () => {
     ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Conserver mon abonnement' }));
-    await user.click(screen.getByRole('dialog').querySelector('button:not([variant])') ?? screen.getAllByRole('button', { name: 'Conserver l’abonnement' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Conserver l’abonnement' }));
+
+    expect(mocks.revokeCancellation).toHaveBeenCalledWith({
+      workspaceId: 'workspace-1',
+      subscriptionId: 'subscription-1',
+    });
   });
 
   it('révoque un downgrade déjà programmé sans exposer une seconde transition', async () => {
