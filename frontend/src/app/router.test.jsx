@@ -21,6 +21,10 @@ vi.mock('@/features/files/components/workspace-files-route', () => ({
   WorkspaceFilesRoute: () => <h1>Fichiers</h1>,
 }));
 
+vi.mock('@/features/subscription/components/workspace-subscription-route', () => ({
+  WorkspaceSubscriptionRoute: () => <h1>Abonnement</h1>,
+}));
+
 vi.mock('@/features/platform/components/platform-guard', () => ({
   PlatformGuard: () => <Outlet />,
 }));
@@ -139,6 +143,15 @@ describe('application routing', () => {
       await screen.findByRole('heading', { name: 'Fichiers' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Fichiers' })).toBeInTheDocument();
+  });
+
+  it('rend la route Abonnement dans le shell workspace', async () => {
+    renderRoute('/workspaces/workspace-123/subscription', 'authenticated');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Abonnement' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Abonnement' })).toBeInTheDocument();
   });
 
   it('rend le shell Platform et sa navigation pour une session authentifiée', async () => {
