@@ -1,5 +1,6 @@
 import { Download, Trash2 } from 'lucide-react';
 
+import { DATA_TABLE_STYLES } from '@/components/data-display/data-table-styles';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import {
   formatFileCategory,
@@ -28,29 +29,33 @@ function FilesTable({ canDelete, downloadingFileId, files, onDelete, onDownload 
       <table className="w-full text-left text-sm">
         <thead className="bg-muted/50 text-muted-foreground">
           <tr>
-            <th className="px-5 py-3 font-medium">Fichier</th>
-            <th className="px-5 py-3 font-medium">Catégorie</th>
-            <th className="px-5 py-3 font-medium">Type</th>
-            <th className="px-5 py-3 font-medium">Taille</th>
-            <th className="px-5 py-3 font-medium">Ajouté le</th>
-            <th className="px-5 py-3 font-medium">Actions</th>
+            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Fichier</th>
+            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Catégorie</th>
+            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Type</th>
+            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Taille</th>
+            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Ajouté le</th>
+            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {files.map((file) => (
             <tr key={file.id}>
-              <td className="max-w-80 px-5 py-4">
+              <td className={`max-w-80 ${DATA_TABLE_STYLES.bodyCell}`}>
                 <p className="truncate font-medium" title={file.originalName}>
                   {file.originalName}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">{file.mimeType}</p>
               </td>
-              <td className="px-5 py-4">{formatFileCategory(file.category)}</td>
-              <td className="px-5 py-4">{formatFileType(file)}</td>
-              <td className="whitespace-nowrap px-5 py-4">{formatFileSize(file.sizeBytes)}</td>
-              <td className="whitespace-nowrap px-5 py-4">{formatFileDate(file.createdAt)}</td>
-              <td className="px-5 py-4">
-                <div className="flex items-center gap-2">
+              <td className={DATA_TABLE_STYLES.bodyCell}>{formatFileCategory(file.category)}</td>
+              <td className={DATA_TABLE_STYLES.bodyCell}>{formatFileType(file)}</td>
+              <td className={`whitespace-nowrap ${DATA_TABLE_STYLES.bodyCell}`}>
+                {formatFileSize(file.sizeBytes)}
+              </td>
+              <td className={`whitespace-nowrap ${DATA_TABLE_STYLES.bodyCell}`}>
+                {formatFileDate(file.createdAt)}
+              </td>
+              <td className={DATA_TABLE_STYLES.bodyCell}>
+                <div className={`flex items-center ${DATA_TABLE_STYLES.actionGroup}`}>
                   <ActionIconButton
                     Icon={Download}
                     disabled={downloadingFileId === file.id}
