@@ -32,4 +32,19 @@ describe('EndTrialToFreeDialog', () => {
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
+
+  it('affiche un refus serveur dans la confirmation plutôt que dans un toast global', () => {
+    render(
+      <EndTrialToFreeDialog
+        errorMessage="Retour Free refusé"
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+        open
+        pending={false}
+      />,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Retour Free refusé');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
 });
