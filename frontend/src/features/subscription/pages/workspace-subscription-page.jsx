@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { PlanCard } from '@/features/plan/components/plan-card';
 import { useListPublicPlansQuery } from '@/features/plan/api/plan-api';
 import { useGetWorkspaceSubscriptionQuery } from '@/features/subscription/api/subscription-api';
+import { EffectivePlanCapabilities } from '@/features/subscription/components/effective-plan-capabilities';
 import { SubscriptionSummaryCard } from '@/features/subscription/components/subscription-summary-card';
 import { TrialProgress } from '@/features/subscription/components/trial-progress';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
@@ -51,6 +52,8 @@ function WorkspaceSubscriptionPage() {
       </div>
 
       <SubscriptionSummaryCard subscription={subscription} />
+
+      <EffectivePlanCapabilities plan={entitlement?.plan} />
 
       <TrialProgress
         active={trialIsEffective}
