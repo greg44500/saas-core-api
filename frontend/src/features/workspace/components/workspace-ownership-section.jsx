@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { FormField } from '@/components/forms/form-field';
+import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useListWorkspaceMembersQuery } from '@/features/workspace-members/api/workspace-members-api';
@@ -20,6 +21,7 @@ const selectClassName =
 
 function WorkspaceOwnershipSection({ workspaceId }) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [membersPage, setMembersPage] = useState(1);
   const [consequencesConfirmed, setConsequencesConfirmed] = useState(false);
   const {
@@ -79,6 +81,11 @@ function WorkspaceOwnershipSection({ workspaceId }) {
         ...values,
       }).unwrap();
 
+      toast({
+        title: 'Propriété du workspace transférée',
+        description: 'Les rôles et permissions ont été recalculés.',
+        variant: 'success',
+      });
       navigate(`/workspaces/${workspaceId}/dashboard`, { replace: true });
     } catch (error) {
       resetField('currentPassword');
