@@ -135,6 +135,15 @@ function createAppRoutes() {
                     return { Component: WorkspaceFilesRoute };
                   },
                 },
+                {
+                  path: 'subscription',
+                  lazy: async () => {
+                    const { WorkspaceSubscriptionRoute } = await import(
+                      '@/features/subscription/components/workspace-subscription-route'
+                    );
+                    return { Component: WorkspaceSubscriptionRoute };
+                  },
+                },
               ],
             },
           ],
