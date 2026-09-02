@@ -6,23 +6,52 @@ import { useListWorkspaceAuditLogsQuery } from '@/features/audit-log/api/audit-l
 import { AuditLogFilters, EMPTY_FILTERS } from '@/features/audit-log/components/audit-log-filters';
 import { AuditLogPagination } from '@/features/audit-log/components/audit-log-pagination';
 import { AuditLogTable } from '@/features/audit-log/components/audit-log-table';
-import { dateInputToIsoBoundary } from '@/features/audit-log/lib/audit-log-presentation';
+import {
+  AUDIT_ACTION_OPTIONS,
+  AUDIT_ENTITY_TYPE_OPTIONS,
+  AUDIT_STATUS_OPTIONS,
+  dateInputToIsoBoundary,
+} from '@/features/audit-log/lib/audit-log-presentation';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 
 const PAGE_SIZE = 20;
+const auditActionValues = new Set(AUDIT_ACTION_OPTIONS.map(([value]) => value));
+const auditEntityTypeValues = new Set(AUDIT_ENTITY_TYPE_OPTIONS.map(([value]) => value));
+const auditStatusValues = new Set(AUDIT_STATUS_OPTIONS.map(([value]) => value));
 
 function parsePage(value) {
   const page = Number.parseInt(value ?? '1', 10);
   return Number.isInteger(page) && page >= 1 ? page : 1;
 }
 
+function readAllowedValue(searchParams, key, allowedValues) {
+  const value = searchParams.get(key);
+  return value && allowedValues.has(value) ? value : '';
+}
+
+function isValidDateInput(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value ?? '')) return false;
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day
+  );
+}
+
 function readFilters(searchParams) {
+  const from = searchParams.get('from') ?? '';
+  const to = searchParams.get('to') ?? '';
+
   return {
-    action: searchParams.get('action') ?? '',
-    entityType: searchParams.get('entityType') ?? '',
-    status: searchParams.get('status') ?? '',
-    from: searchParams.get('from') ?? '',
-    to: searchParams.get('to') ?? '',
+    action: readAllowedValue(searchParams, 'action', auditActionValues),
+    entityType: readAllowedValue(searchParams, 'entityType', auditEntityTypeValues),
+    status: readAllowedValue(searchParams, 'status', auditStatusValues),
+    from: isValidDateInput(from) ? from : '',
+    to: isValidDateInput(to) ? to : '',
   };
 }
 
@@ -160,6 +189,7 @@ function WorkspaceAuditLogPage() {
 export {
   PAGE_SIZE,
   WorkspaceAuditLogPage,
+  isValidDateInput,
   parsePage,
   readFilters,
   writeSearchParams,
