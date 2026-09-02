@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 
 import { FormField } from '@/components/forms/form-field';
 import { Button } from '@/components/ui/button';
@@ -10,8 +10,10 @@ import { useForgotPasswordMutation } from '@/features/auth/api/auth-api';
 import { forgotPasswordFormSchema } from '@/features/auth/validation/auth-schemas';
 
 function ForgotPasswordPage() {
+  const location = useLocation();
   const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
   const [successMessage, setSuccessMessage] = useState('');
+  const returnTo = location.state?.returnTo;
   const {
     register,
     handleSubmit,
@@ -21,7 +23,7 @@ function ForgotPasswordPage() {
     resolver: zodResolver(forgotPasswordFormSchema),
     mode: 'onBlur',
     reValidateMode: 'onChange',
-    defaultValues: { email: '' },
+    defaultValues: { email: location.state?.email ?? '' },
   });
 
   const onSubmit = async (values) => {
@@ -77,8 +79,8 @@ function ForgotPasswordPage() {
       </form>
 
       <p className="text-center text-sm text-muted-foreground">
-        <Link className="font-medium text-primary hover:underline" to="/login">
-          Retour à la connexion
+        <Link className="font-medium text-primary hover:underline" to={returnTo ?? '/login'}>
+          {returnTo ? 'Retour aux paramètres de sécurité' : 'Retour à la connexion'}
         </Link>
       </p>
     </div>
