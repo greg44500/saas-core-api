@@ -252,7 +252,7 @@ function PlatformPlansPage() {
       <EntityDetailsDrawer
         description={
           formState?.mode === 'create'
-            ? 'Définissez une offre complète à partir du registre de capabilities actif.'
+            ? 'Définissez une offre complète à partir du registre actif des fonctionnalités et limites.'
             : 'Modifiez l’offre sans changer sa clé technique immuable.'
         }
         onClose={closeForm}
