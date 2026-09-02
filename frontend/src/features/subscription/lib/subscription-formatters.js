@@ -13,6 +13,10 @@ const ACCESS_MODE_LABEL = Object.freeze({
   remediation: 'Mise en conformité requise',
 });
 
+const ACCESS_REASON_LABEL = Object.freeze({
+  plan_limits_exceeded: 'La consommation actuelle dépasse une ou plusieurs limites du plan effectif.',
+});
+
 const LIMIT_LABEL = Object.freeze({
   members: 'Membres',
   storage_bytes: 'Stockage',
@@ -27,6 +31,10 @@ function formatAccessMode(accessMode) {
   return ACCESS_MODE_LABEL[accessMode] ?? accessMode ?? 'Non renseigné';
 }
 
+function formatAccessReason(reason) {
+  return ACCESS_REASON_LABEL[reason] ?? 'Le workspace doit être remis en conformité avec les limites du plan effectif.';
+}
+
 function formatSubscriptionDate(value) {
   if (!value) return '—';
 
@@ -39,8 +47,14 @@ function formatSubscriptionDate(value) {
   }).format(date);
 }
 
-function formatLimitLabel(limitKey) {
-  return LIMIT_LABEL[limitKey] ?? limitKey;
+/**
+ * Accepte la clé seule ou l'objet détaillé renvoyé par le backend lors d'une
+ * incompatibilité de plan. Cette tolérance évite de coupler le rendu à une
+ * représentation simplifiée qui ferait perdre `usage`, `limit` et `excess`.
+ */
+function formatLimitLabel(limit) {
+  const limitKey = typeof limit === 'string' ? limit : limit?.key;
+  return LIMIT_LABEL[limitKey] ?? limitKey ?? 'Limite inconnue';
 }
 
 /**
@@ -81,9 +95,11 @@ function getTrialProgress({ startAt, endAt, now = new Date() }) {
 
 export {
   ACCESS_MODE_LABEL,
+  ACCESS_REASON_LABEL,
   LIMIT_LABEL,
   SUBSCRIPTION_STATUS_LABEL,
   formatAccessMode,
+  formatAccessReason,
   formatLimitLabel,
   formatSubscriptionDate,
   formatSubscriptionStatus,
