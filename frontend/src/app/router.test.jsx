@@ -5,8 +5,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter, Outlet } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 
+const useGetCurrentUserQueryMock = vi.hoisted(() => vi.fn());
 const useGetWorkspaceByIdQueryMock = vi.hoisted(() => vi.fn());
 const useListWorkspacesQueryMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/auth/api/auth-api', async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return {
+    ...actual,
+    useGetCurrentUserQuery: useGetCurrentUserQueryMock,
+  };
+});
 
 vi.mock('@/features/workspace/api/workspace-api', () => ({
   useGetWorkspaceByIdQuery: useGetWorkspaceByIdQueryMock,
@@ -96,8 +106,18 @@ describe('application routing', () => {
   beforeEach(() => {
     window.localStorage.clear();
     document.documentElement.classList.remove('dark');
+    useGetCurrentUserQueryMock.mockReset();
     useGetWorkspaceByIdQueryMock.mockReset();
     useListWorkspacesQueryMock.mockReset();
+    useGetCurrentUserQueryMock.mockReturnValue({
+      data: {
+        id: 'user-current',
+        platformRole: 'user',
+      },
+      error: undefined,
+      isLoading: false,
+      isFetching: false,
+    });
     useGetWorkspaceByIdQueryMock.mockReturnValue({
       data: {
         workspace: {
