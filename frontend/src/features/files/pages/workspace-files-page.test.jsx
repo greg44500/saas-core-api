@@ -5,13 +5,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   downloadBlob: vi.fn(),
   downloadWorkspaceFile: vi.fn(),
+  uploadWorkspaceFile: vi.fn(),
   useDownloadWorkspaceFileMutation: vi.fn(),
   useListWorkspaceFilesQuery: vi.fn(),
+  useUploadWorkspaceFileMutation: vi.fn(),
 }));
 
 vi.mock('@/features/files/api/files-api', () => ({
   useDownloadWorkspaceFileMutation: mocks.useDownloadWorkspaceFileMutation,
   useListWorkspaceFilesQuery: mocks.useListWorkspaceFilesQuery,
+  useUploadWorkspaceFileMutation: mocks.useUploadWorkspaceFileMutation,
 }));
 
 vi.mock('@/features/files/lib/download-blob', () => ({
@@ -37,11 +40,11 @@ const file = {
   updatedAt: '2026-09-02T10:00:00.000Z',
 };
 
-function renderPage() {
+function renderPage(permissions = [WORKSPACE_PERMISSION.FILE_READ]) {
   return render(
     <WorkspaceProvider
       membership={membership}
-      permissions={[WORKSPACE_PERMISSION.FILE_READ]}
+      permissions={permissions}
       workspace={workspace}
     >
       <WorkspaceFilesPage />
@@ -53,8 +56,10 @@ describe('WorkspaceFilesPage', () => {
   beforeEach(() => {
     mocks.downloadWorkspaceFile.mockReset();
     mocks.downloadBlob.mockReset();
+    mocks.uploadWorkspaceFile.mockReset();
     mocks.useListWorkspaceFilesQuery.mockReset();
     mocks.useDownloadWorkspaceFileMutation.mockReset();
+    mocks.useUploadWorkspaceFileMutation.mockReset();
 
     mocks.useListWorkspaceFilesQuery.mockReturnValue({
       data: {
@@ -67,6 +72,10 @@ describe('WorkspaceFilesPage', () => {
     });
     mocks.useDownloadWorkspaceFileMutation.mockReturnValue([
       mocks.downloadWorkspaceFile,
+      { isLoading: false },
+    ]);
+    mocks.useUploadWorkspaceFileMutation.mockReturnValue([
+      mocks.uploadWorkspaceFile,
       { isLoading: false },
     ]);
   });
@@ -92,6 +101,20 @@ describe('WorkspaceFilesPage', () => {
     expect(
       screen.getByRole('button', { name: 'Télécharger contrat.pdf' }),
     ).toBeInTheDocument();
+  });
+
+  it('affiche l’action d’upload uniquement avec file:upload', () => {
+    const { unmount } = renderPage([WORKSPACE_PERMISSION.FILE_READ]);
+
+    expect(screen.queryByRole('button', { name: 'Ajouter un fichier' })).not.toBeInTheDocument();
+
+    unmount();
+    renderPage([
+      WORKSPACE_PERMISSION.FILE_READ,
+      WORKSPACE_PERMISSION.FILE_UPLOAD,
+    ]);
+
+    expect(screen.getByRole('button', { name: 'Ajouter un fichier' })).toBeInTheDocument();
   });
 
   it('change de page via la pagination serveur', async () => {
