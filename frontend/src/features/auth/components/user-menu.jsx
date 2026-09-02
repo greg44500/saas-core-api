@@ -1,6 +1,6 @@
 import { Gauge, LogOut, ShieldCheck, UserRound } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -17,8 +17,13 @@ function getInitials(user) {
   return initials || user?.email?.trim()?.charAt(0)?.toUpperCase() || '?';
 }
 
+function getLocationPath(location) {
+  return `${location.pathname}${location.search ?? ''}${location.hash ?? ''}`;
+}
+
 function UserMenu() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const { data: user, isLoading } = useGetCurrentUserQuery();
   const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
@@ -33,9 +38,16 @@ function UserMenu() {
     }
   }
 
-  function navigateFromMenu(destination) {
+  function navigateFromMenu(destination, { preserveReturnDestination = false } = {}) {
     setOpen(false);
-    navigate(destination);
+
+    if (!preserveReturnDestination) {
+      navigate(destination);
+      return;
+    }
+
+    const accountReturnTo = location.state?.accountReturnTo ?? getLocationPath(location);
+    navigate(destination, { state: { accountReturnTo } });
   }
 
   const displayName = user
@@ -76,7 +88,7 @@ function UserMenu() {
           <div className="py-2">
             <button
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={() => navigateFromMenu('/account/profile')}
+              onClick={() => navigateFromMenu('/account/profile', { preserveReturnDestination: true })}
               role="menuitem"
               type="button"
             >
@@ -85,7 +97,7 @@ function UserMenu() {
             </button>
             <button
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={() => navigateFromMenu('/account/security')}
+              onClick={() => navigateFromMenu('/account/security', { preserveReturnDestination: true })}
               role="menuitem"
               type="button"
             >
@@ -123,4 +135,4 @@ function UserMenu() {
   );
 }
 
-export { UserMenu, getInitials };
+export { UserMenu, getInitials, getLocationPath };
