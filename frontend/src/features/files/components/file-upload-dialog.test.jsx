@@ -49,6 +49,21 @@ describe('FileUploadDialog', () => {
     vi.clearAllMocks();
   });
 
+  it('affiche un sélecteur de fichier entièrement maîtrisé en français', async () => {
+    const user = userEvent.setup();
+    const file = new File(['pdf'], 'contrat.pdf', { type: 'application/pdf' });
+
+    renderDialog();
+
+    expect(screen.getByText('Aucun fichier sélectionné.')).toBeInTheDocument();
+    expect(screen.getByText('Choisir un fichier')).toBeInTheDocument();
+
+    await user.upload(screen.getByLabelText('Fichier'), file);
+
+    expect(screen.getByText('contrat.pdf')).toBeInTheDocument();
+    expect(screen.queryByText('Aucun fichier sélectionné.')).not.toBeInTheDocument();
+  });
+
   it('envoie le fichier et la catégorie au workspace courant', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
