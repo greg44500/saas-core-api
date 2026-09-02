@@ -17,6 +17,22 @@ vi.mock('@/features/auth/components/user-menu', () => ({
   UserMenu: () => <button type="button">Compte test</button>,
 }));
 
+vi.mock('@/features/auth/pages/forgot-password-page', () => ({
+  ForgotPasswordPage: () => <h1>Mot de passe oublié</h1>,
+}));
+
+vi.mock('@/features/auth/pages/reset-password-page', () => ({
+  ResetPasswordPage: () => <h1>Réinitialiser le mot de passe</h1>,
+}));
+
+vi.mock('@/features/account/pages/profile-page', () => ({
+  ProfilePage: () => <h1>Profil</h1>,
+}));
+
+vi.mock('@/features/account/pages/security-page', () => ({
+  SecurityPage: () => <h1>Sécurité</h1>,
+}));
+
 vi.mock('@/features/workspace/pages/workspace-dashboard-page', () => ({
   WorkspaceDashboardPage: () => (
     <>
@@ -134,6 +150,20 @@ describe('application routing', () => {
     ).toBeInTheDocument();
   });
 
+  it('laisse les parcours de récupération publics', async () => {
+    renderRoute('/forgot-password');
+    expect(
+      await screen.findByRole('heading', { name: 'Mot de passe oublié' }),
+    ).toBeInTheDocument();
+
+    cleanup();
+
+    renderRoute('/reset-password?token=test-token');
+    expect(
+      await screen.findByRole('heading', { name: 'Réinitialiser le mot de passe' }),
+    ).toBeInTheDocument();
+  });
+
   it('redirige une route protégée vers Login en conservant la destination', async () => {
     const router = renderRoute('/workspaces/workspace-123/dashboard');
     expect(
@@ -143,6 +173,19 @@ describe('application routing', () => {
     expect(router.state.location.state.from.pathname).toBe(
       '/workspaces/workspace-123/dashboard',
     );
+  });
+
+  it('protège le compte personnel et rend son layout après authentification', async () => {
+    const unauthenticatedRouter = renderRoute('/account/profile');
+    expect(await screen.findByRole('heading', { name: 'Connexion' })).toBeInTheDocument();
+    expect(unauthenticatedRouter.state.location.state.from.pathname).toBe('/account/profile');
+
+    cleanup();
+
+    renderRoute('/account/profile', 'authenticated');
+    expect(await screen.findByRole('heading', { name: 'Profil' })).toBeInTheDocument();
+    expect(screen.getByText('Paramètres personnels')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sécurité' })).toBeInTheDocument();
   });
 
   it('rend le workspace réel pour une session authentifiée', async () => {
