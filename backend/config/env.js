@@ -162,6 +162,15 @@ const envSchema = z.object({
             32,
             'TRIAL_IDENTITY_SECRET doit contenir au minimum 32 caractères',
         ),
+
+    /*
+     * Les outils qui détruisent volontairement des données de développement
+     * restent désactivés par défaut, même lorsque NODE_ENV=development.
+     */
+    ALLOW_DEVELOPMENT_DATA_RESET: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
 }).superRefine((config, context) => {
     if (config.NODE_ENV !== 'production') {
         return;
@@ -195,6 +204,14 @@ const envSchema = z.object({
             code: 'custom',
             path: ['CLIENT_URL'],
             message: 'CLIENT_URL doit utiliser HTTPS en production',
+        });
+    }
+
+    if (config.ALLOW_DEVELOPMENT_DATA_RESET) {
+        context.addIssue({
+            code: 'custom',
+            path: ['ALLOW_DEVELOPMENT_DATA_RESET'],
+            message: 'ALLOW_DEVELOPMENT_DATA_RESET doit rester désactivé en production',
         });
     }
 });
