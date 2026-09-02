@@ -1,19 +1,28 @@
 import { z } from 'zod';
 
-import {
-  ALLOWED_UPLOAD_MIME_TYPES,
-  FILE_UPLOAD_CATEGORY_OPTIONS,
-} from '@/features/files/constants/file-upload.constants';
-
-const FILE_UPLOAD_CATEGORY_VALUES = FILE_UPLOAD_CATEGORY_OPTIONS.map(({ value }) => value);
+import { ALLOWED_UPLOAD_MIME_TYPES } from '@/features/files/constants/file-upload.constants';
 
 const fileUploadSchema = z.strictObject({
-  category: z.enum(FILE_UPLOAD_CATEGORY_VALUES),
+  category: z.enum([
+    'avatar',
+    'logo',
+    'document',
+    'image',
+    'import',
+    'export',
+    'other',
+  ]),
   file: z
-    .instanceof(File, { message: 'Sélectionnez un fichier.' })
+    .any()
+    .refine((file) => file instanceof File, {
+      message: 'Sélectionnez un fichier.',
+    })
     .refine(
-      (file) => ALLOWED_UPLOAD_MIME_TYPES.includes(file.type),
-      'Seuls les fichiers PDF, JPG et PNG sont acceptés.',
+      (file) =>
+        !(file instanceof File) || ALLOWED_UPLOAD_MIME_TYPES.includes(file.type),
+      {
+        message: 'Seuls les fichiers PDF, JPG et PNG sont acceptés.',
+      },
     ),
 });
 
