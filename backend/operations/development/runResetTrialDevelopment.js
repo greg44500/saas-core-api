@@ -33,6 +33,12 @@ const run = async () => {
         );
     }
 
+    if (env.ALLOW_DEVELOPMENT_DATA_RESET !== true) {
+        throw new Error(
+            'Activez ALLOW_DEVELOPMENT_DATA_RESET=true avant d’utiliser cette commande.',
+        );
+    }
+
     const email = readArgument('email');
     const workspaceId = readArgument('workspace-id');
     const confirmed = hasFlag('confirm-development-reset');
