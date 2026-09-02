@@ -133,6 +133,24 @@ describe('WorkspaceRolesPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('garde un refus de suppression dans le bloc de confirmation', async () => {
+    mocks.deleteRole.mockReturnValue({
+      unwrap: vi.fn().mockRejectedValue({
+        data: { message: 'Ce rôle est encore utilisé' },
+      }),
+    });
+
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmer la suppression' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Ce rôle est encore utilisé',
+    );
+    expect(screen.getByText('Supprimer le rôle « Support » ?')).toBeInTheDocument();
+  });
+
   it('n’autorise pas l’administration d’un rôle personnalisé plus puissant que l’acteur sans afficher de statut technique', () => {
     mocks.rolesQuery.data = [
       {
