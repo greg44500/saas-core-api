@@ -14,19 +14,39 @@ describe('resetTrialDevelopment', () => {
     it('refuse absolument un environnement de production', () => {
         expect(() => assertDevelopmentTrialResetAllowed({
             nodeEnv: 'production',
+            resetEnabled: true,
             confirmed: true,
         })).toThrow(
             'La réinitialisation de trial est autorisée uniquement avec NODE_ENV=development.',
         );
     });
 
-    it('exige une confirmation explicite même en développement', () => {
+    it('reste désactivé par défaut même en développement', () => {
         expect(() => assertDevelopmentTrialResetAllowed({
             nodeEnv: 'development',
+            resetEnabled: false,
+            confirmed: true,
+        })).toThrow(
+            'La réinitialisation de données de développement est désactivée.',
+        );
+    });
+
+    it('exige une confirmation explicite lorsque la capability de reset est activée', () => {
+        expect(() => assertDevelopmentTrialResetAllowed({
+            nodeEnv: 'development',
+            resetEnabled: true,
             confirmed: false,
         })).toThrow(
             'La réinitialisation exige --confirm-development-reset.',
         );
+    });
+
+    it('accepte uniquement development + capability + confirmation', () => {
+        expect(() => assertDevelopmentTrialResetAllowed({
+            nodeEnv: 'development',
+            resetEnabled: true,
+            confirmed: true,
+        })).not.toThrow();
     });
 
     it('autorise uniquement les états de trial pouvant être nettoyés sans effacer un scénario de paiement', () => {
