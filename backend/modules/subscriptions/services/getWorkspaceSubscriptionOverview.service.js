@@ -3,10 +3,16 @@ import {
     SUBSCRIPTION_STATUS,
 } from '../../../constants/subscription.constants.js';
 
+import {
+    hasConsumedTrial,
+} from '../../trialEligibility/trialEligibility.service.js';
 import { Subscription } from '../subscription.model.js';
 import {
     getWorkspaceAccessEntitlement,
 } from '../subscription.service.js';
+import {
+    resolveCurrentWorkspaceOwner,
+} from './grantTrial.helpers.js';
 
 /**
  * Transforme un Plan en contrat de lecture destiné au frontend.
@@ -80,6 +86,10 @@ const serializeSubscription = (subscription) => {
  * getWorkspaceAccessEntitlement reste l'autorité des droits effectifs. Le
  * frontend reçoit donc un DTO prêt à consommer et ne doit jamais reconstruire
  * lui-même le fallback commercial -> Free ni le mode de remédiation.
+ *
+ * L'état de consommation du trial est également résolu côté serveur à partir
+ * de l'owner actuel. Le frontend peut ainsi éviter de proposer un nouveau trial
+ * lorsque l'identité l'a déjà consommé, sans jamais recevoir son empreinte HMAC.
  */
 const getWorkspaceSubscriptionOverview = async ({
     workspaceId,
@@ -121,14 +131,23 @@ const getWorkspaceSubscriptionOverview = async ({
         createdAt: -1,
     });
 
-    const [baseline, commercial, access] = await Promise.all([
+    const [baseline, commercial, access, owner] = await Promise.all([
         baselineQuery,
         commercialQuery,
         getWorkspaceAccessEntitlement({
             workspaceId,
             session,
         }),
+        resolveCurrentWorkspaceOwner({
+            workspaceId,
+            session: session ?? null,
+        }),
     ]);
+
+    const trialConsumed = await hasConsumedTrial({
+        emailCanonical: owner.emailCanonical,
+        session: session ?? null,
+    });
 
     return {
         baseline: serializeSubscription(baseline),
@@ -141,6 +160,9 @@ const getWorkspaceSubscriptionOverview = async ({
             reason: access.reason,
             blockingLimits: access.blockingLimits,
             nonBlockingLimits: access.nonBlockingLimits,
+        },
+        trialEligibility: {
+            consumed: trialConsumed,
         },
     };
 };
