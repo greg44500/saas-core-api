@@ -6,6 +6,7 @@ const AUDIT_ACTION_OPTIONS = Object.freeze([
   ['PASSWORD_CHANGED', 'Mot de passe modifié'],
   ['PASSWORD_RESET_COMPLETED', 'Mot de passe réinitialisé'],
   ['USER_CREATED', 'Utilisateur créé'],
+  ['USER_PROFILE_UPDATED', 'Profil utilisateur modifié'],
   ['USER_DISABLED', 'Utilisateur désactivé'],
   ['USER_ENABLED', 'Utilisateur réactivé'],
   ['USER_PLATFORM_ROLE_UPDATED', 'Rôle plateforme modifié'],
