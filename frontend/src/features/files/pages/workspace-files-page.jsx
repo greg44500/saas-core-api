@@ -3,9 +3,11 @@ import { Upload } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
+  useDeleteWorkspaceFileMutation,
   useDownloadWorkspaceFileMutation,
   useListWorkspaceFilesQuery,
 } from '@/features/files/api/files-api';
+import { FileDeleteDialog } from '@/features/files/components/file-delete-dialog';
 import { FileUploadDialog } from '@/features/files/components/file-upload-dialog';
 import { FilesPagination } from '@/features/files/components/files-pagination';
 import { FilesTable } from '@/features/files/components/files-table';
@@ -25,6 +27,8 @@ function WorkspaceFilesPage() {
   const [feedback, setFeedback] = useState(null);
   const [downloadingFileId, setDownloadingFileId] = useState(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [filePendingDeletion, setFilePendingDeletion] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
   const filesQuery = useListWorkspaceFilesQuery({
     workspaceId: workspace.id,
@@ -32,6 +36,7 @@ function WorkspaceFilesPage() {
     limit: PAGE_SIZE,
   });
   const [downloadWorkspaceFile] = useDownloadWorkspaceFileMutation();
+  const [deleteWorkspaceFile, deleteState] = useDeleteWorkspaceFileMutation();
 
   async function handleDownload(file) {
     setFeedback(null);
@@ -51,6 +56,47 @@ function WorkspaceFilesPage() {
       });
     } finally {
       setDownloadingFileId(null);
+    }
+  }
+
+  function openDeleteDialog(file) {
+    setFeedback(null);
+    setDeleteError(null);
+    setFilePendingDeletion(file);
+  }
+
+  function closeDeleteDialog() {
+    if (deleteState.isLoading) return;
+    setDeleteError(null);
+    setFilePendingDeletion(null);
+  }
+
+  async function confirmDelete() {
+    if (!filePendingDeletion) return;
+
+    setDeleteError(null);
+
+    try {
+      await deleteWorkspaceFile({
+        workspaceId: workspace.id,
+        fileId: filePendingDeletion.id,
+      }).unwrap();
+
+      const deletedFileName = filePendingDeletion.originalName;
+      setFilePendingDeletion(null);
+
+      // Une suppression peut réduire le nombre total de pages. Revenir à la
+      // première garantit qu'une invalidation RTK Query ne laisse pas l'UI sur
+      // une page devenue inexistante ou vide.
+      setPage(1);
+      setFeedback({
+        type: 'success',
+        message: `${deletedFileName} a été retiré des fichiers actifs. Son contenu reste temporairement conservé avant purge.`,
+      });
+    } catch (error) {
+      setDeleteError(
+        getApiMessage(error, 'Le fichier n’a pas pu être retiré.'),
+      );
     }
   }
 
@@ -76,6 +122,7 @@ function WorkspaceFilesPage() {
   const pagination = filesQuery.data?.pagination;
   const totalFiles = pagination?.total ?? files.length;
   const canUpload = can(WORKSPACE_PERMISSION.FILE_UPLOAD);
+  const canDelete = can(WORKSPACE_PERMISSION.FILE_DELETE);
 
   return (
     <div className="space-y-6">
@@ -133,8 +180,10 @@ function WorkspaceFilesPage() {
           </div>
         ) : (
           <FilesTable
+            canDelete={canDelete}
             downloadingFileId={downloadingFileId}
             files={files}
+            onDelete={openDeleteDialog}
             onDownload={handleDownload}
           />
         )}
@@ -161,6 +210,17 @@ function WorkspaceFilesPage() {
             });
           }}
           open={uploadDialogOpen}
+        />
+      )}
+
+      {canDelete && (
+        <FileDeleteDialog
+          errorMessage={deleteError}
+          file={filePendingDeletion}
+          onCancel={closeDeleteDialog}
+          onConfirm={confirmDelete}
+          open={Boolean(filePendingDeletion)}
+          pending={deleteState.isLoading}
         />
       )}
     </div>
