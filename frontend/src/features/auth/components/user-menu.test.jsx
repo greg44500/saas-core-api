@@ -18,6 +18,8 @@ function renderUserMenu() {
   const router = createMemoryRouter(
     [
       { path: '/workspaces/:workspaceId/dashboard', Component: UserMenu },
+      { path: '/account/profile', Component: () => <h1>Profil cible</h1> },
+      { path: '/account/security', Component: () => <h1>Sécurité cible</h1> },
       { path: '/platform/overview', Component: () => <h1>Console cible</h1> },
       { path: '/login', Component: () => <h1>Connexion cible</h1> },
     ],
@@ -75,10 +77,21 @@ describe('UserMenu', () => {
 
     expect(screen.getByText('Greg Martin')).toBeInTheDocument();
     expect(screen.getByText('greg@example.com')).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: 'Profil' })).toBeDisabled();
-    expect(screen.getByRole('menuitem', { name: 'Sécurité' })).toBeDisabled();
+    expect(screen.getByRole('menuitem', { name: 'Profil' })).toBeEnabled();
+    expect(screen.getByRole('menuitem', { name: 'Sécurité' })).toBeEnabled();
     expect(screen.queryByRole('menuitem', { name: 'Console plateforme' })).not.toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Déconnexion' })).toBeEnabled();
+  });
+
+  it('ouvre le profil depuis le menu utilisateur', async () => {
+    const user = userEvent.setup();
+    const router = renderUserMenu();
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Profil' }));
+
+    expect(await screen.findByRole('heading', { name: 'Profil cible' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/account/profile');
   });
 
   it('affiche la Console plateforme uniquement au super_admin', async () => {
