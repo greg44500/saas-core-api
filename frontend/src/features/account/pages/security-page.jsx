@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { FormField } from '@/components/forms/form-field';
 import { PasswordField } from '@/components/forms/password-field';
@@ -15,6 +15,7 @@ import {
 
 function SecurityPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [confirmLogoutAll, setConfirmLogoutAll] = useState(false);
   const { data: currentUser } = useGetCurrentUserQuery();
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
@@ -100,6 +101,7 @@ function SecurityPage() {
               state={{
                 email: currentUser?.email ?? '',
                 returnTo: '/account/security',
+                accountReturnTo: location.state?.accountReturnTo,
               }}
               to="/forgot-password"
             >
