@@ -67,6 +67,14 @@ function SecurityPage() {
     }
   };
 
+  const recoveryState = {
+    email: currentUser?.email ?? '',
+    returnTo: '/account/security',
+    ...(location.state?.accountReturnTo
+      ? { accountReturnTo: location.state.accountReturnTo }
+      : {}),
+  };
+
   return (
     <div className="space-y-6">
       <header className="space-y-2">
@@ -98,11 +106,7 @@ function SecurityPage() {
           <div className="-mt-2 text-right">
             <Link
               className="text-sm font-medium text-primary hover:underline"
-              state={{
-                email: currentUser?.email ?? '',
-                returnTo: '/account/security',
-                accountReturnTo: location.state?.accountReturnTo,
-              }}
+              state={recoveryState}
               to="/forgot-password"
             >
               Mot de passe actuel oublié ?
