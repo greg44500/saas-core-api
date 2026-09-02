@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Ban, Eye, UserMinus } from 'lucide-react';
 
-import { DATA_TABLE_STYLES } from '@/components/data-display/data-table-styles';
+import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { Tooltip } from '@/components/shared/tooltip';
 import { Button } from '@/components/ui/button';
@@ -230,6 +230,107 @@ function WorkspaceMembersPage() {
     );
   }
 
+  const memberColumns = [
+    {
+      id: 'user',
+      header: 'Utilisateur',
+      cell: (member) => {
+        const isSelf = member.user.id === currentUser?.id;
+        const memberName = `${member.user.firstName} ${member.user.lastName}`;
+
+        return isSelf ? (
+          <Tooltip content="Vous">
+            <span className="cursor-help font-medium underline decoration-dotted underline-offset-4">
+              {memberName}
+            </span>
+          </Tooltip>
+        ) : (
+          <p className="font-medium">{memberName}</p>
+        );
+      },
+    },
+    {
+      id: 'role',
+      header: 'Rôle',
+      cell: (member) => {
+        const isSelf = member.user.id === currentUser?.id;
+        const isOwner = member.role.key === 'owner';
+        const protectedMember = isSelf || isOwner;
+        const memberName = `${member.user.firstName} ${member.user.lastName}`;
+
+        return can(WORKSPACE_PERMISSION.MEMBER_UPDATE) && !protectedMember && assignableRoles.length > 0 ? (
+          <select
+            aria-label={`Rôle de ${memberName}`}
+            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            disabled={updateRoleState.isLoading}
+            value={member.role.id}
+            onChange={(event) => handleRoleChange(member.id, event.target.value)}
+          >
+            {assignableRoles.map((role) => (
+              <option key={role.id} value={role.id}>{role.name}</option>
+            ))}
+          </select>
+        ) : member.role.name;
+      },
+    },
+    {
+      id: 'status',
+      header: 'Statut',
+      cell: (member) => formatMemberStatus(member.status),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: (member) => {
+        const isSelf = member.user.id === currentUser?.id;
+        const isOwner = member.role.key === 'owner';
+        const protectedMember = isSelf || isOwner;
+        const memberName = `${member.user.firstName} ${member.user.lastName}`;
+
+        return (
+          <DataTableActions className="flex-wrap">
+            <ActionIconButton
+              Icon={Eye}
+              label="Voir"
+              onClick={() => setSelectedMember(member)}
+              variant="outline"
+            />
+
+            {/*
+             * L'utilisateur courant et l'owner restent protégés par les
+             * règles serveur. L'interface masque simplement les actions
+             * impossibles au lieu de répéter un statut technique à chaque ligne.
+             */}
+            {can(WORKSPACE_PERMISSION.MEMBER_SUSPEND) && !protectedMember && member.status === 'active' && (
+              <ActionIconButton
+                Icon={Ban}
+                label="Suspendre"
+                onClick={() => setPendingAction({
+                  type: 'suspend',
+                  id: member.id,
+                  message: `Suspendre ${memberName} ?`,
+                })}
+                variant="outline"
+              />
+            )}
+            {can(WORKSPACE_PERMISSION.MEMBER_REMOVE) && !protectedMember && (
+              <ActionIconButton
+                Icon={UserMinus}
+                label="Retirer"
+                onClick={() => setPendingAction({
+                  type: 'remove',
+                  id: member.id,
+                  message: `Retirer ${memberName} de ce workspace ?`,
+                })}
+                variant="destructive"
+              />
+            )}
+          </DataTableActions>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="space-y-8">
       <div>
@@ -300,98 +401,11 @@ function WorkspaceMembersPage() {
         <div className="border-b border-border p-5">
           <h2 className="text-lg font-semibold">Membres actuels</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-muted/50 text-muted-foreground">
-              <tr>
-                <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Utilisateur</th>
-                <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Rôle</th>
-                <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Statut</th>
-                <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {(membersQuery.data?.members ?? []).map((member) => {
-                const isSelf = member.user.id === currentUser?.id;
-                const isOwner = member.role.key === 'owner';
-                const protectedMember = isSelf || isOwner;
-                const memberName = `${member.user.firstName} ${member.user.lastName}`;
-
-                return (
-                  <tr key={member.id}>
-                    <td className={DATA_TABLE_STYLES.bodyCell}>
-                      {isSelf ? (
-                        <Tooltip content="Vous">
-                          <span className="cursor-help font-medium underline decoration-dotted underline-offset-4">
-                            {memberName}
-                          </span>
-                        </Tooltip>
-                      ) : (
-                        <p className="font-medium">{memberName}</p>
-                      )}
-                    </td>
-                    <td className={DATA_TABLE_STYLES.bodyCell}>
-                      {can(WORKSPACE_PERMISSION.MEMBER_UPDATE) && !protectedMember && assignableRoles.length > 0 ? (
-                        <select
-                          aria-label={`Rôle de ${memberName}`}
-                          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                          disabled={updateRoleState.isLoading}
-                          value={member.role.id}
-                          onChange={(event) => handleRoleChange(member.id, event.target.value)}
-                        >
-                          {assignableRoles.map((role) => (
-                            <option key={role.id} value={role.id}>{role.name}</option>
-                          ))}
-                        </select>
-                      ) : member.role.name}
-                    </td>
-                    <td className={DATA_TABLE_STYLES.bodyCell}>{formatMemberStatus(member.status)}</td>
-                    <td className={DATA_TABLE_STYLES.bodyCell}>
-                      <div className={`flex flex-wrap ${DATA_TABLE_STYLES.actionGroup}`}>
-                        <ActionIconButton
-                          Icon={Eye}
-                          label="Voir"
-                          onClick={() => setSelectedMember(member)}
-                          variant="outline"
-                        />
-
-                        {/*
-                         * L'utilisateur courant et l'owner restent protégés par les
-                         * règles serveur. L'interface masque simplement les actions
-                         * impossibles au lieu de répéter un statut technique à chaque ligne.
-                         */}
-                        {can(WORKSPACE_PERMISSION.MEMBER_SUSPEND) && !protectedMember && member.status === 'active' && (
-                          <ActionIconButton
-                            Icon={Ban}
-                            label="Suspendre"
-                            onClick={() => setPendingAction({
-                              type: 'suspend',
-                              id: member.id,
-                              message: `Suspendre ${memberName} ?`,
-                            })}
-                            variant="outline"
-                          />
-                        )}
-                        {can(WORKSPACE_PERMISSION.MEMBER_REMOVE) && !protectedMember && (
-                          <ActionIconButton
-                            Icon={UserMinus}
-                            label="Retirer"
-                            onClick={() => setPendingAction({
-                              type: 'remove',
-                              id: member.id,
-                              message: `Retirer ${memberName} de ce workspace ?`,
-                            })}
-                            variant="destructive"
-                          />
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={memberColumns}
+          data={membersQuery.data?.members ?? []}
+          getRowKey={(member) => member.id}
+        />
         <div className="px-5 pb-5">
           <Pagination
             page={memberPage}
