@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import {
   useRevokeWorkspaceCancellationMutation,
@@ -22,14 +23,15 @@ function getApiMessage(error, fallback) {
 function CommercialLifecycleSection({
   commercial,
   isOwner,
-  onFeedback,
   plans,
   workspaceId,
 }) {
+  const { toast } = useToast();
   const [dialogMode, setDialogMode] = useState(null);
   const [cancellationReason, setCancellationReason] = useState('');
   const [targetPlanId, setTargetPlanId] = useState('');
   const [validationMessage, setValidationMessage] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
   const [scheduleCancellation, scheduleCancellationMutation] =
     useScheduleWorkspaceCancellationMutation();
@@ -64,21 +66,32 @@ function CommercialLifecycleSection({
     setCancellationReason('');
     setTargetPlanId('');
     setValidationMessage(null);
+    setActionError(null);
+  }
+
+  function openDialog(mode) {
+    setValidationMessage(null);
+    setActionError(null);
+    setDialogMode(mode);
   }
 
   function openDowngradeDialog() {
     setValidationMessage(null);
+    setActionError(null);
     setTargetPlanId(downgradeCandidates[0]?.id ?? '');
     setDialogMode('downgrade');
   }
 
   async function handleScheduleCancellation() {
+    setActionError(null);
     const validation = cancellationReasonSchema.safeParse(cancellationReason);
 
     if (!validation.success) {
       setValidationMessage(validation.error.issues[0]?.message ?? 'Le motif est invalide.');
       return;
     }
+
+    setValidationMessage(null);
 
     try {
       await scheduleCancellation({
@@ -87,35 +100,41 @@ function CommercialLifecycleSection({
         reason: validation.data,
       }).unwrap();
       closeDialog();
-      onFeedback({
-        type: 'success',
-        message: `La résiliation est programmée pour le ${effectiveDate}.`,
+      toast({
+        title: 'Résiliation programmée',
+        description: `Elle prendra effet le ${effectiveDate}.`,
+        variant: 'success',
       });
     } catch (error) {
-      onFeedback({
-        type: 'error',
-        message: getApiMessage(error, 'La résiliation n’a pas pu être programmée.'),
-      });
+      setActionError(
+        getApiMessage(error, 'La résiliation n’a pas pu être programmée.'),
+      );
     }
   }
 
   async function handleRevokeCancellation() {
+    setActionError(null);
+
     try {
       await revokeCancellation({
         workspaceId,
         subscriptionId: commercial.id,
       }).unwrap();
       closeDialog();
-      onFeedback({ type: 'success', message: 'La résiliation programmée a été annulée.' });
-    } catch (error) {
-      onFeedback({
-        type: 'error',
-        message: getApiMessage(error, 'La résiliation programmée n’a pas pu être annulée.'),
+      toast({
+        title: 'Résiliation annulée',
+        description: 'L’abonnement continuera selon son cycle contractuel normal.',
+        variant: 'success',
       });
+    } catch (error) {
+      setActionError(
+        getApiMessage(error, 'La résiliation programmée n’a pas pu être annulée.'),
+      );
     }
   }
 
   async function handleScheduleDowngrade() {
+    setActionError(null);
     const validation = downgradeTargetSchema.safeParse(targetPlanId);
 
     if (!validation.success) {
@@ -130,6 +149,8 @@ function CommercialLifecycleSection({
       return;
     }
 
+    setValidationMessage(null);
+
     try {
       await scheduleDowngrade({
         workspaceId,
@@ -137,31 +158,35 @@ function CommercialLifecycleSection({
         targetPlanId: targetPlan.id,
       }).unwrap();
       closeDialog();
-      onFeedback({
-        type: 'success',
-        message: `Le passage vers ${targetPlan.name} est programmé pour le ${effectiveDate}.`,
+      toast({
+        title: 'Changement de plan programmé',
+        description: `Passage vers ${targetPlan.name} le ${effectiveDate}.`,
+        variant: 'success',
       });
     } catch (error) {
-      onFeedback({
-        type: 'error',
-        message: getApiMessage(error, 'Le changement de plan n’a pas pu être programmé.'),
-      });
+      setActionError(
+        getApiMessage(error, 'Le changement de plan n’a pas pu être programmé.'),
+      );
     }
   }
 
   async function handleRevokeDowngrade() {
+    setActionError(null);
+
     try {
       await revokeDowngrade({
         workspaceId,
         subscriptionId: commercial.id,
       }).unwrap();
       closeDialog();
-      onFeedback({ type: 'success', message: 'Le changement de plan programmé a été annulé.' });
-    } catch (error) {
-      onFeedback({
-        type: 'error',
-        message: getApiMessage(error, 'Le changement de plan programmé n’a pas pu être annulé.'),
+      toast({
+        title: 'Changement de plan annulé',
+        variant: 'success',
       });
+    } catch (error) {
+      setActionError(
+        getApiMessage(error, 'Le changement de plan programmé n’a pas pu être annulé.'),
+      );
     }
   }
 
@@ -176,7 +201,7 @@ function CommercialLifecycleSection({
           onConfirm={handleScheduleCancellation}
           pending={pending}
           title="Programmer la résiliation ?"
-          validationMessage={validationMessage}
+          validationMessage={validationMessage ?? actionError}
         >
           <div className="mt-4 space-y-2">
             <label className="text-sm font-medium" htmlFor="cancellation-reason">
@@ -205,7 +230,7 @@ function CommercialLifecycleSection({
           onConfirm={handleScheduleDowngrade}
           pending={pending}
           title="Programmer le changement de plan ?"
-          validationMessage={validationMessage}
+          validationMessage={validationMessage ?? actionError}
         >
           <div className="mt-4 space-y-2">
             <label className="text-sm font-medium" htmlFor="downgrade-target-plan">
@@ -236,6 +261,7 @@ function CommercialLifecycleSection({
           onConfirm={handleRevokeCancellation}
           pending={pending}
           title="Conserver l’abonnement ?"
+          validationMessage={actionError}
         />
       );
     }
@@ -249,6 +275,7 @@ function CommercialLifecycleSection({
           onConfirm={handleRevokeDowngrade}
           pending={pending}
           title="Annuler le changement de plan ?"
+          validationMessage={actionError}
         />
       );
     }
@@ -276,7 +303,7 @@ function CommercialLifecycleSection({
           <Button
             className="mt-3"
             disabled={pending}
-            onClick={() => setDialogMode('revoke-cancellation')}
+            onClick={() => openDialog('revoke-cancellation')}
             type="button"
             variant="outline"
           >
@@ -295,7 +322,7 @@ function CommercialLifecycleSection({
           <Button
             className="mt-3"
             disabled={pending}
-            onClick={() => setDialogMode('revoke-downgrade')}
+            onClick={() => openDialog('revoke-downgrade')}
             type="button"
             variant="outline"
           >
@@ -314,7 +341,7 @@ function CommercialLifecycleSection({
             <Button
               className="mt-3"
               disabled={pending}
-              onClick={() => setDialogMode('cancellation')}
+              onClick={() => openDialog('cancellation')}
               type="button"
               variant="outline"
             >
