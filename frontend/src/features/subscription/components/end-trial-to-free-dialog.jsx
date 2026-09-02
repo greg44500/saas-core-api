@@ -5,7 +5,13 @@ import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
  * retour vers Free arrête immédiatement la période d'essai et ne redonne jamais
  * droit à un nouvel essai pour la même identité.
  */
-function EndTrialToFreeDialog({ onCancel, onConfirm, open, pending }) {
+function EndTrialToFreeDialog({
+  errorMessage,
+  onCancel,
+  onConfirm,
+  open,
+  pending,
+}) {
   return (
     <ConfirmationDialog
       confirmLabel="Mettre fin à l’essai et revenir à Free"
@@ -16,6 +22,7 @@ function EndTrialToFreeDialog({ onCancel, onConfirm, open, pending }) {
           vous ne pourrez pas démarrer un nouvel essai avec cette identité.
         </>
       )}
+      errorMessage={errorMessage}
       onCancel={onCancel}
       onConfirm={onConfirm}
       open={open}
