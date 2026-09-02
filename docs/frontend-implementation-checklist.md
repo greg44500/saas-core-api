@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Frontend Core
 
-Dernière consolidation : 2026-09-02 — F8.6.2 Trial / changement de plan validé, F8.6.3 cycle de vie commercial en cours
+Dernière consolidation : 2026-09-02 — F8.6.3 implémenté, correctif Drawer partagé ajouté, validation finale post-correctif à exécuter
 
 ## 1. Rôle du document
 
@@ -13,7 +13,7 @@ Elle doit être mise à jour à la fin de chaque lot frontend validé.
 ### Statuts
 
 - `[x] TERMINÉ` — implémenté et validé par les tests/build du lot ;
-- `[ ] EN COURS` — lot actuellement développé ;
+- `[ ] EN COURS` — lot actuellement développé ou en validation finale ;
 - `[ ] À FAIRE` — lot explicitement planifié ;
 - `[ ] AUDIT` — contrôle transversal obligatoire ;
 - `[ ] DETTE` — évolution différée et documentée.
@@ -116,12 +116,23 @@ Référence : `docs/functional-debt-file-trash-restore.md`.
 
 ### F8.6.3 — Cycle de vie commercial
 
-- [ ] EN COURS — programmation/révocation de résiliation owner-only.
-- [ ] EN COURS — programmation/révocation de downgrade owner-only.
-- [ ] EN COURS — affichage et confirmation des dates effectives.
-- [ ] EN COURS — actions incompatibles masquées/désactivées pour l’UX sans remplacer les invariants backend.
-- [ ] EN COURS — invalidation/refetch de `WorkspaceSubscription` après chaque mutation.
-- [ ] EN COURS — conserver Billing/Payment réel hors périmètre tant que le provider n’est pas intégré.
+Implémentation fonctionnelle terminée. Les tests du bloc ont été signalés verts avant le correctif UX transversal du Drawer. Le lot reste en validation finale tant que la régression frontend et le build n’ont pas été relancés après ce correctif partagé.
+
+- [ ] EN COURS — programmation/révocation de résiliation owner-only implémentées ; validation finale post-Drawer à clôturer.
+- [ ] EN COURS — programmation/révocation de downgrade owner-only implémentées ; validation finale post-Drawer à clôturer.
+- [ ] EN COURS — affichage et confirmation des dates effectives implémentés ; validation finale post-Drawer à clôturer.
+- [ ] EN COURS — actions incompatibles filtrées côté UX sans remplacer les invariants backend ; validation finale post-Drawer à clôturer.
+- [ ] EN COURS — invalidation/refetch de `WorkspaceSubscription` après chaque mutation implémenté ; validation finale post-Drawer à clôturer.
+- [ ] EN COURS — Billing/Payment réel reste explicitement hors périmètre tant que le provider n’est pas intégré.
+
+### Correctif UX transversal — Drawer partagé
+
+- [ ] EN COURS — `frontend/src/components/shared/entity-details-drawer.jsx` anime désormais l’ouverture et la fermeture depuis la droite avec une transition de 300 ms.
+- [ ] EN COURS — le voile de fond possède un fondu synchronisé.
+- [ ] EN COURS — le Drawer reste monté pendant la transition de fermeture afin de rendre l’animation de sortie réellement visible.
+- [ ] EN COURS — interactions désactivées pendant la phase de sortie et `aria-hidden` positionné sur le panneau fermé.
+- [ ] EN COURS — ombre partagée légère `shadow-lg` appliquée au composant générique, et non à un usage métier.
+- [ ] EN COURS — test partagé `entity-details-drawer.test.jsx` ajouté pour la transition, le démontage différé et l’ombre ; exécution locale encore requise après pull.
 
 ## 5. Ordre de production frontend restant
 
@@ -129,7 +140,7 @@ Référence : `docs/functional-debt-file-trash-restore.md`.
 F8.5      Files frontend                              TERMINÉ
 F8.6.1    Subscription / Plan / Trial — lecture       TERMINÉ
 F8.6.2    Trial / changement de plan                  TERMINÉ
-F8.6.3    Résiliation / downgrade                     EN COURS
+F8.6.3    Résiliation / downgrade                     VALIDATION FINALE POST-DRAWER
 F8.7      Workspace Settings / Ownership frontend
 F8.8      Audit / Dashboard Core frontend
 F8.9      Account / Security frontend
@@ -150,6 +161,17 @@ Un lot frontend ne doit être marqué TERMINÉ qu’après :
 5. mise à jour de la présente checklist ;
 6. documentation des décisions ou dettes nouvelles ;
 7. absence de modification hors périmètre.
+
+Pour clôturer F8.6.3 après le correctif Drawer partagé :
+
+```bash
+cd frontend
+npm test -- src/components/shared/entity-details-drawer.test.jsx
+npm test
+npm run build
+```
+
+Si ces trois commandes sont vertes, marquer F8.6.3 et le correctif Drawer `TERMINÉ`, puis démarrer F8.7.
 
 ## 7. Gate avant modules métier
 
