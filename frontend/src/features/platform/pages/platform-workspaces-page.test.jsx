@@ -22,13 +22,20 @@ vi.mock('@/features/platform/api/platform-workspaces-api', () => ({
 
 import { PlatformWorkspacesPage } from '@/features/platform/pages/platform-workspaces-page';
 
+const actor = {
+  id: '507f1f77bcf86cd799439010',
+  firstName: 'Greg',
+  lastName: 'Martin',
+  email: 'greg@example.com',
+};
+
 const listedWorkspace = {
   id: '507f1f77bcf86cd799439021',
   name: 'Workspace Démo',
   status: 'active',
   statusReason: null,
   statusChangedAt: '2026-09-01T08:30:00.000Z',
-  createdBy: '507f1f77bcf86cd799439010',
+  createdBy: actor.id,
   createdAt: '2026-08-20T10:00:00.000Z',
   updatedAt: '2026-09-01T08:30:00.000Z',
 };
@@ -36,8 +43,9 @@ const listedWorkspace = {
 const detailedWorkspace = {
   ...listedWorkspace,
   statusReasonDetails: null,
-  statusChangedBy: '507f1f77bcf86cd799439010',
-  updatedBy: '507f1f77bcf86cd799439010',
+  statusChangedBy: actor,
+  createdBy: actor,
+  updatedBy: actor,
 };
 
 function resolvedMutation(mock, result = {}) {
@@ -137,6 +145,18 @@ describe('PlatformWorkspacesPage', () => {
     renderPage();
     await user.click(screen.getByRole('button', { name: 'Réessayer' }));
     expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it('affiche les acteurs lisibles dans le drawer en conservant leur identifiant', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: 'Voir' }));
+    const drawer = screen.getByRole('dialog', { name: 'Workspace Démo' });
+
+    expect(within(drawer).getAllByText('Greg Martin')).toHaveLength(3);
+    expect(within(drawer).getAllByText('greg@example.com')).toHaveLength(3);
+    expect(within(drawer).getAllByText(`ID : ${actor.id}`)).toHaveLength(3);
   });
 
   it('exige des détails pour le motif autre', async () => {
