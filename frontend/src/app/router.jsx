@@ -126,6 +126,15 @@ function createAppRoutes() {
                     return { Component: WorkspaceRolesRoute };
                   },
                 },
+                {
+                  path: 'files',
+                  lazy: async () => {
+                    const { WorkspaceFilesRoute } = await import(
+                      '@/features/files/components/workspace-files-route'
+                    );
+                    return { Component: WorkspaceFilesRoute };
+                  },
+                },
               ],
             },
           ],
