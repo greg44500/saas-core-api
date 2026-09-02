@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Ban, Eye, UserMinus } from 'lucide-react';
 
+import { DATA_TABLE_STYLES } from '@/components/data-display/data-table-styles';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { Tooltip } from '@/components/shared/tooltip';
 import { Button } from '@/components/ui/button';
@@ -303,10 +304,10 @@ function WorkspaceMembersPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
-                <th className="px-5 py-3 font-medium">Utilisateur</th>
-                <th className="px-5 py-3 font-medium">Rôle</th>
-                <th className="px-5 py-3 font-medium">Statut</th>
-                <th className="px-5 py-3 font-medium">Actions</th>
+                <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Utilisateur</th>
+                <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Rôle</th>
+                <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Statut</th>
+                <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`}>Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -318,7 +319,7 @@ function WorkspaceMembersPage() {
 
                 return (
                   <tr key={member.id}>
-                    <td className="px-5 py-4">
+                    <td className={DATA_TABLE_STYLES.bodyCell}>
                       {isSelf ? (
                         <Tooltip content="Vous">
                           <span className="cursor-help font-medium underline decoration-dotted underline-offset-4">
@@ -329,7 +330,7 @@ function WorkspaceMembersPage() {
                         <p className="font-medium">{memberName}</p>
                       )}
                     </td>
-                    <td className="px-5 py-4">
+                    <td className={DATA_TABLE_STYLES.bodyCell}>
                       {can(WORKSPACE_PERMISSION.MEMBER_UPDATE) && !protectedMember && assignableRoles.length > 0 ? (
                         <select
                           aria-label={`Rôle de ${memberName}`}
@@ -344,9 +345,9 @@ function WorkspaceMembersPage() {
                         </select>
                       ) : member.role.name}
                     </td>
-                    <td className="px-5 py-4">{formatMemberStatus(member.status)}</td>
-                    <td className="px-5 py-4">
-                      <div className="flex flex-wrap gap-2">
+                    <td className={DATA_TABLE_STYLES.bodyCell}>{formatMemberStatus(member.status)}</td>
+                    <td className={DATA_TABLE_STYLES.bodyCell}>
+                      <div className={`flex flex-wrap ${DATA_TABLE_STYLES.actionGroup}`}>
                         <ActionIconButton
                           Icon={Eye}
                           label="Voir"
