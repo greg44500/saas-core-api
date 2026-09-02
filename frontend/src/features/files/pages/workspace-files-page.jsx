@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Upload } from 'lucide-react';
 
+import { DataPagination } from '@/components/data-display/data-pagination';
 import { Button } from '@/components/ui/button';
 import {
   useDeleteWorkspaceFileMutation,
@@ -9,7 +10,6 @@ import {
 } from '@/features/files/api/files-api';
 import { FileDeleteDialog } from '@/features/files/components/file-delete-dialog';
 import { FileUploadDialog } from '@/features/files/components/file-upload-dialog';
-import { FilesPagination } from '@/features/files/components/files-pagination';
 import { FilesTable } from '@/features/files/components/files-table';
 import { downloadBlob } from '@/features/files/lib/download-blob';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
@@ -189,7 +189,7 @@ function WorkspaceFilesPage() {
         )}
 
         <div className="px-5 pb-5">
-          <FilesPagination
+          <DataPagination
             page={page}
             pagination={pagination}
             onPageChange={setPage}
