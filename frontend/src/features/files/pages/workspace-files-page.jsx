@@ -1,14 +1,17 @@
 import { useState } from 'react';
+import { Upload } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
   useDownloadWorkspaceFileMutation,
   useListWorkspaceFilesQuery,
 } from '@/features/files/api/files-api';
+import { FileUploadDialog } from '@/features/files/components/file-upload-dialog';
 import { FilesPagination } from '@/features/files/components/files-pagination';
 import { FilesTable } from '@/features/files/components/files-table';
 import { downloadBlob } from '@/features/files/lib/download-blob';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
+import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
 const PAGE_SIZE = 20;
 
@@ -17,10 +20,11 @@ function getApiMessage(error, fallback) {
 }
 
 function WorkspaceFilesPage() {
-  const { workspace } = useWorkspaceContext();
+  const { workspace, can } = useWorkspaceContext();
   const [page, setPage] = useState(1);
   const [feedback, setFeedback] = useState(null);
   const [downloadingFileId, setDownloadingFileId] = useState(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
   const filesQuery = useListWorkspaceFilesQuery({
     workspaceId: workspace.id,
@@ -71,19 +75,39 @@ function WorkspaceFilesPage() {
   const files = filesQuery.data?.files ?? [];
   const pagination = filesQuery.data?.pagination;
   const totalFiles = pagination?.total ?? files.length;
+  const canUpload = can(WORKSPACE_PERMISSION.FILE_UPLOAD);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Fichiers</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Consultez et téléchargez les fichiers actifs de {workspace.name}.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Fichiers</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Consultez et téléchargez les fichiers actifs de {workspace.name}.
+          </p>
+        </div>
+
+        {canUpload && (
+          <Button
+            onClick={() => {
+              setFeedback(null);
+              setUploadDialogOpen(true);
+            }}
+            type="button"
+          >
+            <Upload aria-hidden="true" className="size-4" />
+            Ajouter un fichier
+          </Button>
+        )}
       </div>
 
       {feedback && (
         <p
-          className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+          className={`rounded-md border p-3 text-sm ${
+            feedback.type === 'error'
+              ? 'border-destructive/30 bg-destructive/10 text-destructive'
+              : 'border-success/30 bg-success/10'
+          }`}
           role="status"
         >
           {feedback.message}
@@ -123,6 +147,22 @@ function WorkspaceFilesPage() {
           />
         </div>
       </section>
+
+      {canUpload && (
+        <FileUploadDialog
+          onClose={() => setUploadDialogOpen(false)}
+          onUploaded={(uploadedFile) => {
+            setPage(1);
+            setFeedback({
+              type: 'success',
+              message: uploadedFile?.originalName
+                ? `${uploadedFile.originalName} a été ajouté.`
+                : 'Le fichier a été ajouté.',
+            });
+          }}
+          open={uploadDialogOpen}
+        />
+      )}
     </div>
   );
 }
