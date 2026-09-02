@@ -1,3 +1,4 @@
+import { DATA_TABLE_STYLES } from '@/components/data-display/data-table-styles';
 import {
   formatAuditAbsoluteDate,
   formatAuditRelativeDate,
@@ -29,11 +30,11 @@ function AuditLogTable({ auditLogs }) {
       <table className="w-full min-w-[760px] text-left text-sm">
         <thead className="border-b border-border bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
-            <th className="px-5 py-3 font-medium" scope="col">Action</th>
-            <th className="px-5 py-3 font-medium" scope="col">Acteur</th>
-            <th className="px-5 py-3 font-medium" scope="col">Ressource</th>
-            <th className="px-5 py-3 font-medium" scope="col">Statut</th>
-            <th className="px-5 py-3 font-medium" scope="col">Date</th>
+            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`} scope="col">Action</th>
+            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`} scope="col">Acteur</th>
+            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`} scope="col">Ressource</th>
+            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`} scope="col">Statut</th>
+            <th className={`${DATA_TABLE_STYLES.headerCell} font-medium`} scope="col">Date</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -42,24 +43,24 @@ function AuditLogTable({ auditLogs }) {
 
             return (
               <tr className="align-top" key={auditLog.id}>
-                <td className="px-5 py-4 font-medium text-foreground">
+                <td className={`${DATA_TABLE_STYLES.bodyCell} font-medium text-foreground`}>
                   {getAuditActionLabel(auditLog.action)}
                 </td>
-                <td className="px-5 py-4">
+                <td className={DATA_TABLE_STYLES.bodyCell}>
                   <p className="font-medium text-foreground">{getAuditActorLabel(auditLog.actor)}</p>
                   {auditLog.actor?.email && (
                     <p className="mt-1 text-xs text-muted-foreground">{auditLog.actor.email}</p>
                   )}
                 </td>
-                <td className="px-5 py-4 text-muted-foreground">
+                <td className={`${DATA_TABLE_STYLES.bodyCell} text-muted-foreground`}>
                   {auditLog.entity
                     ? getAuditEntityTypeLabel(auditLog.entity.type)
                     : 'Non renseignée'}
                 </td>
-                <td className="px-5 py-4">
+                <td className={DATA_TABLE_STYLES.bodyCell}>
                   <AuditStatusBadge status={auditLog.status} />
                 </td>
-                <td className="px-5 py-4 text-muted-foreground">
+                <td className={`${DATA_TABLE_STYLES.bodyCell} text-muted-foreground`}>
                   <time dateTime={auditLog.createdAt} title={absoluteDate}>
                     {formatAuditRelativeDate(auditLog.createdAt)}
                   </time>
