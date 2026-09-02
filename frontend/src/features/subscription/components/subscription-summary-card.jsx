@@ -1,8 +1,10 @@
 import {
   formatAccessMode,
   formatAccessReason,
+  formatBillingInterval,
   formatLimitLabel,
   formatSubscriptionDate,
+  formatSubscriptionKind,
   formatSubscriptionStatus,
 } from '@/features/subscription/lib/subscription-formatters';
 
@@ -30,7 +32,7 @@ function SubscriptionSummaryCard({ subscription }) {
 
         <div className="text-right text-sm">
           <p className="text-muted-foreground">Source des droits</p>
-          <p className="font-medium capitalize">{entitlement?.subscriptionKind ?? '—'}</p>
+          <p className="font-medium">{formatSubscriptionKind(entitlement?.subscriptionKind)}</p>
         </div>
       </div>
 
@@ -64,7 +66,7 @@ function SubscriptionSummaryCard({ subscription }) {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Facturation</p>
-            <p className="mt-1 font-medium capitalize">{commercial.billingInterval ?? '—'}</p>
+            <p className="mt-1 font-medium">{formatBillingInterval(commercial.billingInterval)}</p>
           </div>
         </div>
       )}
