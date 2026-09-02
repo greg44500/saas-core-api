@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ToastProvider } from '@/components/shared/toast-provider';
 import { WorkspaceRolesPage } from '@/features/workspace-roles/pages/workspace-roles-page';
 
 const mocks = vi.hoisted(() => ({
@@ -48,6 +49,14 @@ vi.mock('@/features/workspace-roles/api/workspace-roles-api', () => ({
   ],
 }));
 
+function renderPage() {
+  return render(
+    <ToastProvider>
+      <WorkspaceRolesPage />
+    </ToastProvider>,
+  );
+}
+
 describe('WorkspaceRolesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -75,7 +84,7 @@ describe('WorkspaceRolesPage', () => {
   });
 
   it('affiche les rôles système et personnalisés sans bruit visuel ni action de mutation sur le rôle système', () => {
-    render(<WorkspaceRolesPage />);
+    renderPage();
 
     expect(screen.getByText('Owner')).toBeInTheDocument();
     expect(screen.getByText('Support')).toBeInTheDocument();
@@ -90,7 +99,7 @@ describe('WorkspaceRolesPage', () => {
   });
 
   it('réutilise le drawer de permissions pour consulter un rôle personnalisé', () => {
-    render(<WorkspaceRolesPage />);
+    renderPage();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Voir' })[1]);
 
@@ -100,7 +109,7 @@ describe('WorkspaceRolesPage', () => {
   });
 
   it('ne propose pas la permission ownership dans le formulaire de création', () => {
-    render(<WorkspaceRolesPage />);
+    renderPage();
 
     fireEvent.click(screen.getByRole('button', { name: 'Créer un rôle' }));
 
@@ -117,7 +126,7 @@ describe('WorkspaceRolesPage', () => {
       (permission) => permission !== 'role:create',
     );
 
-    render(<WorkspaceRolesPage />);
+    renderPage();
 
     expect(
       screen.queryByRole('button', { name: 'Créer un rôle' }),
@@ -137,7 +146,7 @@ describe('WorkspaceRolesPage', () => {
       },
     ];
 
-    render(<WorkspaceRolesPage />);
+    renderPage();
 
     const row = screen.getByText('Avancé').closest('tr');
     expect(row).not.toHaveTextContent('Niveau supérieur');
