@@ -3,10 +3,12 @@ import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 
+import { DataPagination } from '@/components/data-display/data-pagination';
 import { FormField } from '@/components/forms/form-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useListWorkspaceMembersQuery, useListWorkspaceRolesQuery } from '@/features/workspace-members/api/workspace-members-api';
+import { useListWorkspaceMembersQuery } from '@/features/workspace-members/api/workspace-members-api';
+import { useListWorkspaceRolesQuery } from '@/features/workspace-roles/api/workspace-roles-api';
 import { useTransferWorkspaceOwnershipMutation } from '@/features/workspace/api/workspace-api';
 import { getWorkspaceApiErrorMessage } from '@/features/workspace/lib/get-workspace-api-error-message';
 import { transferWorkspaceOwnershipSchema } from '@/features/workspace/validation/workspace-schemas';
@@ -129,31 +131,16 @@ function WorkspaceOwnershipSection({ workspaceId }) {
             </select>
           </FormField>
 
-          {pagination?.totalPages > 1 && (
-            <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/20 p-3 text-sm">
-              <Button
-                disabled={membersPage <= 1 || isMembersFetching}
-                onClick={() => setMembersPage((current) => Math.max(1, current - 1))}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                Membres précédents
-              </Button>
-              <span className="text-muted-foreground">
-                Page {pagination.page} sur {pagination.totalPages}
-              </span>
-              <Button
-                disabled={membersPage >= pagination.totalPages || isMembersFetching}
-                onClick={() => setMembersPage((current) => current + 1)}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                Membres suivants
-              </Button>
-            </div>
-          )}
+          <DataPagination
+            buttonSize="sm"
+            className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/20 p-3"
+            disabled={isMembersFetching}
+            nextLabel="Membres suivants"
+            onPageChange={setMembersPage}
+            page={membersPage}
+            pagination={pagination}
+            previousLabel="Membres précédents"
+          />
 
           <FormField
             error={errors.previousOwnerRoleId?.message}
