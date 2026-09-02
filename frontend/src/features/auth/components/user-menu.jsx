@@ -33,9 +33,9 @@ function UserMenu() {
     }
   }
 
-  function handlePlatformNavigation() {
+  function navigateFromMenu(destination) {
     setOpen(false);
-    navigate('/platform/overview');
+    navigate(destination);
   }
 
   const displayName = user
@@ -75,9 +75,8 @@ function UserMenu() {
 
           <div className="py-2">
             <button
-              aria-disabled="true"
-              className="flex w-full cursor-not-allowed items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-muted-foreground/60"
-              disabled
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => navigateFromMenu('/account/profile')}
               role="menuitem"
               type="button"
             >
@@ -85,9 +84,8 @@ function UserMenu() {
               Profil
             </button>
             <button
-              aria-disabled="true"
-              className="flex w-full cursor-not-allowed items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-muted-foreground/60"
-              disabled
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => navigateFromMenu('/account/security')}
               role="menuitem"
               type="button"
             >
@@ -97,7 +95,7 @@ function UserMenu() {
             {isSuperAdmin && (
               <button
                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={handlePlatformNavigation}
+                onClick={() => navigateFromMenu('/platform/overview')}
                 role="menuitem"
                 type="button"
               >
