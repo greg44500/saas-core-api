@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { DatePicker } from '@/components/forms/date-picker';
 import { Button } from '@/components/ui/button';
 import {
   AUDIT_ACTION_OPTIONS,
@@ -97,27 +98,27 @@ function AuditLogFilters({ filters, onApply, onReset, pending = false }) {
           </select>
         </label>
 
-        <label className="space-y-1.5 text-sm">
-          <span className="font-medium">Du</span>
-          <input
-            className={controlClassName}
+        <div className="space-y-1.5 text-sm">
+          <label className="font-medium" htmlFor="audit-from">Du</label>
+          <DatePicker
+            aria-label="Du"
             disabled={pending}
-            onChange={(event) => updateField('from', event.target.value)}
-            type="date"
+            id="audit-from"
+            onChange={(value) => updateField('from', value)}
             value={draft.from}
           />
-        </label>
+        </div>
 
-        <label className="space-y-1.5 text-sm">
-          <span className="font-medium">Au</span>
-          <input
-            className={controlClassName}
+        <div className="space-y-1.5 text-sm">
+          <label className="font-medium" htmlFor="audit-to">Au</label>
+          <DatePicker
+            aria-label="Au"
             disabled={pending}
-            onChange={(event) => updateField('to', event.target.value)}
-            type="date"
+            id="audit-to"
+            onChange={(value) => updateField('to', value)}
             value={draft.to}
           />
-        </label>
+        </div>
       </div>
 
       {dateError && <p className="text-sm text-destructive" role="alert">{dateError}</p>}
