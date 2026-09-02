@@ -35,6 +35,7 @@ const createValidEnvironment = (overrides = {}) => ({
     CLAMAV_SCAN_TIMEOUT_MS: '30000',
     UPLOAD_TEMP_FILE_MAX_AGE_MINUTES: '60',
     TRIAL_IDENTITY_SECRET: 'b'.repeat(32),
+    ALLOW_DEVELOPMENT_DATA_RESET: 'false',
     ...overrides,
 });
 
@@ -109,6 +110,28 @@ describe('validateEnvironment', () => {
         expect(
             result.error.issues.some(
                 (issue) => issue.path[0] === 'CLIENT_URL',
+            ),
+        ).toBe(true);
+    });
+
+    it('refuse d’activer une capacité de reset de données en production', () => {
+        const result = validateEnvironment(
+            createValidEnvironment({
+                NODE_ENV: 'production',
+                CLIENT_URL: 'https://app.example.com',
+                ALLOW_DEVELOPMENT_DATA_RESET: 'true',
+            }),
+        );
+
+        expect(result.success).toBe(false);
+
+        if (result.success) {
+            return;
+        }
+
+        expect(
+            result.error.issues.some(
+                (issue) => issue.path[0] === 'ALLOW_DEVELOPMENT_DATA_RESET',
             ),
         ).toBe(true);
     });
