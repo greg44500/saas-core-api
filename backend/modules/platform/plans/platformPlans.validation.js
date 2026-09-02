@@ -5,224 +5,170 @@ import {
 } from '../../../constants/plan.constants.js';
 
 
-/**
- * Les clés fonctionnelles d'un plan sont destinées à rester stables.
- *
- * Le format autorise les variantes nécessaires à un catalogue évolutif
- * tout en empêchant les espaces, caractères spéciaux ou clés ambiguës.
- */
 const PLAN_KEY_PATTERN = /^[a-z][a-z0-9_-]*$/;
+const PLAN_CAPABILITY_KEY_PATTERN = /^[a-z][a-z0-9_]*$/;
 
-/**
- * Les features et métriques utilisent volontairement une convention
- * plus stricte afin de rester cohérentes avec le registre de capabilities.
- */
-const PLAN_CAPABILITY_KEY_PATTERN =
-    /^[a-z][a-z0-9_]*$/;
-
-
-/**
- * Représente une limite quantitative configurable sur un plan.
- *
- * Convention métier :
- * - null = limite explicitement illimitée ;
- * - 0 = aucune consommation autorisée ;
- * - entier positif = plafond de consommation.
- */
 const planLimitValueSchema = z.union([
     z
         .number()
-        .int(
-            'Une limite de plan doit être un entier',
-        )
-        .nonnegative(
-            'Une limite de plan doit être positive ou nulle',
-        ),
+        .int('Une limite de plan doit être un entier')
+        .nonnegative('Une limite de plan doit être positive ou nulle'),
     z.null(),
 ]);
 
+const planLimitsSchema = z.record(
+    z
+        .string()
+        .regex(
+            PLAN_CAPABILITY_KEY_PATTERN,
+            'Le format d’une clé de limite est invalide',
+        ),
+    planLimitValueSchema,
+);
+
+const planFeaturesSchema = z
+    .array(
+        z
+            .string()
+            .trim()
+            .regex(
+                PLAN_CAPABILITY_KEY_PATTERN,
+                'Le format d’une feature est invalide',
+            ),
+    )
+    .refine(
+        (features) => new Set(features).size === features.length,
+        {
+            message: 'Les features ne doivent pas contenir de doublons',
+        },
+    );
+
+const trialDurationSchema = z
+    .number()
+    .int('trialDurationDays doit être un entier')
+    .positive('trialDurationDays doit être strictement positif')
+    .nullable();
 
 /**
- * Valide la création administrative d'un plan.
- *
- * Le schéma contrôle uniquement le contrat HTTP et la structure des données.
- * L'existence réelle des features et métriques reste contrôlée par
- * `validatePlanCapabilities()` dans le module Plan.
- *
- * `strictObject` empêche l'enregistrement silencieux de propriétés inconnues
- * provenant d'une erreur frontend ou d'un client API mal configuré.
+ * Trial et durée forment une configuration atomique lorsqu'ils sont modifiés.
+ * Cela évite qu'une mise à jour partielle laisse `trialEnabled=true` avec une
+ * durée absente, ou désactive le trial tout en conservant une durée active.
  */
-const createPlatformPlanBodySchema = z.strictObject({
-    key: z
-        .string()
-        .trim()
-        .min(
-            2,
-            'key doit contenir au minimum 2 caractères',
-        )
-        .max(
-            64,
-            'key ne peut pas dépasser 64 caractères',
-        )
-        .regex(
-            PLAN_KEY_PATTERN,
-            'Le format de key est invalide',
-        ),
+const validateTrialPair = (data, context, { requirePair }) => {
+    const hasEnabled = Object.hasOwn(data, 'trialEnabled');
+    const hasDuration = Object.hasOwn(data, 'trialDurationDays');
 
-    name: z
-        .string()
-        .trim()
-        .min(
-            2,
-            'name doit contenir au minimum 2 caractères',
-        )
-        .max(
-            120,
-            'name ne peut pas dépasser 120 caractères',
-        ),
+    if (!hasEnabled && !hasDuration) return;
 
-    description: z
-        .string()
-        .trim()
-        .max(
-            1000,
-            'description ne peut pas dépasser 1000 caractères',
-        )
-        .nullable()
-        .optional(),
+    if (requirePair && (!hasEnabled || !hasDuration)) {
+        context.addIssue({
+            code: 'custom',
+            path: !hasEnabled ? ['trialEnabled'] : ['trialDurationDays'],
+            message:
+                'trialEnabled et trialDurationDays doivent être fournis ensemble',
+        });
+        return;
+    }
 
-    status: z
-        .enum(
-            Object.values(PLAN_STATUS),
-        )
-        .optional(),
+    if (data.trialEnabled === true && data.trialDurationDays == null) {
+        context.addIssue({
+            code: 'custom',
+            path: ['trialDurationDays'],
+            message:
+                'trialDurationDays est requis lorsque le trial est activé',
+        });
+    }
 
-    isPublic: z
-        .boolean()
-        .optional(),
-
-    displayOrder: z
-        .number()
-        .int(
-            'displayOrder doit être un entier',
-        )
-        .nonnegative(
-            'displayOrder doit être positif ou nul',
-        )
-        .optional(),
-
-    currency: z
-        .string()
-        .trim()
-        .length(
-            3,
-            'currency doit contenir exactement 3 caractères',
-        )
-        .regex(
-            /^[A-Za-z]{3}$/,
-            'Le format de currency est invalide',
-        )
-        .transform(
-            (value) => value.toUpperCase(),
-        ),
-
-    priceMonthlyExclTaxMinor: z
-        .number()
-        .int(
-            'priceMonthlyExclTaxMinor doit être un entier',
-        )
-        .nonnegative(
-            'priceMonthlyExclTaxMinor doit être positif ou nul',
-        ),
-
-    priceYearlyExclTaxMinor: z
-        .number()
-        .int(
-            'priceYearlyExclTaxMinor doit être un entier',
-        )
-        .nonnegative(
-            'priceYearlyExclTaxMinor doit être positif ou nul',
-        ),
-
-    features: z
-        .array(
-            z
-                .string()
-                .trim()
-                .regex(
-                    PLAN_CAPABILITY_KEY_PATTERN,
-                    'Le format d’une feature est invalide',
-                ),
-        )
-        .refine(
-            (features) =>
-                new Set(features).size
-                === features.length,
-            {
-                message:
-                    'Les features ne doivent pas contenir de doublons',
-            },
-        )
-        .optional(),
-
-    limits: z
-        .record(
-            z
-                .string()
-                .regex(
-                    PLAN_CAPABILITY_KEY_PATTERN,
-                    'Le format d’une clé de limite est invalide',
-                ),
-            planLimitValueSchema,
-        )
-        .optional(),
-});
+    if (data.trialEnabled === false && data.trialDurationDays !== null) {
+        context.addIssue({
+            code: 'custom',
+            path: ['trialDurationDays'],
+            message:
+                'trialDurationDays doit être null lorsque le trial est désactivé',
+        });
+    }
+};
 
 
-/**
- * Valide l'identifiant MongoDB d'un plan administré via Platform.
- */
+const createPlatformPlanBodySchema = z
+    .strictObject({
+        key: z
+            .string()
+            .trim()
+            .min(2, 'key doit contenir au minimum 2 caractères')
+            .max(64, 'key ne peut pas dépasser 64 caractères')
+            .regex(PLAN_KEY_PATTERN, 'Le format de key est invalide'),
+
+        name: z
+            .string()
+            .trim()
+            .min(2, 'name doit contenir au minimum 2 caractères')
+            .max(120, 'name ne peut pas dépasser 120 caractères'),
+
+        description: z
+            .string()
+            .trim()
+            .max(1000, 'description ne peut pas dépasser 1000 caractères')
+            .nullable()
+            .optional(),
+
+        status: z.enum(Object.values(PLAN_STATUS)).optional(),
+        isPublic: z.boolean().optional(),
+
+        displayOrder: z
+            .number()
+            .int('displayOrder doit être un entier')
+            .nonnegative('displayOrder doit être positif ou nul')
+            .optional(),
+
+        trialEnabled: z.boolean().optional(),
+        trialDurationDays: trialDurationSchema.optional(),
+
+        currency: z
+            .string()
+            .trim()
+            .length(3, 'currency doit contenir exactement 3 caractères')
+            .regex(/^[A-Za-z]{3}$/, 'Le format de currency est invalide')
+            .transform((value) => value.toUpperCase()),
+
+        priceMonthlyExclTaxMinor: z
+            .number()
+            .int('priceMonthlyExclTaxMinor doit être un entier')
+            .nonnegative('priceMonthlyExclTaxMinor doit être positif ou nul'),
+
+        priceYearlyExclTaxMinor: z
+            .number()
+            .int('priceYearlyExclTaxMinor doit être un entier')
+            .nonnegative('priceYearlyExclTaxMinor doit être positif ou nul'),
+
+        features: planFeaturesSchema.optional(),
+        limits: planLimitsSchema.optional(),
+    })
+    .superRefine((data, context) => {
+        validateTrialPair(data, context, { requirePair: false });
+    });
+
+
 const platformPlanIdParamsSchema = z.strictObject({
     planId: z
         .string()
-        .regex(
-            /^[a-f\d]{24}$/i,
-            'planId invalide',
-        ),
+        .regex(/^[a-f\d]{24}$/i, 'planId invalide'),
 });
 
 
-/**
- * Valide une modification administrative partielle d'un plan.
- *
- * `key` est volontairement absent : l'identité fonctionnelle d'un plan
- * est immutable après sa création.
- *
- * Le statut `archived` est également exclu ici afin que l'archivage reste
- * une action métier explicite, auditée séparément via PLAN_ARCHIVED.
- */
 const updatePlatformPlanBodySchema = z
     .strictObject({
         name: z
             .string()
             .trim()
-            .min(
-                2,
-                'name doit contenir au minimum 2 caractères',
-            )
-            .max(
-                120,
-                'name ne peut pas dépasser 120 caractères',
-            )
+            .min(2, 'name doit contenir au minimum 2 caractères')
+            .max(120, 'name ne peut pas dépasser 120 caractères')
             .optional(),
 
         description: z
             .string()
             .trim()
-            .max(
-                1000,
-                'description ne peut pas dépasser 1000 caractères',
-            )
+            .max(1000, 'description ne peut pas dépasser 1000 caractères')
             .nullable()
             .optional(),
 
@@ -233,94 +179,47 @@ const updatePlatformPlanBodySchema = z
             ])
             .optional(),
 
-        isPublic: z
-            .boolean()
-            .optional(),
+        isPublic: z.boolean().optional(),
 
         displayOrder: z
             .number()
-            .int(
-                'displayOrder doit être un entier',
-            )
-            .nonnegative(
-                'displayOrder doit être positif ou nul',
-            )
+            .int('displayOrder doit être un entier')
+            .nonnegative('displayOrder doit être positif ou nul')
             .optional(),
+
+        trialEnabled: z.boolean().optional(),
+        trialDurationDays: trialDurationSchema.optional(),
 
         currency: z
             .string()
             .trim()
-            .length(
-                3,
-                'currency doit contenir exactement 3 caractères',
-            )
-            .regex(
-                /^[A-Za-z]{3}$/,
-                'Le format de currency est invalide',
-            )
-            .transform(
-                (value) => value.toUpperCase(),
-            )
+            .length(3, 'currency doit contenir exactement 3 caractères')
+            .regex(/^[A-Za-z]{3}$/, 'Le format de currency est invalide')
+            .transform((value) => value.toUpperCase())
             .optional(),
 
         priceMonthlyExclTaxMinor: z
             .number()
-            .int(
-                'priceMonthlyExclTaxMinor doit être un entier',
-            )
-            .nonnegative(
-                'priceMonthlyExclTaxMinor doit être positif ou nul',
-            )
+            .int('priceMonthlyExclTaxMinor doit être un entier')
+            .nonnegative('priceMonthlyExclTaxMinor doit être positif ou nul')
             .optional(),
 
         priceYearlyExclTaxMinor: z
             .number()
-            .int(
-                'priceYearlyExclTaxMinor doit être un entier',
-            )
-            .nonnegative(
-                'priceYearlyExclTaxMinor doit être positif ou nul',
-            )
+            .int('priceYearlyExclTaxMinor doit être un entier')
+            .nonnegative('priceYearlyExclTaxMinor doit être positif ou nul')
             .optional(),
 
-        features: z
-            .array(
-                z
-                    .string()
-                    .trim()
-                    .regex(
-                        PLAN_CAPABILITY_KEY_PATTERN,
-                        'Le format d’une feature est invalide',
-                    ),
-            )
-            .refine(
-                (features) =>
-                    new Set(features).size
-                    === features.length,
-                {
-                    message:
-                        'Les features ne doivent pas contenir de doublons',
-                },
-            )
-            .optional(),
-
-        limits: z
-            .record(
-                z
-                    .string()
-                    .regex(
-                        PLAN_CAPABILITY_KEY_PATTERN,
-                        'Le format d’une clé de limite est invalide',
-                    ),
-                planLimitValueSchema,
-            )
-            .optional(),
+        features: planFeaturesSchema.optional(),
+        limits: planLimitsSchema.optional(),
+    })
+    .superRefine((data, context) => {
+        validateTrialPair(data, context, { requirePair: true });
     })
     .refine(
         (data) => Object.keys(data).length > 0,
         {
-            message:
-                'Au moins un champ doit être fourni pour modifier le plan',
+            message: 'Au moins un champ doit être fourni pour modifier le plan',
         },
     );
 
