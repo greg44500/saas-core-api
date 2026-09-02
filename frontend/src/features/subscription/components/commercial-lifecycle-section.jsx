@@ -7,6 +7,7 @@ import {
   useScheduleWorkspaceCancellationMutation,
   useScheduleWorkspaceDowngradeMutation,
 } from '@/features/subscription/api/subscription-api';
+import { CommercialActionDialog } from '@/features/subscription/components/commercial-action-dialog';
 import { getDowngradeCandidates } from '@/features/subscription/lib/commercial-lifecycle';
 import {
   cancellationReasonSchema,
@@ -79,8 +80,6 @@ function CommercialLifecycleSection({
       return;
     }
 
-    setValidationMessage(null);
-
     try {
       await scheduleCancellation({
         workspaceId,
@@ -107,10 +106,7 @@ function CommercialLifecycleSection({
         subscriptionId: commercial.id,
       }).unwrap();
       closeDialog();
-      onFeedback({
-        type: 'success',
-        message: 'La résiliation programmée a été annulée.',
-      });
+      onFeedback({ type: 'success', message: 'La résiliation programmée a été annulée.' });
     } catch (error) {
       onFeedback({
         type: 'error',
@@ -133,8 +129,6 @@ function CommercialLifecycleSection({
       setValidationMessage('Le plan cible n’est plus disponible dans les offres proposées.');
       return;
     }
-
-    setValidationMessage(null);
 
     try {
       await scheduleDowngrade({
@@ -162,16 +156,104 @@ function CommercialLifecycleSection({
         subscriptionId: commercial.id,
       }).unwrap();
       closeDialog();
-      onFeedback({
-        type: 'success',
-        message: 'Le changement de plan programmé a été annulé.',
-      });
+      onFeedback({ type: 'success', message: 'Le changement de plan programmé a été annulé.' });
     } catch (error) {
       onFeedback({
         type: 'error',
         message: getApiMessage(error, 'Le changement de plan programmé n’a pas pu être annulé.'),
       });
     }
+  }
+
+  function renderDialog() {
+    if (dialogMode === 'cancellation') {
+      return (
+        <CommercialActionDialog
+          confirmLabel="Confirmer la résiliation"
+          confirmVariant="destructive"
+          description={`L’abonnement restera actif jusqu’au ${effectiveDate}. La résiliation ne prendra effet qu’à cette date.`}
+          onCancel={closeDialog}
+          onConfirm={handleScheduleCancellation}
+          pending={pending}
+          title="Programmer la résiliation ?"
+          validationMessage={validationMessage}
+        >
+          <div className="mt-4 space-y-2">
+            <label className="text-sm font-medium" htmlFor="cancellation-reason">
+              Motif facultatif
+            </label>
+            <textarea
+              className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              disabled={pending}
+              id="cancellation-reason"
+              maxLength={500}
+              onChange={(event) => setCancellationReason(event.target.value)}
+              placeholder="Ex. : offre devenue inutile pour mon activité"
+              value={cancellationReason}
+            />
+          </div>
+        </CommercialActionDialog>
+      );
+    }
+
+    if (dialogMode === 'downgrade') {
+      return (
+        <CommercialActionDialog
+          confirmLabel="Confirmer le changement"
+          description={`Le plan sélectionné prendra effet le ${effectiveDate}. Aucun prorata, remboursement ou crédit n’est calculé par ce module Subscription.`}
+          onCancel={closeDialog}
+          onConfirm={handleScheduleDowngrade}
+          pending={pending}
+          title="Programmer le changement de plan ?"
+          validationMessage={validationMessage}
+        >
+          <div className="mt-4 space-y-2">
+            <label className="text-sm font-medium" htmlFor="downgrade-target-plan">
+              Offre cible
+            </label>
+            <select
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              disabled={pending}
+              id="downgrade-target-plan"
+              onChange={(event) => setTargetPlanId(event.target.value)}
+              value={targetPlanId}
+            >
+              {downgradeCandidates.map((plan) => (
+                <option key={plan.id} value={plan.id}>{plan.name}</option>
+              ))}
+            </select>
+          </div>
+        </CommercialActionDialog>
+      );
+    }
+
+    if (dialogMode === 'revoke-cancellation') {
+      return (
+        <CommercialActionDialog
+          confirmLabel="Conserver l’abonnement"
+          description={`La résiliation programmée sera annulée et l’abonnement continuera au-delà du ${effectiveDate}, sous réserve de son cycle contractuel normal.`}
+          onCancel={closeDialog}
+          onConfirm={handleRevokeCancellation}
+          pending={pending}
+          title="Conserver l’abonnement ?"
+        />
+      );
+    }
+
+    if (dialogMode === 'revoke-downgrade') {
+      return (
+        <CommercialActionDialog
+          confirmLabel="Annuler le changement"
+          description="Le changement programmé sera retiré. Le plan commercial actuel restera inchangé à cette échéance."
+          onCancel={closeDialog}
+          onConfirm={handleRevokeDowngrade}
+          pending={pending}
+          title="Annuler le changement de plan ?"
+        />
+      );
+    }
+
+    return null;
   }
 
   return (
@@ -264,128 +346,7 @@ function CommercialLifecycleSection({
         </div>
       )}
 
-      {dialogMode && (
-        <div className="fixed inset-0 z-[80] grid place-items-center bg-black/50 px-4" role="presentation">
-          <section
-            aria-labelledby="commercial-action-title"
-            aria-modal="true"
-            className="w-full max-w-lg rounded-xl border border-border bg-popover p-5 text-popover-foreground shadow-xl"
-            role="dialog"
-          >
-            {dialogMode === 'cancellation' && (
-              <>
-                <div className="space-y-2">
-                  <h3 id="commercial-action-title" className="text-lg font-semibold">
-                    Programmer la résiliation ?
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    L’abonnement restera actif jusqu’au {effectiveDate}. La résiliation ne prendra effet qu’à cette date.
-                  </p>
-                </div>
-                <div className="mt-4 space-y-2">
-                  <label className="text-sm font-medium" htmlFor="cancellation-reason">
-                    Motif facultatif
-                  </label>
-                  <textarea
-                    className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    disabled={pending}
-                    id="cancellation-reason"
-                    maxLength={500}
-                    onChange={(event) => setCancellationReason(event.target.value)}
-                    placeholder="Ex. : offre devenue inutile pour mon activité"
-                    value={cancellationReason}
-                  />
-                </div>
-              </>
-            )}
-
-            {dialogMode === 'downgrade' && (
-              <>
-                <div className="space-y-2">
-                  <h3 id="commercial-action-title" className="text-lg font-semibold">
-                    Programmer le changement de plan ?
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Le plan sélectionné prendra effet le {effectiveDate}. Aucun prorata, remboursement ou crédit n’est calculé par ce module Subscription.
-                  </p>
-                </div>
-                <div className="mt-4 space-y-2">
-                  <label className="text-sm font-medium" htmlFor="downgrade-target-plan">
-                    Offre cible
-                  </label>
-                  <select
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    disabled={pending}
-                    id="downgrade-target-plan"
-                    onChange={(event) => setTargetPlanId(event.target.value)}
-                    value={targetPlanId}
-                  >
-                    {downgradeCandidates.map((plan) => (
-                      <option key={plan.id} value={plan.id}>{plan.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
-
-            {dialogMode === 'revoke-cancellation' && (
-              <div className="space-y-2">
-                <h3 id="commercial-action-title" className="text-lg font-semibold">
-                  Conserver l’abonnement ?
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  La résiliation programmée sera annulée et l’abonnement continuera au-delà du {effectiveDate}, sous réserve de son cycle contractuel normal.
-                </p>
-              </div>
-            )}
-
-            {dialogMode === 'revoke-downgrade' && (
-              <div className="space-y-2">
-                <h3 id="commercial-action-title" className="text-lg font-semibold">
-                  Annuler le changement de plan ?
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Le changement programmé sera retiré. Le plan commercial actuel restera inchangé à cette échéance.
-                </p>
-              </div>
-            )}
-
-            {validationMessage && (
-              <p className="mt-3 text-sm text-destructive" role="alert">{validationMessage}</p>
-            )}
-
-            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button disabled={pending} onClick={closeDialog} type="button" variant="outline">
-                Annuler
-              </Button>
-              <Button
-                disabled={pending}
-                onClick={
-                  dialogMode === 'cancellation'
-                    ? handleScheduleCancellation
-                    : dialogMode === 'downgrade'
-                      ? handleScheduleDowngrade
-                      : dialogMode === 'revoke-cancellation'
-                        ? handleRevokeCancellation
-                        : handleRevokeDowngrade
-                }
-                type="button"
-                variant={dialogMode === 'cancellation' ? 'destructive' : 'default'}
-              >
-                {pending
-                  ? 'Traitement…'
-                  : dialogMode === 'cancellation'
-                    ? 'Confirmer la résiliation'
-                    : dialogMode === 'downgrade'
-                      ? 'Confirmer le changement'
-                      : dialogMode === 'revoke-cancellation'
-                        ? 'Conserver l’abonnement'
-                        : 'Annuler le changement'}
-              </Button>
-            </div>
-          </section>
-        </div>
-      )}
+      {renderDialog()}
     </section>
   );
 }
