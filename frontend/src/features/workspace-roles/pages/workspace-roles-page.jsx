@@ -225,6 +225,13 @@ function WorkspaceRolesPage() {
                             onClick={() => setSelectedRole(role)}
                             variant="outline"
                           />
+
+                          {/*
+                           * L'absence d'action suffit à traduire la non-modifiabilité
+                           * d'un rôle. Répéter des mentions techniques comme « Protégé »
+                           * ou « Niveau supérieur » sur chaque ligne alourdit le tableau ;
+                           * le backend reste l'autorité qui refuse toute escalade.
+                           */}
                           {administrable && can(WORKSPACE_PERMISSION.ROLE_UPDATE) && (
                             <ActionIconButton
                               Icon={Pencil}
@@ -240,14 +247,6 @@ function WorkspaceRolesPage() {
                               onClick={() => setDeleteCandidate(role)}
                               variant="destructive"
                             />
-                          )}
-                          {!editable && (
-                            <span className="self-center text-xs text-muted-foreground">Protégé</span>
-                          )}
-                          {editable && !actorCanAdminister && (
-                            <span className="self-center text-xs text-muted-foreground">
-                              Niveau supérieur
-                            </span>
                           )}
                         </div>
                       </td>
