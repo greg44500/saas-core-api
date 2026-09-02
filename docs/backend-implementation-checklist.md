@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Backend Core V1
 
-Dernière consolidation : 2026-09-02 — checkpoint RBAC-EXT, avant régression globale post-extension
+Dernière consolidation : 2026-09-02 — checkpoint RBAC-EXT clôturé après régression globale verte
 
 ## 1. Rôle du document
 
@@ -143,7 +143,7 @@ Il ne remplace ni les contrats frontend/backend ni les documents de dette foncti
 - [x] TERMINÉ — politique explicite d’extension des permissions des rôles système via `createSystemRoleDefinitions()`. `RBAC-EXT`.
 - [x] TERMINÉ — le Core ne déduit pas la sémantique des permissions applicatives et ne choisit pas automatiquement les rôles qui doivent les recevoir. `RBAC-EXT`.
 - [x] TERMINÉ — tests ciblés RBAC-EXT verts le 2026-09-02 : registre, extension, CRUD, permissions inconnues/réservées, anti-escalade, rôles système et backfill.
-- [ ] VALIDATION FINALE DU LOT — suite globale backend post-RBAC-EXT à exécuter avant clôture définitive du checkpoint.
+- [x] TERMINÉ — suite globale backend post-RBAC-EXT verte le 2026-09-02 ; arbre Git local confirmé propre après exécution.
 
 ## 10. Workspace Members / Invitations
 
@@ -355,14 +355,14 @@ Le Backend Core V1 est considéré prêt à soutenir la finalisation du frontend
 - [x] HISTORIQUE — suite globale R1 : `181` fichiers de tests, `845` tests passés, aucun échec.
 - [x] TERMINÉ — checkpoint historique `Backend Core V1 Ready for Frontend`. `R1`.
 - [x] TERMINÉ — décision R2 : OpenAPI différé.
-- [ ] À VALIDER — nouvelle suite globale backend après RBAC-EXT.
+- [x] TERMINÉ — suite globale backend post-RBAC-EXT verte le 2026-09-02 ; aucun échec signalé lors de l’exécution locale.
 
 ## 23. Ordre restant recommandé
 
 ```text
-RBAC-EXT  Registre extensible + rôles système + backfill     IMPLÉMENTÉ — tests ciblés verts
-R-EXT     Suite globale backend post-RBAC-EXT                PROCHAINE VALIDATION
-F8.5      Files frontend                                     APRÈS R-EXT
+RBAC-EXT  Registre extensible + rôles système + backfill     TERMINÉ
+R-EXT     Suite globale backend post-RBAC-EXT                TERMINÉ
+F8.5      Files frontend                                     PROCHAINE ÉTAPE
 F8.6      Subscription / Plan / Trial frontend
 F8.7      Workspace Settings / Ownership frontend
 F8.8      Audit / Dashboard Core frontend
