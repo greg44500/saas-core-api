@@ -250,10 +250,10 @@ function createAppRoutes() {
                 {
                   path: 'plans',
                   lazy: async () => {
-                    const { PlatformSectionPlaceholderPage } = await import(
-                      '@/features/platform/pages/platform-section-placeholder-page'
+                    const { PlatformPlansPage } = await import(
+                      '@/features/platform/pages/platform-plans-page'
                     );
-                    return { Component: () => <PlatformSectionPlaceholderPage title="Plans" /> };
+                    return { Component: PlatformPlansPage };
                   },
                 },
                 {
