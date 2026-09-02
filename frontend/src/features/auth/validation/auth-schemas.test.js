@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { loginSchema, registerSchema } from '@/features/auth/validation/auth-schemas';
+import {
+  forgotPasswordFormSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordFormSchema,
+} from '@/features/auth/validation/auth-schemas';
 
 describe('auth schemas', () => {
   it('accepte un login conforme au contrat backend', () => {
@@ -46,5 +51,24 @@ describe('auth schemas', () => {
     expect(result.firstName).toBe('Ada');
     expect(result.lastName).toBe('Lovelace');
     expect(result.password).toBe(' mot-de-passe-avec-espaces ');
+  });
+
+  it('valide la demande de récupération uniquement avec un email conforme', () => {
+    expect(
+      forgotPasswordFormSchema.safeParse({ email: 'user@example.com' }).success,
+    ).toBe(true);
+    expect(
+      forgotPasswordFormSchema.safeParse({ email: 'invalide' }).success,
+    ).toBe(false);
+  });
+
+  it('exige la confirmation du nouveau mot de passe lors du reset', () => {
+    const result = resetPasswordFormSchema.safeParse({
+      newPassword: 'nouveau-mot-de-passe-long',
+      confirmPassword: 'autre-mot-de-passe-long',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toEqual(['confirmPassword']);
   });
 });
