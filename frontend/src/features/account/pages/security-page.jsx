@@ -1,21 +1,22 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { FormField } from '@/components/forms/form-field';
 import { PasswordField } from '@/components/forms/password-field';
 import { Button } from '@/components/ui/button';
+import { changePasswordFormSchema } from '@/features/account/validation/account-schemas';
 import {
   useChangePasswordMutation,
+  useGetCurrentUserQuery,
   useLogoutAllMutation,
 } from '@/features/auth/api/auth-api';
-import { changePasswordFormSchema } from '@/features/account/validation/account-schemas';
 
 function SecurityPage() {
   const navigate = useNavigate();
   const [confirmLogoutAll, setConfirmLogoutAll] = useState(false);
-  const [logoutAllError, setLogoutAllError] = useState('');
+  const { data: currentUser } = useGetCurrentUserQuery();
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
   const [logoutAll, { isLoading: isLoggingOutAll }] = useLogoutAllMutation();
   const {
@@ -50,18 +51,18 @@ function SecurityPage() {
   };
 
   const handleLogoutAll = async () => {
-    setLogoutAllError('');
-
     try {
       await logoutAll().unwrap();
       navigate('/login', {
         replace: true,
         state: { sessionsRevoked: true },
       });
-    } catch (error) {
-      setLogoutAllError(
-        error?.data?.message ?? 'Impossible de révoquer toutes les sessions.',
-      );
+    } catch {
+      setConfirmLogoutAll(false);
+      setError('root.sessions', {
+        type: 'server',
+        message: 'Impossible de révoquer toutes les sessions pour le moment.',
+      });
     }
   };
 
@@ -92,6 +93,19 @@ function SecurityPage() {
               {...register('currentPassword')}
             />
           </FormField>
+
+          <div className="-mt-2 text-right">
+            <Link
+              className="text-sm font-medium text-primary hover:underline"
+              state={{
+                email: currentUser?.email ?? '',
+                returnTo: '/account/security',
+              }}
+              to="/forgot-password"
+            >
+              Mot de passe actuel oublié ?
+            </Link>
+          </div>
 
           <FormField id="newPassword" label="Nouveau mot de passe" error={errors.newPassword?.message}>
             <PasswordField
@@ -137,13 +151,14 @@ function SecurityPage() {
           </p>
         </div>
 
+        {errors.root?.sessions && (
+          <p className="mt-3 text-sm text-destructive" role="alert">{errors.root.sessions.message}</p>
+        )}
+
         {!confirmLogoutAll ? (
           <div className="mt-4">
             <Button
-              onClick={() => {
-                setLogoutAllError('');
-                setConfirmLogoutAll(true);
-              }}
+              onClick={() => setConfirmLogoutAll(true)}
               type="button"
               variant="destructive"
             >
@@ -153,9 +168,6 @@ function SecurityPage() {
         ) : (
           <div className="mt-4 space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
             <p className="text-sm font-medium">Confirmez la révocation de toutes vos sessions.</p>
-            {logoutAllError && (
-              <p className="text-sm text-destructive" role="alert">{logoutAllError}</p>
-            )}
             <div className="flex flex-wrap gap-2">
               <Button
                 disabled={isLoggingOutAll}
@@ -167,10 +179,7 @@ function SecurityPage() {
               </Button>
               <Button
                 disabled={isLoggingOutAll}
-                onClick={() => {
-                  setLogoutAllError('');
-                  setConfirmLogoutAll(false);
-                }}
+                onClick={() => setConfirmLogoutAll(false)}
                 type="button"
                 variant="outline"
               >
