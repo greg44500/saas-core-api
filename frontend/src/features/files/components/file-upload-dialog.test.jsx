@@ -75,12 +75,14 @@ describe('FileUploadDialog', () => {
   });
 
   it('refuse côté client un type déclaré non autorisé', async () => {
-    const user = userEvent.setup();
+    // Le navigateur filtre normalement ce fichier via accept. On désactive ce
+    // comportement dans ce test pour vérifier la seconde barrière Zod du client.
+    const user = userEvent.setup({ applyAccept: false });
     const file = new File(['text'], 'notes.txt', { type: 'text/plain' });
 
     renderDialog();
 
-    await user.upload(screen.getByLabelText('Fichier'), file, { applyAccept: false });
+    await user.upload(screen.getByLabelText('Fichier'), file);
     await user.click(screen.getByRole('button', { name: 'Téléverser' }));
 
     expect(
