@@ -25,6 +25,10 @@ vi.mock('@/features/subscription/components/workspace-subscription-route', () =>
   WorkspaceSubscriptionRoute: () => <h1>Abonnement</h1>,
 }));
 
+vi.mock('@/features/audit-log/components/workspace-audit-log-route', () => ({
+  WorkspaceAuditLogRoute: () => <h1>Historique d’activité</h1>,
+}));
+
 vi.mock('@/features/workspace/pages/workspace-settings-page', () => ({
   WorkspaceSettingsPage: () => <h1>Paramètres du workspace</h1>,
 }));
@@ -82,6 +86,7 @@ describe('application routing', () => {
           'member:read',
           'file:read',
           'subscription:read',
+          'audit:read',
         ],
       },
       error: undefined,
@@ -156,6 +161,15 @@ describe('application routing', () => {
       await screen.findByRole('heading', { name: 'Abonnement' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Abonnement' })).toBeInTheDocument();
+  });
+
+  it('rend la route Activité dans le shell workspace', async () => {
+    renderRoute('/workspaces/workspace-123/activity', 'authenticated');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Historique d’activité' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Activité' })).toBeInTheDocument();
   });
 
   it('rend la route Paramètres dans le shell workspace', async () => {
