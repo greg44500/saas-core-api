@@ -1,5 +1,6 @@
 import {
   formatAccessMode,
+  formatAccessReason,
   formatLimitLabel,
   formatSubscriptionDate,
   formatSubscriptionStatus,
@@ -37,7 +38,7 @@ function SubscriptionSummaryCard({ subscription }) {
         <div className="mt-5 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
           <p className="font-medium text-destructive">Mise en conformité requise</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {entitlement.reason ?? 'La consommation actuelle dépasse une limite bloquante du plan effectif.'}
+            {formatAccessReason(entitlement.reason)}
           </p>
           {(entitlement.blockingLimits ?? []).length > 0 && (
             <p className="mt-2 text-sm">
