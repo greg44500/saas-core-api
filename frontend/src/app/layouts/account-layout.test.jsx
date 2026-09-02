@@ -10,6 +10,10 @@ vi.mock('@/features/auth/api/auth-api', () => ({
   useGetCurrentUserQuery: useGetCurrentUserQueryMock,
 }));
 
+vi.mock('@/components/shared/theme-toggle', () => ({
+  ThemeToggle: () => <button type="button">Thème test</button>,
+}));
+
 vi.mock('@/features/auth/components/user-menu', () => ({
   UserMenu: () => <button type="button">Compte test</button>,
 }));
