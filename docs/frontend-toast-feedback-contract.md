@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Contrat UX des toasts frontend
 
 **Date :** 2 septembre 2026  
-**Statut :** RÈGLE TRANSVERSALE
+**Statut :** RÈGLE TRANSVERSALE — passage Core en validation
 
 ## Objectif
 
@@ -82,6 +82,35 @@ Une même information ne doit pas être affichée simultanément en toast et en 
 
 Les toasts doivent confirmer des **résultats importants**, pas commenter chaque clic. Les lectures passives et refetchs ne génèrent pas de notifications globales.
 
+## Passage transversal du Core
+
+Les mutations Core suivantes utilisent désormais le contrat global :
+
+- **Workspace** : changement de nom ; succès du transfert de propriété ;
+- **Account** : modification du profil ;
+- **Files** : upload réussi, retrait réussi, erreur de téléchargement ;
+- **Roles** : création, modification et suppression ;
+- **Members / Invitations** : invitation, renvoi, changement de rôle, suspension, retrait et révocation ;
+- **Subscription / Trial** : démarrage ou changement de trial, retour Free réussi ;
+- **Cycle commercial** : programmation/révocation de résiliation et programmation/révocation de downgrade.
+
+Les erreurs sensibles suivantes restent volontairement dans leur contexte local :
+
+- transfert de propriété refusé, notamment mot de passe courant incorrect ;
+- erreur d'upload tant que le dialogue d'upload reste ouvert ;
+- erreur de retrait de fichier tant que la confirmation reste ouverte ;
+- refus de suspension, retrait de membre ou révocation d'invitation ;
+- refus du retour Free pendant un trial ;
+- refus serveur d'une résiliation ou d'un changement commercial confirmé.
+
+Les parcours suivants n'ajoutent volontairement pas de toast :
+
+- création initiale du workspace, qui possède déjà un écran de succès complet ;
+- acceptation d'une invitation workspace, qui possède déjà un écran de succès complet ;
+- onboarding des plans, qui ne déclenche aucune mutation commerciale ;
+- connexion, changement/réinitialisation de mot de passe et révocation globale des sessions lorsqu'un message persistant est déjà affiché sur la page de connexion après redirection ;
+- chargements, refetchs, filtres, pagination et navigation.
+
 ## Référence initiale
 
 Le changement du nom du workspace constitue le premier cas de référence :
@@ -90,3 +119,14 @@ Le changement du nom du workspace constitue le premier cas de référence :
 - mutation réussie : toast `success` ;
 - refus opérationnel de la mutation : toast `error` ;
 - disparition automatique après cinq secondes ou fermeture manuelle.
+
+## Gate de validation
+
+Le passage transversal Core ne doit être considéré comme terminé qu'après :
+
+1. tests ciblés des composants et features migrés ;
+2. régression frontend globale ;
+3. build Vite production ;
+4. vérification visuelle d'au moins un succès, une erreur globale et une erreur conservée dans un dialogue sensible.
+
+F9 Platform Admin ne doit démarrer qu'après validation de ce gate.
