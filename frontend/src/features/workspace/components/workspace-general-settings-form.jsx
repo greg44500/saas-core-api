@@ -1,8 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { FormField } from '@/components/forms/form-field';
+import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useUpdateWorkspaceMutation } from '@/features/workspace/api/workspace-api';
@@ -10,14 +11,13 @@ import { getWorkspaceApiErrorMessage } from '@/features/workspace/lib/get-worksp
 import { updateWorkspaceSchema } from '@/features/workspace/validation/workspace-schemas';
 
 function WorkspaceGeneralSettingsForm({ canUpdate, workspace }) {
-  const [successMessage, setSuccessMessage] = useState('');
+  const { toast } = useToast();
   const [updateWorkspace, { isLoading }] = useUpdateWorkspaceMutation();
   const {
     formState: { errors, isDirty },
     handleSubmit,
     register,
     reset,
-    setError,
   } = useForm({
     resolver: zodResolver(updateWorkspaceSchema),
     mode: 'onBlur',
@@ -32,8 +32,6 @@ function WorkspaceGeneralSettingsForm({ canUpdate, workspace }) {
   }, [reset, workspace.name]);
 
   const onSubmit = async (values) => {
-    setSuccessMessage('');
-
     try {
       const updatedWorkspace = await updateWorkspace({
         workspaceId: workspace.id,
@@ -41,14 +39,18 @@ function WorkspaceGeneralSettingsForm({ canUpdate, workspace }) {
       }).unwrap();
 
       reset({ name: updatedWorkspace?.name ?? values.name });
-      setSuccessMessage('Le nom du workspace a été mis à jour.');
+      toast({
+        title: 'Nom du workspace mis à jour',
+        variant: 'success',
+      });
     } catch (error) {
-      setError('root.server', {
-        type: 'server',
-        message: getWorkspaceApiErrorMessage(
+      toast({
+        title: 'Modification impossible',
+        description: getWorkspaceApiErrorMessage(
           error,
           'Impossible de modifier le workspace pour le moment.',
         ),
+        variant: 'error',
       });
     }
   };
@@ -73,18 +75,6 @@ function WorkspaceGeneralSettingsForm({ canUpdate, workspace }) {
             {...register('name')}
           />
         </FormField>
-
-        {errors.root?.server && (
-          <p className="text-sm text-destructive" role="alert">
-            {errors.root.server.message}
-          </p>
-        )}
-
-        {successMessage && (
-          <p className="text-sm text-muted-foreground" role="status">
-            {successMessage}
-          </p>
-        )}
 
         <div className="flex justify-end">
           <Button disabled={!canUpdate || !isDirty || isLoading} type="submit">
