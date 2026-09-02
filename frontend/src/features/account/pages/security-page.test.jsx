@@ -91,4 +91,18 @@ describe('SecurityPage', () => {
     expect(router.state.location.pathname).toBe('/login');
     expect(router.state.location.state).toEqual({ sessionsRevoked: true });
   });
+
+  it('n’annonce pas une révocation globale lorsque le backend la refuse', async () => {
+    const user = userEvent.setup();
+    logoutAllUnwrapMock.mockRejectedValue({
+      data: { message: 'Révocation indisponible.' },
+    });
+    const router = renderSecurityPage();
+
+    await user.click(screen.getByRole('button', { name: 'Déconnecter tous les appareils' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmer' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Révocation indisponible.');
+    expect(router.state.location.pathname).toBe('/account/security');
+  });
 });
