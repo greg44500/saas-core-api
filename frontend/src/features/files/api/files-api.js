@@ -15,6 +15,23 @@ const workspaceFilesApi = baseApi.injectEndpoints({
         { type: 'WorkspaceFiles', id: workspaceId },
       ],
     }),
+    uploadWorkspaceFile: build.mutation({
+      query: ({ workspaceId, file, category }) => {
+        const body = new FormData();
+        body.append('file', file);
+        body.append('category', category);
+
+        return {
+          url: `/workspaces/${workspaceId}/files`,
+          method: 'POST',
+          body,
+        };
+      },
+      transformResponse: (response) => response?.data?.file ?? null,
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        { type: 'WorkspaceFiles', id: workspaceId },
+      ],
+    }),
     downloadWorkspaceFile: build.mutation({
       query: ({ workspaceId, fileId }) => ({
         url: `/workspaces/${workspaceId}/files/${fileId}/download`,
@@ -28,6 +45,7 @@ const workspaceFilesApi = baseApi.injectEndpoints({
 export const {
   useDownloadWorkspaceFileMutation,
   useListWorkspaceFilesQuery,
+  useUploadWorkspaceFileMutation,
 } = workspaceFilesApi;
 
 export { workspaceFilesApi };
