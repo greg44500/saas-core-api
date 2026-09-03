@@ -94,6 +94,8 @@ const subscription = {
   },
   effectiveEntitlement: {
     plan: premiumPlan,
+    features: [...premiumPlan.features],
+    limits: { ...premiumPlan.limits },
     subscriptionKind: 'commercial',
     subscriptionStatus: 'trialing',
     accessMode: 'normal',
@@ -247,6 +249,8 @@ describe('WorkspaceSubscriptionPage', () => {
         effectiveEntitlement: {
           ...subscription.effectiveEntitlement,
           plan: { ...freePlan, features: [], limits: {} },
+          features: [],
+          limits: {},
           subscriptionKind: 'baseline',
           subscriptionStatus: 'active',
         },
@@ -276,6 +280,8 @@ describe('WorkspaceSubscriptionPage', () => {
         effectiveEntitlement: {
           ...subscription.effectiveEntitlement,
           plan: { ...freePlan, features: [], limits: {} },
+          features: [],
+          limits: {},
           subscriptionKind: 'baseline',
           subscriptionStatus: 'active',
         },
