@@ -7,7 +7,7 @@ import { CollapsibleCard } from '@/components/data-display/collapsible-card';
 describe('CollapsibleCard', () => {
   afterEach(() => cleanup());
 
-  it('garde le résumé visible, rattache l’explication à une icône et révèle le détail à la demande', async () => {
+  it('garde le résumé visible et anime les états ouvert/fermé sans démonter le détail', async () => {
     const user = userEvent.setup();
 
     render(
@@ -21,20 +21,33 @@ describe('CollapsibleCard', () => {
     );
 
     expect(screen.getByText('Résumé visible')).toBeInTheDocument();
-    expect(screen.queryByText('Détail secondaire')).not.toBeInTheDocument();
     expect(screen.getByRole('tooltip')).toHaveTextContent('Consommation actuelle');
     expect(
       screen.getByRole('button', { name: 'À propos de Usage de la plateforme' }),
     ).toBeInTheDocument();
 
     const toggle = screen.getByRole('button', { name: 'Afficher le détail' });
+    const content = document.getElementById(toggle.getAttribute('aria-controls'));
+
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(content).toHaveAttribute('aria-hidden', 'true');
+    expect(content).toHaveAttribute('data-state', 'closed');
+    expect(content).toHaveClass('grid-rows-[0fr]', 'opacity-0');
+    expect(content).toHaveAttribute('inert');
+    expect(screen.getByText('Détail secondaire')).toBeInTheDocument();
 
     await user.click(toggle);
 
-    expect(screen.getByText('Détail secondaire')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Masquer le détail' }),
-    ).toHaveAttribute('aria-expanded', 'true');
+    const closeToggle = screen.getByRole('button', { name: 'Masquer le détail' });
+    expect(closeToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(content).toHaveAttribute('aria-hidden', 'false');
+    expect(content).toHaveAttribute('data-state', 'open');
+    expect(content).toHaveClass('grid-rows-[1fr]', 'opacity-100');
+    expect(content).not.toHaveAttribute('inert');
+
+    await user.click(closeToggle);
+
+    expect(content).toHaveAttribute('data-state', 'closed');
+    expect(content).toHaveClass('grid-rows-[0fr]', 'opacity-0');
   });
 });
