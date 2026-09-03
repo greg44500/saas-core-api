@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Synthèse de reprise
 
-**Date de consolidation : 2 septembre 2026**  
-**Checkpoint : F8 frontend Core finalisé + F8-AUDIT validé + politique Toasts appliquée**  
+**Date de consolidation : 3 septembre 2026**  
+**Checkpoint : F8 frontend Core finalisé + F8-AUDIT validé + contrat commercial générique aligné**  
 **Prochain bloc : F9 — Platform Admin frontend réel**
 
 ---
@@ -19,9 +19,19 @@ Il fige :
 - les primitives partagées obligatoires ;
 - la politique de feedback Toast/inline ;
 - les dettes connues ;
-- le point de départ exact de F9 Platform Admin.
+- le point de départ exact de F9 Platform Admin ;
+- la règle de réutilisabilité commerciale du Core.
 
 La règle de reprise est simple : **ne pas rouvrir F8 sauf régression démontrée**. Le prochain travail productif doit commencer par l’audit du contrat backend Platform puis l’implémentation de F9.
+
+Références commerciales actives :
+
+```text
+docs/commercial-configuration-contract.md
+docs/commercial-plans-entitlements-platform-admin.md
+```
+
+Toute mention historique incompatible de `Premium = 5 workspaces`, `CommercialAccount` obligatoire ou d’un prix particulier considéré comme invariant est supplantée.
 
 ---
 
@@ -39,7 +49,7 @@ Branche :
 main
 ```
 
-Baseline de code validée avant création de ce document :
+Baseline de code fonctionnelle validée avant les mises à jour documentaires du 3 septembre 2026 :
 
 ```text
 114c334b26c5e43b9a22f0e0dcd415209b10ecf4
@@ -50,6 +60,8 @@ Dernier commit de code à cette baseline :
 ```text
 test(frontend): keep role delete failure contextual
 ```
+
+Les commits du 3 septembre 2026 ayant uniquement modifié la documentation commerciale n'impliquent pas de nouvelle validation fonctionnelle du code.
 
 La branche `main` n’est pas protégée et aucun statut CI obligatoire n’est configuré. Il ne faut donc jamais déduire qu’un lot est vert à partir de GitHub seul.
 
@@ -148,7 +160,7 @@ Analogie figée :
 
 ---
 
-## 5. Architecture backend cible
+## 5. Architecture backend cible et réutilisabilité
 
 Structure de référence :
 
@@ -162,7 +174,7 @@ backend/
   tests/
 ```
 
-Chaque module métier doit séparer :
+Chaque module doit séparer :
 
 - routes ;
 - controller ;
@@ -182,6 +194,34 @@ Règles :
 - le backend reste toujours l’autorité de sécurité.
 
 Le frontend peut masquer une action pour améliorer l’UX, mais ce masquage n’est jamais une autorisation.
+
+### Règle de dérivation du Core
+
+`saas-core-api` est un socle SaaS générique clonable.
+
+Flow cible :
+
+```text
+clone/copie du Core
+→ nouveau dépôt
+→ configuration .env technique et secrets
+→ initialisation base/seeds Core
+→ validation des tests Core
+→ configuration du catalogue commercial
+→ extension permissions/capabilities/métriques
+→ ajout des modules métier
+→ interfaces métier
+```
+
+La dépendance doit rester :
+
+```text
+MODULE MÉTIER
+      ↓
+     CORE
+```
+
+Le Core ne doit jamais importer un module métier d’une application dérivée.
 
 ---
 
@@ -231,22 +271,33 @@ Fichiers :
 
 ---
 
-## 7. Décisions commerciales, Plans, Trial et CommercialAccount
+## 7. Décisions commerciales, Plans et Trial
 
-Décisions déjà figées :
+### Principe supérieur
+
+Le Core fournit le **moteur commercial générique** ; l’application dérivée fournit le **catalogue commercial réel**.
+
+Ne pas transformer les valeurs actuelles de travail en constantes universelles.
 
 ### Plans
 
-Plans envisagés :
+Le catalogue de travail actuel utilise notamment :
 
 - Free ;
-- Premium : 79 € HT/mois ;
-- IA : prix à définir.
+- Premium ;
+- IA.
 
-Limite de workspaces :
+La référence historique Premium à `79 € HT/mois` n’est pas un invariant du Core.
 
-- Free : 1 workspace ;
-- Premium : 5 workspaces.
+Chaque application dérivée doit pouvoir définir :
+
+- ses plans ;
+- ses prix ;
+- sa devise ;
+- ses features ;
+- ses limits ;
+- son trial ;
+- ses métriques métier.
 
 Les plans portent :
 
@@ -255,11 +306,25 @@ Les plans portent :
 
 Ne jamais mélanger feature et limite.
 
+Ne jamais autoriser une fonctionnalité via `plan.key === "premium"`.
+
+### Free
+
+Dans le Core V1, Free reste la baseline du Workspace.
+
+- Free a un prix nul ;
+- Free n’a pas de trial ;
+- ses features et limits sont paramétrables ;
+- le Core ne doit pas supposer une liste fixe de capacités ou quotas Free.
+
+Une éventuelle architecture future sans baseline Free nécessiterait une décision explicite, car le fallback d’entitlement actuel repose sur cette baseline.
+
 ### Trial
 
 - Free n’a pas de trial ;
 - un plan payant peut définir `trialEnabled` et `trialDurationDays` ;
-- aucun moyen de paiement requis pendant le trial ;
+- la durée n’est pas globale : elle est paramétrable par Plan ;
+- aucun moyen de paiement requis pendant le trial dans le mécanisme V1 actuel ;
 - changer de plan pendant un trial ne réinitialise jamais `trialEndsAt` ;
 - revenir volontairement à Free met fin immédiatement et définitivement au trial ;
 - l’éligibilité trial reste consommée ;
@@ -283,23 +348,71 @@ Ne jamais mélanger feature et limite.
 - le provider de paiement réel n’est pas encore intégré ;
 - Billing/Payment reste hors périmètre du bloc actuel.
 
-### CommercialAccount
+### CommercialAccount — décision supplantée
 
-Concept figé : capsule commerciale/payeur regroupant la Subscription et les workspaces financés par la même personne/organisation.
+L’ancienne architecture suivante est abandonnée pour le Core V1 :
 
-Exemple cible : un Premium à 79 € peut couvrir plusieurs workspaces dans sa limite commerciale.
+```text
+CommercialAccount obligatoire
+1 abonnement Premium couvre plusieurs workspaces
+Premium = 5 workspaces
+scope commercial_account
+```
 
-Ce concept doit rester distinct des permissions opérationnelles d’administration d’un workspace.
+Le modèle actif conserve :
+
+```text
+Subscription.workspace
+UsageMetric.workspace
+```
+
+La capacité technique multi-workspace d’un User ne définit pas automatiquement une politique commerciale multi-workspace.
 
 ### Exceptions commerciales futures
 
-Le `super_admin` devra pouvoir activer/désactiver certaines fonctionnalités de manière exceptionnelle pour un compte, sans casser le modèle Plan standard.
+Le `super_admin` devra pouvoir activer/désactiver certaines fonctionnalités de manière exceptionnelle sans modifier le Plan catalogue partagé.
 
-Ce sujet est prévu plus tard via `EntitlementOverride` Workspace-scoped / Platform, pas dans F9 initial si le contrat backend n’est pas déjà exposé.
+Ce sujet est prévu via `EntitlementOverride` Workspace-scoped / Platform.
 
 ---
 
-## 8. Frontend terminé avant F9
+## 8. Configuration technique vs configuration commerciale
+
+### `.env`
+
+Réservé aux secrets et paramètres techniques, par exemple :
+
+```text
+DATABASE_URL
+JWT_ACCESS_SECRET
+TRIAL_IDENTITY_SECRET
+CLIENT_URL
+SMTP_*
+clés provider de paiement futures
+paramètres infrastructure
+```
+
+### Base / seeds / Platform Admin
+
+Pour les données commerciales :
+
+```text
+plans
+prix
+devise
+trialEnabled
+trialDurationDays
+features
+limits
+ordre d’affichage
+activation / archivage
+```
+
+Ne pas utiliser `.env` comme catalogue commercial ordinaire.
+
+---
+
+## 9. Frontend terminé avant F9
 
 ### F1 à F4
 
@@ -320,8 +433,6 @@ La fin de session purge le cache RTK Query depuis le store : ce comportement a �
 - redirections ;
 - garde de session ;
 - messages de retour Auth.
-
-Les messages de succès après changement/reset de mot de passe restent volontairement sur la page Login lorsqu’une reconnexion est nécessaire. Ils ne doivent pas être dupliqués par un toast.
 
 ### Workspace
 
@@ -355,7 +466,7 @@ Les messages de succès après changement/reset de mot de passe restent volontai
 - prévention UX d’escalade de permissions ;
 - backend restant l’autorité.
 
-L’API Roles est maintenant propriétaire de ses endpoints dans :
+L’API Roles est propriétaire de ses endpoints dans :
 
 ```text
 frontend/src/features/workspace-roles/api/workspace-roles-api.js
@@ -386,6 +497,8 @@ Ne pas réintroduire `useListWorkspaceRolesQuery` dans `workspace-members/api`.
 - programmation/révocation de downgrade ;
 - dates effectives affichées ;
 - actions commerciales owner-only.
+
+Le frontend doit afficher le catalogue fourni par le backend et ne doit jamais supposer qu’un nom de plan, un prix ou une liste de features est universel.
 
 ### Workspace Settings / Ownership — F8.7
 
@@ -424,9 +537,9 @@ Décision figée : ce dashboard est provisoire. Le futur dashboard Workspace ser
 
 ---
 
-## 9. F8-AUDIT — maintenabilité frontend
+## 10. F8-AUDIT — maintenabilité frontend
 
-Checkpoint obligatoire désormais terminé.
+Checkpoint obligatoire terminé.
 
 Corrections structurantes validées :
 
@@ -435,538 +548,110 @@ Corrections structurantes validées :
 - suppression du code mort Auth ;
 - suppression des wrappers Platform placeholders inutilisés ;
 - ownership de l’API Roles corrigé ;
-- import résiduel `useListWorkspaceRolesQuery` corrigé dans Workspace Ownership après détection par le build ;
+- import résiduel `useListWorkspaceRolesQuery` corrigé ;
 - pagination partagée ;
 - confirmation partagée ;
 - tests associés ;
 - build production validé.
 
-Le build a joué son rôle de gate : une dépendance résiduelle vers l’ancien module Roles avait été détectée et corrigée avant clôture.
-
 ---
 
-## 10. Primitives frontend partagées obligatoires
+## 11. Primitives frontend partagées obligatoires
 
 ### DataTable
 
-Référence :
-
 ```text
 frontend/src/components/data-display/data-table.jsx
-```
-
-Avec :
-
-```text
 frontend/src/components/data-display/data-table-styles.js
 ```
 
 Tous les futurs tableaux Platform et métier compatibles doivent l’utiliser par défaut.
 
-Ne pas recréer localement une structure `<table>/<thead>/<tbody>/<tr>/<td>` si `DataTable` couvre le besoin.
-
 ### DataPagination
-
-Référence :
 
 ```text
 frontend/src/components/data-display/data-pagination.jsx
 ```
 
-Utilisée notamment par :
-
-- Membres ;
-- Fichiers ;
-- Audit ;
-- sélection de membres lors d’un transfert d’ownership.
-
 ### EntityDetailsDrawer
-
-Référence :
 
 ```text
 frontend/src/components/shared/entity-details-drawer.jsx
 ```
 
-Comportement :
-
-- ouverture/fermeture animée ;
-- voile de fond ;
-- conservation du contenu pendant la sortie ;
-- focus ;
-- Escape ;
-- verrouillage du scroll ;
-- restauration du focus.
-
-Les drawers sont pertinents pour des détails riches, historiques, permissions ou données secondaires consultées sans quitter l’écran.
-
 ### ConfirmationDialog
-
-Référence :
 
 ```text
 frontend/src/components/shared/confirmation-dialog.jsx
 ```
 
-Responsabilité : mécanique transversale de confirmation accessible.
-
-La feature reste propriétaire :
-
-- du texte métier ;
-- des conséquences ;
-- des validations ;
-- du type d’action ;
-- du traitement serveur.
-
 ### DatePicker
-
-Référence :
 
 ```text
 frontend/src/components/forms/date-picker.jsx
 ```
 
-Règles :
-
-- affichage `jj/mm/aaaa` ;
-- calendrier français ;
-- valeur technique `YYYY-MM-DD` ;
-- pas de nouveau calendrier local sans besoin réellement différent.
-
-### Tooltip
-
-Composant partagé corrigé pour fonctionner au clavier sans rester affiché de manière indésirable après activation d’un bouton ouvrant un Drawer.
-
-### ToastProvider
-
-Référence :
-
-```text
-frontend/src/components/shared/toast-provider.jsx
-```
-
-Provider global enregistré dans `AppProviders`.
+Les composants partagés doivent rester la référence avant toute création de variante locale.
 
 ---
 
-## 11. Politique Toasts — décision UX figée
+## 12. Prochain bloc F9 — Platform Admin frontend réel
 
-Le système de Toast a été ajouté après F8-AUDIT car il faisait partie des demandes UX antérieures et devait être présent avant F9.
+Avant de coder F9 :
 
-Comportement :
-
-- durée par défaut : 5 secondes ;
-- fermeture automatique ;
-- fermeture manuelle par croix ;
-- variantes `success`, `error`, `warning`, `info` ;
-- `status` accessible pour succès/info ;
-- `alert` accessible pour erreurs.
-
-Contrat :
-
-```text
-docs/frontend-toast-feedback-contract.md
-```
-
-### Règle centrale
-
-**Toast = résultat global d’une action serveur durable.**
-
-**Inline = information nécessaire pour corriger/comprendre dans le contexte local.**
-
-Une même information ne doit pas être affichée à la fois inline et en toast sans justification UX forte.
-
-### Mutations Core migrées vers Toasts
-
-#### Workspace
-
-- changement du nom : succès + erreur opérationnelle en toast ;
-- transfert d’ownership : succès en toast après navigation ; erreur mot de passe/contrainte reste inline.
-
-#### Profil
-
-- succès en toast ;
-- erreur opérationnelle en toast ;
-- validation de champ reste inline.
-
-#### Fichiers
-
-- upload réussi : toast ;
-- retrait réussi : toast ;
-- erreur de téléchargement : toast ;
-- erreur upload : reste dans le dialogue ;
-- erreur suppression : reste dans la confirmation ;
-- pas de toast « téléchargement réussi » inutile.
-
-#### Rôles
-
-- création : toast ;
-- modification : toast ;
-- suppression réussie : toast ;
-- échec de suppression : reste visible dans le bloc de confirmation.
-
-#### Membres / Invitations
-
-- invitation envoyée : toast ;
-- invitation renvoyée : toast ;
-- changement de rôle : toast ;
-- suspension réussie : toast ;
-- retrait réussi : toast ;
-- révocation réussie : toast ;
-- refus d’une action confirmée : reste dans la confirmation.
-
-#### Subscription / Trial
-
-- démarrage d’essai : toast ;
-- changement de plan pendant essai : toast ;
-- retour Free réussi : toast ;
-- refus du retour Free : reste dans la confirmation.
-
-#### Cycle commercial
-
-- programmation résiliation : toast ;
-- révocation résiliation : toast ;
-- programmation downgrade : toast ;
-- révocation downgrade : toast ;
-- erreurs serveur : restent dans le dialogue commercial permettant de comprendre/réessayer.
-
-### Pas de toast volontairement
-
-- validation Zod/RHF ;
-- navigation ;
-- pagination ;
-- filtres ;
-- ouverture/fermeture Drawer ;
-- refetch réussi ;
-- chargement de page en erreur ;
-- création initiale d’un workspace, qui possède déjà un écran de succès complet ;
-- acceptation d’une invitation, qui possède déjà un écran de succès complet ;
-- logout/login lorsque la navigation ou le message Login explicite déjà le résultat.
+1. auditer les routes Platform réellement disponibles côté backend ;
+2. vérifier les DTO observables ;
+3. utiliser les composants partagés existants ;
+4. ne pas inventer de données ou capacités Platform non exposées ;
+5. maintenir l’isolation Platform / Workspace ;
+6. respecter le contrat commercial générique : les écrans Plans doivent être pilotés par les données, pas par des hypothèses `Free/Premium/IA` codées en dur ;
+7. ne pas réintroduire `CommercialAccount` dans F9 ;
+8. différer `EntitlementOverride` si le contrat backend nécessaire n’existe pas encore.
 
 ---
 
-## 12. Règles UX figées importantes
+## 13. Documents de référence à maintenir ensemble
 
-- interface Core en français ;
-- clés API/permissions restent techniques en interne ;
-- formatters de présentation pour les statuts ;
-- Sidebar Workspace rétractable ;
-- tooltips en mode compact ;
-- Topbar avec profil et logout ;
-- Administration affichée selon contexte/rôle ;
-- drawers pour informations riches secondaires ;
-- confirmation explicite pour actions destructives ;
-- toasts uniquement lorsque pertinents ;
-- éviter badges et libellés techniques répétitifs sans valeur décisionnelle ;
-- pas de fonctionnalité affichée si le backend ne la supporte pas réellement.
+```text
+docs/commercial-configuration-contract.md
+docs/commercial-plans-entitlements-platform-admin.md
+docs/frontend-backend-subscription-contract.md
+docs/frontend-backend-integration-contract.md
+docs/frontend-backend-roles-permissions-contract.md
+docs/backend-implementation-checklist.md
+```
+
+Ordre logique :
+
+```text
+commercial-configuration-contract
+→ généricité du Core et paramétrage commercial
+
+commercial-plans-entitlements-platform-admin
+→ architecture commerciale V1 active
+
+frontend-backend-*-contract
+→ comportement HTTP observable
+
+backend-implementation-checklist
+→ état réel d’implémentation
+```
 
 ---
 
-## 13. Dettes et limites à ne pas oublier
+## 14. Invariant de reprise
 
-### Files
-
-- vraie vue Corbeille ;
-- restauration avant purge ;
-- réservation atomique de stockage lors d’une restauration ;
-- permission/politique de restauration.
-
-### Billing / paiement
-
-- provider réel non intégré ;
-- données bancaires et changement de moyen de paiement à cadrer avec le provider ;
-- audit fort requis sur ces opérations.
-
-### Email utilisateur
-
-- changement d’adresse email non encore exposé ;
-- futur workflow de vérification obligatoire.
-
-### Auth / ownership
-
-- cas Google-only pour opérations nécessitant un mot de passe courant : dette connue, ne pas contourner côté frontend.
-
-### Privacy / conformité
-
-Dette future déjà identifiée :
-
-- consentement cookies lorsqu’applicable ;
-- RGPD ;
-- conservation des données ;
-- suppression/export ;
-- politique de non-commercialisation ;
-- articulation frontend + backend + juridique.
-
-### Dashboard
-
-Le dashboard Core reste volontairement technique et provisoire jusqu’aux modules métier.
-
-### EntitlementOverride
-
-Prévu après F9 dans le planning actuel :
+À partir du 3 septembre 2026 :
 
 ```text
-F10 — EntitlementOverride Workspace-scoped + Platform
+saas-core-api
+= socle générique clonable
+
+Core
+= mécanismes + sécurité + points d’extension
+
+Application dérivée
+= métier + catalogue commercial réel + prix + capabilities/métriques métier
 ```
 
-Ne pas anticiper ce bloc dans F9 sans besoin backend explicitement vérifié.
-
----
-
-## 14. État Platform au moment de la reprise
-
-### Backend Platform existant
-
-Le backend possède :
-
-```text
-backend/modules/platform/
-  users/
-  workspaces/
-  plans/
-  subscriptions/
-  auditLogs/
-  platform.routes.js
-```
-
-`platform.routes.js` applique une authentification commune puis délègue les autorisations aux sous-routeurs.
-
-Routes Platform Users vérifiées :
-
-```text
-GET    /platform/users
-GET    /platform/users/:userId
-PATCH  /platform/users/:userId/disable
-PATCH  /platform/users/:userId/enable
-POST   /platform/users/:userId/revoke-sessions
-PATCH  /platform/users/:userId/role
-```
-
-Ces routes passent par :
-
-```text
-authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN)
-```
-
-et par les validations appropriées.
-
-Important : pour `workspaces`, `plans`, `subscriptions` et `audit-logs`, **ne pas inventer le contrat à partir du nom des dossiers**. La première action de F9 doit être de lire les routes/controllers/services/validations/tests backend réels avant de concevoir les écrans.
-
-### Frontend Platform actuel
-
-Le dossier existe :
-
-```text
-frontend/src/features/platform/
-  components/
-  constants/
-  pages/
-```
-
-Les pages restent volontairement placeholders :
-
-```text
-platform-overview-placeholder-page.jsx
-platform-section-placeholder-page.jsx
-```
-
-Ce n’est pas une dette oubliée : c’est le point de départ intentionnel de F9.
-
-Le guard Platform existant est une protection UX. La vraie autorité reste le backend `super_admin`.
-
----
-
-## 15. Ordre de production restant
-
-Ordre figé :
-
-```text
-F8.5      Files frontend                              TERMINÉ
-F8.6      Subscription / Plan / Trial                 TERMINÉ
-F8.7      Workspace Settings / Ownership              TERMINÉ
-F8.8      Audit / Dashboard Core                      TERMINÉ
-F8.9      Account / Security                          TERMINÉ
-F8-AUDIT  Maintenabilité + composants partagés        TERMINÉ
-F8-UX     ToastProvider + rollout Core                TERMINÉ / VALIDÉ LOCALEMENT
-F9.x      Platform Admin frontend réel                PROCHAIN BLOC
-F10       EntitlementOverride Workspace-scoped        À VENIR
-F11       Consolidation frontend + E2E                À VENIR
-Modules métier                                         APRÈS GATE CORE
-```
-
-Aucun module métier ne doit commencer avant la consolidation Core et les E2E prévus.
-
----
-
-## 16. Plan exact de reprise — F9 Platform Admin
-
-### Étape F9.0 — Audit sécurité/contrat backend
-
-Avant de coder :
-
-1. lire `backend/modules/platform/platform.routes.js` ;
-2. auditer successivement :
-   - `platform/users` ;
-   - `platform/workspaces` ;
-   - `platform/plans` ;
-   - `platform/subscriptions` ;
-   - `platform/auditLogs` ;
-3. relever pour chaque endpoint :
-   - méthode + URL ;
-   - validation Zod ;
-   - rôle requis ;
-   - shape request ;
-   - shape response ;
-   - pagination/filtres ;
-   - mutations disponibles ;
-   - audit logs générés ;
-   - invariants métier ;
-   - tests backend existants ;
-4. identifier les besoins frontend réellement supportés ;
-5. signaler explicitement toute action souhaitée par l’UI mais absente du backend ;
-6. ne pas bricoler un contournement frontend.
-
-### Étape F9.1 — Contrat RTK Query Platform
-
-Créer/compléter une feature API Platform en restant sur le `baseApi` unique.
-
-Ne pas créer une seconde instance RTK Query.
-
-Prévoir des tags cohérents par ressource après audit réel du backend.
-
-### Étape F9.2 — Users Platform
-
-Candidat recommandé pour le premier vrai écran, car le contrat Users est déjà clairement exposé.
-
-Attentes probables à confirmer par audit du backend :
-
-- liste paginée ;
-- détail utilisateur ;
-- disable / enable ;
-- révocation des sessions ;
-- modification du rôle plateforme.
-
-UX :
-
-- `DataTable` obligatoire si compatible ;
-- `DataPagination` obligatoire ;
-- Drawer pour détails riches ;
-- `ConfirmationDialog` pour actions sensibles ;
-- Toast succès après mutation ;
-- erreur dans la confirmation si le dialogue reste ouvert et permet un retry ;
-- backend seul responsable de l’autorisation.
-
-### Étapes F9 suivantes
-
-Après Users, traiter seulement après audit :
-
-- Workspaces Platform ;
-- Plans Platform ;
-- Subscriptions Platform ;
-- Audit Logs Platform ;
-- Overview Platform réel.
-
-L’Overview doit être construit à partir de données réellement exposées, sans inventer des KPI inexistants.
-
----
-
-## 17. Tests exigés pour F9
-
-Pour chaque sous-lot :
-
-### Unitaires / composants
-
-- affichage loading/error/empty/data ;
-- permissions UX ;
-- rendu DataTable/Drawer/Confirmation ;
-- Toast selon le contrat ;
-- formatters.
-
-### Intégration frontend
-
-- appels RTK Query ;
-- invalidations ;
-- pagination ;
-- mutations ;
-- refus backend ;
-- navigation éventuelle.
-
-### Backend
-
-Si F9 révèle un manque de sécurité ou de contrat backend, corriger le backend d’abord avec tests ciblés Supertest/Vitest avant raccordement frontend.
-
-### Validation de fin de lot
-
-Toujours :
-
-1. tests ciblés ;
-2. suite frontend globale si le lot touche des primitives/routes partagées ;
-3. `npm run build` ;
-4. validation manuelle pertinente ;
-5. mise à jour de la checklist ;
-6. documentation des décisions/dettes.
-
----
-
-## 18. Garde-fous de développement à respecter
-
-- JavaScript uniquement ;
-- pas de TypeScript ;
-- aucune approximation sur les endpoints ;
-- sécurité backend prioritaire ;
-- pas de logique métier lourde dans les pages ;
-- pas de duplication de composants partagés ;
-- pas de refactor hors périmètre ;
-- ne pas modifier les espacements des tables localement ;
-- ne pas recréer pagination/confirmation/drawer/toast/date picker si le besoin est déjà couvert ;
-- ne pas inventer de permissions frontend ;
-- ne pas considérer un masquage UX comme une sécurité ;
-- garder les messages serveur utiles lorsqu’ils expliquent un refus métier ;
-- commenter le pourquoi, pas le quoi ;
-- JSDoc seulement lorsqu’il clarifie un contrat non trivial ;
-- préserver les invariants commerciaux Trial/Plan/Subscription ;
-- ne pas introduire EntitlementOverride prématurément ;
-- conserver les synthèses et checklists vivantes.
-
----
-
-## 19. Documents de référence à relire au besoin
-
-Priorité frontend :
-
-```text
-docs/frontend-implementation-checklist.md
-docs/frontend-maintenance-audit.md
-docs/frontend-maintenance-audit-report.md
-docs/frontend-data-table-contract.md
-docs/frontend-toast-feedback-contract.md
-```
-
-Contrats/cadrage projet à conserver :
-
-```text
-SAAS-CORE-API — Contrat d’intégration frontend-backend
-SAAS-CORE-API — Synthèse de cadrage consolidée
-SAAS-CORE-API — Synthèse d’architecture consolidée User/Auth
-Ordre conseillé d’implémentation
-Checklist d’implémentation backend
-Dette fonctionnelle Plan et Subscription
-```
-
-Pour F9, la source de vérité immédiate est néanmoins le code backend actuel de `backend/modules/platform/` et ses tests.
-
----
-
-## 20. Phrase de reprise recommandée pour la nouvelle conversation
-
-> Reprendre le projet SAAS-CORE-API à partir de la synthèse `SAAS-CORE-API-Synthese-de-reprise-2026-09-02-F8-finalise-avant-F9.md`. F8, F8-AUDIT et le rollout Toast Core sont terminés et validés localement. Le prochain bloc est F9 Platform Admin. Commencer par auditer exhaustivement le backend `backend/modules/platform/` et ses tests, confirmer les contrats et gardes `super_admin`, puis proposer le découpage F9 avant toute implémentation frontend. Ne modifier aucun élément hors périmètre et réutiliser obligatoirement les primitives DataTable, DataPagination, EntityDetailsDrawer, ConfirmationDialog, DatePicker, Tooltip et ToastProvider lorsqu’elles couvrent le besoin.
-
----
-
-## 21. État final de cette reprise
-
-Le Core frontend n’est plus en phase de rattrapage structurel.
-
-Les blocs F8 sont fonctionnels, audités et validés. Le design system fonctionnel comprend désormais les primitives nécessaires pour construire l’administration Platform sans duplication. Le système de feedback global Toast est en place avec une politique anti-bruit claire et testée.
-
-**Le prochain travail est F9 Platform Admin, en commençant impérativement par la vérification du backend Platform existant avant de créer les écrans réels.**
+Aucun développement futur du Core ne doit transformer une configuration commerciale particulière en invariant structurel sans décision d’architecture explicite.
