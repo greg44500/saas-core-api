@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
 import {
+    ACTIVE_PLAN_CAPABILITY_REGISTRY,
+} from '../../config/applicationCapability.registry.js';
+import {
     USAGE_METRIC_PERIOD_TYPE,
 } from '../../constants/usageMetric.constants.js';
 
-import {
-    DEFAULT_PLAN_CAPABILITY_REGISTRY,
-} from '../plan/planCapability.registry.js';
 import {
     UsageMetric,
 } from './usageMetric.model.js';
@@ -70,7 +70,7 @@ const isDuplicateKeyError = (error) =>
 const resolveUsageMetricPeriod = ({
     metricKey,
     at = new Date(),
-    registry = DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
 }) => {
     if (
         typeof metricKey !== 'string'
@@ -192,7 +192,7 @@ const getUsageMetricValue = async ({
     workspaceId,
     metricKey,
     at = new Date(),
-    registry = DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
     session = null,
 }) => {
     if (!workspaceId) {
@@ -274,7 +274,7 @@ const incrementUsageMetric = async ({
     amount = 1,
     at = new Date(),
     actorId = null,
-    registry = DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
     session = null,
 }) => {
     if (!workspaceId) {
@@ -410,7 +410,7 @@ const reserveUsageMetricWithinLimit = async ({
     amount = 1,
     at = new Date(),
     actorId = null,
-    registry = DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
     session = null,
 }) => {
     if (!workspaceId) {
