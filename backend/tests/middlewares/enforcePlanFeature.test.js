@@ -22,7 +22,7 @@ const createRequest = () => ({
 });
 
 
-const createPlanEntitlement = ({
+const createEffectiveEntitlement = ({
     features = ['file_upload'],
 } = {}) => ({
     subscription: {
@@ -30,30 +30,35 @@ const createPlanEntitlement = ({
     },
     plan: {
         _id: 'plan-id',
+        features: ['file_upload'],
+    },
+    effectiveCapabilities: {
         features,
+        limits: {},
+        appliedOverrides: [],
     },
 });
 
 
 describe('enforcePlanFeature', () => {
-    let resolveWorkspacePlanEntitlement;
+    let resolveWorkspaceEffectiveEntitlement;
     let createMiddleware;
 
 
     beforeEach(() => {
-        resolveWorkspacePlanEntitlement =
+        resolveWorkspaceEffectiveEntitlement =
             vi.fn().mockResolvedValue(
-                createPlanEntitlement(),
+                createEffectiveEntitlement(),
             );
 
         createMiddleware =
             createEnforcePlanFeature({
-                resolveWorkspacePlanEntitlement,
+                resolveWorkspaceEffectiveEntitlement,
             });
     });
 
 
-    it('autorise une fonctionnalité incluse dans le plan', async () => {
+    it('autorise une fonctionnalité présente dans l’entitlement effectif', async () => {
         const req = createRequest();
         const next = vi.fn();
 
@@ -63,11 +68,11 @@ describe('enforcePlanFeature', () => {
         await middleware(req, {}, next);
 
         expect(
-            resolveWorkspacePlanEntitlement,
+            resolveWorkspaceEffectiveEntitlement,
         ).toHaveBeenCalledOnce();
 
         expect(
-            resolveWorkspacePlanEntitlement,
+            resolveWorkspaceEffectiveEntitlement,
         ).toHaveBeenCalledWith({
             workspaceId: WORKSPACE_ID,
         });
@@ -75,19 +80,17 @@ describe('enforcePlanFeature', () => {
         expect(next).toHaveBeenCalledOnce();
         expect(next).toHaveBeenCalledWith();
 
-        expect(req.planEntitlement).toEqual(
-            createPlanEntitlement(),
+        expect(req.effectiveEntitlement).toEqual(
+            createEffectiveEntitlement(),
         );
     });
 
 
-    it('refuse une fonctionnalité absente du plan', async () => {
-        resolveWorkspacePlanEntitlement
+    it('refuse une fonctionnalité retirée de l’entitlement par override', async () => {
+        resolveWorkspaceEffectiveEntitlement
             .mockResolvedValue(
-                createPlanEntitlement({
-                    features: [
-                        'team_management',
-                    ],
+                createEffectiveEntitlement({
+                    features: [],
                 }),
             );
 
@@ -104,24 +107,28 @@ describe('enforcePlanFeature', () => {
 
         expect(error).toMatchObject({
             message:
-                'Cette fonctionnalité n’est pas incluse dans le plan du workspace.',
+                'Cette fonctionnalité n’est pas disponible pour ce workspace.',
             statusCode: 403,
         });
 
-        expect(req.planEntitlement)
+        expect(req.effectiveEntitlement)
             .toBeUndefined();
     });
 
 
-    it('refuse par défaut un plan dont les fonctionnalités sont invalides', async () => {
-        resolveWorkspacePlanEntitlement
+    it('refuse un entitlement dont les fonctionnalités effectives sont invalides', async () => {
+        resolveWorkspaceEffectiveEntitlement
             .mockResolvedValue({
                 subscription: {
                     _id: 'subscription-id',
                 },
                 plan: {
                     _id: 'plan-id',
+                },
+                effectiveCapabilities: {
                     features: null,
+                    limits: {},
+                    appliedOverrides: [],
                 },
             });
 
@@ -140,7 +147,7 @@ describe('enforcePlanFeature', () => {
             next.mock.calls[0][0],
         ).toMatchObject({
             message:
-                'Les fonctionnalités du plan sont indisponibles.',
+                'Les fonctionnalités effectives du workspace sont indisponibles.',
             statusCode: 500,
         });
     });
@@ -155,7 +162,7 @@ describe('enforcePlanFeature', () => {
         await middleware({}, {}, next);
 
         expect(
-            resolveWorkspacePlanEntitlement,
+            resolveWorkspaceEffectiveEntitlement,
         ).not.toHaveBeenCalled();
 
         expect(
@@ -168,15 +175,15 @@ describe('enforcePlanFeature', () => {
     });
 
 
-    it('transmet sans la transformer une erreur de SubscriptionService', async () => {
-        const subscriptionError =
+    it('transmet sans la transformer une erreur du moteur d’entitlement', async () => {
+        const entitlementError =
             new Error(
-                'Subscription unavailable',
+                'Effective entitlement unavailable',
             );
 
-        resolveWorkspacePlanEntitlement
+        resolveWorkspaceEffectiveEntitlement
             .mockRejectedValue(
-                subscriptionError,
+                entitlementError,
             );
 
         const next = vi.fn();
@@ -191,7 +198,7 @@ describe('enforcePlanFeature', () => {
         );
 
         expect(next).toHaveBeenCalledWith(
-            subscriptionError,
+            entitlementError,
         );
     });
 
@@ -206,7 +213,7 @@ describe('enforcePlanFeature', () => {
         );
 
         expect(
-            resolveWorkspacePlanEntitlement,
+            resolveWorkspaceEffectiveEntitlement,
         ).not.toHaveBeenCalled();
     });
 
@@ -214,11 +221,11 @@ describe('enforcePlanFeature', () => {
     it('refuse une dépendance de résolution invalide', () => {
         expect(() => {
             createEnforcePlanFeature({
-                resolveWorkspacePlanEntitlement:
+                resolveWorkspaceEffectiveEntitlement:
                     null,
             });
         }).toThrow(
-            'Le résolveur des droits du plan est invalide.',
+            'Le résolveur des droits effectifs est invalide.',
         );
     });
 
