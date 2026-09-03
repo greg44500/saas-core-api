@@ -80,12 +80,71 @@ const serializeSubscription = (subscription) => {
 };
 
 /**
+ * Construit la vue Workspace des droits réellement applicables.
+ *
+ * `effectiveCapabilities` contient aussi, côté domaine, les overrides ayant
+ * participé au calcul. Cette projection ne les propage volontairement jamais :
+ * source commerciale, motif, auteur Platform et identifiants d'override sont
+ * des données d'administration et non des droits nécessaires au Workspace.
+ *
+ * Le Plan reste exposé comme contexte contractuel historique. Pour toute
+ * décision runtime ou tout affichage intitulé "effectif", les consommateurs
+ * doivent utiliser `features` et `limits` situés directement sur
+ * `effectiveEntitlement`, jamais `effectiveEntitlement.plan.features/limits`.
+ */
+const serializeWorkspaceEffectiveEntitlement = (access) => {
+    if (
+        !access?.subscription
+        || !access?.plan
+        || !access?.effectiveCapabilities
+        || !Array.isArray(
+            access.effectiveCapabilities.features,
+        )
+    ) {
+        throw new TypeError(
+            'Workspace effective entitlement is incomplete.',
+        );
+    }
+
+    const rawLimits = access.effectiveCapabilities.limits;
+
+    if (
+        rawLimits === null
+        || typeof rawLimits !== 'object'
+        || Array.isArray(rawLimits)
+    ) {
+        throw new TypeError(
+            'Workspace effective entitlement limits are invalid.',
+        );
+    }
+
+    const limits = rawLimits instanceof Map
+        ? Object.fromEntries(rawLimits)
+        : { ...rawLimits };
+
+    return {
+        plan: serializePlan(access.plan),
+        features: [
+            ...access.effectiveCapabilities.features,
+        ],
+        limits,
+        subscriptionKind: access.subscription.kind,
+        subscriptionStatus: access.subscription.status,
+        accessMode: access.accessMode,
+        reason: access.reason,
+        blockingLimits: access.blockingLimits,
+        nonBlockingLimits: access.nonBlockingLimits,
+    };
+};
+
+/**
  * Retourne la vue de lecture consolidée de l'abonnement d'un workspace.
  *
  * Subscription reste l'autorité contractuelle et
  * getWorkspaceAccessEntitlement reste l'autorité des droits effectifs. Le
  * frontend reçoit donc un DTO prêt à consommer et ne doit jamais reconstruire
- * lui-même le fallback commercial -> Free ni le mode de remédiation.
+ * lui-même le fallback commercial -> Free, les overrides ni le mode de
+ * remédiation.
  *
  * L'état de consommation du trial est également résolu côté serveur à partir
  * de l'owner actuel. Le frontend peut ainsi éviter de proposer un nouveau trial
@@ -131,18 +190,41 @@ const getWorkspaceSubscriptionOverview = async ({
         createdAt: -1,
     });
 
-    const [baseline, commercial, access, owner] = await Promise.all([
-        baselineQuery,
-        commercialQuery,
-        getWorkspaceAccessEntitlement({
+    let baseline;
+    let commercial;
+    let access;
+    let owner;
+
+    if (session) {
+        /*
+         * Le pilote MongoDB ne garantit pas les opérations parallèles dans une
+         * même transaction. Une session fournie impose donc des lectures
+         * séquentielles, tandis que le chemin HTTP ordinaire reste parallélisé.
+         */
+        baseline = await baselineQuery;
+        commercial = await commercialQuery;
+        access = await getWorkspaceAccessEntitlement({
             workspaceId,
             session,
-        }),
-        resolveCurrentWorkspaceOwner({
+        });
+        owner = await resolveCurrentWorkspaceOwner({
             workspaceId,
-            session: session ?? null,
-        }),
-    ]);
+            session,
+        });
+    } else {
+        [baseline, commercial, access, owner] = await Promise.all([
+            baselineQuery,
+            commercialQuery,
+            getWorkspaceAccessEntitlement({
+                workspaceId,
+                session: null,
+            }),
+            resolveCurrentWorkspaceOwner({
+                workspaceId,
+                session: null,
+            }),
+        ]);
+    }
 
     const trialConsumed = await hasConsumedTrial({
         emailCanonical: owner.emailCanonical,
@@ -152,15 +234,8 @@ const getWorkspaceSubscriptionOverview = async ({
     return {
         baseline: serializeSubscription(baseline),
         commercial: serializeSubscription(commercial),
-        effectiveEntitlement: {
-            plan: serializePlan(access.plan),
-            subscriptionKind: access.subscription.kind,
-            subscriptionStatus: access.subscription.status,
-            accessMode: access.accessMode,
-            reason: access.reason,
-            blockingLimits: access.blockingLimits,
-            nonBlockingLimits: access.nonBlockingLimits,
-        },
+        effectiveEntitlement:
+            serializeWorkspaceEffectiveEntitlement(access),
         trialEligibility: {
             consumed: trialConsumed,
         },
@@ -171,4 +246,5 @@ export {
     getWorkspaceSubscriptionOverview,
     serializePlan,
     serializeSubscription,
+    serializeWorkspaceEffectiveEntitlement,
 };
