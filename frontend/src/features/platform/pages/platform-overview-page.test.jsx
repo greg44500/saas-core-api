@@ -202,16 +202,20 @@ describe('PlatformOverviewPage', () => {
     expect(duration).toBe(90 * 24 * 60 * 60 * 1000);
   });
 
-  it('réserve le détail Usage à des informations complémentaires sur les fichiers', async () => {
+  it('réserve le détail Usage aux fichiers avec un dépliage accessible et des icônes colorées', async () => {
     const user = userEvent.setup();
-    renderPage();
+    const { container } = renderPage();
 
-    expect(screen.queryByText('Répartition par nombre de fichiers')).not.toBeInTheDocument();
+    const toggle = screen.getAllByRole('button', { name: 'Afficher le détail' })[0];
+    const details = document.getElementById(toggle.getAttribute('aria-controls'));
 
-    await user.click(
-      screen.getAllByRole('button', { name: 'Afficher le détail' })[0],
-    );
+    expect(details).toHaveAttribute('aria-hidden', 'true');
+    expect(details).toHaveAttribute('data-state', 'closed');
 
+    await user.click(toggle);
+
+    expect(details).toHaveAttribute('aria-hidden', 'false');
+    expect(details).toHaveAttribute('data-state', 'open');
     expect(screen.getByText('Répartition par nombre de fichiers')).toBeInTheDocument();
     expect(screen.getByText('Répartition du stockage par type')).toBeInTheDocument();
 
@@ -219,6 +223,9 @@ describe('PlatformOverviewPage', () => {
     expect(fileCountLabel.nextElementSibling).toHaveTextContent('10');
     expect(screen.getAllByText('PDF').length).toBeGreaterThan(0);
     expect(screen.getByText('6 fichiers · 60 %')).toBeInTheDocument();
+    expect(container.querySelectorAll('svg.text-red-500').length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('svg.text-sky-500').length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('svg.text-emerald-500').length).toBeGreaterThan(0);
     expect(screen.queryByText('Téléversements mensuels')).not.toBeInTheDocument();
   });
 
