@@ -3,6 +3,8 @@ import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { CollapsibleCard } from '@/components/data-display/collapsible-card';
+import { ComparisonBarChart } from '@/components/data-display/comparison-bar-chart';
+import { DistributionBarChart } from '@/components/data-display/distribution-bar-chart';
 import { MetricCard } from '@/components/data-display/metric-card';
 import { DashboardSection } from '@/components/shared/dashboard-section';
 import { Button } from '@/components/ui/button';
@@ -124,6 +126,26 @@ function PlatformOverviewPage() {
   const usage = overview?.usage ?? [];
   const planDistribution = overview?.planDistribution ?? [];
   const attention = overview?.attention;
+  const growthItems = [
+    {
+      key: 'users',
+      label: 'Nouveaux utilisateurs',
+      current: overview?.kpis?.users?.createdInPeriod ?? 0,
+      previous: overview?.kpis?.users?.createdInPreviousPeriod ?? 0,
+    },
+    {
+      key: 'workspaces',
+      label: 'Nouveaux espaces de travail',
+      current: overview?.kpis?.workspaces?.createdInPeriod ?? 0,
+      previous: overview?.kpis?.workspaces?.createdInPreviousPeriod ?? 0,
+    },
+  ];
+  const planDistributionItems = planDistribution.map((item) => ({
+    key: item.plan.id ?? item.plan.key,
+    label: item.plan.name,
+    value: item.workspaceCount,
+    percentage: item.percentage,
+  }));
 
   return (
     <div className="space-y-8" aria-busy={overviewQuery.isFetching || undefined}>
@@ -211,43 +233,25 @@ function PlatformOverviewPage() {
       >
         <div className="grid gap-4 xl:grid-cols-2">
           <OverviewPanel
-            description="Les courbes temporelles seront ajoutées dans le lot graphique suivant."
+            description="Compare les créations de la période sélectionnée avec la période précédente de même durée."
             title="Croissance de la plateforme"
           >
-            <dl className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="text-sm text-muted-foreground">Nouveaux utilisateurs</dt>
-                <dd className="mt-1 text-2xl font-semibold">
-                  {formatCount(overview?.kpis?.users?.createdInPeriod)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">Nouveaux espaces de travail</dt>
-                <dd className="mt-1 text-2xl font-semibold">
-                  {formatCount(overview?.kpis?.workspaces?.createdInPeriod)}
-                </dd>
-              </div>
-            </dl>
+            <ComparisonBarChart
+              aria-label="Comparaison de la croissance de la plateforme"
+              items={growthItems}
+            />
           </OverviewPanel>
 
           <OverviewPanel
             description="Nombre et pourcentage des espaces de travail par plan effectif."
             title="Répartition par plan"
           >
-            {planDistribution.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucune répartition disponible.</p>
-            ) : (
-              <dl className="space-y-3">
-                {planDistribution.map((item) => (
-                  <div className="flex items-center justify-between gap-4" key={item.plan.id ?? item.plan.key}>
-                    <dt className="text-sm font-medium">{item.plan.name}</dt>
-                    <dd className="text-sm text-muted-foreground">
-                      {formatCount(item.workspaceCount)} · {numberFormatter.format(item.percentage)} %
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            )}
+            <DistributionBarChart
+              aria-label="Répartition des espaces de travail par plan effectif"
+              emptyMessage="Aucune répartition disponible."
+              formatValue={(item) => `${formatCount(item.value)} espace${item.value === 1 ? '' : 's'}`}
+              items={planDistributionItems}
+            />
           </OverviewPanel>
         </div>
       </DashboardSection>
