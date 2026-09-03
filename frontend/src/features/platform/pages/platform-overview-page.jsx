@@ -6,12 +6,13 @@ import { CollapsibleCard } from '@/components/data-display/collapsible-card';
 import { ComparisonBarChart } from '@/components/data-display/comparison-bar-chart';
 import { DistributionBarChart } from '@/components/data-display/distribution-bar-chart';
 import { MetricCard } from '@/components/data-display/metric-card';
+import { SignalSummaryCard } from '@/components/data-display/signal-summary-card';
 import { DashboardSection } from '@/components/shared/dashboard-section';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -65,6 +66,22 @@ function formatMrrEstimate(estimate) {
   return formatPlatformPlanPrice(amountMinor, currency);
 }
 
+function formatBytes(value) {
+  if (!Number.isFinite(value)) return '—';
+
+  const units = [
+    ['Go', 1024 ** 3],
+    ['Mo', 1024 ** 2],
+    ['Ko', 1024],
+  ];
+  const [unit, divisor] = units.find(([, threshold]) => value >= threshold)
+    ?? ['octets', 1];
+
+  return `${new Intl.NumberFormat('fr-FR', {
+    maximumFractionDigits: divisor === 1 ? 0 : 1,
+  }).format(value / divisor)} ${unit}`;
+}
+
 /**
  * Formate une consommation réelle sans lui appliquer la sémantique d'une
  * limite de Plan. Une valeur d'usage égale à zéro signifie bien `0`, alors
@@ -72,24 +89,33 @@ function formatMrrEstimate(estimate) {
  */
 function formatUsageValue(metricKey, value) {
   if (!Number.isFinite(value)) return '—';
+  if (metricKey === 'storage_bytes') return formatBytes(value);
+  return numberFormatter.format(value);
+}
 
-  if (metricKey === 'storage_bytes') {
-    const megabytes = value / (1024 * 1024);
+function formatFileTypeLabel(fileType) {
+  const knownMimeLabels = {
+    'application/pdf': 'PDF',
+    'image/jpeg': 'JPEG',
+    'image/png': 'PNG',
+  };
 
-    return new Intl.NumberFormat('fr-FR', {
-      maximumFractionDigits: megabytes >= 100 ? 0 : 1,
-    }).format(megabytes) + ' Mo';
+  if (knownMimeLabels[fileType.mimeType]) {
+    return knownMimeLabels[fileType.mimeType];
   }
 
-  return numberFormatter.format(value);
+  const extension = fileType.extensions?.[0];
+  return extension ? extension.toUpperCase() : fileType.mimeType;
 }
 
 function OverviewPanel({ title, description, children }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <div className="flex items-start gap-2">
+          <CardTitle>{title}</CardTitle>
+          <InfoTooltip content={description} label={`À propos de ${title}`} />
+        </div>
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
@@ -124,6 +150,7 @@ function PlatformOverviewPage() {
     'nouveaux espaces vs période précédente',
   );
   const usage = overview?.usage ?? [];
+  const files = overview?.files ?? { totalCount: 0, totalSizeBytes: 0, byType: [] };
   const planDistribution = overview?.planDistribution ?? [];
   const attention = overview?.attention;
   const growthItems = [
@@ -146,6 +173,50 @@ function PlatformOverviewPage() {
     value: item.workspaceCount,
     percentage: item.percentage,
   }));
+  const fileCountDistribution = files.byType.map((item) => ({
+    key: item.mimeType,
+    label: formatFileTypeLabel(item),
+    value: item.count,
+    percentage: item.percentageOfCount,
+  }));
+  const fileStorageDistribution = files.byType.map((item) => ({
+    key: item.mimeType,
+    label: formatFileTypeLabel(item),
+    value: item.sizeBytes,
+    percentage: item.percentageOfStorage,
+  }));
+  const attentionItems = [
+    {
+      key: 'past-due',
+      label: 'Abonnements en retard',
+      value: attention?.counts?.pastDueSubscriptions ?? 0,
+      tone: 'warning',
+    },
+    {
+      key: 'suspended-workspaces',
+      label: 'Espaces de travail suspendus',
+      value: attention?.counts?.suspendedWorkspaces ?? 0,
+      tone: 'warning',
+    },
+    {
+      key: 'failed-audits',
+      label: 'Audits en échec',
+      value: attention?.counts?.failedAuditEvents ?? 0,
+      tone: 'warning',
+    },
+    {
+      key: 'trials-expiring',
+      label: 'Essais arrivant à échéance',
+      value: attention?.counts?.trialsExpiringNext7Days ?? 0,
+      tone: 'warning',
+    },
+    {
+      key: 'overrides-expiring',
+      label: 'Dérogations arrivant à échéance',
+      value: attention?.counts?.overridesExpiringNext7Days ?? 0,
+      tone: 'warning',
+    },
+  ];
 
   return (
     <div className="space-y-8" aria-busy={overviewQuery.isFetching || undefined}>
@@ -204,25 +275,25 @@ function PlatformOverviewPage() {
         className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
       >
         <MetricCard
-          description="Comptes inscrits sur la plateforme"
+          description="Nombre total de comptes inscrits sur la plateforme."
           title="Utilisateurs"
           value={formatCount(overview?.kpis?.users?.total)}
           {...userTrend}
         />
         <MetricCard
-          description="Tenants clients créés"
+          description="Nombre total d’espaces de travail clients créés sur la plateforme."
           title="Espaces de travail"
           value={formatCount(overview?.kpis?.workspaces?.total)}
           {...workspaceTrend}
         />
         <MetricCard
-          description="Contrats commerciaux actuellement actifs"
+          description="Nombre de contrats commerciaux actifs et encore valides à l’instant du calcul."
           title="Abonnements actifs"
           value={formatCount(overview?.kpis?.activeCommercialSubscriptions)}
         />
         <MetricCard
-          description="Estimation contractuelle brute, distincte des encaissements"
-          title="MRR contractuel estimé"
+          description="Équivalent mensuel brut des abonnements commerciaux actifs, calculé à partir des prix contractuels. Ce montant n’est ni facturé ni encaissé au sens comptable."
+          title="Valeur mensuelle contractuelle estimée"
           value={formatMrrEstimate(overview?.kpis?.contractedMrrEstimate)}
         />
       </section>
@@ -243,7 +314,7 @@ function PlatformOverviewPage() {
           </OverviewPanel>
 
           <OverviewPanel
-            description="Nombre et pourcentage des espaces de travail par plan effectif."
+            description="Nombre et pourcentage des espaces de travail par plan effectivement appliqué."
             title="Répartition par plan"
           >
             <DistributionBarChart
@@ -262,7 +333,7 @@ function PlatformOverviewPage() {
       >
         <div className="grid gap-4 xl:grid-cols-2">
           <CollapsibleCard
-            description="Consommation agrégée des métriques déclarées par l’application."
+            description="Vue consolidée de la consommation fonctionnelle actuelle : membres, stockage, téléversements et répartition des fichiers actifs."
             summary={(
               <dl className="grid grid-cols-2 gap-4 text-sm">
                 {usage.slice(0, 2).map((metric) => (
@@ -285,30 +356,46 @@ function PlatformOverviewPage() {
             )}
             title="Usage de la plateforme"
           >
-            {usage.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucune métrique d’usage disponible.</p>
-            ) : (
-              <dl className="space-y-3 text-sm">
-                {usage.map((metric) => (
-                  <div className="flex justify-between gap-4" key={metric.key}>
-                    <dt className="text-muted-foreground">
-                      {formatPlatformPlanMetric(metric.key)}
-                    </dt>
-                    <dd className="font-medium">
-                      {formatUsageValue(metric.key, metric.value)}
-                    </dd>
-                  </div>
-                ))}
+            <div className="space-y-6">
+              <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-muted-foreground">Fichiers actifs</dt>
+                  <dd className="mt-1 font-semibold">{formatCount(files.totalCount)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Stockage des fichiers actifs</dt>
+                  <dd className="mt-1 font-semibold">{formatBytes(files.totalSizeBytes)}</dd>
+                </div>
               </dl>
-            )}
+
+              <div>
+                <p className="mb-3 text-sm font-medium">Répartition par nombre de fichiers</p>
+                <DistributionBarChart
+                  aria-label="Répartition des fichiers actifs par type"
+                  emptyMessage="Aucun fichier actif."
+                  formatValue={(item) => `${formatCount(item.value)} fichier${item.value === 1 ? '' : 's'}`}
+                  items={fileCountDistribution}
+                />
+              </div>
+
+              <div>
+                <p className="mb-3 text-sm font-medium">Répartition du stockage par type</p>
+                <DistributionBarChart
+                  aria-label="Répartition du stockage des fichiers actifs par type"
+                  emptyMessage="Aucun stockage de fichier actif."
+                  formatValue={(item) => formatBytes(item.value)}
+                  items={fileStorageDistribution}
+                />
+              </div>
+            </div>
           </CollapsibleCard>
 
           <CollapsibleCard
-            description="Échéances commerciales et exceptions nécessitant une surveillance."
+            description="Échéances commerciales et dérogations nécessitant une surveillance."
             summary={(
               <dl className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <dt className="text-muted-foreground">Trials à échéance</dt>
+                  <dt className="text-muted-foreground">Essais à échéance</dt>
                   <dd className="mt-1 font-semibold">
                     {formatCount(overview?.subscriptionHealth?.trialsExpiringNext7Days)}
                   </dd>
@@ -329,7 +416,7 @@ function PlatformOverviewPage() {
                 <dd className="font-medium">{formatCount(overview?.subscriptionHealth?.cancellationScheduled)}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Downgrades programmés</dt>
+                <dt className="text-muted-foreground">Baisses de formule programmées</dt>
                 <dd className="font-medium">{formatCount(overview?.subscriptionHealth?.downgradeScheduled)}</dd>
               </div>
               <div className="flex justify-between gap-4">
@@ -349,40 +436,12 @@ function PlatformOverviewPage() {
         description="Synthèse des signaux administratifs actuellement identifiés ; le tableau détaillé partagé viendra dans le lot dédié."
         title="Points nécessitant une attention"
       >
-        <Card>
-          <CardContent>
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Signaux détectés</p>
-                <p className="mt-1 text-3xl font-semibold">
-                  {formatCount(attention?.totalSignals)}
-                </p>
-              </div>
-              <dl className="grid flex-1 gap-3 text-sm sm:grid-cols-2 xl:grid-cols-5">
-                <div>
-                  <dt className="text-muted-foreground">Past due</dt>
-                  <dd className="font-semibold">{formatCount(attention?.counts?.pastDueSubscriptions)}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Workspaces suspendus</dt>
-                  <dd className="font-semibold">{formatCount(attention?.counts?.suspendedWorkspaces)}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Audits en échec</dt>
-                  <dd className="font-semibold">{formatCount(attention?.counts?.failedAuditEvents)}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Trials proches</dt>
-                  <dd className="font-semibold">{formatCount(attention?.counts?.trialsExpiringNext7Days)}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Dérogations proches</dt>
-                  <dd className="font-semibold">{formatCount(attention?.counts?.overridesExpiringNext7Days)}</dd>
-                </div>
-              </dl>
-            </div>
-          </CardContent>
-        </Card>
+        <SignalSummaryCard
+          description="Ces signaux nécessitent une vérification administrative, mais ne représentent pas automatiquement des incidents techniques critiques. Les valeurs non nulles sont signalées en avertissement."
+          items={attentionItems}
+          title="Synthèse des points d’attention"
+          total={formatCount(attention?.totalSignals)}
+        />
       </DashboardSection>
     </div>
   );
@@ -391,7 +450,9 @@ function PlatformOverviewPage() {
 export {
   OverviewPanel,
   PlatformOverviewPage,
+  formatBytes,
   formatCount,
+  formatFileTypeLabel,
   formatMrrEstimate,
   formatTrend,
   formatUsageValue,
