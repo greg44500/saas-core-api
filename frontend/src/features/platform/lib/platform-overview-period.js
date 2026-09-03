@@ -7,7 +7,7 @@ const OVERVIEW_PERIOD_PRESET = Object.freeze({
 });
 
 const DEFAULT_OVERVIEW_PERIOD_PRESET = OVERVIEW_PERIOD_PRESET.DAYS_30;
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const PRESET_DAYS = Object.freeze({
   [OVERVIEW_PERIOD_PRESET.DAYS_7]: 7,
@@ -24,11 +24,43 @@ const PERIOD_OPTIONS = Object.freeze([
   { value: OVERVIEW_PERIOD_PRESET.CUSTOM, label: 'Période personnalisée' },
 ]);
 
-function isIsoDate(value) {
-  if (!ISO_DATE_PATTERN.test(value ?? '')) return false;
+function parseIsoDateParts(value) {
+  const match = ISO_DATE_PATTERN.exec(value ?? '');
+  if (!match) return null;
 
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const validationDate = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    validationDate.getUTCFullYear() !== year
+    || validationDate.getUTCMonth() !== month - 1
+    || validationDate.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return { year, month, day };
+}
+
+function isIsoDate(value) {
+  return parseIsoDateParts(value) !== null;
+}
+
+function createLocalDayBoundary(value, dayOffset = 0) {
+  const parts = parseIsoDateParts(value);
+  if (!parts) return null;
+
+  return new Date(
+    parts.year,
+    parts.month - 1,
+    parts.day + dayOffset,
+    0,
+    0,
+    0,
+    0,
+  );
 }
 
 function readOverviewPeriod(searchParams) {
@@ -102,9 +134,16 @@ function resolveOverviewApiPeriod(period, now = new Date()) {
       throw new TypeError('custom overview period is invalid');
     }
 
-    const from = new Date(`${period.from}T00:00:00.000Z`);
-    const toInclusive = new Date(`${period.to}T00:00:00.000Z`);
-    const toExclusive = new Date(toInclusive.getTime() + 24 * 60 * 60 * 1000);
+    /*
+     * Les DatePicker manipulent des jours civils locaux. On convertit donc les
+     * minuits locaux en instants ISO au dernier moment, comme pour les filtres
+     * Audit, afin qu'un administrateur français sélectionnant le 01/08 ne voie
+     * pas sa période décalée à cause de UTC+1/UTC+2. La borne `to` reste
+     * exclusive en utilisant le début local du jour suivant, ce qui absorbe
+     * correctement les changements d'heure sans supposer qu'un jour vaut 24 h.
+     */
+    const from = createLocalDayBoundary(period.from);
+    const toExclusive = createLocalDayBoundary(period.to, 1);
 
     return {
       from: from.toISOString(),
@@ -132,10 +171,17 @@ function validateCustomOverviewPeriod({ from, to, maxDays = 366 }) {
     return 'La date de début doit précéder la date de fin.';
   }
 
-  const fromDate = new Date(`${from}T00:00:00.000Z`);
-  const toExclusive = new Date(`${to}T00:00:00.000Z`).getTime()
-    + 24 * 60 * 60 * 1000;
-  const durationDays = (toExclusive - fromDate.getTime()) / (24 * 60 * 60 * 1000);
+  // Le plafond porte sur des jours calendaires, pas sur leur durée réelle :
+  // Date.UTC évite qu'un changement d'heure transforme 366 jours en 365,96.
+  const fromParts = parseIsoDateParts(from);
+  const toParts = parseIsoDateParts(to);
+  const fromUtc = Date.UTC(fromParts.year, fromParts.month - 1, fromParts.day);
+  const toExclusiveUtc = Date.UTC(
+    toParts.year,
+    toParts.month - 1,
+    toParts.day + 1,
+  );
+  const durationDays = (toExclusiveUtc - fromUtc) / (24 * 60 * 60 * 1000);
 
   if (durationDays > maxDays) {
     return `La période ne peut pas dépasser ${maxDays} jours.`;
@@ -148,6 +194,7 @@ export {
   DEFAULT_OVERVIEW_PERIOD_PRESET,
   OVERVIEW_PERIOD_PRESET,
   PERIOD_OPTIONS,
+  createLocalDayBoundary,
   isIsoDate,
   readOverviewPeriod,
   resolveOverviewApiPeriod,
