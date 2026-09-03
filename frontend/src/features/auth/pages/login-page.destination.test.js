@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { getRequestedDestination } from '@/features/auth/pages/login-page';
 
 describe('getRequestedDestination', () => {
-  it('préserve une destination protégée explicitement demandée', () => {
+  it('ignore une ancienne destination Workspace pour un super_admin', () => {
     const location = {
       state: {
         from: {
@@ -15,13 +15,28 @@ describe('getRequestedDestination', () => {
     };
 
     expect(getRequestedDestination(location, { platformRole: 'super_admin' })).toBe(
-      '/workspaces/workspace-1/dashboard?tab=activity#recent',
+      '/platform/overview',
     );
   });
 
   it('dirige un super_admin vers la Console plateforme sans destination préalable', () => {
     expect(getRequestedDestination({ state: null }, { platformRole: 'super_admin' })).toBe(
       '/platform/overview',
+    );
+  });
+
+  it('préserve une destination non-Workspace explicitement demandée par le super_admin', () => {
+    const location = {
+      state: {
+        from: {
+          pathname: '/account/security',
+          search: '?tab=sessions',
+        },
+      },
+    };
+
+    expect(getRequestedDestination(location, { platformRole: 'super_admin' })).toBe(
+      '/account/security?tab=sessions',
     );
   });
 
