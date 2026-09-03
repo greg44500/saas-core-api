@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Contrat du dashboard Platform
 
 **Date :** 3 septembre 2026  
-**Statut :** P-UI + P-DASH.1 validés — P-DASH.2 en validation
+**Statut :** P-UI + P-DASH.1 validés — P-DASH.2 et P-DASH.3 en validation
 
 ## 1. Objet
 
@@ -19,6 +19,7 @@ Décisions actives :
 - intitulés visibles en français ;
 - topbar réduite à `Console d'administration globale` ;
 - lien de retour vers la console masqué dans la console elle-même mais conservé pour un super-admin qui se trouve dans un autre contexte ;
+- le menu utilisateur se ferme au clic extérieur, avec `Escape` et lors d'un changement de route afin qu'un popover ouvert ne persiste jamais sur la page suivante ;
 - largeur de sidebar et densité des tableaux inchangées ;
 - `DataTable` reste l'unique primitive de tableau ;
 - cartes construites via les primitives réutilisables `Card`, `MetricCard`, `CollapsibleCard` et `DashboardSection` ;
@@ -98,7 +99,28 @@ La réponse regroupe :
 
 P-DASH.2 branche ces données via le `baseApi` RTK Query unique. Le frontend affiche les valeurs déjà calculées par le backend ; il ne reconstruit aucun pourcentage commercial ou signal de sécurité.
 
-## 6. Répartition par Plan
+## 6. Visualisations génériques — P-DASH.3
+
+P-DASH.3 introduit deux primitives dans `components/data-display` :
+
+```text
+ComparisonBarChart
+DistributionBarChart
+```
+
+Règles :
+
+- aucune primitive ne connaît Platform, Plan, Subscription ou RTK Query ;
+- les composants reçoivent des valeurs déjà calculées et ne reconstruisent aucune règle métier ;
+- `ComparisonBarChart` calcule uniquement une largeur relative pour comparer deux périodes ; les taux de croissance restent ceux fournis par le backend dans les KPI ;
+- `DistributionBarChart` utilise le pourcentage backend pour le texte et ne borne que la largeur visuelle de la barre entre 0 et 100 ; une incohérence de donnée ne doit pas être silencieusement masquée ;
+- les valeurs et libellés restent disponibles en texte ; les barres décoratives sont masquées aux technologies d'assistance ;
+- les groupes de données sont nommés via `aria-label` ;
+- aucune nouvelle dépendance graphique n'est requise pour ces visualisations simples ; un moteur plus riche pourra être substitué plus tard derrière les mêmes frontières de composants si un véritable besoin apparaît.
+
+La croissance compare actuellement les créations de la période sélectionnée à celles de la période précédente de même durée. Elle ne prétend pas être une courbe temporelle quotidienne : une vraie série temporelle nécessitera un contrat backend dédié si elle devient nécessaire.
+
+## 7. Répartition par Plan
 
 La répartition est calculée par Workspace, selon la même priorité commerciale que le resolver runtime :
 
@@ -112,9 +134,9 @@ Le dashboard ne compte donc pas toutes les Subscriptions historiques.
 
 Si un Plan référencé est incohérent ou introuvable, le Workspace reste visible dans un bucket `Plan indisponible` au lieu d'être silencieusement retiré des pourcentages.
 
-P-DASH.2 affiche déjà cette distribution sous forme textuelle accessible (nom, nombre, pourcentage). P-DASH.3 pourra ajouter une représentation graphique sans remplacer cette source de données ni recalculer les pourcentages côté React.
+P-DASH.3 affiche cette distribution par barres horizontales en conservant nom, nombre et pourcentage textuels. React ne recalcule jamais la part commerciale.
 
-## 7. Finance : vocabulaire obligatoire
+## 8. Finance : vocabulaire obligatoire
 
 Le premier indicateur financier est :
 
@@ -134,7 +156,7 @@ Contraintes :
 
 Le frontend affiche une valeur monétaire uniquement lorsqu'une seule devise est présente. En multi-devises, il indique le nombre de devises au lieu de produire une somme artificielle. Un tooltip explicatif pourra être ajouté lorsque la primitive retenue apportera une information réellement utile.
 
-## 8. Signaux d'attention
+## 9. Signaux d'attention
 
 La V1 agrège notamment :
 
@@ -150,7 +172,7 @@ Les erreurs 5xx, timeouts, jobs en échec, disponibilité MongoDB, SMTP ou antiv
 
 P-DASH.2 expose les compteurs synthétiques. Le tableau détaillé restera réservé à P-DASH.5 et utilisera obligatoirement le `DataTable` partagé.
 
-## 9. Performance et cohérence
+## 10. Performance et cohérence
 
 Les agrégations par collection sont indépendantes et exécutables en parallèle. Le dashboard accepte un léger décalage analytique entre collections : il ne sert jamais d'autorité transactionnelle.
 
@@ -162,14 +184,15 @@ Côté frontend :
 - `useSearchParams` porte l'état partageable de période ;
 - `useState` reste limité au brouillon local du filtre personnalisé et à l'ouverture des cartes dépliables ;
 - aucun slice Redux métier n'est créé pour la vue d'ensemble ;
-- le test du router mocke la page Overview afin de ne pas transformer un test de navigation en test réseau.
+- le test du router mocke la page Overview afin de ne pas transformer un test de navigation en test réseau ;
+- les primitives graphiques ne déclenchent aucune requête et ne portent aucun state serveur.
 
-## 10. Ordre d'implémentation actualisé
+## 11. Ordre d'implémentation actualisé
 
 ```text
 P-DASH.1  backend / permission / validation / agrégats / tests         VALIDÉ
 P-DASH.2  RTK Query / période URL / binding des agrégats               EN VALIDATION
-P-DASH.3  primitives et visualisations croissance / répartition Plan
+P-DASH.3  primitives / croissance / répartition Plan                   EN VALIDATION
 P-DASH.4  visualisations santé commerciale / finance / usage
 P-DASH.5  DataTable des points nécessitant une attention
 F10.6      administration frontend des dérogations
