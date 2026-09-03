@@ -1,5 +1,8 @@
 import mongoose from 'mongoose';
 import {
+    ACTIVE_PLAN_CAPABILITY_REGISTRY,
+} from '../../config/applicationCapability.registry.js';
+import {
     BILLING_INTERVAL,
     BILLING_PROVIDER,
     SUBSCRIPTION_STATUS,
@@ -15,6 +18,12 @@ import {
     WORKSPACE_ACCESS_REASON,
 } from '../../constants/workspaceAccess.constants.js';
 
+import {
+    composeEffectiveEntitlementCapabilities,
+} from '../entitlementOverride/effectiveEntitlement.service.js';
+import {
+    resolveActiveEntitlementOverrides,
+} from '../entitlementOverride/entitlementOverride.service.js';
 import { Plan } from '../plan/plan.model.js';
 import {
     assessWorkspacePlanCompatibility,
@@ -22,6 +31,11 @@ import {
 import { Subscription } from './subscription.model.js';
 
 import { AppError } from '../../utils/appError.js';
+
+
+const isValidDate = (value) =>
+    value instanceof Date
+    && !Number.isNaN(value.getTime());
 
 /**
  * Crée la souscription gratuite initiale d'un nouveau workspace.
@@ -41,7 +55,6 @@ import { AppError } from '../../utils/appError.js';
  * @param {import('mongoose').ClientSession} params.session
  * @returns {Promise<import('mongoose').Document>}
  */
-
 const createFreeSubscriptionForWorkspace = async ({
     workspaceId,
     actorId,
@@ -96,14 +109,21 @@ const createFreeSubscriptionForWorkspace = async ({
 };
 
 /**
- * Récupère la souscription utilisable et le plan effectif d'un workspace.
+ * Récupère la souscription utilisable et le Plan catalogue applicable à un
+ * Workspace pour un instant de référence donné.
  *
  * Les bornes temporelles sont les autorités métier pour l'accès commercial :
  * un statut `trialing` ou `active` resté temporairement en base après son
  * échéance ne doit jamais prolonger les droits payants.
+ *
+ * Le paramètre `at` permet aux couches supérieures de résoudre Subscription,
+ * EntitlementOverride et UsageMetric sur la même horloge. Sans lui, des droits
+ * proches d'une échéance pourraient être calculés depuis deux instants
+ * différents au sein d'une même décision.
  */
 const getWorkspacePlanEntitlement = async ({
     workspaceId,
+    at = new Date(),
     session,
 }) => {
     if (!workspaceId) {
@@ -112,7 +132,9 @@ const getWorkspacePlanEntitlement = async ({
         );
     }
 
-    const now = new Date();
+    if (!isValidDate(at)) {
+        throw new TypeError('at must be a valid Date');
+    }
 
     const buildSubscriptionQuery = (filter) => {
         let query = Subscription.findOne({
@@ -134,7 +156,7 @@ const getWorkspacePlanEntitlement = async ({
         status: SUBSCRIPTION_STATUS.ACTIVE,
         currentPeriodEnd: mongoose.trusted({
             $type: 'date',
-            $gt: now,
+            $gt: at,
         }),
     });
 
@@ -144,7 +166,7 @@ const getWorkspacePlanEntitlement = async ({
             status: SUBSCRIPTION_STATUS.TRIALING,
             trialEndsAt: mongoose.trusted({
                 $type: 'date',
-                $gt: now,
+                $gt: at,
             }),
         });
     }
@@ -176,12 +198,73 @@ const getWorkspacePlanEntitlement = async ({
 };
 
 /**
- * Résout le mode d'accès effectif d'un workspace à partir de son plan effectif
- * et de son utilisation actuelle.
+ * Résout l'entitlement commercial complet d'un Workspace sans modifier les
+ * documents persistés qui le composent.
  *
- * L'état n'est volontairement pas persisté : dès que les capacités bloquantes
- * redeviennent conformes, le prochain contrôle retourne automatiquement
- * `normal`, sans job ni action manuelle de déverrouillage.
+ * La Subscription choisit d'abord le Plan catalogue applicable. Les overrides
+ * actifs au même instant sont ensuite appliqués sur une copie des capabilities
+ * du Plan. Le registre actif de l'application est transmis aux deux étapes afin
+ * qu'une application clonée bénéficie exactement du même moteur que le Core.
+ *
+ * Les lectures restent séquentielles lorsqu'une session MongoDB est fournie :
+ * cette fonction peut être appelée depuis une transaction et ne doit pas
+ * introduire d'opérations concurrentes sur une même session.
+ */
+const getWorkspaceEffectiveEntitlement = async ({
+    workspaceId,
+    at = new Date(),
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
+    session = null,
+}) => {
+    if (!workspaceId) {
+        throw new TypeError(
+            'workspaceId is required to resolve workspace effective entitlement',
+        );
+    }
+
+    if (!isValidDate(at)) {
+        throw new TypeError('at must be a valid Date');
+    }
+
+    const planEntitlement = await getWorkspacePlanEntitlement({
+        workspaceId,
+        at,
+        session,
+    });
+
+    const activeOverrides = await resolveActiveEntitlementOverrides({
+        workspaceId,
+        at,
+        registry,
+        session,
+    });
+
+    const effectiveCapabilities =
+        composeEffectiveEntitlementCapabilities({
+            plan: planEntitlement.plan,
+            activeOverrides,
+            registry,
+        });
+
+    return {
+        ...planEntitlement,
+        at,
+        effectiveCapabilities,
+    };
+};
+
+/**
+ * Résout le mode d'accès actuel d'un workspace à partir du Plan catalogue
+ * applicable et de son utilisation actuelle.
+ *
+ * F10.2 introduit l'entitlement dérivé `Plan + overrides`, mais le moteur de
+ * compatibilité reste volontairement branché sur le Plan seul jusqu'à F10.3.
+ * Cette séparation évite de mélanger composition et enforcement dans le même
+ * lot de changement.
+ *
+ * L'état n'est pas persisté : dès que les capacités bloquantes redeviennent
+ * conformes, le prochain contrôle retourne automatiquement `normal`, sans job
+ * ni action manuelle de déverrouillage.
  */
 const getWorkspaceAccessEntitlement = async ({
     workspaceId,
@@ -194,12 +277,13 @@ const getWorkspaceAccessEntitlement = async ({
         );
     }
 
-    if (!(at instanceof Date) || Number.isNaN(at.getTime())) {
+    if (!isValidDate(at)) {
         throw new TypeError('at must be a valid Date');
     }
 
     const planEntitlement = await getWorkspacePlanEntitlement({
         workspaceId,
+        at,
         session,
     });
 
@@ -228,5 +312,6 @@ const getWorkspaceAccessEntitlement = async ({
 export {
     createFreeSubscriptionForWorkspace,
     getWorkspaceAccessEntitlement,
+    getWorkspaceEffectiveEntitlement,
     getWorkspacePlanEntitlement,
 };
