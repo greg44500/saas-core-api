@@ -115,6 +115,11 @@ const CORE_PLAN_METRICS = Object.freeze(
     Object.keys(CORE_PLAN_METRIC_DEFINITIONS),
 );
 
+const isRecord = (value) =>
+    value !== null
+    && typeof value === 'object'
+    && !Array.isArray(value);
+
 const humanizeCapabilityKey = (key) => {
     const normalized = key.replaceAll('_', ' ');
     return normalized.charAt(0).toUpperCase() + normalized.slice(1);
@@ -126,6 +131,22 @@ const assertCapabilityKey = (key, label) => {
         || !CAPABILITY_KEY_PATTERN.test(key)
     ) {
         throw new TypeError(`${label} contains an invalid capability key`);
+    }
+};
+
+const assertDefinitionRecord = (record, label) => {
+    if (!isRecord(record)) {
+        throw new TypeError(`${label} must be an object`);
+    }
+
+    for (const [key, definition] of Object.entries(record)) {
+        assertCapabilityKey(key, label);
+
+        if (!isRecord(definition)) {
+            throw new TypeError(
+                `${label}["${key}"] must be an object`,
+            );
+        }
     }
 };
 
@@ -151,6 +172,7 @@ const normalizePresentation = (
     const description = definition.description ?? null;
     const displayOrder = definition.displayOrder ?? 1000;
     const tags = definition.tags ?? [];
+    const unit = definition.unit ?? null;
 
     if (typeof label !== 'string' || label.trim().length === 0) {
         throw new TypeError(`Capability "${key}" requires a label`);
@@ -182,9 +204,18 @@ const normalizePresentation = (
 
     if (
         !Array.isArray(tags)
-        || tags.some((tag) => typeof tag !== 'string')
+        || tags.some(
+            (tag) => typeof tag !== 'string' || tag.trim().length === 0,
+        )
     ) {
         throw new TypeError(`Capability "${key}" has invalid tags`);
+    }
+
+    if (
+        unit !== null
+        && (typeof unit !== 'string' || unit.trim().length === 0)
+    ) {
+        throw new TypeError(`Capability "${key}" has an invalid unit`);
     }
 
     return Object.freeze({
@@ -194,9 +225,9 @@ const normalizePresentation = (
         category,
         categoryLabel: categoryLabel.trim(),
         displayOrder,
-        tags: Object.freeze([...tags]),
-        ...(definition.unit
-            ? { unit: definition.unit }
+        tags: Object.freeze(tags.map((tag) => tag.trim())),
+        ...(unit !== null
+            ? { unit: unit.trim() }
             : {}),
     });
 };
@@ -225,7 +256,7 @@ const composePlanCapabilityExtensions = (modules = []) => {
     const metricPresentations = {};
 
     const assignUnique = (target, entries, kind) => {
-        for (const [key, value] of Object.entries(entries ?? {})) {
+        for (const [key, value] of Object.entries(entries)) {
             if (Object.hasOwn(target, key)) {
                 throw new TypeError(
                     `Duplicate ${kind} capability declaration: "${key}"`,
@@ -237,26 +268,64 @@ const composePlanCapabilityExtensions = (modules = []) => {
     };
 
     for (const moduleDefinition of modules) {
-        if (!moduleDefinition || typeof moduleDefinition !== 'object') {
+        if (!isRecord(moduleDefinition)) {
             throw new TypeError('Each capability module must be an object');
         }
+
+        if (
+            moduleDefinition.features !== undefined
+            && !Array.isArray(moduleDefinition.features)
+        ) {
+            throw new TypeError(
+                'Capability module features must be an array',
+            );
+        }
+
+        if (
+            moduleDefinition.metrics !== undefined
+            && !Array.isArray(moduleDefinition.metrics)
+        ) {
+            throw new TypeError(
+                'Capability module metrics must be an array',
+            );
+        }
+
+        const moduleFeatureDefinitions =
+            moduleDefinition.featureDefinitions ?? {};
+        const moduleMetricDefinitions =
+            moduleDefinition.metricDefinitions ?? {};
+        const moduleMetricPresentations =
+            moduleDefinition.metricPresentations ?? {};
+
+        assertDefinitionRecord(
+            moduleFeatureDefinitions,
+            'featureDefinitions',
+        );
+        assertDefinitionRecord(
+            moduleMetricDefinitions,
+            'metricDefinitions',
+        );
+        assertDefinitionRecord(
+            moduleMetricPresentations,
+            'metricPresentations',
+        );
 
         features.push(...(moduleDefinition.features ?? []));
         metrics.push(...(moduleDefinition.metrics ?? []));
 
         assignUnique(
             featureDefinitions,
-            moduleDefinition.featureDefinitions,
+            moduleFeatureDefinitions,
             'feature',
         );
         assignUnique(
             metricDefinitions,
-            moduleDefinition.metricDefinitions,
+            moduleMetricDefinitions,
             'metric definition',
         );
         assignUnique(
             metricPresentations,
-            moduleDefinition.metricPresentations,
+            moduleMetricPresentations,
             'metric presentation',
         );
     }
@@ -284,24 +353,33 @@ const createPlanCapabilityRegistry = ({
     metricDefinitions = {},
     metricPresentations = {},
 } = {}) => {
+    if (!Array.isArray(features)) {
+        throw new TypeError('features must be an array');
+    }
+
+    if (!Array.isArray(metrics)) {
+        throw new TypeError('metrics must be an array');
+    }
+
+    assertDefinitionRecord(
+        featureDefinitions,
+        'featureDefinitions',
+    );
+    assertDefinitionRecord(
+        metricDefinitions,
+        'metricDefinitions',
+    );
+    assertDefinitionRecord(
+        metricPresentations,
+        'metricPresentations',
+    );
+
     for (const feature of features) {
         assertCapabilityKey(feature, 'features');
     }
 
     for (const metric of metrics) {
         assertCapabilityKey(metric, 'metrics');
-    }
-
-    for (const key of Object.keys(featureDefinitions)) {
-        assertCapabilityKey(key, 'featureDefinitions');
-    }
-
-    for (const key of Object.keys(metricDefinitions)) {
-        assertCapabilityKey(key, 'metricDefinitions');
-    }
-
-    for (const key of Object.keys(metricPresentations)) {
-        assertCapabilityKey(key, 'metricPresentations');
     }
 
     const extensionMetricDefinitions = Object.entries(
