@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Frontend Core
 
-Dernière consolidation : 2026-09-03 — F9.0 à F9.5 validés ; F9.6 Audit Logs Platform devient le prochain bloc
+Dernière consolidation : 2026-09-03 — F9 complet ; checkpoint de généricité Capability Registry validé avant F10.2
 
 ## 1. Rôle du document
 
@@ -232,7 +232,7 @@ Référence : `docs/frontend-maintenance-audit-report.md`.
 
 ### F9.0 — Audit backend Platform
 
-- [x] TERMINÉ — authentification racine `/api/platform` et garde `SUPER_ADMIN` vérifiées sur chaque domaine.
+- [x] TERMINÉ — authentification racine `/api/platform` et gardes Platform vérifiées sur chaque domaine.
 - [x] TERMINÉ — contrats Users, Workspaces, Plans, Subscriptions et Audit Logs audités avant raccordement frontend.
 - [x] TERMINÉ — backend conservé comme unique autorité d’autorisation ; `PlatformGuard` reste une garde UX.
 - [x] TERMINÉ — contrat consolidé dans `docs/frontend-platform-admin-contract.md`.
@@ -262,7 +262,7 @@ Référence : `docs/frontend-maintenance-audit-report.md`.
 
 ### F9.4 — Plans Platform
 
-- [x] TERMINÉ — `GET /api/platform/plans/capabilities` ajouté et protégé `SUPER_ADMIN` pour exposer le registre backend de features/métriques.
+- [x] TERMINÉ — `GET /api/platform/plans/capabilities` ajouté pour exposer le registre backend de features/métriques.
 - [x] TERMINÉ — formulaire de création/modification alimenté dynamiquement par le registre backend ; aucune seconde source métier frontend.
 - [x] TERMINÉ — `trialEnabled` / `trialDurationDays` intégrés au contrat Platform avec validation atomique.
 - [x] TERMINÉ — création de plan imposant toutes les métriques du registre ; absence d’une métrique considérée comme configuration invalide.
@@ -292,9 +292,24 @@ Référence : `docs/frontend-maintenance-audit-report.md`.
 
 ### F9.6 — Audit Logs Platform
 
-- [ ] EN COURS — réauditer le contrat backend Platform Audit Logs avant toute UI.
-- [ ] À FAIRE — raccorder la liste paginée et les filtres réels sans exposer IP, user-agent ou metadata.
-- [ ] À FAIRE — réutiliser `DataTable`, `DataPagination` et `DatePicker` ; aucun tableau ou calendrier spécifique.
+- [x] TERMINÉ — contrat backend Platform Audit Logs réaudité avant UI ; route read-only protégée et validation stricte confirmées.
+- [x] TERMINÉ — liste paginée et filtres Action / Ressource / Statut / Période raccordés au contrat réel.
+- [x] TERMINÉ — `DataTable`, `DataPagination` et `DatePicker` partagés réutilisés ; aucun tableau ou calendrier spécifique.
+- [x] TERMINÉ — aucune IP, user-agent ou metadata sensible exposée dans le DTO frontend.
+- [x] TERMINÉ — filtres `actorId` et `workspaceId` volontairement non exposés dans l’UI tant qu’un lookup scalable dédié n’est pas disponible.
+- [x] TERMINÉ — état des filtres/pagination centralisé dans l’URL avec helper partagé Audit Logs.
+- [x] TERMINÉ — tests ciblés, régression frontend globale et build Vite signalés verts le 2026-09-03.
+
+### Checkpoint de généricité avant F10.2
+
+- [x] TERMINÉ — registre actif applicatif unique introduit côté backend ; le frontend ne dépend plus d’un catalogue limité aux seules capabilities Core.
+- [x] TERMINÉ — `GET /api/platform/plans/capabilities` expose `featureDefinitions` et les présentations des métriques tout en conservant les clés techniques existantes.
+- [x] TERMINÉ — formulaire Plans groupé dynamiquement par catégories à partir des métadonnées backend ; aucune checkbox métier codée en dur.
+- [x] TERMINÉ — fallback de présentation conservé pour les capabilities déclarées sans métadonnées riches.
+- [x] TERMINÉ — une capability métier déclarée par l’application dérivée peut apparaître dans Platform sans modifier `PlatformPlanForm`.
+- [x] TERMINÉ — correction finale limitée au test d’accessibilité de la checkbox métier ; aucun comportement fonctionnel modifié.
+- [x] TERMINÉ — tests frontend ciblés, régression frontend globale et build Vite signalés verts le 2026-09-03.
+- [x] TERMINÉ — contrat canonique documenté dans `docs/application-capability-registry-contract.md`.
 
 ## 10. Ordre de production frontend restant
 
@@ -314,9 +329,14 @@ F9.2      Users Platform                              TERMINÉ
 F9.3      Workspaces Platform                         TERMINÉ
 F9.4      Plans Platform                              TERMINÉ
 F9.5      Subscriptions Platform                      TERMINÉ
-F9.6      Audit Logs Platform                         EN COURS
-F10       EntitlementOverride Workspace-scoped + Platform
-F11       Consolidation frontend + E2E
+F9.6      Audit Logs Platform                         TERMINÉ
+GEN-CAP   Registry applicatif + permissions Platform  TERMINÉ
+F10.2     Composition entitlement effectif            PROCHAIN BLOC
+F10.3     Intégration features/quotas/remédiation     À FAIRE
+F10.4     API Platform EntitlementOverride            À FAIRE
+F10.5     Exposition Workspace entitlement effectif   À FAIRE
+F10.6     Frontend Platform dérogations                À FAIRE
+F11       Consolidation frontend + E2E                À FAIRE
 ```
 
 ## 11. Règle de validation de fin de lot
@@ -335,6 +355,6 @@ Un lot frontend ne doit être marqué TERMINÉ qu’après :
 
 Aucun module métier ne doit démarrer avant la finalisation du Core frontend et les validations E2E prévues dans le Gate A du projet.
 
-Le checkpoint F8-AUDIT est validé. F9.0 à F9.5 sont désormais validés ; la production poursuit avec F9.6 Audit Logs Platform, puis F10 et F11 avant ouverture des modules métier.
+F8, F8-AUDIT, F9 et le checkpoint de généricité du Capability Registry sont validés. La production poursuit avec F10.2 puis F10.3 à F10.6, avant F11 et l’ouverture des modules métier.
 
 Le Dashboard Workspace actuel reste un prototype Core technique. Sa refonte orientée données métier est explicitement reportée au cadrage du premier domaine métier.
