@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Backend Core V1
 
-Dernière consolidation : 2026-09-03 — F10.1 résolution des EntitlementOverride actifs validée
+Dernière consolidation : 2026-09-03 — F10.1 validé ; registre applicatif de capabilities et permissions Platform validés avant F10.2
 
 ## 1. Rôle du document
 
@@ -15,13 +15,14 @@ Il conserve simultanément :
 
 Il ne remplace ni les contrats frontend/backend ni les documents de dette fonctionnelle.
 
-Référence commerciale générique :
+Références génériques actives :
 
 ```text
 docs/commercial-configuration-contract.md
+docs/application-capability-registry-contract.md
 ```
 
-Cette référence impose que `saas-core-api` reste un socle clonable : le Core fournit les mécanismes commerciaux, tandis que chaque application dérivée définit son catalogue réel, ses prix, ses capabilities métier et ses métriques après clonage.
+Ces références imposent que `saas-core-api` reste un socle clonable : le Core fournit les mécanismes commerciaux et les registres d’extension, tandis que chaque application dérivée définit son catalogue réel, ses prix, ses capabilities métier et ses métriques après clonage.
 
 ### Statuts
 
@@ -55,6 +56,7 @@ Cette référence impose que `saas-core-api` reste un socle clonable : le Core f
 - [x] TERMINÉ — Vitest + Supertest.
 - [x] TERMINÉ — MongoDB replica set disponible pour les transactions.
 - [x] TERMINÉ — séparation contractuelle `.env` / catalogue commercial documentée : secrets et paramètres techniques dans `.env`, offres/prix/trial/features/limits en données persistées/seeds/administration.
+- [x] TERMINÉ — aucune capability applicative n’est déclarée par `.env` ; les capabilities représentent du code réellement installé et sont composées dans le registre applicatif.
 
 ## 3. Sécurité Express et contexte requête
 
@@ -154,6 +156,10 @@ Cette référence impose que `saas-core-api` reste un socle clonable : le Core f
 - [x] TERMINÉ — le Core ne déduit pas la sémantique des permissions applicatives et ne choisit pas automatiquement les rôles qui doivent les recevoir. `RBAC-EXT`.
 - [x] TERMINÉ — tests ciblés RBAC-EXT verts le 2026-09-02 : registre, extension, CRUD, permissions inconnues/réservées, anti-escalade, rôles système et backfill.
 - [x] TERMINÉ — suite globale backend post-RBAC-EXT verte le 2026-09-02 ; arbre Git local confirmé propre après exécution.
+- [x] TERMINÉ — registre de permissions Platform séparé du RBAC Workspace.
+- [x] TERMINÉ — permissions Platform granulaires pour capabilities, plans, subscriptions, overrides, users, workspaces et audit logs.
+- [x] TERMINÉ — politique actuelle inchangée : `super_admin` possède les permissions Platform ; `admin`, `support` et `user` n’en reçoivent aucune par défaut.
+- [x] TERMINÉ — aucune permission `feature:create/update/delete` : les capabilities techniques sont déclarées par le logiciel, jamais créées depuis l’administration.
 
 ## 10. Workspace Members / Invitations
 
@@ -200,6 +206,13 @@ Bloc prévu par la checklist initiale, finalisé en lots O1 → O4.
 - [x] TERMINÉ — routes publiques de lecture des Plans nécessaires au Core.
 - [x] TERMINÉ — administration Platform des Plans nécessaire au Core, dont archivage.
 - [x] TERMINÉ — registre de capabilities Plan extensible par une future application sans ajouter ses features/métriques au Core.
+- [x] TERMINÉ — `ACTIVE_PLAN_CAPABILITY_REGISTRY` devient le registre runtime de l’application ; composition explicite des modules métier via `backend/config/applicationCapability.registry.js`.
+- [x] TERMINÉ — métadonnées génériques de présentation des features/métriques : label, description, catégorie, ordre et tags lorsque pertinents.
+- [x] TERMINÉ — validation fail-fast des descriptors applicatifs, clés techniques et collisions entre modules.
+- [x] TERMINÉ — Platform expose dynamiquement le registre actif ; le `SUPER_ADMIN` sélectionne les capabilities existantes mais ne peut pas en inventer.
+- [x] TERMINÉ — création/modification des Plans validées contre le registre actif de l’application.
+- [x] TERMINÉ — Plan features, Plan limits, compatibilité de Plan, UsageMetric et moteur de quotas partagent le même registre actif par défaut.
+- [x] TERMINÉ — tests ciblés puis régression backend globale verts signalés le 2026-09-03 après checkpoint de généricité.
 - [x] TERMINÉ — `Free/Premium/IA` et `79 € HT/mois` ne sont pas des invariants universels du Core ; ce sont des valeurs de catalogue de travail modifiables après clonage.
 - [ ] DIFFÉRÉ — mutation commerciale avancée des Plans au-delà du périmètre actuel.
 - [ ] À CONFIRMER AVANT BILLING RÉEL — catalogue et valeurs commerciales définitifs de chaque application dérivée.
@@ -228,9 +241,10 @@ Bloc prévu par la checklist initiale, finalisé en lots O1 → O4.
 - [x] SUPPLANTÉ — architecture `CommercialAccount`, abonnement Premium couvrant 5 Workspaces, métrique `workspaces` et scope `commercial_account` abandonnés pour la V1.
 - [x] TERMINÉ — F10.0 : constantes, modèle Mongoose et validation stricte `EntitlementOverride` Workspace-scoped ; feature/limit discriminés, période, source, auteur/motif et révocation traçable ; tests ciblés verts le 2026-09-03.
 - [x] TERMINÉ — F10.1 : résolution backend des `EntitlementOverride` actifs ; exclusion des futurs/expirés/révoqués, priorité déterministe des overrides chevauchants, `null = illimité`, registre de capabilities extensible et support de session MongoDB ; tests ciblés verts le 2026-09-03.
+- [x] TERMINÉ — checkpoint pré-F10.2 : validation et résolution `EntitlementOverride` utilisent par défaut le registre applicatif actif afin de supporter les capabilities des applications dérivées.
 - [ ] À FAIRE — F10.2 : composer l’entitlement effectif `Plan + EntitlementOverride actifs` sans modifier le Plan catalogue ni la Subscription.
 - [ ] À FAIRE — F10.3 : intégrer les features/limites effectives aux contrôles d’accès, quotas et remédiation.
-- [ ] À FAIRE — F10.4 : API Platform `SUPER_ADMIN` pour créer, modifier, révoquer et consulter les overrides avec AuditLog.
+- [ ] À FAIRE — F10.4 : API Platform sécurisée par permissions Platform pour créer, modifier, révoquer et consulter les overrides avec AuditLog.
 - [ ] À FAIRE — F10.5 : exposition Workspace sûre de l’entitlement effectif.
 - [ ] À FAIRE — F10.6 : administration frontend Platform des dérogations.
 - [ ] DETTE — Billing/Payment réel : provider de paiement, moyens de paiement, TVA/taxes, factures, webhooks et gestion définitive de `past_due`.
@@ -273,17 +287,23 @@ Bloc prévu par la checklist initiale, finalisé en lots O1 → O4.
 - [x] TERMINÉ — les modules métier sont ajoutés uniquement après clonage dans l’application dérivée.
 - [x] TERMINÉ — le Core ne doit jamais importer un module métier de l’application dérivée.
 - [x] TERMINÉ — les registres RBAC, capabilities et métriques sont les points d’extension prévus pour les domaines métier.
+- [x] TERMINÉ — `backend/config/applicationCapability.registry.js` constitue le composition root explicite des capabilities de l’application dérivée.
+- [x] TERMINÉ — une feature métier correctement déclarée peut être proposée dans Platform et assignée à un Plan sans modification du modèle Plan ni du formulaire générique.
+- [x] TERMINÉ — aucune découverte magique, aucun scan de filesystem et aucun `.env` de feature ne sont nécessaires.
 - [x] TERMINÉ — le moteur commercial est générique ; le catalogue réel appartient à l’application dérivée.
-- [x] TERMINÉ — workflow de dérivation documenté dans `docs/commercial-configuration-contract.md` : clone → `.env` technique → seeds Core → catalogue → extensions métier → modules métier.
+- [x] TERMINÉ — workflow de dérivation documenté dans `docs/commercial-configuration-contract.md` et `docs/application-capability-registry-contract.md`.
 
 ## 17. Références documentaires à maintenir ensemble
 
 ```text
 docs/commercial-configuration-contract.md
+docs/application-capability-registry-contract.md
 docs/commercial-plans-entitlements-platform-admin.md
 docs/frontend-backend-subscription-contract.md
 docs/frontend-backend-integration-contract.md
+docs/frontend-platform-admin-contract.md
+docs/frontend-implementation-checklist.md
 docs/backend-implementation-checklist.md
 ```
 
-En cas de contradiction historique concernant `Premium = 5 workspaces`, `CommercialAccount` obligatoire ou un prix particulier considéré comme invariant, ces décisions sont **supplantées** par les contrats commerciaux actifs du 3 septembre 2026.
+En cas de contradiction historique concernant `Premium = 5 workspaces`, `CommercialAccount` obligatoire, un prix particulier considéré comme invariant ou un registre limité aux seules capabilities Core, ces décisions sont **supplantées** par les contrats actifs du 3 septembre 2026.
