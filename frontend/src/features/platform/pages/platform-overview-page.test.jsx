@@ -103,6 +103,22 @@ const OVERVIEW = {
       trialsExpiringNext7Days: 2,
       overridesExpiringNext7Days: 1,
     },
+    items: [
+      {
+        id: 'audit_failed:audit-1',
+        type: 'audit_failed',
+        level: 'warning',
+        state: 'current',
+        resourceId: 'audit-1',
+        workspace: { id: 'workspace-1', name: 'Acme' },
+        referenceAt: '2026-09-03T11:00:00.000Z',
+        context: {
+          action: 'LOGIN_FAILED',
+          entityType: 'User',
+          entityId: 'user-1',
+        },
+      },
+    ],
     recentFailedAuditEvents: [],
   },
 };
@@ -204,6 +220,21 @@ describe('PlatformOverviewPage', () => {
     expect(screen.getAllByText('PDF').length).toBeGreaterThan(0);
     expect(screen.getByText('6 fichiers · 60 %')).toBeInTheDocument();
     expect(screen.queryByText('Téléversements mensuels')).not.toBeInTheDocument();
+  });
+
+  it('affiche le DataTable des points prioritaires sans reconstruire leur ordre', () => {
+    renderPage();
+
+    const attention = screen.getByRole('region', {
+      name: 'Points nécessitant une attention',
+    });
+    const table = within(attention).getByRole('table');
+
+    expect(within(table).getByText('Audit en échec')).toBeInTheDocument();
+    expect(within(table).getByText('Acme')).toBeInTheDocument();
+    expect(within(table).getByText('Échec de connexion · Utilisateur')).toBeInTheDocument();
+    expect(within(table).getByText('À vérifier')).toHaveClass('text-warning');
+    expect(within(attention).getByText(/1 point prioritaire affiché sur 10 signaux détectés/)).toBeInTheDocument();
   });
 
   it('conserve le shell du dashboard et signale une erreur de chargement', () => {
