@@ -6,9 +6,10 @@ import {
 /**
  * Retourne les souscriptions visibles depuis l'administration Platform.
  *
- * La liste charge uniquement les informations Workspace et Plan nécessaires
- * à l'identification de la souscription. Les données administratives plus
- * détaillées restent réservées au futur endpoint de consultation individuelle.
+ * Le service construit un DTO explicite afin que le contrat HTTP ne dépende
+ * jamais de la forme interne du document Mongoose. La liste reste volontairement
+ * plus compacte que le détail individuel et n'expose aucun identifiant provider
+ * ni motif administratif détaillé.
  *
  * @param {object} params
  * @param {number} params.page
@@ -25,17 +26,23 @@ const listPlatformSubscriptions = async ({
     const skip = (page - 1) * limit;
 
     const [
-        subscriptions,
+        subscriptionDocuments,
         total,
     ] = await Promise.all([
         Subscription.find({})
+            .select(
+                '_id workspace plan kind status '
+                + 'currentPeriodStart currentPeriodEnd trialEndsAt '
+                + 'cancelAtPeriodEnd billingInterval currency '
+                + 'priceExclTaxMinor manualOverride createdAt updatedAt',
+            )
             .populate({
                 path: 'workspace',
-                select: 'name',
+                select: '_id name',
             })
             .populate({
                 path: 'plan',
-                select: 'key name',
+                select: '_id key name',
             })
             .sort({
                 createdAt: -1,
@@ -47,6 +54,35 @@ const listPlatformSubscriptions = async ({
 
         Subscription.countDocuments({}),
     ]);
+
+    const subscriptions = subscriptionDocuments.map((subscription) => ({
+        id: subscription._id.toString(),
+        workspace: subscription.workspace
+            ? {
+                id: subscription.workspace._id.toString(),
+                name: subscription.workspace.name,
+            }
+            : null,
+        plan: subscription.plan
+            ? {
+                id: subscription.plan._id.toString(),
+                key: subscription.plan.key,
+                name: subscription.plan.name,
+            }
+            : null,
+        kind: subscription.kind,
+        status: subscription.status,
+        currentPeriodStart: subscription.currentPeriodStart,
+        currentPeriodEnd: subscription.currentPeriodEnd ?? null,
+        trialEndsAt: subscription.trialEndsAt ?? null,
+        cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        billingInterval: subscription.billingInterval,
+        currency: subscription.currency,
+        priceExclTaxMinor: subscription.priceExclTaxMinor,
+        manualOverride: subscription.manualOverride,
+        createdAt: subscription.createdAt,
+        updatedAt: subscription.updatedAt,
+    }));
 
     return {
         subscriptions,
