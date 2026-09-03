@@ -1,11 +1,11 @@
 import { ChevronDown } from 'lucide-react';
 import { useId, useState } from 'react';
 
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -14,9 +14,9 @@ import { cn } from '@/lib/utils';
 /**
  * Carte avec un résumé toujours visible et un détail facultatif dépliable.
  *
- * Le contenu secondaire reste volontairement optionnel : les KPI simples ne
- * doivent pas devenir interactifs sans raison. Ce composant est réservé aux
- * sections où la divulgation progressive améliore réellement la lisibilité.
+ * Le résumé et le détail doivent apporter deux niveaux d'information distincts :
+ * ouvrir la carte ne doit pas simplement répéter ce qui est déjà visible. Les
+ * explications longues sont déplacées dans un tooltip pour préserver l'espace.
  */
 function CollapsibleCard({
   title,
@@ -35,21 +35,21 @@ function CollapsibleCard({
     <Card className={className}>
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
+          <div className="flex min-w-0 items-start gap-2">
             <CardTitle>{title}</CardTitle>
-            {description && <CardDescription>{description}</CardDescription>}
+            <InfoTooltip content={description} label={`À propos de ${title}`} />
           </div>
           {children && (
             <Button
               aria-controls={contentId}
               aria-expanded={open}
+              aria-label={open ? closeLabel : openLabel}
               className="shrink-0"
               onClick={() => setOpen((current) => !current)}
-              size="sm"
+              size="icon"
               type="button"
               variant="ghost"
             >
-              {open ? closeLabel : openLabel}
               <ChevronDown
                 aria-hidden="true"
                 className={cn(
