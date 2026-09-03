@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
 
 import {
+    ACTIVE_PLAN_CAPABILITY_REGISTRY,
+} from '../../config/applicationCapability.registry.js';
+import {
     ENTITLEMENT_OVERRIDE_TARGET,
 } from '../../constants/entitlementOverride.constants.js';
-import {
-    DEFAULT_PLAN_CAPABILITY_REGISTRY,
-} from '../plan/planCapability.registry.js';
 import { EntitlementOverride } from './entitlementOverride.model.js';
 
 
@@ -115,13 +115,14 @@ const compareOverridePrecedence = (left, right) => {
  * Si plusieurs overrides actifs ciblent la même capability, le plus récemment
  * démarré prévaut. En cas d'égalité, le plus récemment créé prévaut.
  *
- * Le service ne modifie ni Plan ni Subscription et ne compose pas encore
- * l'entitlement final. Cette responsabilité appartient à F10.2.
+ * Le registre par défaut est le registre actif de l'application. Une feature
+ * métier déclarée après clonage devient donc disponible sans modifier ce
+ * service Core.
  */
 const resolveActiveEntitlementOverrides = async ({
     workspaceId,
     at = new Date(),
-    registry = DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
     session = null,
 }) => {
     if (!workspaceId) {
@@ -140,7 +141,7 @@ const resolveActiveEntitlementOverrides = async ({
         || !(registry.metrics instanceof Set)
     ) {
         throw new TypeError(
-            'registry must expose feature and metric sets',
+            'registry must expose features and metrics sets',
         );
     }
 
