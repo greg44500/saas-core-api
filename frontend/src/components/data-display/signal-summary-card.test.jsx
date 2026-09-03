@@ -20,11 +20,13 @@ describe('SignalSummaryCard', () => {
     );
 
     expect(screen.getByText('4 signaux détectés')).toBeInTheDocument();
-    expect(screen.getByText('Audits en échec')).toBeInTheDocument();
-    expect(screen.getByText('Abonnements en retard')).toBeInTheDocument();
 
-    const values = screen.getAllByRole('definition');
-    expect(values[0]).toHaveClass('text-warning');
-    expect(values[1]).toHaveClass('text-muted-foreground');
+    const failedLabel = screen.getByText('Audits en échec');
+    const pastDueLabel = screen.getByText('Abonnements en retard');
+
+    expect(failedLabel.nextElementSibling).toHaveTextContent('4');
+    expect(failedLabel.nextElementSibling).toHaveClass('text-warning');
+    expect(pastDueLabel.nextElementSibling).toHaveTextContent('0');
+    expect(pastDueLabel.nextElementSibling).toHaveClass('text-muted-foreground');
   });
 });
