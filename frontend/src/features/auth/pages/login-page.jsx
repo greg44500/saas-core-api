@@ -7,21 +7,14 @@ import { PasswordField } from '@/components/forms/password-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLoginMutation } from '@/features/auth/api/auth-api';
+import { resolveAuthenticatedDestination } from '@/features/auth/lib/authenticated-destination';
 import { loginSchema } from '@/features/auth/validation/auth-schemas';
-import { PLATFORM_ROLE } from '@/features/platform/constants/platform-roles';
 
 function getRequestedDestination(location, user) {
-  const destination = location.state?.from;
-
-  if (destination?.pathname) {
-    return `${destination.pathname}${destination.search ?? ''}${destination.hash ?? ''}`;
-  }
-
-  if (user?.platformRole === PLATFORM_ROLE.SUPER_ADMIN) {
-    return '/platform/overview';
-  }
-
-  return '/workspaces';
+  return resolveAuthenticatedDestination({
+    destination: location.state?.from,
+    user,
+  });
 }
 
 function getLoginStatusMessage(location) {
