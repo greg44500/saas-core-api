@@ -86,6 +86,20 @@ function formatAttentionReferenceDate(value) {
   return formatAuditAbsoluteDate(value);
 }
 
+/**
+ * Construit une phrase atomique pour le résumé du tableau.
+ *
+ * Centraliser les accords évite de fragmenter le texte dans plusieurs nœuds
+ * React : le message reste ainsi lisible d'un bloc par les technologies
+ * d'assistance et testable sans matcher dépendant de la structure du DOM.
+ */
+function formatAttentionSummary(itemCount, totalSignals) {
+  const pointLabel = itemCount === 1 ? 'point prioritaire affiché' : 'points prioritaires affichés';
+  const signalLabel = totalSignals === 1 ? 'signal détecté' : 'signaux détectés';
+
+  return `${itemCount} ${pointLabel} sur ${totalSignals} ${signalLabel}.`;
+}
+
 const ATTENTION_COLUMNS = Object.freeze([
   {
     id: 'level',
@@ -158,7 +172,7 @@ function PlatformAttentionTable({
               getRowKey={(item) => item.id}
             />
             <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-              {items.length} point{items.length === 1 ? '' : 's'} prioritaire{items.length === 1 ? '' : 's'} affiché{items.length === 1 ? '' : 's'} sur {totalSignals} signal{totalSignals === 1 ? '' : 's'} détecté{totalSignals === 1 ? '' : 's'}.
+              {formatAttentionSummary(items.length, totalSignals)}
             </p>
           </>
         )}
@@ -173,6 +187,7 @@ export {
   ATTENTION_TYPE_LABEL,
   PlatformAttentionTable,
   formatAttentionReferenceDate,
+  formatAttentionSummary,
   getAttentionLevelLabel,
   getAttentionSituation,
   getAttentionTypeLabel,
