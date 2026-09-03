@@ -31,7 +31,7 @@ describe('ComparisonBarChart', () => {
       />,
     );
 
-    expect(screen.getByRole('img', { name: 'Croissance plateforme' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Croissance plateforme' })).toBeInTheDocument();
     expect(screen.getByText('Période actuelle')).toBeInTheDocument();
     expect(screen.getByText('Période précédente')).toBeInTheDocument();
     expect(screen.getByText('Nouveaux utilisateurs')).toBeInTheDocument();
