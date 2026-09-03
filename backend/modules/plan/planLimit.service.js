@@ -5,7 +5,7 @@ import {
 import { AppError } from '../../utils/appError.js';
 
 import {
-    getWorkspacePlanEntitlement,
+    getWorkspaceEffectiveEntitlement,
 } from '../subscriptions/subscription.service.js';
 
 import {
@@ -28,22 +28,52 @@ import {
 const isNonNegativeInteger = (value) =>
     Number.isInteger(value) && value >= 0;
 
+const assertRegisteredMetric = ({
+    metricKey,
+    registry,
+}) => {
+    if (
+        typeof metricKey !== 'string'
+        || metricKey.length === 0
+    ) {
+        throw new TypeError(
+            'metricKey is required to resolve a metric limit',
+        );
+    }
+
+    if (
+        !registry
+        || !(registry.metrics instanceof Set)
+    ) {
+        throw new TypeError(
+            'registry must provide a metric Set',
+        );
+    }
+
+    /*
+     * Une métrique inconnue ne doit pas être interprétée comme une limite
+     * absente : elle révèle qu'un module consommateur demande une capability
+     * qui n'est pas déclarée dans l'application réellement déployée.
+     */
+    if (!registry.metrics.has(metricKey)) {
+        throw new AppError(
+            `Métrique de plan inconnue : ${metricKey}.`,
+            400,
+        );
+    }
+};
+
 /**
- * Résout la limite associée à une métrique dans un plan.
+ * Résout la limite associée à une métrique dans un Plan catalogue.
  *
- * La fonction distingue volontairement :
- * - une clé présente avec null : limite explicitement illimitée ;
- * - une clé absente : configuration de plan incomplète.
- *
- * Le registre est injectable afin que les applications métier puissent
- * déclarer leurs propres métriques sans modifier le socle SaaS.
+ * Cette primitive reste disponible pour les opérations qui analysent un Plan
+ * en tant qu'offre. Les écritures runtime doivent utiliser
+ * `resolveEffectiveMetricLimit()` afin de respecter les overrides actifs.
  *
  * @param {object} params
  * @param {import('mongoose').Document | object} params.plan
  * @param {string} params.metricKey
- * @param {{
- *     metrics: Set<string>
- * }} [params.registry]
+ * @param {{ metrics: Set<string> }} [params.registry]
  * @returns {number | null}
  */
 const resolvePlanMetricLimit = ({
@@ -57,32 +87,16 @@ const resolvePlanMetricLimit = ({
         );
     }
 
-    if (
-        typeof metricKey !== 'string'
-        || metricKey.length === 0
-    ) {
-        throw new TypeError(
-            'metricKey is required to resolve a metric limit',
-        );
-    }
-
-    /*
-     * Une métrique inconnue ne doit pas être interprétée comme une limite
-     * absente : elle révèle que le module consommateur demande une capability
-     * qui n'est pas déclarée dans l'application.
-     */
-    if (!registry.metrics.has(metricKey)) {
-        throw new AppError(
-            `Métrique de plan inconnue : ${metricKey}.`,
-            400,
-        );
-    }
+    assertRegisteredMetric({
+        metricKey,
+        registry,
+    });
 
     const limits = plan.limits;
 
     /*
      * Les documents Mongoose exposent limits sous forme de Map. Une absence de
-     * Map révèle ici un plan incomplet ou une donnée qui ne respecte pas le
+     * Map révèle ici un Plan incomplet ou une donnée qui ne respecte pas le
      * contrat attendu par le moteur de quotas.
      */
     if (!(limits instanceof Map)) {
@@ -104,6 +118,72 @@ const resolvePlanMetricLimit = ({
     }
 
     return limits.get(metricKey);
+};
+
+/**
+ * Résout une limite depuis l'entitlement déjà composé du Workspace.
+ *
+ * Les limites effectives sont un DTO dérivé et non un document Mongoose. Une
+ * valeur `null` conserve la convention Core « illimité ». Une clé absente est
+ * une erreur de configuration : elle ne doit jamais devenir implicitement
+ * illimitée, notamment lorsqu'une application clonée ajoute une métrique.
+ *
+ * @param {object} params
+ * @param {{ effectiveCapabilities: { limits: object } }} params.entitlement
+ * @param {string} params.metricKey
+ * @param {{ metrics: Set<string> }} [params.registry]
+ * @returns {number | null}
+ */
+const resolveEffectiveMetricLimit = ({
+    entitlement,
+    metricKey,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
+}) => {
+    if (!entitlement?.effectiveCapabilities) {
+        throw new TypeError(
+            'effective entitlement is required to resolve a metric limit',
+        );
+    }
+
+    assertRegisteredMetric({
+        metricKey,
+        registry,
+    });
+
+    const limits = entitlement.effectiveCapabilities.limits;
+
+    if (
+        !limits
+        || typeof limits !== 'object'
+        || Array.isArray(limits)
+        || limits instanceof Map
+    ) {
+        throw new AppError(
+            'Les limites effectives du workspace sont absentes ou invalides.',
+            500,
+        );
+    }
+
+    if (!Object.hasOwn(limits, metricKey)) {
+        throw new AppError(
+            `La limite effective ${metricKey} n’est pas configurée pour le workspace.`,
+            500,
+        );
+    }
+
+    const limit = limits[metricKey];
+
+    if (
+        limit !== null
+        && !isNonNegativeInteger(limit)
+    ) {
+        throw new AppError(
+            `La limite effective ${metricKey} est invalide.`,
+            500,
+        );
+    }
+
+    return limit;
 };
 
 /**
@@ -156,7 +236,7 @@ const evaluatePlanLimit = ({
 
     /*
      * Une réservation doit toujours représenter une consommation réelle.
-     * Les diminutions et compensations seront traitées par des opérations
+     * Les diminutions et compensations sont traitées par des opérations
      * distinctes afin de ne pas contourner le contrôle des quotas.
      */
     if (!Number.isInteger(amount) || amount <= 0) {
@@ -193,37 +273,13 @@ const evaluatePlanLimit = ({
             : Math.max(limit - currentValue, 0),
     };
 };
+
 /**
- * Réserve une consommation depuis un entitlement déjà résolu.
+ * Réserve une consommation depuis un Plan entitlement déjà résolu.
  *
- * Cette variante ne relit pas Subscription. Elle est destinée aux opérations
- * qui ont déjà chargé la souscription et le plan dans une transaction MongoDB.
- *
- * Elle permet notamment au module File de :
- * - relire une seule fois l'entitlement dans la transaction ;
- * - revérifier la fonctionnalité file_upload ;
- * - réserver plusieurs métriques sur le même plan ;
- * - créer le document File dans le même snapshot transactionnel.
- *
- * @param {object} params
- * @param {string|import('mongoose').Types.ObjectId} params.workspaceId
- * @param {{
- *     subscription: import('mongoose').Document,
- *     plan: import('mongoose').Document
- * }} params.planEntitlement
- * @param {string} params.metricKey
- * @param {number} [params.amount]
- * @param {Date} [params.at]
- * @param {string|import('mongoose').Types.ObjectId|null} [params.actorId]
- * @param {object} [params.registry]
- * @param {import('mongoose').ClientSession|null} [params.session]
- * @returns {Promise<{
- *     subscription: import('mongoose').Document,
- *     plan: import('mongoose').Document,
- *     usageMetric: import('mongoose').Document,
- *     metricKey: string,
- *     limit: number | null
- * }>}
+ * Cette primitive Plan-only est conservée pour les appels de catalogue ou les
+ * tests historiques. Les écritures Workspace doivent désormais préférer
+ * `reserveEffectiveLimitForEntitlement()` pour ne pas contourner un override.
  */
 const reservePlanLimitForEntitlement = async ({
     workspaceId,
@@ -255,11 +311,6 @@ const reservePlanLimitForEntitlement = async ({
         plan,
     } = planEntitlement;
 
-    /*
-     * La limite est toujours relue depuis le plan présent dans le snapshot
-     * transactionnel. Une valeur précédemment mise en cache par un middleware
-     * HTTP ne constitue pas une autorité pour cette écriture.
-     */
     const limit = resolvePlanMetricLimit({
         plan,
         metricKey,
@@ -293,38 +344,83 @@ const reservePlanLimitForEntitlement = async ({
         limit,
     };
 };
+
 /**
- * Vérifie le droit d'un workspace et réserve atomiquement une consommation.
+ * Réserve une consommation depuis l'entitlement effectif d'un Workspace.
  *
- * Cette fonction orchestre les responsabilités spécialisées :
- * - Subscription résout le plan applicable au workspace ;
- * - Plan résout la limite correspondant à la métrique ;
- * - UsageMetric réserve la consommation sans dépasser cette limite.
+ * La valeur utilisée par l'opération atomique vient uniquement de
+ * `effectiveCapabilities.limits`. Un override d'augmentation, de réduction ou
+ * d'illimité est donc appliqué à la même écriture qui incrémente UsageMetric ;
+ * il n'existe pas de contrôle optimiste séparé susceptible d'être contourné.
+ */
+const reserveEffectiveLimitForEntitlement = async ({
+    workspaceId,
+    effectiveEntitlement,
+    metricKey,
+    amount = 1,
+    at = new Date(),
+    actorId = null,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
+    session = null,
+}) => {
+    if (!workspaceId) {
+        throw new TypeError(
+            'workspaceId is required to reserve an effective limit',
+        );
+    }
+
+    if (
+        !effectiveEntitlement?.subscription
+        || !effectiveEntitlement?.plan
+        || !effectiveEntitlement?.effectiveCapabilities
+    ) {
+        throw new TypeError(
+            'A valid effective entitlement is required to reserve a limit',
+        );
+    }
+
+    const limit = resolveEffectiveMetricLimit({
+        entitlement: effectiveEntitlement,
+        metricKey,
+        registry,
+    });
+
+    const usageMetric =
+        await reserveUsageMetricWithinLimit({
+            workspaceId,
+            metricKey,
+            limit,
+            amount,
+            at,
+            actorId,
+            registry,
+            session,
+        });
+
+    if (!usageMetric) {
+        throw new PlanLimitExceededError(
+            `La limite ${metricKey} du workspace est atteinte.`,
+            metricKey,
+        );
+    }
+
+    return {
+        subscription: effectiveEntitlement.subscription,
+        plan: effectiveEntitlement.plan,
+        effectiveCapabilities:
+            effectiveEntitlement.effectiveCapabilities,
+        usageMetric,
+        metricKey,
+        limit,
+    };
+};
+
+/**
+ * Résout l'entitlement effectif puis réserve atomiquement une consommation.
  *
- * Le contrôle et l'incrément ne sont pas séparés. La décision finale repose
- * sur la réservation atomique effectuée directement dans MongoDB.
- *
- * @param {object} params
- * @param {string|import('mongoose').Types.ObjectId} params.workspaceId
- * @param {string} params.metricKey
- * @param {number} [params.amount]
- * @param {Date} [params.at]
- * @param {string|import('mongoose').Types.ObjectId|null} [params.actorId]
- * @param {{
- *     features: Set<string>,
- *     metrics: Set<string>,
- *     getMetricDefinition: (
- *         metricKey: string
- *     ) => { periodType: string } | null
- * }} [params.registry]
- * @param {import('mongoose').ClientSession|null} [params.session]
- * @returns {Promise<{
- *     subscription: import('mongoose').Document,
- *     plan: import('mongoose').Document,
- *     usageMetric: import('mongoose').Document,
- *     metricKey: string,
- *     limit: number | null
- * }>}
+ * L'instant `at` et le registre actif sont transmis à toute la chaîne afin que
+ * Subscription, EntitlementOverride et UsageMetric prennent la même décision
+ * commerciale, y compris au voisinage d'une échéance d'override ou de trial.
  */
 const enforcePlanLimit = async ({
     workspaceId,
@@ -341,19 +437,17 @@ const enforcePlanLimit = async ({
         );
     }
 
-    /*
-     * Cette entrée publique résout elle-même l'entitlement lorsqu'aucune
-     * orchestration supérieure ne l'a encore chargé.
-     */
-    const planEntitlement =
-        await getWorkspacePlanEntitlement({
+    const effectiveEntitlement =
+        await getWorkspaceEffectiveEntitlement({
             workspaceId,
+            at,
+            registry,
             session,
         });
 
-    return reservePlanLimitForEntitlement({
+    return reserveEffectiveLimitForEntitlement({
         workspaceId,
-        planEntitlement,
+        effectiveEntitlement,
         metricKey,
         amount,
         at,
@@ -366,6 +460,8 @@ const enforcePlanLimit = async ({
 export {
     enforcePlanLimit,
     evaluatePlanLimit,
+    reserveEffectiveLimitForEntitlement,
     reservePlanLimitForEntitlement,
+    resolveEffectiveMetricLimit,
     resolvePlanMetricLimit,
 };
