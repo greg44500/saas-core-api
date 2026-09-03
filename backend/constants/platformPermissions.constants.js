@@ -12,6 +12,8 @@ import {
  * lecture seule depuis l'administration.
  */
 const PLATFORM_PERMISSION = Object.freeze({
+    OVERVIEW_READ: 'platform:overview:read',
+
     CAPABILITIES_READ: 'platform:capabilities:read',
 
     PLANS_READ: 'platform:plans:read',
