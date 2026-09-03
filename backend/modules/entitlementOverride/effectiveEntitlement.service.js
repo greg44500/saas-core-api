@@ -152,6 +152,23 @@ const assertOverrideCapabilities = ({
  * Le registre applicatif reste l'autorité. Une ancienne donnée persistée qui
  * référence une capability retirée du logiciel provoque une erreur plutôt que
  * d'accorder silencieusement un droit que le code courant ne sait plus gérer.
+ *
+ * @param {object} params
+ * @param {{
+ *     features?: string[],
+ *     limits?: Map<string, number|null>|Record<string, number|null>
+ * }} params.plan Plan catalogue déjà résolu par Subscription.
+ * @param {{
+ *     features: Record<string, boolean>,
+ *     limits: Record<string, number|null>,
+ *     overrides: object[]
+ * }} params.activeOverrides Résultat de resolveActiveEntitlementOverrides().
+ * @param {{features: Set<string>, metrics: Set<string>}} [params.registry]
+ * @returns {{
+ *     features: string[],
+ *     limits: Record<string, number|null>,
+ *     appliedOverrides: object[]
+ * }} Vue dérivée destinée aux moteurs d'accès et de quotas.
  */
 const composeEffectiveEntitlementCapabilities = ({
     plan,
