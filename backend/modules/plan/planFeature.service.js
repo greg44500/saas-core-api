@@ -1,6 +1,6 @@
 import {
-    DEFAULT_PLAN_CAPABILITY_REGISTRY,
-} from './planCapability.registry.js';
+    ACTIVE_PLAN_CAPABILITY_REGISTRY,
+} from '../../config/applicationCapability.registry.js';
 
 import {
     AppError,
@@ -10,19 +10,14 @@ import {
 /**
  * Vérifie qu'un plan contient une fonctionnalité donnée.
  *
- * Cette règle appartient à la couche service et non au middleware :
- * - le middleware l'utilise comme barrière HTTP avant Multer ;
- * - la future transaction File l'utilisera une seconde fois avec le plan
- *   relu dans la session MongoDB.
- *
- * Le registre est injectable afin de rester compatible avec les
- * fonctionnalités ajoutées par une application métier.
+ * Le registre par défaut est le registre actif de l'application. Une future
+ * application métier peut donc déclarer une feature dans son point de
+ * composition sans modifier ce service Core.
  */
 const assertPlanFeatureAvailable = ({
     plan,
     featureKey,
-    registry =
-        DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
 }) => {
     if (!plan) {
         throw new TypeError(
@@ -48,11 +43,6 @@ const assertPlanFeatureAvailable = ({
         );
     }
 
-    /*
-     * Une clé inconnue révèle une erreur de programmation ou un module métier
-     * qui n'a pas enregistré sa capability. Elle ne doit pas être confondue
-     * avec une fonctionnalité valide mais absente d'un plan particulier.
-     */
     if (!registry.features.has(featureKey)) {
         throw new TypeError(
             `Unknown plan feature "${featureKey}"`,
