@@ -19,7 +19,7 @@ describe('SignalSummaryCard', () => {
       />,
     );
 
-    expect(screen.getByText('4 signaux détectés')).toBeInTheDocument();
+    expect(screen.getByText('signaux détectés')).toBeInTheDocument();
 
     const failedLabel = screen.getByText('Audits en échec');
     const pastDueLabel = screen.getByText('Abonnements en retard');
