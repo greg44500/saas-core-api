@@ -58,16 +58,6 @@ const buildSessionQuery = (result) => ({
     session: vi.fn().mockResolvedValue(result),
 });
 
-const buildReadQuery = (result) => {
-    const query = {
-        select: vi.fn(() => query),
-        populate: vi.fn(() => query),
-        lean: vi.fn().mockResolvedValue(result),
-    };
-
-    return query;
-};
-
 const buildListQuery = (result) => {
     const query = {
         select: vi.fn(() => query),
@@ -161,10 +151,6 @@ describe('platformEntitlementOverrides.service', () => {
             }));
         const createSpy = vi.spyOn(EntitlementOverride, 'create')
             .mockResolvedValue([createdOverride]);
-        vi.spyOn(EntitlementOverride, 'findById')
-            .mockReturnValue(buildReadQuery(
-                toReadDocument(createdOverride),
-            ));
 
         const result = await createPlatformEntitlementOverride({
             overrideData: {
@@ -207,6 +193,35 @@ describe('platformEntitlementOverrides.service', () => {
         expect(result.lifecycle).toBe('active');
     });
 
+    it('propage l’échec de l’audit pour faire échouer la transaction métier', async () => {
+        const workspaceId = createId();
+        const actorId = createId();
+        const auditError = new Error('AuditLog unavailable');
+
+        vi.spyOn(Workspace, 'findById')
+            .mockReturnValue(buildWorkspaceQuery({
+                _id: workspaceId,
+            }));
+        vi.spyOn(EntitlementOverride, 'create')
+            .mockResolvedValue([
+                createOverrideDocument({ workspaceId, actorId }),
+            ]);
+        createAuditLog.mockRejectedValue(auditError);
+
+        await expect(createPlatformEntitlementOverride({
+            overrideData: {
+                workspaceId: workspaceId.toString(),
+                targetType: ENTITLEMENT_OVERRIDE_TARGET.FEATURE,
+                featureKey: 'file_upload',
+                featureEnabled: true,
+                source: ENTITLEMENT_OVERRIDE_SOURCE.SUPPORT,
+                reason: 'Accès temporaire support',
+            },
+            actorId,
+            now: NOW,
+        })).rejects.toBe(auditError);
+    });
+
     it('refuse une capability inconnue avant toute transaction', async () => {
         const registry = createPlanCapabilityRegistry();
         const transactionSpy = mongoose.connection.transaction;
@@ -233,16 +248,9 @@ describe('platformEntitlementOverrides.service', () => {
     it('modifie une feature active et audite previous/next', async () => {
         const actorId = createId();
         const override = createOverrideDocument();
-        const readback = toReadDocument({
-            ...override,
-            featureEnabled: false,
-            reason: 'Restriction temporaire',
-            updatedBy: actorId,
-        });
 
         vi.spyOn(EntitlementOverride, 'findById')
-            .mockReturnValueOnce(buildSessionQuery(override))
-            .mockReturnValueOnce(buildReadQuery(readback));
+            .mockReturnValue(buildSessionQuery(override));
 
         const result = await updatePlatformEntitlementOverride({
             overrideId: override._id,
@@ -274,6 +282,27 @@ describe('platformEntitlementOverrides.service', () => {
         expect(result.featureEnabled).toBe(false);
     });
 
+    it('refuse de transformer une dérogation de feature en limite', async () => {
+        const override = createOverrideDocument();
+
+        vi.spyOn(EntitlementOverride, 'findById')
+            .mockReturnValue(buildSessionQuery(override));
+
+        await expect(updatePlatformEntitlementOverride({
+            overrideId: override._id,
+            overrideData: {
+                limitValue: 10,
+            },
+            actorId: createId(),
+            now: NOW,
+        })).rejects.toMatchObject({
+            statusCode: 409,
+        });
+
+        expect(override.save).not.toHaveBeenCalled();
+        expect(createAuditLog).not.toHaveBeenCalled();
+    });
+
     it('refuse de réécrire un override expiré', async () => {
         const override = createOverrideDocument({
             endsAt: new Date('2026-09-02T12:00:00.000Z'),
@@ -300,17 +329,9 @@ describe('platformEntitlementOverrides.service', () => {
     it('révoque avec auteur, motif et audit atomiques', async () => {
         const actorId = createId();
         const override = createOverrideDocument();
-        const readback = toReadDocument({
-            ...override,
-            revokedAt: NOW,
-            revokedBy: actorId,
-            revokeReason: 'Fin anticipée',
-            updatedBy: actorId,
-        });
 
         vi.spyOn(EntitlementOverride, 'findById')
-            .mockReturnValueOnce(buildSessionQuery(override))
-            .mockReturnValueOnce(buildReadQuery(readback));
+            .mockReturnValue(buildSessionQuery(override));
 
         const result = await revokePlatformEntitlementOverride({
             overrideId: override._id,
