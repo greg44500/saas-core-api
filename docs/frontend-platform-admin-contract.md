@@ -1,8 +1,8 @@
 # SAAS-CORE-API — Contrat Platform Admin pour le frontend
 
 **Date de consolidation :** 2026-09-03  
-**Checkpoint :** F9.5 validé  
-**Source de vérité :** code backend courant de `backend/modules/platform/` et tests associés.
+**Checkpoint :** F9.0 à F9.6 validés ; Capability Registry applicatif validé avant F10.2  
+**Source de vérité :** code backend courant de `backend/modules/platform/`, registre applicatif de capabilities et tests associés.
 
 ## 1. Principe de sécurité
 
@@ -17,13 +17,47 @@ Le routeur racine Platform applique `authenticate` avant les sous-routeurs :
   /audit-logs
 ```
 
-Chaque domaine applique ensuite `authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN)` à ses routes ou à son sous-routeur.
+Le frontend Platform ne constitue jamais une barrière de sécurité. Les guards et actions masquées sont uniquement des protections UX ; l'autorisation réelle appartient au backend.
 
-Le guard frontend Platform reste uniquement une protection UX. L’autorisation réelle appartient au backend.
+Le Core possède désormais un registre distinct de permissions Platform. La politique active n'élargit aucun accès :
+
+```text
+super_admin → toutes les permissions Platform
+admin       → aucune permission Platform par défaut
+support     → aucune permission Platform par défaut
+user        → aucune permission Platform par défaut
+```
+
+Les routes Plans ont été migrées vers des permissions Platform granulaires. Les autres domaines déjà sécurisés peuvent conserver leur garde `SUPER_ADMIN` tant que leur migration vers une permission spécifique n'est pas nécessaire au lot courant. Cette coexistence ne change pas la politique d'accès effective.
+
+Les permissions prévues par le registre couvrent notamment :
+
+```text
+platform:capabilities:read
+platform:plans:read
+platform:plans:create
+platform:plans:update
+platform:plans:archive
+platform:subscriptions:read
+platform:subscriptions:update
+platform:entitlement_overrides:read
+platform:entitlement_overrides:create
+platform:entitlement_overrides:update
+platform:entitlement_overrides:revoke
+platform:users:read
+platform:users:update
+platform:workspaces:read
+platform:workspaces:update
+platform:audit_logs:read
+```
+
+Il n'existe volontairement aucune permission permettant de créer ou modifier une capability technique depuis Platform.
+
+Référence : `docs/application-capability-registry-contract.md`.
 
 ## 2. Users Platform
 
-Routes réellement exposées :
+Routes exposées :
 
 ```text
 GET    /api/platform/users
@@ -34,112 +68,20 @@ POST   /api/platform/users/:userId/revoke-sessions
 PATCH  /api/platform/users/:userId/role
 ```
 
-### Liste
+La liste est paginée avec `page >= 1` et `limit 1..100`.
 
-Query :
+Le détail expose uniquement les informations administratives nécessaires : identité, statut, rôle Platform et dates de cycle de compte. Aucun secret d'authentification n'est exposé.
 
-```text
-page  entier >= 1, défaut 1
-limit entier 1..100, défaut 20
-```
+Invariants importants :
 
-Réponse :
-
-```json
-{
-  "status": "success",
-  "data": {
-    "users": []
-  },
-  "meta": {
-    "page": 1,
-    "limit": 20,
-    "total": 0,
-    "totalPages": 0
-  }
-}
-```
-
-La liste expose uniquement les champs d’identité et d’état nécessaires à l’administration. Aucun secret d’authentification n’est exposé.
-
-### Détail
-
-Le détail expose notamment :
-
-```text
-id
-firstName
-lastName
-email
-status
-platformRole
-emailVerifiedAt
-passwordChangedAt
-lastLoginAt
-disabledAt
-disabledReason
-deletionRequestedAt
-closedAt
-closureReason
-createdAt
-updatedAt
-```
-
-### Désactivation
-
-Body strict :
-
-```json
-{
-  "disabledReason": "motif de 3 à 500 caractères"
-}
-```
-
-Invariants :
-
-- uniquement `active -> disabled` ;
 - un super-admin ne peut pas désactiver son propre compte ;
-- les sessions actives de la cible sont révoquées dans la transaction ;
-- l’action est auditée.
-
-### Réactivation
-
-Transition autorisée :
-
-```text
-disabled -> active
-```
-
-Les champs de désactivation sont nettoyés et l’action est auditée.
-
-### Révocation des sessions
-
-La cible doit exister. Toutes ses sessions sont révoquées avec la raison administrative prévue par le domaine AuthSession.
-
-L’audit de cette opération est actuellement **best effort** : une panne d’écriture de l’AuditLog n’annule pas une révocation de sessions déjà effectuée.
-
-### Rôle plateforme
-
-Body strict :
-
-```json
-{
-  "platformRole": "user | support | admin | super_admin"
-}
-```
-
-Invariants :
-
-- aucun changement vers le rôle déjà présent ;
-- impossible pour le super-admin courant de rétrograder son propre rôle ;
-- impossible de rétrograder le dernier `super_admin` ;
-- protection contre une modification concurrente ;
-- révocation des sessions de la cible après changement ;
-- action auditée.
+- le dernier `super_admin` ne peut pas être rétrogradé ;
+- les changements de rôle sensibles révoquent les sessions de la cible ;
+- les mutations sensibles sont auditées selon le contrat backend courant.
 
 ## 3. Workspaces Platform
 
-Routes réellement exposées :
+Routes exposées :
 
 ```text
 GET    /api/platform/workspaces
@@ -148,36 +90,9 @@ PATCH  /api/platform/workspaces/:workspaceId/suspend
 PATCH  /api/platform/workspaces/:workspaceId/reactivate
 ```
 
-Important : le contrat courant utilise `/reactivate`, et non l’ancienne route documentaire `/restore`.
+Le contrat utilise `/reactivate`, pas `/restore`.
 
-### Liste
-
-Pagination identique : `page >= 1`, `limit 1..100`.
-
-La liste expose notamment :
-
-```text
-id
-name
-status
-statusReason
-statusChangedAt
-createdBy
-createdAt
-updatedAt
-```
-
-### Détail
-
-Le détail ajoute notamment :
-
-```text
-statusReasonDetails
-statusChangedBy
-updatedBy
-```
-
-Les trois références d’acteur du détail (`createdBy`, `updatedBy`, `statusChangedBy`) sont enrichies sous forme de DTO minimal :
+Le détail enrichit les références d'acteur via un DTO minimal :
 
 ```text
 {
@@ -188,50 +103,15 @@ Les trois références d’acteur du détail (`createdBy`, `updatedBy`, `statusC
 }
 ```
 
-Règles de sécurité associées :
+La résolution backend utilise une projection minimale. Les IDs historiques restent conservés lorsqu'un User n'est plus résoluble, sans provoquer de 500.
 
-- résolution via une seule requête `User.find` bornée sur les trois identifiants ;
-- projection explicite `_id firstName lastName email` ;
-- aucun statut utilisateur, rôle Platform, email canonique ou champ d’authentification n’est exposé ;
-- l’opérateur interne `$in` est construit par le backend et marqué `mongoose.trusted()` afin de conserver `sanitizeFilter` global ;
-- si un User historique n’est plus résoluble, l’identifiant est conservé et les champs d’identité deviennent `null` au lieu de provoquer une erreur 500.
+La suspension nécessite un motif structuré. `statusReasonDetails` devient obligatoire lorsque le motif vaut `other`.
 
-Le frontend affiche le nom et l’email lorsqu’ils existent. Les identifiants techniques restent présents dans le DTO mais ne sont pas affichés dans le Drawer courant.
-
-### Suspension
-
-Body strict :
-
-```text
-statusReason        enum backend obligatoire
-statusReasonDetails optionnel 3..500
-```
-
-`statusReasonDetails` devient obligatoire lorsque `statusReason === other`.
-
-Transition :
-
-```text
-active -> suspended
-```
-
-La mutation et l’AuditLog sont transactionnels.
-
-### Réactivation
-
-Transition :
-
-```text
-suspended -> active
-```
-
-Les motifs précédents sont nettoyés et l’action est auditée.
-
-Aucune suppression Platform de workspace n’est exposée dans le contrat courant. Le frontend ne doit pas en inventer.
+Aucune suppression Platform de Workspace n'est exposée dans le contrat courant.
 
 ## 4. Plans Platform
 
-Routes réellement exposées :
+Routes exposées :
 
 ```text
 GET    /api/platform/plans/capabilities
@@ -241,84 +121,83 @@ PATCH  /api/platform/plans/:planId
 PATCH  /api/platform/plans/:planId/archive
 ```
 
-### Registre de capabilities
+### 4.1 Permissions
 
-`GET /api/platform/plans/capabilities` expose la source de vérité backend utilisée par le formulaire administratif.
+Les routes utilisent les permissions suivantes :
+
+```text
+GET capabilities   → platform:capabilities:read
+GET plans          → platform:plans:read
+POST plan          → platform:plans:create
+PATCH plan         → platform:plans:update
+PATCH archive      → platform:plans:archive
+```
+
+Le rôle `super_admin` possède actuellement ces permissions. Les autres rôles Platform n'en héritent pas par défaut.
+
+### 4.2 Registre applicatif de capabilities
+
+`GET /api/platform/plans/capabilities` expose le registre actif :
+
+```text
+backend/config/applicationCapability.registry.js
+```
 
 Réponse utile :
 
 ```text
 features: string[]
-metrics: [{ key, definition }]
+featureDefinitions: [
+  {
+    key,
+    label,
+    description,
+    category,
+    categoryLabel,
+    displayOrder,
+    tags
+  }
+]
+metrics: [
+  {
+    key,
+    definition,
+    presentation
+  }
+]
 ```
 
-Le frontend ne doit pas maintenir une seconde liste métier de features ou de métriques. Les libellés de présentation peuvent avoir des correspondances connues avec fallback pour les futures clés.
+Les clés techniques historiques restent présentes pour compatibilité. Les métadonnées permettent au frontend de construire une interface data-driven.
 
-### Liste
+Le frontend ne maintient aucune seconde liste métier de features ou de métriques.
 
-Pagination `page >= 1`, `limit 1..100`.
+Une application dérivée peut enregistrer une nouvelle capability métier ; si elle appartient au registre actif, elle apparaît automatiquement dans le formulaire Platform sans ajout de checkbox spécifique.
 
-La liste administrative contient aussi les plans privés, inactifs et archivés.
+Les features sont regroupées par `category/categoryLabel`. Un fallback de présentation existe pour une capability valide sans métadonnées riches.
 
-DTO exposé :
+### 4.3 Création / modification
 
-```text
-id
-key
-name
-description
-status
-isPublic
-displayOrder
-currency
-priceMonthlyExclTaxMinor
-priceYearlyExclTaxMinor
-features
-limits
-trialEnabled
-trialDurationDays
-createdBy
-updatedBy
-createdAt
-updatedAt
-```
+Principes :
 
-### Création / modification
-
-Principes importants :
-
-- payloads `strictObject` ;
-- prix en unités monétaires mineures, entiers positifs ou nuls ;
-- devise normalisée en code 3 lettres majuscules ;
+- payloads stricts ;
+- prix stockés en unités monétaires mineures ;
+- devise en code 3 lettres majuscules ;
 - features sans doublons ;
-- limites : `null = illimité`, `0 = aucune consommation`, entier positif = plafond ;
-- la création impose une configuration complète de toutes les métriques du registre ;
-- lorsqu’un objet `limits` est validé, toute métrique du registre absente constitue une configuration de plan incomplète ;
-- les capabilities sont validées contre le registre métier backend ;
-- `trialEnabled=true` impose un `trialDurationDays` entier positif ;
+- capabilities validées contre le registre actif de l'application ;
+- aucune clé arbitraire envoyée par HTTP ne peut créer une capability ;
+- création avec configuration complète des métriques attendues ;
+- `null = illimité`, `0 = aucune consommation`, entier positif = plafond ;
+- `trialEnabled=true` impose une durée positive ;
 - `trialEnabled=false` impose `trialDurationDays=null` ;
-- en mise à jour, toute modification de la configuration trial envoie atomiquement les deux champs ;
-- `key` est immutable après création ;
-- l’archivage ne passe jamais par le PATCH générique ;
-- un plan archivé n’est plus modifiable ;
-- mutations et AuditLogs associés sont transactionnels.
+- `key` immutable après création ;
+- un Plan archivé n'est plus modifiable ;
+- l'archivage positionne `status=archived` et `isPublic=false`.
 
-### Archivage
-
-L’archivage positionne :
-
-```text
-status = archived
-isPublic = false
-```
-
-Une seconde tentative d’archivage est refusée.
-
-Le backend ne fournit pas actuellement de `GET /platform/plans/:planId`. L’écran Platform Plans s’appuie donc sur le DTO complet de liste et ne fabrique pas une lecture individuelle inexistante.
+Le backend ne fournit pas actuellement de `GET /platform/plans/:planId`. L'écran Platform Plans utilise le DTO complet de la liste.
 
 ## 5. Subscriptions Platform
 
-Routes réellement exposées :
+Routes exposées :
 
 ```text
 GET    /api/platform/subscriptions
@@ -329,148 +208,17 @@ PATCH  /api/platform/subscriptions/:subscriptionId/cancel
 PATCH  /api/platform/subscriptions/:subscriptionId/resume
 ```
 
-Important : le contrat courant utilise des PATCH dédiés pour `cancel` et `resume`, et `POST /grant-trial` pour l’attribution administrative d’un trial.
+Le DTO de liste est explicite et ne renvoie pas une forme Mongoose brute.
 
-### Liste administrative
+Le détail expose les informations administratives nécessaires au cycle commercial : Workspace, Plan, kind, status, périodes, trial, périodicité, snapshots tarifaires, remise, manual override, changement programmé et acteurs minimaux.
 
-La liste a été normalisée avant raccordement frontend et ne renvoie plus directement la forme Mongoose issue de `lean()` / `populate()`.
+Le grant trial administratif reste distinct du parcours normal utilisateur et ne contourne jamais les règles d'éligibilité du backend.
 
-DTO de liste :
+Le PATCH administratif peut gérer le Plan, la périodicité, la remise, le manual override et l'annulation programmée selon les invariants du domaine Subscription.
 
-```text
-id
-workspace { id, name }
-plan { id, key, name }
-kind
-status
-currentPeriodStart
-currentPeriodEnd
-trialEndsAt
-cancelAtPeriodEnd
-billingInterval
-currency
-priceExclTaxMinor
-manualOverride
-createdAt
-updatedAt
-```
+Après chaque mutation, le frontend invalide/refetch les données RTK Query. Un DTO partiel de mutation n'est jamais utilisé comme source durable d'état.
 
-La requête backend utilise une projection racine explicite et des `populate()` minimaux. Les identifiants provider, motifs détaillés et autres champs administratifs ne peuvent donc pas fuiter accidentellement dans la liste si le modèle évolue.
-
-### Grant trial administratif
-
-Body strict :
-
-```json
-{
-  "workspaceId": "ObjectId",
-  "planId": "ObjectId",
-  "billingInterval": "monthly | yearly"
-}
-```
-
-La même opération peut créer un premier trial ou changer le plan d’un trial déjà actif sans réinitialiser son horloge ; la réponse est donc `200`.
-
-Cette route constitue un levier administratif distinct du trial normal déclenché par le parcours commercial utilisateur. Elle ne contourne pas les invariants backend d’éligibilité.
-
-### Détail
-
-Le DTO individuel est construit explicitement et expose notamment :
-
-```text
-id
-workspace { id, name }
-plan { id, key, name, status }
-kind
-status
-currentPeriodStart
-currentPeriodEnd
-trialEndsAt
-cancelAtPeriodEnd
-billingInterval
-currency
-priceExclTaxMinor
-provider
-providerCustomerId
-providerSubscriptionId
-discountType
-discountValue
-discountReason
-discountEndsAt
-manualOverride
-manualOverrideReason
-manualOverrideBy { id, firstName, lastName, email }
-scheduledChange {
-  type,
-  targetPlan { id, key, name },
-  targetBillingInterval,
-  targetCurrency,
-  targetPriceExclTaxMinor,
-  effectiveAt,
-  requestedAt,
-  requestedBy { id, firstName, lastName, email }
-}
-createdBy
-updatedBy
-createdAt
-updatedAt
-```
-
-Les références utilisateur résolues utilisent des projections minimales. Le frontend affiche les informations administratives utiles et n’expose pas de secrets d’authentification.
-
-### PATCH administratif
-
-Champs admis :
-
-```text
-plan
-billingInterval
-discountType
-discountValue
-discountReason
-discountEndsAt
-manualOverride
-manualOverrideReason
-cancelAtPeriodEnd
-```
-
-Invariants principaux :
-
-- le plan cible doit être actif ;
-- Free impose `billingInterval = none` et prix nul ;
-- un plan payant impose monthly/yearly ;
-- devise et prix sont snapshotés depuis le Plan lors d’un changement pertinent ;
-- une remise en pourcentage doit être comprise entre 1 et 100 ;
-- une remise fixe doit être > 0 et ne peut pas dépasser le prix HT ;
-- toute remise active nécessite un motif ;
-- `discountEndsAt` peut borner une remise temporaire ;
-- lorsque le frontend supprime une remise, valeur, motif et date de fin repartent à leur état neutre ;
-- `manualOverride=true` nécessite un motif ;
-- `manualOverrideBy` vient exclusivement de l’acteur authentifié ;
-- la mutation est auditée.
-
-### Annulation / reprise
-
-L’annulation administrative délègue les invariants de cycle au domaine Subscription et supporte :
-
-```text
-immediate
-period_end
-```
-
-Un motif est obligatoire.
-
-La reprise retire uniquement une annulation programmée compatible avec les invariants du domaine Subscription.
-
-### Règle frontend après mutation
-
-Les réponses des mutations `update`, `cancel`, `resume` et `grant-trial` sont volontairement traitées comme des accusés de succès partiels et non comme la source complète d’état de l’écran.
-
-Le frontend invalide les tags RTK Query concernés et relit ensuite la liste/le détail. Le DTO de détail reste la source complète après mutation.
-
-### Composants frontend validés
-
-F9.5 réutilise :
+Composants partagés réutilisés :
 
 ```text
 DataTable
@@ -481,17 +229,17 @@ DatePicker
 ToastProvider
 ```
 
-Aucune table, pagination, modale de confirmation ou primitive date spécifique à Subscriptions n’a été recréée.
+## 6. Audit Logs Platform — F9.6 validé
 
-## 6. Audit Logs Platform
-
-Route réellement exposée :
+Route :
 
 ```text
 GET /api/platform/audit-logs
 ```
 
-Filtres validés au checkpoint F9.0 :
+Le contrat backend a été réaudité avant raccordement frontend. La route est read-only, protégée côté Platform et sa query est strictement validée.
+
+Filtres backend disponibles :
 
 ```text
 page
@@ -505,9 +253,9 @@ from
 to
 ```
 
-`from` et `to` doivent être des ISO datetime avec offset et `from <= to`.
+`from` et `to` sont des ISO datetime avec offset et respectent `from <= to`.
 
-La réponse de liste expose :
+DTO frontend :
 
 ```text
 id
@@ -519,53 +267,87 @@ entity { type, id }
 createdAt
 ```
 
-Les IP, user-agent et metadata restent volontairement absents de ce contrat frontend.
+IP, user-agent et metadata ne sont pas exposés.
 
-F9.6 doit réauditer ce contrat courant avant toute UI afin de vérifier qu’aucune évolution backend intervenue depuis F9.0 ne modifie les filtres, la projection ou la sécurité.
-
-## 7. Couverture backend observée et validée
-
-Les domaines Platform disposent de tests ciblés couvrant selon les cas :
-
-- routes et gardes `super_admin` ;
-- validation Zod ;
-- services de lecture ;
-- mutations métier et invariants ;
-- cas de conflit/ressource absente ;
-- audit des mutations sensibles ;
-- registre de capabilities Plans ;
-- cohérence trial et complétude des métriques ;
-- résolution minimale et sécurisée des acteurs Workspace ;
-- projection explicite des listes/détails Subscriptions ;
-- grant trial, modification, annulation et reprise des Subscriptions.
-
-Les tests backend ciblés F9.5, les tests frontend ciblés, la régression frontend globale et le build Vite ont été signalés verts le 2026-09-03.
-
-## 8. Décisions frontend figées à l’issue de F9.5
-
-- conserver un seul `baseApi` RTK Query ;
-- utiliser `DataTable` et `DataPagination` pour les listes Platform compatibles ;
-- utiliser `EntityDetailsDrawer` pour les détails ;
-- utiliser `ConfirmationDialog` pour les actions bloquantes ;
-- réutiliser `DatePicker` pour toute date compatible ;
-- succès durable en Toast ;
-- erreur de mutation conservée dans la confirmation lorsqu’un retry est possible ;
-- masquer une action reste une garde UX et ne remplace jamais l’autorisation backend ;
-- Users, Workspaces, Plans et Subscriptions sont désormais raccordés à leurs contrats réels ;
-- les Plans utilisent le registre backend pour construire features et limites ;
-- aucune restauration de plan archivé n’est inventée ;
-- les Subscriptions invalident/refetchent après mutation au lieu de reconstruire leur état depuis les DTO partiels ;
-- Audit Logs reste à traiter dans F9.6 ;
-- ne pas introduire `EntitlementOverride` avant F10.
-
-## 9. État F9 au 2026-09-03
+L'UI F9.6 propose actuellement :
 
 ```text
-F9.0  Audit contrat backend Platform      TERMINÉ
-F9.1  RTK Query Platform                  TERMINÉ
-F9.2  Users Platform                      TERMINÉ
-F9.3  Workspaces Platform                 TERMINÉ
-F9.4  Plans Platform                      TERMINÉ
-F9.5  Subscriptions Platform              TERMINÉ
-F9.6  Audit Logs Platform                 EN COURS
+Action
+Ressource
+Statut
+Période
 ```
+
+Les filtres `actorId` et `workspaceId` sont volontairement différés côté UI tant qu'un lookup scalable et sécurisé n'est pas disponible. Le backend conserve leur support contractuel.
+
+La page réutilise `DataTable`, `DataPagination` et `DatePicker`. L'état des filtres et de la pagination est conservé dans l'URL via le helper Audit Logs partagé.
+
+Les tests ciblés, la régression frontend globale et le build Vite ont été signalés verts le 2026-09-03.
+
+## 7. Capability Registry — règle frontend figée
+
+Le frontend Platform consomme uniquement le catalogue renvoyé par le backend.
+
+Flux :
+
+```text
+modules installés dans l'application dérivée
+→ ACTIVE_PLAN_CAPABILITY_REGISTRY
+→ GET /platform/plans/capabilities
+→ RTK Query
+→ regroupement de présentation
+→ PlatformPlanForm
+```
+
+Le `SUPER_ADMIN` sélectionne des capabilities existantes. Il ne saisit jamais une clé de feature libre.
+
+La sélection locale du formulaire utilise de l'état local ; les données du catalogue serveur restent dans RTK Query.
+
+Les catégories servent à organiser l'interface, pas à accorder des droits.
+
+## 8. Composants et maintenabilité
+
+Les listes Platform compatibles réutilisent les composants transverses existants :
+
+```text
+DataTable
+DataPagination
+EntityDetailsDrawer
+ConfirmationDialog
+DatePicker
+ToastProvider
+```
+
+Aucun domaine Platform ne doit recréer son propre tableau ou sa propre pagination lorsque le contrat est compatible.
+
+Le frontend conserve un seul `baseApi` RTK Query.
+
+## 9. État validé
+
+```text
+F9.0  Audit contrat backend Platform             TERMINÉ
+F9.1  RTK Query Platform                         TERMINÉ
+F9.2  Users Platform                             TERMINÉ
+F9.3  Workspaces Platform                        TERMINÉ
+F9.4  Plans Platform                             TERMINÉ
+F9.5  Subscriptions Platform                     TERMINÉ
+F9.6  Audit Logs Platform                        TERMINÉ
+GEN-CAP Registre applicatif + UI dynamique       TERMINÉ
+```
+
+Le checkpoint GEN-CAP a également été validé par tests ciblés backend/frontend, régressions globales et build Vite le 2026-09-03.
+
+## 10. Suite
+
+F10.2 doit composer l'entitlement effectif en utilisant le même registre applicatif actif.
+
+F10.4 utilisera les permissions Platform dédiées aux `EntitlementOverride` :
+
+```text
+platform:entitlement_overrides:read
+platform:entitlement_overrides:create
+platform:entitlement_overrides:update
+platform:entitlement_overrides:revoke
+```
+
+Le frontend ne doit pas implémenter d'administration d'override avant que le contrat backend F10.4 soit sécurisé et validé.
