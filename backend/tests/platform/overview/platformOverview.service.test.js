@@ -110,6 +110,31 @@ describe('platformOverview.service', () => {
             { _id: 'members', value: 120 },
             { _id: 'storage_bytes', value: 2048 },
         ]);
+        const FileModel = createAggregateModel([
+            {
+                totals: [{ totalCount: 10, totalSizeBytes: 1000 }],
+                byType: [
+                    {
+                        _id: 'application/pdf',
+                        extensions: ['pdf'],
+                        count: 6,
+                        sizeBytes: 700,
+                    },
+                    {
+                        _id: 'image/jpeg',
+                        extensions: ['jpg', 'jpeg'],
+                        count: 3,
+                        sizeBytes: 250,
+                    },
+                    {
+                        _id: 'image/png',
+                        extensions: ['png'],
+                        count: 1,
+                        sizeBytes: 50,
+                    },
+                ],
+            },
+        ]);
         const AuditLogModel = createAggregateModel([
             {
                 total: [{ count: 2 }],
@@ -136,6 +161,7 @@ describe('platformOverview.service', () => {
             PlanModel,
             EntitlementOverrideModel,
             UsageMetricModel,
+            FileModel,
             AuditLogModel,
         });
 
@@ -197,6 +223,36 @@ describe('platformOverview.service', () => {
             { key: 'members', value: 120 },
             { key: 'storage_bytes', value: 2048 },
         ]);
+        expect(overview.files).toEqual({
+            totalCount: 10,
+            totalSizeBytes: 1000,
+            byType: [
+                {
+                    mimeType: 'application/pdf',
+                    extensions: ['pdf'],
+                    count: 6,
+                    sizeBytes: 700,
+                    percentageOfCount: 60,
+                    percentageOfStorage: 70,
+                },
+                {
+                    mimeType: 'image/jpeg',
+                    extensions: ['jpg', 'jpeg'],
+                    count: 3,
+                    sizeBytes: 250,
+                    percentageOfCount: 30,
+                    percentageOfStorage: 25,
+                },
+                {
+                    mimeType: 'image/png',
+                    extensions: ['png'],
+                    count: 1,
+                    sizeBytes: 50,
+                    percentageOfCount: 10,
+                    percentageOfStorage: 5,
+                },
+            ],
+        });
         expect(overview.attention.counts).toEqual({
             pastDueSubscriptions: 3,
             suspendedWorkspaces: 2,
@@ -218,6 +274,7 @@ describe('platformOverview.service', () => {
         expect(SubscriptionModel.aggregate).toHaveBeenCalledTimes(3);
         expect(EntitlementOverrideModel.aggregate).toHaveBeenCalledOnce();
         expect(UsageMetricModel.aggregate).toHaveBeenCalledOnce();
+        expect(FileModel.aggregate).toHaveBeenCalledOnce();
         expect(AuditLogModel.aggregate).toHaveBeenCalledOnce();
     });
 });
