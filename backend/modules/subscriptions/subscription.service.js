@@ -26,7 +26,7 @@ import {
 } from '../entitlementOverride/entitlementOverride.service.js';
 import { Plan } from '../plan/plan.model.js';
 import {
-    assessWorkspacePlanCompatibility,
+    assessWorkspaceLimitsCompatibility,
 } from '../plan/planCompatibility.service.js';
 import { Subscription } from './subscription.model.js';
 
@@ -279,13 +279,14 @@ const getWorkspaceEffectiveEntitlement = async ({
 };
 
 /**
- * Résout le mode d'accès actuel d'un workspace à partir du Plan catalogue
- * applicable et de son utilisation actuelle.
+ * Résout le mode d'accès courant du Workspace à partir de l'entitlement
+ * commercial effectif et de son utilisation réelle.
  *
- * F10.2 introduit l'entitlement dérivé `Plan + overrides`, mais le moteur de
- * compatibilité reste volontairement branché sur le Plan seul jusqu'à F10.3.
- * Cette séparation évite de mélanger composition et enforcement dans le même
- * lot de changement.
+ * La remédiation doit suivre la même décision commerciale que les écritures :
+ * une réduction de limite par override peut donc placer le Workspace en
+ * remédiation, tandis qu'une augmentation ou une limite illimitée peut l'en
+ * sortir. Le Plan catalogue reste présent uniquement comme contexte et n'est
+ * plus l'autorité des limites runtime.
  *
  * L'état n'est pas persisté : dès que les capacités bloquantes redeviennent
  * conformes, le prochain contrôle retourne automatiquement `normal`, sans job
@@ -295,12 +296,14 @@ const getWorkspaceEffectiveEntitlement = async ({
  * @param {string|import('mongoose').Types.ObjectId} params.workspaceId
  * @param {import('mongoose').ClientSession|null} [params.session]
  * @param {Date} [params.at]
+ * @param {object} [params.registry]
  * @returns {Promise<object>}
  */
 const getWorkspaceAccessEntitlement = async ({
     workspaceId,
-    session,
+    session = null,
     at = new Date(),
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
 }) => {
     if (!workspaceId) {
         throw new TypeError(
@@ -312,25 +315,30 @@ const getWorkspaceAccessEntitlement = async ({
         throw new TypeError('at must be a valid Date');
     }
 
-    const planEntitlement = await getWorkspacePlanEntitlement({
-        workspaceId,
-        at,
-        session,
-    });
+    const effectiveEntitlement =
+        await getWorkspaceEffectiveEntitlement({
+            workspaceId,
+            at,
+            registry,
+            session,
+        });
 
-    const compatibility = await assessWorkspacePlanCompatibility({
-        workspaceId,
-        targetPlanId: planEntitlement.plan._id,
-        at,
-        session: session ?? null,
-    });
+    const compatibility =
+        await assessWorkspaceLimitsCompatibility({
+            workspaceId,
+            limits:
+                effectiveEntitlement.effectiveCapabilities.limits,
+            at,
+            registry,
+            session,
+        });
 
     const accessMode = compatibility.compatible
         ? WORKSPACE_ACCESS_MODE.NORMAL
         : WORKSPACE_ACCESS_MODE.REMEDIATION;
 
     return {
-        ...planEntitlement,
+        ...effectiveEntitlement,
         accessMode,
         reason: accessMode === WORKSPACE_ACCESS_MODE.REMEDIATION
             ? WORKSPACE_ACCESS_REASON.PLAN_LIMITS_EXCEEDED
