@@ -108,7 +108,6 @@ app.use('/platform', platformRouter);
 
 beforeEach(() => {
     authenticate.mockClear();
-    authorizePlatformPermission.mockClear();
     permissionMiddleware.mockClear();
     validationMiddleware.mockClear();
     Object.values(handlers).forEach((handler) => handler.mockClear());
