@@ -2,6 +2,9 @@ import {
     AUDIT_STATUS,
 } from '../../../constants/auditActions.constants.js';
 import {
+    FILE_STATUS,
+} from '../../../constants/file.constants.js';
+import {
     BILLING_INTERVAL,
     SUBSCRIPTION_KIND,
     SUBSCRIPTION_PLAN_CHANGE_TYPE,
@@ -17,6 +20,7 @@ import { AuditLog } from '../../auditLog/auditLog.model.js';
 import {
     EntitlementOverride,
 } from '../../entitlementOverride/entitlementOverride.model.js';
+import { File } from '../../file/file.model.js';
 import { Plan } from '../../plan/plan.model.js';
 import { Subscription } from '../../subscriptions/subscription.model.js';
 import { UsageMetric } from '../../usageMetric/usageMetric.model.js';
@@ -344,7 +348,8 @@ const buildEffectivePlanDistributionPipeline = ({
 ];
 
 /**
- * Le MRR exposé ici reste un indicateur contractuel brut, pas un revenu.
+ * Le revenu mensuel contractuel estimé exposé ici reste un indicateur brut,
+ * pas un revenu encaissé.
  *
  * - seules les subscriptions commerciales actives et temporellement valides
  *   sont prises en compte ;
@@ -466,6 +471,49 @@ const buildUsagePipeline = ({ at }) => [
     { $sort: { _id: 1 } },
 ];
 
+/**
+ * Décrit l'usage fonctionnel actuel des fichiers à partir des métadonnées
+ * fiables enregistrées après détection du type réel. Seuls les fichiers actifs
+ * sont comptés : une suppression logique libère déjà le quota fonctionnel et ne
+ * doit donc plus apparaître dans cette répartition d'usage.
+ */
+const buildFileUsagePipeline = () => [
+    {
+        $match: {
+            status: FILE_STATUS.ACTIVE,
+        },
+    },
+    {
+        $facet: {
+            totals: [
+                {
+                    $group: {
+                        _id: null,
+                        totalCount: { $sum: 1 },
+                        totalSizeBytes: { $sum: '$sizeBytes' },
+                    },
+                },
+            ],
+            byType: [
+                {
+                    $group: {
+                        _id: '$mimeType',
+                        extensions: { $addToSet: '$extension' },
+                        count: { $sum: 1 },
+                        sizeBytes: { $sum: '$sizeBytes' },
+                    },
+                },
+                {
+                    $sort: {
+                        count: -1,
+                        _id: 1,
+                    },
+                },
+            ],
+        },
+    },
+];
+
 const buildAuditAttentionPipeline = ({ from, to }) => [
     {
         $match: {
@@ -515,6 +563,7 @@ const createPlatformOverviewService = ({
     PlanModel = Plan,
     EntitlementOverrideModel = EntitlementOverride,
     UsageMetricModel = UsageMetric,
+    FileModel = File,
     AuditLogModel = AuditLog,
 } = {}) => async ({
     from,
@@ -537,6 +586,7 @@ const createPlatformOverviewService = ({
         contractedMrrRows,
         overrideResult,
         usageRows,
+        fileUsageResult,
         auditResult,
     ] = await Promise.all([
         UserModel.aggregate(entityPeriodPipeline),
@@ -555,6 +605,7 @@ const createPlatformOverviewService = ({
             buildOverrideHealthPipeline({ at, attentionUntil }),
         ),
         UsageMetricModel.aggregate(buildUsagePipeline({ at })),
+        FileModel.aggregate(buildFileUsagePipeline()),
         AuditLogModel.aggregate(
             buildAuditAttentionPipeline(period),
         ),
@@ -564,6 +615,7 @@ const createPlatformOverviewService = ({
     const workspaces = workspaceResult?.[0] ?? {};
     const subscriptions = subscriptionResult?.[0] ?? {};
     const overrides = overrideResult?.[0] ?? {};
+    const fileUsage = fileUsageResult?.[0] ?? {};
     const audit = auditResult?.[0] ?? {};
 
     const userCreatedCurrent = countFacet(users.createdInPeriod);
@@ -576,6 +628,9 @@ const createPlatformOverviewService = ({
         (sum, row) => sum + row.workspaceCount,
         0,
     );
+    const fileTotals = fileUsage.totals?.[0] ?? {};
+    const totalFileCount = fileTotals.totalCount ?? 0;
+    const totalFileSizeBytes = fileTotals.totalSizeBytes ?? 0;
 
     const subscriptionStatusCounts = toStatusCounts(subscriptions.byStatus);
     const workspaceStatusCounts = toStatusCounts(workspaces.byStatus);
@@ -663,6 +718,24 @@ const createPlatformOverviewService = ({
             key: row._id,
             value: row.value,
         })),
+        files: {
+            totalCount: totalFileCount,
+            totalSizeBytes: totalFileSizeBytes,
+            byType: (fileUsage.byType ?? []).map((row) => ({
+                mimeType: row._id,
+                extensions: row.extensions ?? [],
+                count: row.count ?? 0,
+                sizeBytes: row.sizeBytes ?? 0,
+                percentageOfCount: calculateSharePercent(
+                    row.count ?? 0,
+                    totalFileCount,
+                ),
+                percentageOfStorage: calculateSharePercent(
+                    row.sizeBytes ?? 0,
+                    totalFileSizeBytes,
+                ),
+            })),
+        },
         attention: {
             totalSignals:
                 pastDueSubscriptions
@@ -696,6 +769,7 @@ export {
     DEFAULT_OVERVIEW_PERIOD_DAYS,
     buildContractedMrrPipeline,
     buildEffectivePlanDistributionPipeline,
+    buildFileUsagePipeline,
     calculateGrowthPercent,
     calculateSharePercent,
     createPlatformOverviewService,
