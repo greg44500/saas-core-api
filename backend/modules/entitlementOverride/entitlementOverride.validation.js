@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 import {
+    ACTIVE_PLAN_CAPABILITY_REGISTRY,
+} from '../../config/applicationCapability.registry.js';
+import {
     ENTITLEMENT_OVERRIDE_SOURCE,
     ENTITLEMENT_OVERRIDE_TARGET,
 } from '../../constants/entitlementOverride.constants.js';
-import {
-    DEFAULT_PLAN_CAPABILITY_REGISTRY,
-} from '../plan/planCapability.registry.js';
 
 
 const objectIdSchema = z
@@ -57,10 +57,10 @@ const validatePeriod = (value, context) => {
 
 /**
  * Construit les schémas à partir du registre actif afin que le Core générique
- * et une application métier enrichie puissent partager la même validation.
+ * et une application métier enrichie partagent exactement la même validation.
  */
 const createEntitlementOverrideSchemas = ({
-    registry = DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
 } = {}) => {
     if (
         !registry
@@ -68,7 +68,7 @@ const createEntitlementOverrideSchemas = ({
         || !(registry.metrics instanceof Set)
     ) {
         throw new TypeError(
-            'registry must expose feature and metric sets',
+            'registry must expose features and metrics sets',
         );
     }
 
@@ -111,12 +111,6 @@ const createEntitlementOverrideSchemas = ({
         ])
         .superRefine(validatePeriod);
 
-    /**
-     * La cible d'un override est immutable. Une mise à jour peut modifier sa
-     * valeur, son origine, sa période ou son motif, mais jamais transformer une
-     * feature en métrique ou inversement. Le service vérifiera que la valeur
-     * envoyée correspond bien au targetType du document existant.
-     */
     const updateSchema = z
         .strictObject({
             featureEnabled: z.boolean().optional(),
