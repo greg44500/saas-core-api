@@ -57,8 +57,8 @@ describe('platform overview period helpers', () => {
     expect(
       resolveOverviewApiPeriod(readOverviewPeriod(params), NOW),
     ).toEqual({
-      from: '2026-08-01T00:00:00.000Z',
-      to: '2026-09-01T00:00:00.000Z',
+      from: new Date(2026, 7, 1, 0, 0, 0, 0).toISOString(),
+      to: new Date(2026, 8, 1, 0, 0, 0, 0).toISOString(),
     });
   });
 
