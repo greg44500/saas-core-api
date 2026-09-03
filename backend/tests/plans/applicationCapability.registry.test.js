@@ -107,6 +107,26 @@ describe('Application plan capability registry', () => {
         })).toThrow(TypeError);
     });
 
+    it('refuse un module métier dont les features ne sont pas un tableau', () => {
+        expect(() => composePlanCapabilityExtensions([
+            {
+                features: 'price_history',
+            },
+        ])).toThrow(
+            'Capability module features must be an array',
+        );
+    });
+
+    it('refuse une définition métier qui n’est pas un objet', () => {
+        expect(() => createPlanCapabilityRegistry({
+            featureDefinitions: {
+                price_history: 'Historique des prix',
+            },
+        })).toThrow(
+            'featureDefinitions["price_history"] must be an object',
+        );
+    });
+
     it('refuse deux modules qui déclarent la même définition métier', () => {
         expect(() => composePlanCapabilityExtensions([
             {
