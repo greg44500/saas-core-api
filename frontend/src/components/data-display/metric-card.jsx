@@ -36,7 +36,10 @@ function MetricCard({
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardTitle
+          as="p"
+          className="text-sm font-medium text-muted-foreground"
+        >
           {title}
         </CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
