@@ -25,6 +25,7 @@ vi.mock('../../modules/usageMetric/usageMetric.service.js', () => ({
 
 import { Plan } from '../../modules/plan/plan.model.js';
 import {
+    assessWorkspaceLimitsCompatibility,
     assessWorkspacePlanCompatibility,
 } from '../../modules/plan/planCompatibility.service.js';
 import {
@@ -48,6 +49,74 @@ const buildPlanQuery = (plan) => {
 const targetPlanId = new mongoose.Types.ObjectId();
 const workspaceId = new mongoose.Types.ObjectId();
 const at = new Date('2026-08-29T12:00:00.000Z');
+
+
+describe('assessWorkspaceLimitsCompatibility', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('applique directement des limites déjà composées par l’entitlement', async () => {
+        getUsageMetricValue.mockImplementation(
+            async ({ metricKey }) => ({
+                members: 4,
+                storage_bytes: 25_000,
+            })[metricKey],
+        );
+
+        const result = await assessWorkspaceLimitsCompatibility({
+            workspaceId,
+            limits: {
+                members: 3,
+                storage_bytes: null,
+            },
+            at,
+        });
+
+        expect(result.compatible).toBe(false);
+        expect(result.blockingLimits).toEqual([
+            expect.objectContaining({
+                key: 'members',
+                usage: 4,
+                limit: 3,
+                excess: 1,
+            }),
+        ]);
+
+        /*
+         * Une augmentation vers `null` par override rend la métrique illimitée
+         * et ne doit provoquer aucune lecture UsageMetric inutile.
+         */
+        expect(getUsageMetricValue).toHaveBeenCalledTimes(1);
+    });
+
+    it('conserve la distinction capacity / consumption sur les limites effectives', async () => {
+        getUsageMetricValue.mockImplementation(
+            async ({ metricKey }) => ({
+                members: 8,
+                file_uploads_monthly: 40,
+            })[metricKey],
+        );
+
+        const result = await assessWorkspaceLimitsCompatibility({
+            workspaceId,
+            limits: {
+                members: 5,
+                file_uploads_monthly: 10,
+            },
+            at,
+        });
+
+        expect(result.compatible).toBe(false);
+        expect(result.blockingLimits).toHaveLength(1);
+        expect(result.nonBlockingLimits).toHaveLength(1);
+        expect(result.nonBlockingLimits[0]).toMatchObject({
+            key: 'file_uploads_monthly',
+            behavior: USAGE_METRIC_BEHAVIOR.CONSUMPTION,
+            remediationRequired: false,
+        });
+    });
+});
 
 
 describe('assessWorkspacePlanCompatibility', () => {
@@ -209,10 +278,6 @@ describe('assessWorkspacePlanCompatibility', () => {
         expect(result.blockingLimits).toEqual([]);
         expect(result.nonBlockingLimits).toHaveLength(1);
 
-        /*
-         * Une limite null est explicitement illimitée : aucune lecture d'usage
-         * n'est nécessaire pour décider de la compatibilité.
-         */
         expect(getUsageMetricValue).toHaveBeenCalledTimes(2);
     });
 
