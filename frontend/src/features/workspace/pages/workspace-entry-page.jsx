@@ -2,19 +2,39 @@ import { Link, Navigate } from 'react-router';
 
 import { PageLoader } from '@/components/shared/page-loader';
 import { Button } from '@/components/ui/button';
+import { useGetCurrentUserQuery } from '@/features/auth/api/auth-api';
+import {
+  PLATFORM_HOME,
+  isPlatformSuperAdmin,
+} from '@/features/auth/lib/authenticated-destination';
 import { useListWorkspacesQuery } from '@/features/workspace/api/workspace-api';
 import { resolveWorkspaceContext } from '@/features/workspace/lib/resolve-workspace-context';
 
 function WorkspaceEntryPage() {
   const {
+    data: currentUser,
+    isLoading: isCurrentUserLoading,
+    isFetching: isCurrentUserFetching,
+  } = useGetCurrentUserQuery();
+  const {
     data: workspaces = [],
     isLoading,
     isError,
     refetch,
-  } = useListWorkspacesQuery();
+  } = useListWorkspacesQuery(undefined, {
+    skip: isPlatformSuperAdmin(currentUser),
+  });
 
-  if (isLoading) {
+  if (
+    isCurrentUserLoading
+    || (isCurrentUserFetching && !currentUser)
+    || isLoading
+  ) {
     return <PageLoader />;
+  }
+
+  if (isPlatformSuperAdmin(currentUser)) {
+    return <Navigate to={PLATFORM_HOME} replace />;
   }
 
   if (isError) {
