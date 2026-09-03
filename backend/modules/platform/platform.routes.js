@@ -7,6 +7,9 @@ import {
 import {
     platformEntitlementOverridesRouter,
 } from './entitlementOverrides/platformEntitlementOverrides.routes.js';
+import {
+    platformOverviewRouter,
+} from './overview/platformOverview.routes.js';
 import { platformPlansRouter } from './plans/platformPlans.routes.js';
 import {
     platformSubscriptionsRouter,
@@ -25,6 +28,7 @@ const platformRouter = Router();
  */
 platformRouter.use(authenticate);
 
+platformRouter.use('/overview', platformOverviewRouter);
 platformRouter.use('/users', platformUsersRouter);
 platformRouter.use('/workspaces', platformWorkspacesRouter);
 platformRouter.use('/plans', platformPlansRouter);
