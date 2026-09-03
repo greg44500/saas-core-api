@@ -86,6 +86,29 @@ describe('enforcePlanFeature', () => {
     });
 
 
+    it('réutilise le workspaceAccess déjà résolu sans relire MongoDB', async () => {
+        const workspaceAccess =
+            createEffectiveEntitlement();
+        const req = {
+            ...createRequest(),
+            workspaceAccess,
+        };
+        const next = vi.fn();
+
+        const middleware =
+            createMiddleware('file_upload');
+
+        await middleware(req, {}, next);
+
+        expect(
+            resolveWorkspaceEffectiveEntitlement,
+        ).not.toHaveBeenCalled();
+        expect(req.effectiveEntitlement)
+            .toBe(workspaceAccess);
+        expect(next).toHaveBeenCalledWith();
+    });
+
+
     it('refuse une fonctionnalité retirée de l’entitlement par override', async () => {
         resolveWorkspaceEffectiveEntitlement
             .mockResolvedValue(
