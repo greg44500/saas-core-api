@@ -18,14 +18,14 @@ import {
 
 describe('filePersistence.service', () => {
     let session;
-    let planEntitlement;
+    let effectiveEntitlement;
     let fileData;
     let createdFile;
 
     let runTransaction;
-    let resolvePlanEntitlement;
+    let resolveEffectiveEntitlement;
     let assertFeatureAvailable;
-    let reservePlanLimit;
+    let reserveEffectiveLimit;
     let createFileDocuments;
     let createAuditEvent;
 
@@ -36,14 +36,23 @@ describe('filePersistence.service', () => {
             id: 'transaction-session',
         };
 
-        planEntitlement = {
+        effectiveEntitlement = {
             subscription: {
                 id: 'subscription-id',
             },
             plan: {
+                id: 'plan-id',
+                features: [],
+            },
+            effectiveCapabilities: {
                 features: [
                     CORE_PLAN_FEATURE.FILE_UPLOAD,
                 ],
+                limits: {
+                    [CORE_PLAN_METRIC.FILE_UPLOADS_MONTHLY]: 10,
+                    [CORE_PLAN_METRIC.STORAGE_BYTES]: 50_000,
+                },
+                appliedOverrides: [],
             },
         };
 
@@ -69,12 +78,12 @@ describe('filePersistence.service', () => {
             async (callback) => callback(session),
         );
 
-        resolvePlanEntitlement = vi.fn()
-            .mockResolvedValue(planEntitlement);
+        resolveEffectiveEntitlement = vi.fn()
+            .mockResolvedValue(effectiveEntitlement);
 
         assertFeatureAvailable = vi.fn();
 
-        reservePlanLimit = vi.fn()
+        reserveEffectiveLimit = vi.fn()
             .mockResolvedValue({
                 usageMetric: {
                     value: 1,
@@ -89,16 +98,16 @@ describe('filePersistence.service', () => {
 
         service = createFilePersistenceService({
             runTransaction,
-            resolvePlanEntitlement,
+            resolveEffectiveEntitlement,
             assertFeatureAvailable,
-            reservePlanLimit,
+            reserveEffectiveLimit,
             createFileDocuments,
             createAuditEvent,
         });
     });
 
     it(
-        'réserve les deux quotas puis crée File dans la même transaction',
+        'résout les droits effectifs, réserve les deux quotas puis crée File dans la même transaction',
         async () => {
             const at = new Date(
                 '2026-08-19T09:00:00.000Z',
@@ -116,23 +125,24 @@ describe('filePersistence.service', () => {
             expect(runTransaction)
                 .toHaveBeenCalledTimes(1);
 
-            expect(resolvePlanEntitlement)
+            expect(resolveEffectiveEntitlement)
                 .toHaveBeenCalledWith({
                     workspaceId: fileData.workspace,
+                    at,
                     session,
                 });
 
             expect(assertFeatureAvailable)
                 .toHaveBeenCalledWith({
-                    plan: planEntitlement.plan,
+                    entitlement: effectiveEntitlement,
                     featureKey:
                         CORE_PLAN_FEATURE.FILE_UPLOAD,
                 });
 
-            expect(reservePlanLimit)
+            expect(reserveEffectiveLimit)
                 .toHaveBeenNthCalledWith(1, {
                     workspaceId: fileData.workspace,
-                    planEntitlement,
+                    effectiveEntitlement,
                     metricKey:
                         CORE_PLAN_METRIC
                             .FILE_UPLOADS_MONTHLY,
@@ -142,10 +152,10 @@ describe('filePersistence.service', () => {
                     session,
                 });
 
-            expect(reservePlanLimit)
+            expect(reserveEffectiveLimit)
                 .toHaveBeenNthCalledWith(2, {
                     workspaceId: fileData.workspace,
-                    planEntitlement,
+                    effectiveEntitlement,
                     metricKey:
                         CORE_PLAN_METRIC.STORAGE_BYTES,
                     amount: fileData.sizeBytes,
@@ -167,11 +177,11 @@ describe('filePersistence.service', () => {
         async () => {
             const operationOrder = [];
 
-            resolvePlanEntitlement
+            resolveEffectiveEntitlement
                 .mockImplementation(async () => {
                     operationOrder.push('entitlement');
 
-                    return planEntitlement;
+                    return effectiveEntitlement;
                 });
 
             assertFeatureAvailable
@@ -179,7 +189,7 @@ describe('filePersistence.service', () => {
                     operationOrder.push('feature');
                 });
 
-            reservePlanLimit
+            reserveEffectiveLimit
                 .mockImplementation(async ({
                     metricKey,
                 }) => {
@@ -213,7 +223,7 @@ describe('filePersistence.service', () => {
     );
 
     it(
-        'ne réserve aucun quota lorsque la fonctionnalité est refusée',
+        'ne réserve aucun quota lorsque la feature effective est refusée',
         async () => {
             const featureError =
                 new Error('Feature refusée');
@@ -230,7 +240,7 @@ describe('filePersistence.service', () => {
                     }),
             ).rejects.toBe(featureError);
 
-            expect(reservePlanLimit)
+            expect(reserveEffectiveLimit)
                 .not.toHaveBeenCalled();
 
             expect(createFileDocuments)
@@ -239,12 +249,12 @@ describe('filePersistence.service', () => {
     );
 
     it(
-        'arrête la transaction lorsque le quota mensuel est refusé',
+        'arrête la transaction lorsque le quota mensuel effectif est refusé',
         async () => {
             const quotaError =
                 new Error('Quota mensuel atteint');
 
-            reservePlanLimit
+            reserveEffectiveLimit
                 .mockRejectedValueOnce(quotaError);
 
             await expect(
@@ -254,7 +264,7 @@ describe('filePersistence.service', () => {
                     }),
             ).rejects.toBe(quotaError);
 
-            expect(reservePlanLimit)
+            expect(reserveEffectiveLimit)
                 .toHaveBeenCalledTimes(1);
 
             expect(createFileDocuments)
@@ -263,12 +273,12 @@ describe('filePersistence.service', () => {
     );
 
     it(
-        'ne crée pas File lorsque le quota de stockage est refusé',
+        'ne crée pas File lorsque le quota de stockage effectif est refusé',
         async () => {
             const storageQuotaError =
                 new Error('Quota de stockage atteint');
 
-            reservePlanLimit
+            reserveEffectiveLimit
                 .mockResolvedValueOnce({
                     usageMetric: {},
                 })
@@ -283,7 +293,7 @@ describe('filePersistence.service', () => {
                     }),
             ).rejects.toBe(storageQuotaError);
 
-            expect(reservePlanLimit)
+            expect(reserveEffectiveLimit)
                 .toHaveBeenCalledTimes(2);
 
             expect(createFileDocuments)
