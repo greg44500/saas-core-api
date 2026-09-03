@@ -198,7 +198,9 @@ describe('PlatformOverviewPage', () => {
 
     expect(screen.getByText('Répartition par nombre de fichiers')).toBeInTheDocument();
     expect(screen.getByText('Répartition du stockage par type')).toBeInTheDocument();
-    expect(screen.getByText('10')).toBeInTheDocument();
+
+    const fileCountLabel = screen.getByText('Fichiers actifs');
+    expect(fileCountLabel.nextElementSibling).toHaveTextContent('10');
     expect(screen.getAllByText('PDF').length).toBeGreaterThan(0);
     expect(screen.getByText('6 fichiers · 60 %')).toBeInTheDocument();
     expect(screen.queryByText('Téléversements mensuels')).not.toBeInTheDocument();
