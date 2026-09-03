@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter } from 'react-router';
@@ -21,6 +21,7 @@ function renderUserMenu(initialPath = '/workspaces/workspace-1/dashboard') {
       { path: '/account/profile', Component: () => <h1>Profil cible</h1> },
       { path: '/account/security', Component: () => <h1>Sécurité cible</h1> },
       { path: '/platform/overview', Component: UserMenu },
+      { path: '/platform/users', Component: UserMenu },
       { path: '/login', Component: () => <h1>Connexion cible</h1> },
     ],
     { initialEntries: [initialPath] },
@@ -81,6 +82,42 @@ describe('UserMenu', () => {
     expect(screen.getByRole('menuitem', { name: 'Sécurité' })).toBeEnabled();
     expect(screen.queryByRole('menuitem', { name: 'Console d’administration' })).not.toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Déconnexion' })).toBeEnabled();
+  });
+
+  it('se ferme lors d’un clic à l’extérieur et avec Escape', async () => {
+    const user = userEvent.setup();
+    renderUserMenu();
+
+    const trigger = screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' });
+
+    await user.click(trigger);
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    await user.click(document.body);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(trigger);
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('se ferme lorsqu’une navigation extérieure change de route', async () => {
+    const user = userEvent.setup();
+    const router = renderUserMenu('/platform/overview');
+
+    await user.click(
+      screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' }),
+    );
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    await router.navigate('/platform/users');
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
   });
 
   it('ouvre le profil en mémorisant la page d’origine', async () => {
