@@ -24,7 +24,7 @@ function AuditStatusBadge({ status }) {
   );
 }
 
-const AUDIT_LOG_COLUMNS = [
+const BASE_COLUMNS = [
   {
     id: 'action',
     header: 'Action',
@@ -77,15 +77,25 @@ const AUDIT_LOG_COLUMNS = [
   },
 ];
 
-function AuditLogTable({ auditLogs }) {
+const WORKSPACE_COLUMN = {
+  id: 'workspace',
+  header: 'Workspace',
+  cell: (auditLog) => auditLog.workspace?.name ?? 'Plateforme',
+};
+
+function AuditLogTable({ auditLogs, showWorkspace = false }) {
+  const columns = showWorkspace
+    ? [BASE_COLUMNS[0], WORKSPACE_COLUMN, ...BASE_COLUMNS.slice(1)]
+    : BASE_COLUMNS;
+
   return (
     <DataTable
-      columns={AUDIT_LOG_COLUMNS}
+      columns={columns}
       data={auditLogs}
       getRowKey={(auditLog) => auditLog.id}
       headerClassName="border-b border-border bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground"
       rowClassName="align-top"
-      tableClassName="min-w-[760px]"
+      tableClassName={showWorkspace ? 'min-w-[900px]' : 'min-w-[760px]'}
     />
   );
 }
