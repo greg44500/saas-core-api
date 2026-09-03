@@ -27,6 +27,25 @@ describe('DistributionBarChart', () => {
     expect(screen.getByText('20 espaces · 40 %')).toBeInTheDocument();
   });
 
+  it('permet d’enrichir le libellé sans déplacer la logique de distribution', () => {
+    render(
+      <DistributionBarChart
+        aria-label="Répartition des fichiers"
+        items={[
+          { key: 'pdf', label: 'PDF', value: 6, percentage: 60 },
+        ]}
+        renderLabel={(item) => (
+          <span>
+            <span aria-hidden="true">■</span> {item.label}
+          </span>
+        )}
+      />,
+    );
+
+    expect(screen.getByText(/PDF/)).toBeInTheDocument();
+    expect(screen.getByText('6 · 60 %')).toBeInTheDocument();
+  });
+
   it('borne uniquement la représentation visuelle entre 0 et 100', () => {
     expect(clampPercentage(-10)).toBe(0);
     expect(clampPercentage(45.5)).toBe(45.5);
