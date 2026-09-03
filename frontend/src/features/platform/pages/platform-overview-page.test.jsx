@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
@@ -105,18 +105,20 @@ describe('PlatformOverviewPage', () => {
   it('affiche les agrégats réels dans la vue d’ensemble francisée', () => {
     renderPage();
 
+    const kpis = screen.getByRole('region', { name: 'Indicateurs principaux' });
+    const attention = screen.getByRole('region', { name: 'Points nécessitant une attention' });
+
     expect(screen.getByRole('heading', { name: 'Vue d’ensemble' })).toBeInTheDocument();
     expect(screen.getByText('Plateforme')).toBeInTheDocument();
-    expect(screen.getByText('100')).toBeInTheDocument();
-    expect(screen.getByText('50')).toBeInTheDocument();
-    expect(screen.getByText('20')).toBeInTheDocument();
-    expect(screen.getByText(/237,00/)).toBeInTheDocument();
+    expect(within(kpis).getByText('100')).toBeInTheDocument();
+    expect(within(kpis).getByText('50')).toBeInTheDocument();
+    expect(within(kpis).getByText('20')).toBeInTheDocument();
+    expect(within(kpis).getByText(/237,00/)).toBeInTheDocument();
     expect(screen.getByText('Premium')).toBeInTheDocument();
     expect(screen.getByText(/30 · 60/)).toBeInTheDocument();
-    expect(screen.getByText('10')).toBeInTheDocument();
+    expect(within(attention).getByText('10')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Croissance et répartition' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Santé et exploitation' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Points nécessitant une attention' })).toBeInTheDocument();
   });
 
   it('utilise la période canonique backend par défaut puis transmet un preset différent à RTK Query', async () => {
