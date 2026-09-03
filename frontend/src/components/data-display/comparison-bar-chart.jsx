@@ -40,7 +40,7 @@ function ComparisonBarChart({
   const formatter = new Intl.NumberFormat('fr-FR');
 
   return (
-    <div aria-label={ariaLabel} className={cn('space-y-5', className)} role="img">
+    <div aria-label={ariaLabel} className={cn('space-y-5', className)} role="group">
       <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
         <span className="flex items-center gap-2">
           <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
