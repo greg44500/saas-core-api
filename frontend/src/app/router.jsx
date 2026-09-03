@@ -268,10 +268,10 @@ function createAppRoutes() {
                 {
                   path: 'audit-logs',
                   lazy: async () => {
-                    const { PlatformSectionPlaceholderPage } = await import(
-                      '@/features/platform/pages/platform-section-placeholder-page'
+                    const { PlatformAuditLogsPage } = await import(
+                      '@/features/platform/pages/platform-audit-logs-page'
                     );
-                    return { Component: () => <PlatformSectionPlaceholderPage title="Audit logs" /> };
+                    return { Component: PlatformAuditLogsPage };
                   },
                 },
               ],
