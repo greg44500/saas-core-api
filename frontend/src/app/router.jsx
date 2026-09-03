@@ -223,10 +223,10 @@ function createAppRoutes() {
                 {
                   path: 'overview',
                   lazy: async () => {
-                    const { PlatformOverviewPlaceholderPage } = await import(
-                      '@/features/platform/pages/platform-overview-placeholder-page'
+                    const { PlatformOverviewPage } = await import(
+                      '@/features/platform/pages/platform-overview-page'
                     );
-                    return { Component: PlatformOverviewPlaceholderPage };
+                    return { Component: PlatformOverviewPage };
                   },
                 },
                 {
