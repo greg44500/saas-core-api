@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useGetPlatformOverviewQuery } from '@/features/platform/api/platform-overview-api';
+import { PlatformAttentionTable } from '@/features/platform/components/platform-attention-table';
 import { PlatformOverviewPeriodFilter } from '@/features/platform/components/platform-overview-period-filter';
 import {
   formatPlatformPlanMetric,
@@ -433,15 +434,21 @@ function PlatformOverviewPage() {
       </DashboardSection>
 
       <DashboardSection
-        description="Synthèse des signaux administratifs actuellement identifiés ; le tableau détaillé partagé viendra dans le lot dédié."
+        description="Synthèse et détail priorisé des signaux administratifs identifiés par le backend."
         title="Points nécessitant une attention"
       >
-        <SignalSummaryCard
-          description="Ces signaux nécessitent une vérification administrative, mais ne représentent pas automatiquement des incidents techniques critiques. Les valeurs non nulles sont signalées en avertissement."
-          items={attentionItems}
-          title="Synthèse des points d’attention"
-          total={formatCount(attention?.totalSignals)}
-        />
+        <div className="space-y-4">
+          <SignalSummaryCard
+            description="Ces signaux nécessitent une vérification administrative, mais ne représentent pas automatiquement des incidents techniques critiques. Les valeurs non nulles sont signalées en avertissement."
+            items={attentionItems}
+            title="Synthèse des points d’attention"
+            total={formatCount(attention?.totalSignals)}
+          />
+          <PlatformAttentionTable
+            items={attention?.items ?? []}
+            totalSignals={attention?.totalSignals ?? 0}
+          />
+        </div>
       </DashboardSection>
     </div>
   );
