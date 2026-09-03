@@ -4,6 +4,7 @@ import {
   formatPlatformSubscriptionBillingInterval,
   formatPlatformSubscriptionDate,
   formatPlatformSubscriptionDiscountType,
+  formatPlatformSubscriptionDiscountValue,
   formatPlatformSubscriptionKind,
   formatPlatformSubscriptionPrice,
   formatPlatformSubscriptionStatus,
@@ -16,6 +17,14 @@ function DetailRow({ label, value }) {
       <dd className="break-words text-sm text-foreground">{value ?? '—'}</dd>
     </div>
   );
+}
+
+function formatActor(actor) {
+  if (!actor) return '—';
+
+  const fullName = [actor.firstName, actor.lastName].filter(Boolean).join(' ');
+  if (fullName && actor.email) return `${fullName} — ${actor.email}`;
+  return fullName || actor.email || 'Utilisateur indisponible';
 }
 
 function PlatformSubscriptionDetailsDrawer({
@@ -58,8 +67,26 @@ function PlatformSubscriptionDetailsDrawer({
               <DetailRow label="Fin de période" value={formatPlatformSubscriptionDate(subscription.currentPeriodEnd)} />
               <DetailRow label="Fin du trial" value={formatPlatformSubscriptionDate(subscription.trialEndsAt)} />
               <DetailRow label="Annulation programmée" value={subscription.cancelAtPeriodEnd ? 'Oui' : 'Non'} />
+            </dl>
+          </section>
+
+          <section>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Conditions commerciales</h3>
+            <dl className="mt-2">
               <DetailRow label="Remise" value={formatPlatformSubscriptionDiscountType(subscription.discountType)} />
-              <DetailRow label="Dérogation manuelle" value={subscription.manualOverride ? 'Oui' : 'Non'} />
+              <DetailRow
+                label="Valeur de la remise"
+                value={formatPlatformSubscriptionDiscountValue(
+                  subscription.discountType,
+                  subscription.discountValue,
+                  subscription.currency,
+                )}
+              />
+              <DetailRow label="Motif de la remise" value={subscription.discountReason} />
+              <DetailRow label="Fin de la remise" value={formatPlatformSubscriptionDate(subscription.discountEndsAt)} />
+              <DetailRow label="Dérogation administrative" value={subscription.manualOverride ? 'Oui' : 'Non'} />
+              <DetailRow label="Motif de la dérogation" value={subscription.manualOverrideReason} />
+              <DetailRow label="Dérogation accordée par" value={formatActor(subscription.manualOverrideBy)} />
             </dl>
           </section>
 
