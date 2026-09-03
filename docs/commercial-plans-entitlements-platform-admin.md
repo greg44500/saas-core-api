@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Plans commerciaux, entitlements et administration Platform
 
-**Date :** 2 septembre 2026  
+**Date :** 3 septembre 2026  
 **Statut :** décisions consolidées — remplace le cadrage commercial multi-workspace du 1er septembre 2026  
 **Périmètre :** Plans, Subscription, Trial, capabilities, quotas, overrides et administration Platform
 
@@ -12,6 +12,14 @@ Ce document remplace la version du 1er septembre 2026 qui introduisait un abonne
 
 Cette architecture est désormais **supplantée** et ne doit plus servir de base d’implémentation V1.
 
+Il doit être lu avec :
+
+```text
+docs/commercial-configuration-contract.md
+```
+
+qui définit la règle supérieure de réutilisabilité du Core : **le Core fournit le moteur commercial générique ; chaque application dérivée définit son catalogue commercial réel après clonage.**
+
 Les principes toujours valides sont conservés :
 
 ```text
@@ -20,6 +28,7 @@ entitlement commercial ≠ permission RBAC
 backend = autorité
 capabilities et métriques extensibles
 exceptions commerciales administrées depuis Platform
+catalogue commercial piloté par les données
 ```
 
 Le SaaS Core reste générique et ne connaît aucune fonctionnalité propre à une application métier.
@@ -140,9 +149,9 @@ Une feature disponible dans le Plan ne donne jamais automatiquement la permissio
 
 ---
 
-## 6. Plans commerciaux actuellement envisagés
+## 6. Catalogue commercial de travail vs contrat générique
 
-Les familles commerciales envisagées restent :
+Les familles commerciales actuellement utilisées comme **catalogue de travail** sont :
 
 ```text
 free
@@ -150,23 +159,31 @@ premium
 ai
 ```
 
-Les anciennes possibilités `starter`, `business` et `enterprise` ne sont pas des offres V1 actives tant qu’un besoin commercial réel ne les justifie pas.
+Elles ne constituent pas un catalogue universel imposé par `saas-core-api`.
+
+Une application dérivée peut définir un autre catalogue après clonage, tant qu’elle respecte les invariants du moteur commercial Core.
 
 ### Free
 
-Le plan Free constitue la baseline du Workspace.
+Le plan Free constitue la baseline du Workspace dans l’architecture V1 actuelle.
 
 Il doit rester limité et ne bénéficie pas de trial.
 
+Son contenu exact reste configurable : features, limits et autres données catalogue ne doivent pas être codées en dur.
+
 ### Premium
 
-Le cadrage précédent a retenu :
+Le cadrage précédent a retenu comme référence historique :
 
 ```text
 79 € HT / mois
 ```
 
-Ce montant reste une référence commerciale historique du projet, mais l’ancienne signification :
+Ce montant **n’est pas un invariant du Core**.
+
+Il peut servir de valeur de travail ou de seed pour cette instance, mais chaque application dérivée doit pouvoir définir ses propres prix.
+
+L’ancienne signification :
 
 ```text
 79 € HT / mois → jusqu’à 5 workspaces
@@ -174,15 +191,13 @@ Ce montant reste une référence commerciale historique du projet, mais l’anci
 
 est abandonnée.
 
-Avant une facturation réelle, il faudra confirmer explicitement que le prix Premium correspond bien à l’abonnement d’un Workspace et finaliser ses limites commerciales.
-
 ### IA
 
-Le plan IA reste envisagé comme une offre supérieure avec des capacités IA.
+Le plan IA reste envisagé comme une offre de travail supérieure avec des capacités IA.
 
 Son prix n’est pas figé.
 
-Il devra être défini après mesure réaliste des coûts d’usage : modèles, tokens, agents, RAG, stockage et traitements documentaires éventuels.
+Il devra être défini dans l’application dérivée concernée après mesure réaliste des coûts d’usage : modèles, tokens, agents, RAG, stockage et traitements documentaires éventuels.
 
 ---
 
@@ -286,6 +301,7 @@ Règles conservées :
 
 - Free n’a pas de trial ;
 - seuls les plans payants explicitement éligibles peuvent démarrer un trial ;
+- la durée de trial est configurable par Plan ;
 - aucun moyen de paiement n’est actuellement requis pour commencer le trial ;
 - l’éligibilité est consommée une seule fois selon le mécanisme `TrialEligibility` ;
 - changer de plan pendant un trial ne réinitialise jamais `trialEndsAt` ;
@@ -505,6 +521,7 @@ confondre entitlement commercial et permission RBAC
 introduire CommercialAccount sans nouveau besoin produit démontré
 créer une permission métier dans le Core uniquement pour anticipation
 laisser un override sensible sans audit ni motif
+considérer Free/Premium/IA ou 79 € comme des invariants universels du Core
 ```
 
 Toujours :
@@ -515,6 +532,7 @@ protéger les quotas atomiquement
 conserver la traçabilité
 séparer le Core des modules métier
 conserver le Workspace comme frontière tenant
+piloter le catalogue commercial par les données
 mettre à jour les contrats frontend/backend si l’API observable change
 ```
 
@@ -522,12 +540,12 @@ mettre à jour les contrats frontend/backend si l’API observable change
 
 ## 19. Points encore ouverts
 
-Avant commercialisation réelle, il reste notamment à figer :
+Avant commercialisation réelle d’une application dérivée, il reste notamment à figer :
 
 ```text
+catalogue commercial final
 prix définitifs
-limites exactes de Free / Premium / IA
-prix du plan IA
+limites exactes
 provider de paiement
 moyens de paiement
 TVA / fiscalité
@@ -536,7 +554,7 @@ webhooks de paiement
 cycle définitif past_due
 ```
 
-Ces sujets ne doivent pas être devinés dans le frontend actuel.
+Ces sujets ne doivent pas être devinés dans le frontend actuel ni figés comme constantes du Core.
 
 ---
 
@@ -545,6 +563,7 @@ Ces sujets ne doivent pas être devinés dans le frontend actuel.
 Références à maintenir ensemble :
 
 ```text
+docs/commercial-configuration-contract.md
 docs/backend-implementation-checklist.md
 docs/frontend-backend-integration-contract.md
 docs/frontend-backend-subscription-contract.md
@@ -552,4 +571,8 @@ docs/frontend-backend-roles-permissions-contract.md
 docs/commercial-plans-entitlements-platform-admin.md
 ```
 
-La présente version est la référence active pour les décisions commerciales du Core V1. Toute mention historique incompatible de `Premium = 5 workspaces`, de `CommercialAccount` obligatoire ou de métriques au scope `commercial_account` doit être considérée comme supplantée.
+`commercial-configuration-contract.md` définit la réutilisabilité et le paramétrage du moteur commercial.
+
+Le présent document définit l’architecture commerciale V1 actuellement implémentée.
+
+Toute mention historique incompatible de `Premium = 5 workspaces`, de `CommercialAccount` obligatoire, de métriques au scope `commercial_account`, ou d’un prix particulier considéré comme invariant doit être considérée comme supplantée.
