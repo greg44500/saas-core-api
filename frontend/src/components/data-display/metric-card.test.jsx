@@ -6,7 +6,7 @@ import { MetricCard } from '@/components/data-display/metric-card';
 describe('MetricCard', () => {
   afterEach(() => cleanup());
 
-  it('affiche une métrique déjà résolue sans logique métier locale', () => {
+  it('affiche une métrique déjà résolue et rattache son explication à une icône info', () => {
     render(
       <MetricCard
         description="Comptes inscrits"
@@ -19,9 +19,14 @@ describe('MetricCard', () => {
     );
 
     expect(screen.getByText('Utilisateurs')).toBeInTheDocument();
-    expect(screen.getByText('Comptes inscrits')).toBeInTheDocument();
     expect(screen.getByText('1 284')).toBeInTheDocument();
     expect(screen.getByText('+8,4 %')).toBeInTheDocument();
     expect(screen.getByText(/sur 30 jours/)).toBeInTheDocument();
+
+    const infoButton = screen.getByRole('button', { name: 'À propos de Utilisateurs' });
+    const tooltip = screen.getByRole('tooltip');
+
+    expect(tooltip).toHaveTextContent('Comptes inscrits');
+    expect(infoButton).toHaveAttribute('aria-describedby', tooltip.id);
   });
 });
