@@ -108,8 +108,14 @@ app.use('/platform', platformRouter);
 
 beforeEach(() => {
     authenticate.mockClear();
-    authorizePlatformPermission.mockClear();
-    validateRequest.mockClear();
+
+    /*
+     * Les factories authorizePlatformPermission() et validateRequest() sont
+     * appelées lors de la construction du routeur, donc au chargement du
+     * module. Leur historique doit être conservé pour vérifier le contrat de
+     * sécurité déclaré par les routes ; seuls les middlewares effectivement
+     * exécutés à chaque requête sont remis à zéro ici.
+     */
     permissionMiddleware.mockClear();
     validationMiddleware.mockClear();
     Object.values(handlers).forEach((handler) => handler.mockClear());
