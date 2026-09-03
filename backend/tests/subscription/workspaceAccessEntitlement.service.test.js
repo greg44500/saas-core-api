@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import {
     afterEach,
+    beforeEach,
     describe,
     expect,
     it,
@@ -15,20 +16,42 @@ import {
     WORKSPACE_ACCESS_MODE,
     WORKSPACE_ACCESS_REASON,
 } from '../../constants/workspaceAccess.constants.js';
+
+vi.mock(
+    '../../modules/plan/planCompatibility.service.js',
+    () => ({
+        assessWorkspaceLimitsCompatibility: vi.fn(),
+    }),
+);
+
+vi.mock(
+    '../../modules/entitlementOverride/entitlementOverride.service.js',
+    () => ({
+        resolveActiveEntitlementOverrides: vi.fn(),
+    }),
+);
+
+vi.mock(
+    '../../modules/entitlementOverride/effectiveEntitlement.service.js',
+    () => ({
+        composeEffectiveEntitlementCapabilities: vi.fn(),
+    }),
+);
+
 import {
-    assessWorkspacePlanCompatibility,
+    composeEffectiveEntitlementCapabilities,
+} from '../../modules/entitlementOverride/effectiveEntitlement.service.js';
+import {
+    resolveActiveEntitlementOverrides,
+} from '../../modules/entitlementOverride/entitlementOverride.service.js';
+import {
+    assessWorkspaceLimitsCompatibility,
 } from '../../modules/plan/planCompatibility.service.js';
 import { Subscription } from '../../modules/subscriptions/subscription.model.js';
 import {
     getWorkspaceAccessEntitlement,
 } from '../../modules/subscriptions/subscription.service.js';
 
-vi.mock(
-    '../../modules/plan/planCompatibility.service.js',
-    () => ({
-        assessWorkspacePlanCompatibility: vi.fn(),
-    }),
-);
 
 const { ObjectId } = mongoose.Types;
 
@@ -45,14 +68,34 @@ const createCommercialSubscription = ({ workspaceId, plan }) => ({
     plan,
 });
 
+
 describe('getWorkspaceAccessEntitlement', () => {
+    beforeEach(() => {
+        resolveActiveEntitlementOverrides.mockResolvedValue({
+            at: new Date('2026-08-29T12:00:00.000Z'),
+            features: {},
+            limits: {},
+            overrides: [],
+        });
+
+        composeEffectiveEntitlementCapabilities.mockReturnValue({
+            features: ['file_upload'],
+            limits: {
+                members: 5,
+                storage_bytes: 20_000,
+                file_uploads_monthly: 10,
+            },
+            appliedOverrides: [],
+        });
+    });
+
     afterEach(() => {
         vi.useRealTimers();
         vi.restoreAllMocks();
         vi.clearAllMocks();
     });
 
-    it('retourne normal lorsqu’aucune capacité bloquante ne dépasse le plan effectif', async () => {
+    it('retourne normal lorsque les limites effectives sont respectées', async () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date('2026-08-29T12:00:00.000Z'));
 
@@ -68,31 +111,36 @@ describe('getWorkspaceAccessEntitlement', () => {
 
         vi.spyOn(Subscription, 'findOne')
             .mockReturnValue(createQueryMock(subscription));
-        assessWorkspacePlanCompatibility.mockResolvedValue({
+        assessWorkspaceLimitsCompatibility.mockResolvedValue({
             compatible: true,
             blockingLimits: [],
             nonBlockingLimits: [],
         });
 
+        const at = new Date('2026-08-29T12:00:00.000Z');
         const result = await getWorkspaceAccessEntitlement({
             workspaceId,
-            at: new Date('2026-08-29T12:00:00.000Z'),
+            at,
         });
 
         expect(result.accessMode).toBe(WORKSPACE_ACCESS_MODE.NORMAL);
         expect(result.reason).toBeNull();
         expect(result.blockingLimits).toEqual([]);
-        expect(assessWorkspacePlanCompatibility)
+        expect(result.effectiveCapabilities.limits.members).toBe(5);
+
+        expect(assessWorkspaceLimitsCompatibility)
             .toHaveBeenCalledWith(expect.objectContaining({
                 workspaceId,
-                targetPlanId: plan._id,
+                at,
+                limits: {
+                    members: 5,
+                    storage_bytes: 20_000,
+                    file_uploads_monthly: 10,
+                },
             }));
     });
 
-    it('retourne remediation avec les dépassements réductibles', async () => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date('2026-08-29T12:00:00.000Z'));
-
+    it('retourne remediation lorsqu’une limite effective bloquante est dépassée', async () => {
         const workspaceId = new ObjectId();
         const plan = {
             _id: new ObjectId(),
@@ -113,7 +161,7 @@ describe('getWorkspaceAccessEntitlement', () => {
 
         vi.spyOn(Subscription, 'findOne')
             .mockReturnValue(createQueryMock(subscription));
-        assessWorkspacePlanCompatibility.mockResolvedValue({
+        assessWorkspaceLimitsCompatibility.mockResolvedValue({
             compatible: false,
             blockingLimits,
             nonBlockingLimits: [],
@@ -130,6 +178,64 @@ describe('getWorkspaceAccessEntitlement', () => {
         expect(result.blockingLimits).toEqual(blockingLimits);
     });
 
+    it('évalue la remédiation avec une limite modifiée par override', async () => {
+        const workspaceId = new ObjectId();
+        const plan = {
+            _id: new ObjectId(),
+            key: 'premium',
+            limits: new Map([
+                ['members', 10],
+            ]),
+        };
+        const subscription = createCommercialSubscription({
+            workspaceId,
+            plan,
+        });
+
+        vi.spyOn(Subscription, 'findOne')
+            .mockReturnValue(createQueryMock(subscription));
+
+        composeEffectiveEntitlementCapabilities.mockReturnValue({
+            features: [],
+            limits: {
+                members: 3,
+            },
+            appliedOverrides: [
+                {
+                    id: 'override-id',
+                    metricKey: 'members',
+                    limitValue: 3,
+                },
+            ],
+        });
+
+        assessWorkspaceLimitsCompatibility.mockResolvedValue({
+            compatible: false,
+            blockingLimits: [
+                {
+                    key: 'members',
+                    usage: 4,
+                    limit: 3,
+                    excess: 1,
+                },
+            ],
+            nonBlockingLimits: [],
+        });
+
+        const result = await getWorkspaceAccessEntitlement({
+            workspaceId,
+        });
+
+        expect(assessWorkspaceLimitsCompatibility)
+            .toHaveBeenCalledWith(expect.objectContaining({
+                limits: {
+                    members: 3,
+                },
+            }));
+        expect(result.accessMode)
+            .toBe(WORKSPACE_ACCESS_MODE.REMEDIATION);
+    });
+
     it('ne passe pas en remédiation pour un compteur de consommation seulement', async () => {
         const workspaceId = new ObjectId();
         const plan = {
@@ -143,7 +249,7 @@ describe('getWorkspaceAccessEntitlement', () => {
 
         vi.spyOn(Subscription, 'findOne')
             .mockReturnValue(createQueryMock(subscription));
-        assessWorkspacePlanCompatibility.mockResolvedValue({
+        assessWorkspaceLimitsCompatibility.mockResolvedValue({
             compatible: true,
             blockingLimits: [],
             nonBlockingLimits: [
@@ -177,7 +283,7 @@ describe('getWorkspaceAccessEntitlement', () => {
 
         vi.spyOn(Subscription, 'findOne')
             .mockReturnValue(createQueryMock(subscription));
-        assessWorkspacePlanCompatibility
+        assessWorkspaceLimitsCompatibility
             .mockResolvedValueOnce({
                 compatible: false,
                 blockingLimits: [
