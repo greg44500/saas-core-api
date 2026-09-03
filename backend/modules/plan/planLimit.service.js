@@ -1,6 +1,6 @@
 import {
-    DEFAULT_PLAN_CAPABILITY_REGISTRY,
-} from './planCapability.registry.js';
+    ACTIVE_PLAN_CAPABILITY_REGISTRY,
+} from '../../config/applicationCapability.registry.js';
 
 import { AppError } from '../../utils/appError.js';
 
@@ -49,7 +49,7 @@ const isNonNegativeInteger = (value) =>
 const resolvePlanMetricLimit = ({
     plan,
     metricKey,
-    registry = DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
 }) => {
     if (!plan) {
         throw new TypeError(
@@ -232,8 +232,7 @@ const reservePlanLimitForEntitlement = async ({
     amount = 1,
     at = new Date(),
     actorId = null,
-    registry =
-    DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
     session = null,
 }) => {
     if (!workspaceId) {
@@ -333,8 +332,7 @@ const enforcePlanLimit = async ({
     amount = 1,
     at = new Date(),
     actorId = null,
-    registry =
-    DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
     session = null,
 }) => {
     if (!workspaceId) {
