@@ -38,7 +38,11 @@ describe('PlatformPlanForm dynamic capabilities', () => {
 
     await user.type(screen.getByLabelText('Clé technique'), 'premium');
     await user.type(screen.getByLabelText('Nom'), 'Premium');
-    await user.click(screen.getByLabelText('Historique des prix'));
+    await user.click(
+      screen.getByRole('checkbox', {
+        name: /Historique des prix/i,
+      }),
+    );
     await user.click(screen.getByRole('button', { name: 'Créer le plan' }));
 
     expect(onSubmit).toHaveBeenCalledWith(
