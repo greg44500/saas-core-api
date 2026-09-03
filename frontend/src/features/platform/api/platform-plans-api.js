@@ -4,7 +4,11 @@ const platformPlansApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     listPlatformPlanCapabilities: builder.query({
       query: () => '/platform/plans/capabilities',
-      transformResponse: (response) => response?.data ?? { features: [], metrics: [] },
+      transformResponse: (response) => response?.data ?? {
+        features: [],
+        featureDefinitions: [],
+        metrics: [],
+      },
       providesTags: ['PlatformPlanCapabilities'],
     }),
 
