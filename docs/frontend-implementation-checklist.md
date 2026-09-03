@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Frontend Core
 
-Dernière consolidation : 2026-09-02 — F8 complet et F8-AUDIT validé ; F9 Platform Admin devient le prochain bloc
+Dernière consolidation : 2026-09-03 — F9.0 à F9.4 validés ; F9.5 Subscriptions Platform devient le prochain bloc
 
 ## 1. Rôle du document
 
@@ -228,7 +228,65 @@ Référence : `docs/functional-debt-file-trash-restore.md`.
 
 Référence : `docs/frontend-maintenance-audit-report.md`.
 
-## 9. Ordre de production frontend restant
+## 9. Platform Admin frontend — F9
+
+### F9.0 — Audit backend Platform
+
+- [x] TERMINÉ — authentification racine `/api/platform` et garde `SUPER_ADMIN` vérifiées sur chaque domaine.
+- [x] TERMINÉ — contrats Users, Workspaces, Plans, Subscriptions et Audit Logs audités avant raccordement frontend.
+- [x] TERMINÉ — backend conservé comme unique autorité d’autorisation ; `PlatformGuard` reste une garde UX.
+- [x] TERMINÉ — contrat consolidé dans `docs/frontend-platform-admin-contract.md`.
+
+### F9.1 — RTK Query Platform
+
+- [x] TERMINÉ — un seul `baseApi` conservé ; aucun second `createApi`.
+- [x] TERMINÉ — tags Platform ajoutés au fur et à mesure des domaines sans duplication de state serveur.
+
+### F9.2 — Users Platform
+
+- [x] TERMINÉ — liste paginée réelle via `DataTable` / `DataPagination`.
+- [x] TERMINÉ — détail via `EntityDetailsDrawer`.
+- [x] TERMINÉ — désactivation/réactivation, révocation des sessions et changement de rôle raccordés aux routes sécurisées.
+- [x] TERMINÉ — contraintes self/dernier super-admin laissées au backend avec gardes UX complémentaires.
+- [x] TERMINÉ — tests du lot validés avant passage à Workspaces.
+
+### F9.3 — Workspaces Platform
+
+- [x] TERMINÉ — liste et détail réels raccordés aux routes Platform.
+- [x] TERMINÉ — suspension/réactivation via `ConfirmationDialog`, motifs structurés et règle `other` respectés.
+- [x] TERMINÉ — acteurs du détail enrichis côté backend par DTO minimal `{ id, firstName, lastName, email }` avec projection minimale.
+- [x] TERMINÉ — `sanitizeFilter` conservé globalement ; `$in` interne marqué `mongoose.trusted()` au lieu de désactiver la protection.
+- [x] TERMINÉ — identifiants historiques conservés côté DTO si un User n’est plus résoluble, sans provoquer de 500.
+- [x] TERMINÉ — IDs techniques des personnes masqués dans le Drawer ; nom/email privilégiés pour l’administration.
+- [x] TERMINÉ — tests ciblés, régression globale et build validés.
+
+### F9.4 — Plans Platform
+
+- [x] TERMINÉ — `GET /api/platform/plans/capabilities` ajouté et protégé `SUPER_ADMIN` pour exposer le registre backend de features/métriques.
+- [x] TERMINÉ — formulaire de création/modification alimenté dynamiquement par le registre backend ; aucune seconde source métier frontend.
+- [x] TERMINÉ — `trialEnabled` / `trialDurationDays` intégrés au contrat Platform avec validation atomique.
+- [x] TERMINÉ — création de plan imposant toutes les métriques du registre ; absence d’une métrique considérée comme configuration invalide.
+- [x] TERMINÉ — sémantique des limites figée : `null = illimité`, `0 = aucune consommation`, entier positif = plafond.
+- [x] TERMINÉ — création, modification, détail et archivage raccordés au backend ; aucun faux restore de plan archivé.
+- [x] TERMINÉ — `DataTable`, `DataPagination`, `EntityDetailsDrawer`, `ConfirmationDialog` et Toast partagés réutilisés ; aucun tableau spécifique dupliqué.
+- [x] TERMINÉ — correctif accessibilité Drawer : IDs `aria-labelledby` / `aria-describedby` uniques par instance via `useId()`.
+- [x] TERMINÉ — tests backend globaux verts signalés le 2026-09-03.
+- [x] TERMINÉ — tests frontend globaux verts signalés le 2026-09-03.
+- [x] TERMINÉ — build Vite vert signalé le 2026-09-03.
+
+### F9.5 — Subscriptions Platform
+
+- [ ] EN COURS — auditer à nouveau le backend avant toute UI.
+- [ ] À FAIRE — normaliser le DTO de liste Platform si le service expose encore une forme interne Mongoose `lean()`/`populate()`.
+- [ ] À FAIRE — implémenter RTK Query, liste, détail et actions uniquement après contrat backend stabilisé.
+- [ ] À FAIRE — réutiliser `DataTable`, `DataPagination`, `EntityDetailsDrawer` et `ConfirmationDialog`.
+- [ ] À FAIRE — couvrir grant trial, mise à jour administrative, annulation et reprise selon les invariants backend réels.
+
+### F9.6 — Audit Logs Platform
+
+- [ ] À FAIRE — raccorder la liste et les filtres au contrat Platform après F9.5.
+
+## 10. Ordre de production frontend restant
 
 ```text
 F8.5      Files frontend                              TERMINÉ
@@ -240,12 +298,18 @@ F8.8.1    Audit Workspace frontend                    TERMINÉ
 F8.8.2    Dashboard Core frontend                     TERMINÉ
 F8.9      Account / Security frontend                 TERMINÉ
 F8-AUDIT  Maintenabilité + composants partagés        TERMINÉ
-F9.x      Platform Admin frontend réel                PROCHAIN BLOC
+F9.0      Audit backend Platform                      TERMINÉ
+F9.1      RTK Query Platform                          TERMINÉ
+F9.2      Users Platform                              TERMINÉ
+F9.3      Workspaces Platform                         TERMINÉ
+F9.4      Plans Platform                              TERMINÉ
+F9.5      Subscriptions Platform                      EN COURS
+F9.6      Audit Logs Platform                         À FAIRE
 F10       EntitlementOverride Workspace-scoped + Platform
 F11       Consolidation frontend + E2E
 ```
 
-## 10. Règle de validation de fin de lot
+## 11. Règle de validation de fin de lot
 
 Un lot frontend ne doit être marqué TERMINÉ qu’après :
 
@@ -257,10 +321,10 @@ Un lot frontend ne doit être marqué TERMINÉ qu’après :
 6. documentation des décisions ou dettes nouvelles ;
 7. absence de modification hors périmètre.
 
-## 11. Gate avant modules métier
+## 12. Gate avant modules métier
 
 Aucun module métier ne doit démarrer avant la finalisation du Core frontend et les validations E2E prévues dans le Gate A du projet.
 
-Le checkpoint F8-AUDIT est désormais validé. La production peut poursuivre avec F9 Platform Admin, puis F10 et F11 avant ouverture des modules métier.
+Le checkpoint F8-AUDIT est validé. F9.0 à F9.4 sont désormais validés ; la production poursuit avec F9.5 Subscriptions Platform, puis F9.6, F10 et F11 avant ouverture des modules métier.
 
 Le Dashboard Workspace actuel reste un prototype Core technique. Sa refonte orientée données métier est explicitement reportée au cadrage du premier domaine métier.
