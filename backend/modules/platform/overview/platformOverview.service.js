@@ -320,13 +320,18 @@ const buildEffectivePlanDistributionPipeline = ({
             as: 'plan',
         },
     },
-    { $unwind: '$plan' },
+    {
+        $unwind: {
+            path: '$plan',
+            preserveNullAndEmptyArrays: true,
+        },
+    },
     {
         $project: {
             _id: 0,
-            planId: '$plan._id',
-            key: '$plan.key',
-            name: '$plan.name',
+            planId: '$_id',
+            key: { $ifNull: ['$plan.key', null] },
+            name: { $ifNull: ['$plan.name', 'Plan indisponible'] },
             workspaceCount: 1,
         },
     },
