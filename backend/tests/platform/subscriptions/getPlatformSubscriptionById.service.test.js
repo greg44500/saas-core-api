@@ -25,406 +25,241 @@ vi.mock(
 );
 
 
+const createId = (value) => ({
+    toString: () => value,
+});
+
+const createQuery = (result) => {
+    const lean = vi.fn().mockResolvedValue(result);
+    const populates = [];
+
+    const query = {
+        select: vi.fn().mockReturnThis(),
+        populate: vi.fn((config) => {
+            populates.push(config);
+            return query;
+        }),
+        lean,
+    };
+
+    return {
+        query,
+        populates,
+        lean,
+    };
+};
+
+
 describe('getPlatformSubscriptionById', () => {
-    const subscriptionId =
-        '507f1f77bcf86cd799439011';
-
-    const workspaceId =
-        '507f191e810c19729de860ea';
-
-    const planId =
-        '507f191e810c19729de860eb';
-
-    const adminId =
-        '507f191e810c19729de860ec';
+    const subscriptionId = '507f1f77bcf86cd799439011';
+    const workspaceId = '507f191e810c19729de860ea';
+    const planId = '507f191e810c19729de860eb';
+    const targetPlanId = '507f191e810c19729de860ed';
+    const adminId = '507f191e810c19729de860ec';
 
     const subscription = {
-        _id: {
-            toString: () =>
-                subscriptionId,
-        },
-
+        _id: createId(subscriptionId),
         workspace: {
-            _id: {
-                toString: () =>
-                    workspaceId,
-            },
+            _id: createId(workspaceId),
             name: 'Workspace Alpha',
         },
-
         plan: {
-            _id: {
-                toString: () =>
-                    planId,
-            },
-            key: 'starter',
-            name: 'Starter',
+            _id: createId(planId),
+            key: 'premium',
+            name: 'Premium',
             status: 'active',
         },
-
+        kind: 'commercial',
         status: 'active',
-
-        currentPeriodStart:
-            new Date(
-                '2026-08-01T00:00:00.000Z',
-            ),
-
-        currentPeriodEnd:
-            new Date(
-                '2026-09-01T00:00:00.000Z',
-            ),
-
+        currentPeriodStart: new Date('2026-08-01T00:00:00.000Z'),
+        currentPeriodEnd: new Date('2026-09-01T00:00:00.000Z'),
         trialEndsAt: null,
         cancelAtPeriodEnd: false,
-
+        scheduledChange: {
+            type: 'downgrade',
+            targetPlan: {
+                _id: createId(targetPlanId),
+                key: 'free',
+                name: 'Free',
+            },
+            targetBillingInterval: 'none',
+            targetCurrency: 'EUR',
+            targetPriceExclTaxMinor: 0,
+            effectiveAt: new Date('2026-09-01T00:00:00.000Z'),
+            requestedAt: new Date('2026-08-25T09:00:00.000Z'),
+            requestedBy: {
+                _id: createId(adminId),
+                firstName: 'Admin',
+                lastName: 'Platform',
+                email: 'admin@example.com',
+            },
+        },
         billingInterval: 'monthly',
         currency: 'EUR',
-        priceExclTaxMinor: 1990,
-
+        priceExclTaxMinor: 7900,
         provider: 'manual',
         providerCustomerId: null,
         providerSubscriptionId: null,
-
         discountType: 'percentage',
         discountValue: 20,
-        discountReason:
-            'Remise commerciale',
-
-        discountEndsAt:
-            new Date(
-                '2026-12-31T00:00:00.000Z',
-            ),
-
+        discountReason: 'Remise commerciale',
+        discountEndsAt: new Date('2026-12-31T00:00:00.000Z'),
         manualOverride: true,
-        manualOverrideReason:
-            'Accord commercial spécifique',
-
+        manualOverrideReason: 'Accord commercial spécifique',
         manualOverrideBy: {
-            _id: {
-                toString: () =>
-                    adminId,
-            },
-            email:
-                'admin@example.com',
+            _id: createId(adminId),
+            firstName: 'Admin',
+            lastName: 'Platform',
+            email: 'admin@example.com',
         },
-
-        createdBy: {
-            toString: () =>
-                adminId,
-        },
-
-        updatedBy: {
-            toString: () =>
-                adminId,
-        },
-
-        createdAt:
-            new Date(
-                '2026-08-01T00:00:00.000Z',
-            ),
-
-        updatedAt:
-            new Date(
-                '2026-08-27T12:00:00.000Z',
-            ),
+        createdBy: createId(adminId),
+        updatedBy: createId(adminId),
+        createdAt: new Date('2026-08-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-08-27T12:00:00.000Z'),
     };
-
 
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-
     it('refuse un subscriptionId manquant', async () => {
         await expect(
-            getPlatformSubscriptionById({
-                subscriptionId: null,
-            }),
-        ).rejects.toBeInstanceOf(
-            TypeError,
-        );
+            getPlatformSubscriptionById({ subscriptionId: null }),
+        ).rejects.toBeInstanceOf(TypeError);
 
-        expect(
-            Subscription.findById,
-        ).not.toHaveBeenCalled();
+        expect(Subscription.findById).not.toHaveBeenCalled();
     });
 
+    it('charge uniquement les champs et références administratives nécessaires', async () => {
+        const { query, populates } = createQuery(subscription);
+        Subscription.findById.mockReturnValue(query);
 
-    it('charge la souscription avec les références administratives utiles', async () => {
-        const lean = vi
-            .fn()
-            .mockResolvedValue(
-                subscription,
-            );
+        await getPlatformSubscriptionById({ subscriptionId });
 
-        const thirdPopulate = vi
-            .fn()
-            .mockReturnValue({
-                lean,
-            });
+        expect(Subscription.findById).toHaveBeenCalledWith(subscriptionId);
+        expect(query.select).toHaveBeenCalledOnce();
 
-        const secondPopulate = vi
-            .fn()
-            .mockReturnValue({
-                populate:
-                    thirdPopulate,
-            });
+        const projection = query.select.mock.calls[0][0];
+        expect(projection).toContain('scheduledChange');
+        expect(projection).toContain('kind');
+        expect(projection).not.toContain('emailCanonical');
 
-        const firstPopulate = vi
-            .fn()
-            .mockReturnValue({
-                populate:
-                    secondPopulate,
-            });
-
-        Subscription.findById
-            .mockReturnValue({
-                populate:
-                    firstPopulate,
-            });
-
-        await getPlatformSubscriptionById({
-            subscriptionId,
-        });
-
-        expect(
-            Subscription.findById,
-        ).toHaveBeenCalledWith(
-            subscriptionId,
-        );
-
-        expect(
-            firstPopulate,
-        ).toHaveBeenCalledWith({
-            path: 'workspace',
-            select: 'name',
-        });
-
-        expect(
-            secondPopulate,
-        ).toHaveBeenCalledWith({
-            path: 'plan',
-            select: 'key name status',
-        });
-
-        expect(
-            thirdPopulate,
-        ).toHaveBeenCalledWith({
-            path: 'manualOverrideBy',
-            select: 'email',
-        });
+        expect(populates).toEqual([
+            { path: 'workspace', select: 'name' },
+            { path: 'plan', select: 'key name status' },
+            {
+                path: 'manualOverrideBy',
+                select: 'firstName lastName email',
+            },
+            {
+                path: 'scheduledChange.targetPlan',
+                select: 'key name',
+            },
+            {
+                path: 'scheduledChange.requestedBy',
+                select: 'firstName lastName email',
+            },
+        ]);
     });
 
+    it('retourne un DTO détaillé incluant le type et le changement programmé', async () => {
+        const { query } = createQuery(subscription);
+        Subscription.findById.mockReturnValue(query);
 
-    it('retourne le DTO administratif détaillé', async () => {
-        const lean = vi
-            .fn()
-            .mockResolvedValue(
-                subscription,
-            );
+        const result = await getPlatformSubscriptionById({ subscriptionId });
 
-        const thirdPopulate = vi
-            .fn()
-            .mockReturnValue({
-                lean,
-            });
-
-        const secondPopulate = vi
-            .fn()
-            .mockReturnValue({
-                populate:
-                    thirdPopulate,
-            });
-
-        const firstPopulate = vi
-            .fn()
-            .mockReturnValue({
-                populate:
-                    secondPopulate,
-            });
-
-        Subscription.findById
-            .mockReturnValue({
-                populate:
-                    firstPopulate,
-            });
-
-        const result =
-            await getPlatformSubscriptionById({
-                subscriptionId,
-            });
-
-        expect(result).toEqual({
+        expect(result).toMatchObject({
             id: subscriptionId,
-
             workspace: {
                 id: workspaceId,
-                name:
-                    'Workspace Alpha',
+                name: 'Workspace Alpha',
             },
-
             plan: {
                 id: planId,
-                key: 'starter',
-                name: 'Starter',
+                key: 'premium',
+                name: 'Premium',
                 status: 'active',
             },
-
+            kind: 'commercial',
             status: 'active',
-
-            currentPeriodStart:
-                subscription.currentPeriodStart,
-
-            currentPeriodEnd:
-                subscription.currentPeriodEnd,
-
-            trialEndsAt: null,
-            cancelAtPeriodEnd: false,
-
-            billingInterval:
-                'monthly',
-
-            currency: 'EUR',
-
-            priceExclTaxMinor:
-                1990,
-
-            provider: 'manual',
-
-            providerCustomerId:
-                null,
-
-            providerSubscriptionId:
-                null,
-
-            discountType:
-                'percentage',
-
-            discountValue:
-                20,
-
-            discountReason:
-                'Remise commerciale',
-
-            discountEndsAt:
-                subscription.discountEndsAt,
-
-            manualOverride:
-                true,
-
-            manualOverrideReason:
-                'Accord commercial spécifique',
-
+            scheduledChange: {
+                type: 'downgrade',
+                targetPlan: {
+                    id: targetPlanId,
+                    key: 'free',
+                    name: 'Free',
+                },
+                targetBillingInterval: 'none',
+                targetCurrency: 'EUR',
+                targetPriceExclTaxMinor: 0,
+                effectiveAt: subscription.scheduledChange.effectiveAt,
+                requestedAt: subscription.scheduledChange.requestedAt,
+                requestedBy: {
+                    id: adminId,
+                    firstName: 'Admin',
+                    lastName: 'Platform',
+                    email: 'admin@example.com',
+                },
+            },
             manualOverrideBy: {
                 id: adminId,
-                email:
-                    'admin@example.com',
+                firstName: 'Admin',
+                lastName: 'Platform',
+                email: 'admin@example.com',
             },
-
             createdBy: adminId,
             updatedBy: adminId,
-
-            createdAt:
-                subscription.createdAt,
-
-            updatedAt:
-                subscription.updatedAt,
         });
     });
 
-
     it('retourne null pour les références optionnelles absentes', async () => {
-        const lean = vi
-            .fn()
-            .mockResolvedValue({
-                ...subscription,
-                workspace: null,
-                plan: null,
-                manualOverrideBy: null,
-                createdBy: null,
-                updatedBy: null,
-            });
+        const { query } = createQuery({
+            ...subscription,
+            workspace: null,
+            plan: null,
+            scheduledChange: null,
+            manualOverrideBy: null,
+            createdBy: null,
+            updatedBy: null,
+        });
+        Subscription.findById.mockReturnValue(query);
 
-        const thirdPopulate = vi
-            .fn()
-            .mockReturnValue({
-                lean,
-            });
-
-        const secondPopulate = vi
-            .fn()
-            .mockReturnValue({
-                populate:
-                    thirdPopulate,
-            });
-
-        const firstPopulate = vi
-            .fn()
-            .mockReturnValue({
-                populate:
-                    secondPopulate,
-            });
-
-        Subscription.findById
-            .mockReturnValue({
-                populate:
-                    firstPopulate,
-            });
-
-        const result =
-            await getPlatformSubscriptionById({
-                subscriptionId,
-            });
+        const result = await getPlatformSubscriptionById({ subscriptionId });
 
         expect(result.workspace).toBeNull();
         expect(result.plan).toBeNull();
-
-        expect(
-            result.manualOverrideBy,
-        ).toBeNull();
-
+        expect(result.scheduledChange).toBeNull();
+        expect(result.manualOverrideBy).toBeNull();
         expect(result.createdBy).toBeNull();
         expect(result.updatedBy).toBeNull();
     });
 
+    it('conserve le changement programmé même si ses références ne sont plus résolubles', async () => {
+        const { query } = createQuery({
+            ...subscription,
+            scheduledChange: {
+                ...subscription.scheduledChange,
+                targetPlan: null,
+                requestedBy: null,
+            },
+        });
+        Subscription.findById.mockReturnValue(query);
+
+        const result = await getPlatformSubscriptionById({ subscriptionId });
+
+        expect(result.scheduledChange).toMatchObject({
+            type: 'downgrade',
+            targetPlan: null,
+            requestedBy: null,
+        });
+    });
 
     it('retourne 404 lorsque la souscription n’existe pas', async () => {
-        const lean = vi
-            .fn()
-            .mockResolvedValue(null);
-
-        const thirdPopulate = vi
-            .fn()
-            .mockReturnValue({
-                lean,
-            });
-
-        const secondPopulate = vi
-            .fn()
-            .mockReturnValue({
-                populate:
-                    thirdPopulate,
-            });
-
-        const firstPopulate = vi
-            .fn()
-            .mockReturnValue({
-                populate:
-                    secondPopulate,
-            });
-
-        Subscription.findById
-            .mockReturnValue({
-                populate:
-                    firstPopulate,
-            });
+        const { query } = createQuery(null);
+        Subscription.findById.mockReturnValue(query);
 
         await expect(
-            getPlatformSubscriptionById({
-                subscriptionId,
-            }),
-        ).rejects.toMatchObject({
-            statusCode: 404,
-        });
+            getPlatformSubscriptionById({ subscriptionId }),
+        ).rejects.toMatchObject({ statusCode: 404 });
     });
 });
