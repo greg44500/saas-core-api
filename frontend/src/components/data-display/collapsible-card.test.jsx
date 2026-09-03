@@ -7,11 +7,12 @@ import { CollapsibleCard } from '@/components/data-display/collapsible-card';
 describe('CollapsibleCard', () => {
   afterEach(() => cleanup());
 
-  it('garde le résumé visible et ne révèle le détail qu’à la demande', async () => {
+  it('garde le résumé visible, rattache l’explication à une icône et révèle le détail à la demande', async () => {
     const user = userEvent.setup();
 
     render(
       <CollapsibleCard
+        description="Consommation actuelle"
         summary={<p>Résumé visible</p>}
         title="Usage de la plateforme"
       >
@@ -21,6 +22,10 @@ describe('CollapsibleCard', () => {
 
     expect(screen.getByText('Résumé visible')).toBeInTheDocument();
     expect(screen.queryByText('Détail secondaire')).not.toBeInTheDocument();
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Consommation actuelle');
+    expect(
+      screen.getByRole('button', { name: 'À propos de Usage de la plateforme' }),
+    ).toBeInTheDocument();
 
     const toggle = screen.getByRole('button', { name: 'Afficher le détail' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
