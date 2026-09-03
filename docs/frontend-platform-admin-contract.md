@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Contrat Platform Admin pour le frontend
 
 **Date de consolidation :** 2026-09-03  
-**Checkpoint :** F9.4 validé  
+**Checkpoint :** F9.5 validé  
 **Source de vérité :** code backend courant de `backend/modules/platform/` et tests associés.
 
 ## 1. Principe de sécurité
@@ -331,7 +331,33 @@ PATCH  /api/platform/subscriptions/:subscriptionId/resume
 
 Important : le contrat courant utilise des PATCH dédiés pour `cancel` et `resume`, et `POST /grant-trial` pour l’attribution administrative d’un trial.
 
-### Grant trial
+### Liste administrative
+
+La liste a été normalisée avant raccordement frontend et ne renvoie plus directement la forme Mongoose issue de `lean()` / `populate()`.
+
+DTO de liste :
+
+```text
+id
+workspace { id, name }
+plan { id, key, name }
+kind
+status
+currentPeriodStart
+currentPeriodEnd
+trialEndsAt
+cancelAtPeriodEnd
+billingInterval
+currency
+priceExclTaxMinor
+manualOverride
+createdAt
+updatedAt
+```
+
+La requête backend utilise une projection racine explicite et des `populate()` minimaux. Les identifiants provider, motifs détaillés et autres champs administratifs ne peuvent donc pas fuiter accidentellement dans la liste si le modèle évolue.
+
+### Grant trial administratif
 
 Body strict :
 
@@ -345,9 +371,52 @@ Body strict :
 
 La même opération peut créer un premier trial ou changer le plan d’un trial déjà actif sans réinitialiser son horloge ; la réponse est donc `200`.
 
+Cette route constitue un levier administratif distinct du trial normal déclenché par le parcours commercial utilisateur. Elle ne contourne pas les invariants backend d’éligibilité.
+
 ### Détail
 
-Le DTO individuel expose explicitement les données Workspace/Plan utiles, cycle de vie, périodicité, prix snapshoté, provider, remises et dérogation administrative.
+Le DTO individuel est construit explicitement et expose notamment :
+
+```text
+id
+workspace { id, name }
+plan { id, key, name, status }
+kind
+status
+currentPeriodStart
+currentPeriodEnd
+trialEndsAt
+cancelAtPeriodEnd
+billingInterval
+currency
+priceExclTaxMinor
+provider
+providerCustomerId
+providerSubscriptionId
+discountType
+discountValue
+discountReason
+discountEndsAt
+manualOverride
+manualOverrideReason
+manualOverrideBy { id, firstName, lastName, email }
+scheduledChange {
+  type,
+  targetPlan { id, key, name },
+  targetBillingInterval,
+  targetCurrency,
+  targetPriceExclTaxMinor,
+  effectiveAt,
+  requestedAt,
+  requestedBy { id, firstName, lastName, email }
+}
+createdBy
+updatedBy
+createdAt
+updatedAt
+```
+
+Les références utilisateur résolues utilisent des projections minimales. Le frontend affiche les informations administratives utiles et n’expose pas de secrets d’authentification.
 
 ### PATCH administratif
 
@@ -374,6 +443,8 @@ Invariants principaux :
 - une remise en pourcentage doit être comprise entre 1 et 100 ;
 - une remise fixe doit être > 0 et ne peut pas dépasser le prix HT ;
 - toute remise active nécessite un motif ;
+- `discountEndsAt` peut borner une remise temporaire ;
+- lorsque le frontend supprime une remise, valeur, motif et date de fin repartent à leur état neutre ;
 - `manualOverride=true` nécessite un motif ;
 - `manualOverrideBy` vient exclusivement de l’acteur authentifié ;
 - la mutation est auditée.
@@ -391,11 +462,26 @@ Un motif est obligatoire.
 
 La reprise retire uniquement une annulation programmée compatible avec les invariants du domaine Subscription.
 
-### Gate obligatoire avant F9.5
+### Règle frontend après mutation
 
-Le service de liste renvoie actuellement une forme issue de documents `lean()` avec `workspace` et `plan` peuplés, alors que le détail utilise un DTO explicitement construit.
+Les réponses des mutations `update`, `cancel`, `resume` et `grant-trial` sont volontairement traitées comme des accusés de succès partiels et non comme la source complète d’état de l’écran.
 
-Avant tout écran F9.5, le backend doit donc être réaudité et, si nécessaire, normalisé afin que la liste Platform Subscriptions possède elle aussi un contrat DTO explicite. Le frontend ne doit pas être couplé à une forme interne Mongoose.
+Le frontend invalide les tags RTK Query concernés et relit ensuite la liste/le détail. Le DTO de détail reste la source complète après mutation.
+
+### Composants frontend validés
+
+F9.5 réutilise :
+
+```text
+DataTable
+DataPagination
+EntityDetailsDrawer
+ConfirmationDialog
+DatePicker
+ToastProvider
+```
+
+Aucune table, pagination, modale de confirmation ou primitive date spécifique à Subscriptions n’a été recréée.
 
 ## 6. Audit Logs Platform
 
@@ -405,7 +491,7 @@ Route réellement exposée :
 GET /api/platform/audit-logs
 ```
 
-Filtres validés :
+Filtres validés au checkpoint F9.0 :
 
 ```text
 page
@@ -435,6 +521,8 @@ createdAt
 
 Les IP, user-agent et metadata restent volontairement absents de ce contrat frontend.
 
+F9.6 doit réauditer ce contrat courant avant toute UI afin de vérifier qu’aucune évolution backend intervenue depuis F9.0 ne modifie les filtres, la projection ou la sécurité.
+
 ## 7. Couverture backend observée et validée
 
 Les domaines Platform disposent de tests ciblés couvrant selon les cas :
@@ -447,23 +535,27 @@ Les domaines Platform disposent de tests ciblés couvrant selon les cas :
 - audit des mutations sensibles ;
 - registre de capabilities Plans ;
 - cohérence trial et complétude des métriques ;
-- résolution minimale et sécurisée des acteurs Workspace.
+- résolution minimale et sécurisée des acteurs Workspace ;
+- projection explicite des listes/détails Subscriptions ;
+- grant trial, modification, annulation et reprise des Subscriptions.
 
-Les tests backend globaux, les tests frontend globaux et le build Vite ont été signalés verts le 2026-09-03 après finalisation de F9.4.
+Les tests backend ciblés F9.5, les tests frontend ciblés, la régression frontend globale et le build Vite ont été signalés verts le 2026-09-03.
 
-## 8. Décisions frontend figées à l’issue de F9.4
+## 8. Décisions frontend figées à l’issue de F9.5
 
 - conserver un seul `baseApi` RTK Query ;
 - utiliser `DataTable` et `DataPagination` pour les listes Platform compatibles ;
 - utiliser `EntityDetailsDrawer` pour les détails ;
 - utiliser `ConfirmationDialog` pour les actions bloquantes ;
+- réutiliser `DatePicker` pour toute date compatible ;
 - succès durable en Toast ;
 - erreur de mutation conservée dans la confirmation lorsqu’un retry est possible ;
 - masquer une action reste une garde UX et ne remplace jamais l’autorisation backend ;
-- Users, Workspaces et Plans sont désormais raccordés à leurs contrats réels ;
+- Users, Workspaces, Plans et Subscriptions sont désormais raccordés à leurs contrats réels ;
 - les Plans utilisent le registre backend pour construire features et limites ;
 - aucune restauration de plan archivé n’est inventée ;
-- Subscriptions et Audit Logs restent à traiter dans leurs lots dédiés ;
+- les Subscriptions invalident/refetchent après mutation au lieu de reconstruire leur état depuis les DTO partiels ;
+- Audit Logs reste à traiter dans F9.6 ;
 - ne pas introduire `EntitlementOverride` avant F10.
 
 ## 9. État F9 au 2026-09-03
@@ -474,6 +566,6 @@ F9.1  RTK Query Platform                  TERMINÉ
 F9.2  Users Platform                      TERMINÉ
 F9.3  Workspaces Platform                 TERMINÉ
 F9.4  Plans Platform                      TERMINÉ
-F9.5  Subscriptions Platform              PROCHAIN BLOC
-F9.6  Audit Logs Platform                 À FAIRE
+F9.5  Subscriptions Platform              TERMINÉ
+F9.6  Audit Logs Platform                 EN COURS
 ```
