@@ -23,7 +23,8 @@ function resolveSignalTone(item) {
  * Synthèse compacte de signaux administratifs de même niveau hiérarchique.
  * Le total reste un contexte de lecture ; les catégories portent l'information
  * actionnable et utilisent des tons sémantiques sans transformer tout signal
- * non nul en incident critique.
+ * non nul en incident critique. Une hauteur commune de libellé garde les
+ * valeurs alignées même lorsque certains intitulés occupent deux lignes.
  */
 function SignalSummaryCard({
   title,
@@ -53,7 +54,7 @@ function SignalSummaryCard({
 
             return (
               <div className="space-y-1" key={item.key}>
-                <dt className="text-sm text-muted-foreground">{item.label}</dt>
+                <dt className="min-h-10 text-sm text-muted-foreground">{item.label}</dt>
                 <dd
                   className={cn(
                     'text-xl font-semibold tabular-nums',
