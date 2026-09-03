@@ -16,15 +16,20 @@ function renderSidebar({ collapsed = false, onToggle = vi.fn() } = {}) {
 describe('PlatformSidebar', () => {
   afterEach(() => cleanup());
 
-  it('affiche toutes les sections de navigation Platform', () => {
+  it('regroupe les destinations par intention d’administration', () => {
     renderSidebar();
+
+    expect(screen.getByRole('group', { name: 'Pilotage' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Clients' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Commercial' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Supervision' })).toBeInTheDocument();
 
     expect(screen.getByText('Vue d’ensemble')).toBeInTheDocument();
     expect(screen.getByText('Utilisateurs')).toBeInTheDocument();
-    expect(screen.getByText('Workspaces')).toBeInTheDocument();
+    expect(screen.getByText('Espaces de travail')).toBeInTheDocument();
     expect(screen.getByText('Plans')).toBeInTheDocument();
     expect(screen.getByText('Abonnements')).toBeInTheDocument();
-    expect(screen.getByText('Audit logs')).toBeInTheDocument();
+    expect(screen.getByText('Journaux d’audit')).toBeInTheDocument();
   });
 
   it('expose des tooltips quand la sidebar est réduite', () => {
@@ -41,7 +46,7 @@ describe('PlatformSidebar', () => {
     renderSidebar({ onToggle });
 
     await user.click(
-      screen.getByRole('button', { name: 'Réduire la navigation Platform' }),
+      screen.getByRole('button', { name: 'Réduire la navigation d’administration' }),
     );
 
     expect(onToggle).toHaveBeenCalledOnce();
