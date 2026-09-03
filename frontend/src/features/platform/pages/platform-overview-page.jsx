@@ -16,7 +16,6 @@ import {
 import { useGetPlatformOverviewQuery } from '@/features/platform/api/platform-overview-api';
 import { PlatformOverviewPeriodFilter } from '@/features/platform/components/platform-overview-period-filter';
 import {
-  formatPlatformPlanLimit,
   formatPlatformPlanMetric,
   formatPlatformPlanPrice,
 } from '@/features/platform/lib/platform-plan-formatters';
@@ -32,7 +31,7 @@ function formatCount(value) {
   return Number.isFinite(value) ? numberFormatter.format(value) : '—';
 }
 
-function formatTrend(changePercent) {
+function formatTrend(changePercent, trendLabel = 'vs période précédente') {
   if (!Number.isFinite(changePercent)) {
     return {
       trend: null,
@@ -45,7 +44,7 @@ function formatTrend(changePercent) {
 
   return {
     trend: `${sign}${numberFormatter.format(changePercent)} %`,
-    trendLabel: 'vs période précédente',
+    trendLabel,
     trendTone: changePercent > 0
       ? 'positive'
       : changePercent < 0
@@ -62,6 +61,25 @@ function formatMrrEstimate(estimate) {
 
   const [{ amountMinor, currency }] = byCurrency;
   return formatPlatformPlanPrice(amountMinor, currency);
+}
+
+/**
+ * Formate une consommation réelle sans lui appliquer la sémantique d'une
+ * limite de Plan. Une valeur d'usage égale à zéro signifie bien `0`, alors
+ * qu'une limite commerciale égale à zéro signifie "consommation interdite".
+ */
+function formatUsageValue(metricKey, value) {
+  if (!Number.isFinite(value)) return '—';
+
+  if (metricKey === 'storage_bytes') {
+    const megabytes = value / (1024 * 1024);
+
+    return new Intl.NumberFormat('fr-FR', {
+      maximumFractionDigits: megabytes >= 100 ? 0 : 1,
+    }).format(megabytes) + ' Mo';
+  }
+
+  return numberFormatter.format(value);
 }
 
 function OverviewPanel({ title, description, children }) {
@@ -95,8 +113,14 @@ function PlatformOverviewPage() {
     setSearchParams(writeOverviewPeriodSearchParams(nextPeriod));
   }
 
-  const userTrend = formatTrend(overview?.kpis?.users?.changePercent);
-  const workspaceTrend = formatTrend(overview?.kpis?.workspaces?.changePercent);
+  const userTrend = formatTrend(
+    overview?.kpis?.users?.changePercent,
+    'nouvelles inscriptions vs période précédente',
+  );
+  const workspaceTrend = formatTrend(
+    overview?.kpis?.workspaces?.changePercent,
+    'nouveaux espaces vs période précédente',
+  );
   const usage = overview?.usage ?? [];
   const planDistribution = overview?.planDistribution ?? [];
   const attention = overview?.attention;
@@ -243,7 +267,7 @@ function PlatformOverviewPage() {
                       {formatPlatformPlanMetric(metric.key)}
                     </dt>
                     <dd className="mt-1 font-semibold">
-                      {formatPlatformPlanLimit(metric.key, metric.value)}
+                      {formatUsageValue(metric.key, metric.value)}
                     </dd>
                   </div>
                 ))}
@@ -267,7 +291,7 @@ function PlatformOverviewPage() {
                       {formatPlatformPlanMetric(metric.key)}
                     </dt>
                     <dd className="font-medium">
-                      {formatPlatformPlanLimit(metric.key, metric.value)}
+                      {formatUsageValue(metric.key, metric.value)}
                     </dd>
                   </div>
                 ))}
@@ -366,4 +390,5 @@ export {
   formatCount,
   formatMrrEstimate,
   formatTrend,
+  formatUsageValue,
 };
