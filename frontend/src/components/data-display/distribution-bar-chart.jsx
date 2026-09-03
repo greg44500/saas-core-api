@@ -27,7 +27,7 @@ function DistributionBarChart({
   }
 
   return (
-    <div aria-label={ariaLabel} className={cn('space-y-4', className)} role="img">
+    <div aria-label={ariaLabel} className={cn('space-y-4', className)} role="group">
       {items.map((item) => {
         const percentage = clampPercentage(item.percentage);
 
