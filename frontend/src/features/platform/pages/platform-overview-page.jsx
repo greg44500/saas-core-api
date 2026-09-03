@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router';
 import { CollapsibleCard } from '@/components/data-display/collapsible-card';
 import { ComparisonBarChart } from '@/components/data-display/comparison-bar-chart';
 import { DistributionBarChart } from '@/components/data-display/distribution-bar-chart';
+import { FileTypeIcon } from '@/components/data-display/file-type-icon';
 import { MetricCard } from '@/components/data-display/metric-card';
 import { SignalSummaryCard } from '@/components/data-display/signal-summary-card';
 import { DashboardSection } from '@/components/shared/dashboard-section';
@@ -109,6 +110,18 @@ function formatFileTypeLabel(fileType) {
   return extension ? extension.toUpperCase() : fileType.mimeType;
 }
 
+function renderFileDistributionLabel(item) {
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <FileTypeIcon
+        extensions={item.extensions}
+        mimeType={item.mimeType}
+      />
+      <span className="truncate">{item.label}</span>
+    </span>
+  );
+}
+
 function OverviewPanel({ title, description, children }) {
   return (
     <Card>
@@ -177,12 +190,16 @@ function PlatformOverviewPage() {
   const fileCountDistribution = files.byType.map((item) => ({
     key: item.mimeType,
     label: formatFileTypeLabel(item),
+    mimeType: item.mimeType,
+    extensions: item.extensions,
     value: item.count,
     percentage: item.percentageOfCount,
   }));
   const fileStorageDistribution = files.byType.map((item) => ({
     key: item.mimeType,
     label: formatFileTypeLabel(item),
+    mimeType: item.mimeType,
+    extensions: item.extensions,
     value: item.sizeBytes,
     percentage: item.percentageOfStorage,
   }));
@@ -376,6 +393,7 @@ function PlatformOverviewPage() {
                   emptyMessage="Aucun fichier actif."
                   formatValue={(item) => `${formatCount(item.value)} fichier${item.value === 1 ? '' : 's'}`}
                   items={fileCountDistribution}
+                  renderLabel={renderFileDistributionLabel}
                 />
               </div>
 
@@ -386,6 +404,7 @@ function PlatformOverviewPage() {
                   emptyMessage="Aucun stockage de fichier actif."
                   formatValue={(item) => formatBytes(item.value)}
                   items={fileStorageDistribution}
+                  renderLabel={renderFileDistributionLabel}
                 />
               </div>
             </div>
@@ -463,4 +482,5 @@ export {
   formatMrrEstimate,
   formatTrend,
   formatUsageValue,
+  renderFileDistributionLabel,
 };
