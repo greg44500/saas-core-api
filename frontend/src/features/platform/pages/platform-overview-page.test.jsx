@@ -64,6 +64,36 @@ const OVERVIEW = {
     { key: 'storage_bytes', value: 1048576 },
     { key: 'file_uploads_monthly', value: 48 },
   ],
+  files: {
+    totalCount: 10,
+    totalSizeBytes: 1048576,
+    byType: [
+      {
+        mimeType: 'application/pdf',
+        extensions: ['pdf'],
+        count: 6,
+        sizeBytes: 734003,
+        percentageOfCount: 60,
+        percentageOfStorage: 70,
+      },
+      {
+        mimeType: 'image/jpeg',
+        extensions: ['jpg', 'jpeg'],
+        count: 3,
+        sizeBytes: 262144,
+        percentageOfCount: 30,
+        percentageOfStorage: 25,
+      },
+      {
+        mimeType: 'image/png',
+        extensions: ['png'],
+        count: 1,
+        sizeBytes: 52429,
+        percentageOfCount: 10,
+        percentageOfStorage: 5,
+      },
+    ],
+  },
   attention: {
     totalSignals: 10,
     counts: {
@@ -102,7 +132,7 @@ describe('PlatformOverviewPage', () => {
 
   afterEach(() => cleanup());
 
-  it('affiche les agrégats réels dans la vue d’ensemble francisée', () => {
+  it('affiche les agrégats réels avec des libellés immédiatement compréhensibles en français', () => {
     renderPage();
 
     const kpis = screen.getByRole('region', { name: 'Indicateurs principaux' });
@@ -114,7 +144,9 @@ describe('PlatformOverviewPage', () => {
     expect(within(kpis).getByText('50')).toBeInTheDocument();
     expect(within(kpis).getByText('20')).toBeInTheDocument();
     expect(within(kpis).getByText(/237,00/)).toBeInTheDocument();
-    expect(within(attention).getByText('10')).toBeInTheDocument();
+    expect(within(kpis).getByText('Valeur mensuelle contractuelle estimée')).toBeInTheDocument();
+    expect(within(attention).getByText('Abonnements en retard')).toBeInTheDocument();
+    expect(within(attention).queryByText('Past due')).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Croissance et répartition' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Santé et exploitation' })).toBeInTheDocument();
   });
@@ -154,18 +186,22 @@ describe('PlatformOverviewPage', () => {
     expect(duration).toBe(90 * 24 * 60 * 60 * 1000);
   });
 
-  it('permet de révéler les informations secondaires avec les données serveur', async () => {
+  it('réserve le détail Usage à des informations complémentaires sur les fichiers', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(screen.queryByText('Téléversements mensuels')).not.toBeInTheDocument();
+    expect(screen.queryByText('Répartition par nombre de fichiers')).not.toBeInTheDocument();
 
     await user.click(
       screen.getAllByRole('button', { name: 'Afficher le détail' })[0],
     );
 
-    expect(screen.getByText('Téléversements mensuels')).toBeInTheDocument();
-    expect(screen.getByText('48')).toBeInTheDocument();
+    expect(screen.getByText('Répartition par nombre de fichiers')).toBeInTheDocument();
+    expect(screen.getByText('Répartition du stockage par type')).toBeInTheDocument();
+    expect(screen.getByText('10')).toBeInTheDocument();
+    expect(screen.getAllByText('PDF').length).toBeGreaterThan(0);
+    expect(screen.getByText('6 fichiers · 60 %')).toBeInTheDocument();
+    expect(screen.queryByText('Téléversements mensuels')).not.toBeInTheDocument();
   });
 
   it('conserve le shell du dashboard et signale une erreur de chargement', () => {
