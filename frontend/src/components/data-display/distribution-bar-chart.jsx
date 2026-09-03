@@ -1,8 +1,16 @@
 import { cn } from '@/lib/utils';
 
+const percentageFormatter = new Intl.NumberFormat('fr-FR');
+
 function clampPercentage(value) {
   if (!Number.isFinite(value)) return 0;
   return Math.min(100, Math.max(0, value));
+}
+
+function formatPercentage(value) {
+  return Number.isFinite(value)
+    ? `${percentageFormatter.format(value)} %`
+    : '—';
 }
 
 /**
@@ -29,14 +37,14 @@ function DistributionBarChart({
   return (
     <div aria-label={ariaLabel} className={cn('space-y-4', className)} role="group">
       {items.map((item) => {
-        const percentage = clampPercentage(item.percentage);
+        const visualPercentage = clampPercentage(item.percentage);
 
         return (
           <div className="space-y-2" key={item.key}>
             <div className="flex items-baseline justify-between gap-4 text-sm">
               <span className="min-w-0 truncate font-medium">{item.label}</span>
               <span className="shrink-0 text-muted-foreground">
-                {formatValue(item)} · {new Intl.NumberFormat('fr-FR').format(percentage)} %
+                {formatValue(item)} · {formatPercentage(item.percentage)}
               </span>
             </div>
             <div
@@ -45,7 +53,7 @@ function DistributionBarChart({
             >
               <div
                 className="h-full rounded-full bg-primary transition-[width] duration-300"
-                style={{ width: `${percentage}%` }}
+                style={{ width: `${visualPercentage}%` }}
               />
             </div>
           </div>
@@ -55,4 +63,8 @@ function DistributionBarChart({
   );
 }
 
-export { DistributionBarChart, clampPercentage };
+export {
+  DistributionBarChart,
+  clampPercentage,
+  formatPercentage,
+};
