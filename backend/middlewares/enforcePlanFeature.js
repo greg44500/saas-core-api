@@ -70,23 +70,30 @@ const createEnforcePlanFeature = ({
             }
 
             try {
+                /*
+                 * enforceWorkspaceAccessMode peut avoir résolu juste avant le
+                 * même entitlement effectif. Ce contexte est produit par le
+                 * serveur et peut être réutilisé pour éviter des lectures
+                 * MongoDB redondantes dans une seule chaîne middleware.
+                 *
+                 * Une route qui n'applique pas ce middleware conserve un
+                 * fallback autonome. Dans tous les cas, une écriture sensible
+                 * doit relire l'autorité dans sa transaction et ne jamais
+                 * considérer ce cache de requête comme un verrou métier.
+                 */
                 const effectiveEntitlement =
-                    await resolveWorkspaceEffectiveEntitlement({
-                        workspaceId:
-                            req.workspace._id,
-                    });
+                    req.workspaceAccess?.effectiveCapabilities
+                        ? req.workspaceAccess
+                        : await resolveWorkspaceEffectiveEntitlement({
+                            workspaceId:
+                                req.workspace._id,
+                        });
 
                 assertEntitlementFeatureAvailable({
                     entitlement: effectiveEntitlement,
                     featureKey: requiredFeature,
                 });
 
-                /*
-                 * Cette lecture évite une opération inutile, notamment avant
-                 * Multer, mais ne constitue pas l'autorité d'une future
-                 * écriture transactionnelle. Un service d'écriture sensible
-                 * doit relire l'entitlement dans sa propre session MongoDB.
-                 */
                 req.effectiveEntitlement =
                     effectiveEntitlement;
 
