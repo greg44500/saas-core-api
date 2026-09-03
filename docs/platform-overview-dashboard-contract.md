@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Contrat du dashboard Platform
 
 **Date :** 3 septembre 2026  
-**Statut :** P-UI validé — P-DASH.1 backend en validation
+**Statut :** P-UI + P-DASH.1 validés — P-DASH.2 en validation
 
 ## 1. Objet
 
@@ -29,9 +29,9 @@ Décisions actives :
 
 F10.5 est également validé : le Workspace consomme les features/limites effectives sans recevoir les motifs, sources, auteurs ou identifiants internes des `EntitlementOverride`.
 
-## 3. Endpoint analytique
+## 3. Endpoint analytique — P-DASH.1 validé
 
-P-DASH.1 introduit :
+P-DASH.1 introduit et validé par tests ciblés puis régression backend globale :
 
 ```text
 GET /api/platform/overview
@@ -49,7 +49,7 @@ La permission du cockpit est indépendante des permissions de détail (`users:re
 
 ## 4. Période d'analyse
 
-Query optionnelle :
+Query backend optionnelle :
 
 ```text
 from=<date>
@@ -67,7 +67,19 @@ Règles :
 
 Les indicateurs d'état courant (subscription active, trial actif, override actif, usage courant) utilisent un même instant de référence serveur `generatedAt`, indépendamment de la fenêtre servant aux tendances.
 
-## 5. Données génériques prévues dans le DTO
+P-DASH.2 ajoute côté frontend les presets :
+
+```text
+7 derniers jours
+30 derniers jours (défaut canonique)
+90 derniers jours
+12 derniers mois
+Période personnalisée
+```
+
+La période est stockée dans l'URL, jamais dans un slice Redux. Le mode personnalisé utilise les `DatePicker` partagés et n'applique la query qu'une fois les deux bornes valides. Les dates saisies représentent des jours civils locaux puis sont converties en instants ISO pour l'API ; la borne de fin visible par l'utilisateur est inclusive et devient une borne backend exclusive au début local du jour suivant.
+
+## 5. Données génériques du DTO
 
 La réponse regroupe :
 
@@ -84,6 +96,8 @@ La réponse regroupe :
 - signaux nécessitant une attention ;
 - derniers événements `AuditLog` fonctionnels en échec sur la période.
 
+P-DASH.2 branche ces données via le `baseApi` RTK Query unique. Le frontend affiche les valeurs déjà calculées par le backend ; il ne reconstruit aucun pourcentage commercial ou signal de sécurité.
+
 ## 6. Répartition par Plan
 
 La répartition est calculée par Workspace, selon la même priorité commerciale que le resolver runtime :
@@ -94,9 +108,11 @@ commercial active temporellement valide
 > baseline active
 ```
 
-Le graphique ne compte donc pas toutes les Subscriptions historiques.
+Le dashboard ne compte donc pas toutes les Subscriptions historiques.
 
 Si un Plan référencé est incohérent ou introuvable, le Workspace reste visible dans un bucket `Plan indisponible` au lieu d'être silencieusement retiré des pourcentages.
+
+P-DASH.2 affiche déjà cette distribution sous forme textuelle accessible (nom, nombre, pourcentage). P-DASH.3 pourra ajouter une représentation graphique sans remplacer cette source de données ni recalculer les pourcentages côté React.
 
 ## 7. Finance : vocabulaire obligatoire
 
@@ -116,7 +132,7 @@ Contraintes :
 - il ne représente ni facturation, ni encaissement, ni revenu reconnu ;
 - le futur domaine Billing/Payment restera l'autorité pour les données financières réelles.
 
-Le frontend doit présenter cette distinction explicitement, idéalement via un tooltip lorsque le KPI sera branché.
+Le frontend affiche une valeur monétaire uniquement lorsqu'une seule devise est présente. En multi-devises, il indique le nombre de devises au lieu de produire une somme artificielle. Un tooltip explicatif pourra être ajouté lorsque la primitive retenue apportera une information réellement utile.
 
 ## 8. Signaux d'attention
 
@@ -132,19 +148,29 @@ La V1 agrège notamment :
 
 Les erreurs 5xx, timeouts, jobs en échec, disponibilité MongoDB, SMTP ou antivirus appartiendront à une future couche d'observabilité dédiée.
 
+P-DASH.2 expose les compteurs synthétiques. Le tableau détaillé restera réservé à P-DASH.5 et utilisera obligatoirement le `DataTable` partagé.
+
 ## 9. Performance et cohérence
 
 Les agrégations par collection sont indépendantes et exécutables en parallèle. Le dashboard accepte un léger décalage analytique entre collections : il ne sert jamais d'autorité transactionnelle.
 
 En revanche, les règles temporelles courantes utilisent le même instant de référence afin d'éviter qu'une échéance de trial, Subscription ou override soit interprétée différemment dans deux cartes d'un même chargement.
 
-## 10. Ordre d'implémentation
+Côté frontend :
+
+- RTK Query est l'unique state serveur du dashboard ;
+- `useSearchParams` porte l'état partageable de période ;
+- `useState` reste limité au brouillon local du filtre personnalisé et à l'ouverture des cartes dépliables ;
+- aucun slice Redux métier n'est créé pour la vue d'ensemble ;
+- le test du router mocke la page Overview afin de ne pas transformer un test de navigation en test réseau.
+
+## 10. Ordre d'implémentation actualisé
 
 ```text
-P-DASH.1  backend / permission / validation / agrégats / tests
-P-DASH.2  RTK Query et sélecteur de période
-P-DASH.3  KPI réels + répartition Plan
-P-DASH.4  graphiques de croissance / santé commerciale
+P-DASH.1  backend / permission / validation / agrégats / tests         VALIDÉ
+P-DASH.2  RTK Query / période URL / binding des agrégats               EN VALIDATION
+P-DASH.3  primitives et visualisations croissance / répartition Plan
+P-DASH.4  visualisations santé commerciale / finance / usage
 P-DASH.5  DataTable des points nécessitant une attention
 F10.6      administration frontend des dérogations
 ```
