@@ -91,11 +91,11 @@ describe('PlatformAuditLogsPage', () => {
     expect(Date.parse(query.from)).toBeLessThan(Date.parse(query.to));
   });
 
-  it('n’expose aucune donnée technique absente du DTO frontend', () => {
+  it('n’expose aucune valeur technique absente du DTO frontend', () => {
     renderPage();
 
-    expect(screen.queryByText(/user-agent/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/adresse ip/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/metadata/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('192.0.2.10')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mozilla/5.0 test-agent')).not.toBeInTheDocument();
+    expect(screen.queryByText('internal-secret-metadata')).not.toBeInTheDocument();
   });
 });
