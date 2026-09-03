@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Backend Core V1
 
-Dernière consolidation : 2026-09-03 — F10.1 validé ; registre applicatif de capabilities et permissions Platform validés avant F10.2
+Dernière consolidation : 2026-09-03 — F10.2 et F10.3 validés ; F10.4 Platform EntitlementOverride prêt à démarrer
 
 ## 1. Rôle du document
 
@@ -242,8 +242,8 @@ Bloc prévu par la checklist initiale, finalisé en lots O1 → O4.
 - [x] TERMINÉ — F10.0 : constantes, modèle Mongoose et validation stricte `EntitlementOverride` Workspace-scoped ; feature/limit discriminés, période, source, auteur/motif et révocation traçable ; tests ciblés verts le 2026-09-03.
 - [x] TERMINÉ — F10.1 : résolution backend des `EntitlementOverride` actifs ; exclusion des futurs/expirés/révoqués, priorité déterministe des overrides chevauchants, `null = illimité`, registre de capabilities extensible et support de session MongoDB ; tests ciblés verts le 2026-09-03.
 - [x] TERMINÉ — checkpoint pré-F10.2 : validation et résolution `EntitlementOverride` utilisent par défaut le registre applicatif actif afin de supporter les capabilities des applications dérivées.
-- [ ] À FAIRE — F10.2 : composer l’entitlement effectif `Plan + EntitlementOverride actifs` sans modifier le Plan catalogue ni la Subscription.
-- [ ] À FAIRE — F10.3 : intégrer les features/limites effectives aux contrôles d’accès, quotas et remédiation.
+- [x] TERMINÉ — F10.2 : composition pure de l’entitlement effectif `Plan + EntitlementOverride actifs`, sans mutation du Plan ni de la Subscription ; features et limites dérivées, `null = illimité`, registre actif et horloge `at` cohérente ; tests ciblés puis régression backend globale verts le 2026-09-03.
+- [x] TERMINÉ — F10.3 : contrôles runtime basculés sur l’entitlement effectif ; feature gates, réservation atomique des quotas et remédiation utilisent les features/limites effectives ; défense en profondeur de l’upload File conservée avec relecture transactionnelle ; tests ciblés puis régression backend globale verts le 2026-09-03.
 - [ ] À FAIRE — F10.4 : API Platform sécurisée par permissions Platform pour créer, modifier, révoquer et consulter les overrides avec AuditLog.
 - [ ] À FAIRE — F10.5 : exposition Workspace sûre de l’entitlement effectif.
 - [ ] À FAIRE — F10.6 : administration frontend Platform des dérogations.
