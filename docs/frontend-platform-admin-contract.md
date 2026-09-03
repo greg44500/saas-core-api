@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Contrat Platform Admin pour le frontend
 
-**Date d’audit :** 2026-09-02  
-**Checkpoint :** F9.0  
+**Date de consolidation :** 2026-09-03  
+**Checkpoint :** F9.4 validé  
 **Source de vérité :** code backend courant de `backend/modules/platform/` et tests associés.
 
 ## 1. Principe de sécurité
@@ -177,6 +177,27 @@ statusChangedBy
 updatedBy
 ```
 
+Les trois références d’acteur du détail (`createdBy`, `updatedBy`, `statusChangedBy`) sont enrichies sous forme de DTO minimal :
+
+```text
+{
+  id,
+  firstName,
+  lastName,
+  email
+}
+```
+
+Règles de sécurité associées :
+
+- résolution via une seule requête `User.find` bornée sur les trois identifiants ;
+- projection explicite `_id firstName lastName email` ;
+- aucun statut utilisateur, rôle Platform, email canonique ou champ d’authentification n’est exposé ;
+- l’opérateur interne `$in` est construit par le backend et marqué `mongoose.trusted()` afin de conserver `sanitizeFilter` global ;
+- si un User historique n’est plus résoluble, l’identifiant est conservé et les champs d’identité deviennent `null` au lieu de provoquer une erreur 500.
+
+Le frontend affiche le nom et l’email lorsqu’ils existent. Les identifiants techniques restent présents dans le DTO mais ne sont pas affichés dans le Drawer courant.
+
 ### Suspension
 
 Body strict :
@@ -213,11 +234,25 @@ Aucune suppression Platform de workspace n’est exposée dans le contrat couran
 Routes réellement exposées :
 
 ```text
+GET    /api/platform/plans/capabilities
 GET    /api/platform/plans
 POST   /api/platform/plans
 PATCH  /api/platform/plans/:planId
 PATCH  /api/platform/plans/:planId/archive
 ```
+
+### Registre de capabilities
+
+`GET /api/platform/plans/capabilities` expose la source de vérité backend utilisée par le formulaire administratif.
+
+Réponse utile :
+
+```text
+features: string[]
+metrics: [{ key, definition }]
+```
+
+Le frontend ne doit pas maintenir une seconde liste métier de features ou de métriques. Les libellés de présentation peuvent avoir des correspondances connues avec fallback pour les futures clés.
 
 ### Liste
 
@@ -240,6 +275,8 @@ priceMonthlyExclTaxMinor
 priceYearlyExclTaxMinor
 features
 limits
+trialEnabled
+trialDurationDays
 createdBy
 updatedBy
 createdAt
@@ -255,7 +292,12 @@ Principes importants :
 - devise normalisée en code 3 lettres majuscules ;
 - features sans doublons ;
 - limites : `null = illimité`, `0 = aucune consommation`, entier positif = plafond ;
-- les capabilities sont aussi validées contre le registre métier backend ;
+- la création impose une configuration complète de toutes les métriques du registre ;
+- lorsqu’un objet `limits` est validé, toute métrique du registre absente constitue une configuration de plan incomplète ;
+- les capabilities sont validées contre le registre métier backend ;
+- `trialEnabled=true` impose un `trialDurationDays` entier positif ;
+- `trialEnabled=false` impose `trialDurationDays=null` ;
+- en mise à jour, toute modification de la configuration trial envoie atomiquement les deux champs ;
 - `key` est immutable après création ;
 - l’archivage ne passe jamais par le PATCH générique ;
 - un plan archivé n’est plus modifiable ;
@@ -272,7 +314,7 @@ isPublic = false
 
 Une seconde tentative d’archivage est refusée.
 
-Le backend ne fournit pas actuellement de `GET /platform/plans/:planId`. Un futur écran doit donc s’appuyer sur le contrat de liste ou faire évoluer le backend avant d’inventer une lecture individuelle.
+Le backend ne fournit pas actuellement de `GET /platform/plans/:planId`. L’écran Platform Plans s’appuie donc sur le DTO complet de liste et ne fabrique pas une lecture individuelle inexistante.
 
 ## 5. Subscriptions Platform
 
@@ -349,9 +391,11 @@ Un motif est obligatoire.
 
 La reprise retire uniquement une annulation programmée compatible avec les invariants du domaine Subscription.
 
-### Point de vigilance avant l’écran Subscriptions
+### Gate obligatoire avant F9.5
 
-Le service de liste renvoie actuellement des documents `lean()` avec `workspace` et `plan` peuplés, alors que le détail utilise un DTO explicitement construit. Ce n’est pas bloquant pour F9 Users, mais ce contrat devra être revérifié avant l’implémentation de l’écran Subscriptions afin de ne pas coupler inutilement l’UI à la forme interne Mongoose.
+Le service de liste renvoie actuellement une forme issue de documents `lean()` avec `workspace` et `plan` peuplés, alors que le détail utilise un DTO explicitement construit.
+
+Avant tout écran F9.5, le backend doit donc être réaudité et, si nécessaire, normalisé afin que la liste Platform Subscriptions possède elle aussi un contrat DTO explicite. Le frontend ne doit pas être couplé à une forme interne Mongoose.
 
 ## 6. Audit Logs Platform
 
@@ -391,31 +435,45 @@ createdAt
 
 Les IP, user-agent et metadata restent volontairement absents de ce contrat frontend.
 
-## 7. Couverture backend observée
+## 7. Couverture backend observée et validée
 
-Les cinq domaines Platform disposent de tests ciblés couvrant selon les cas :
+Les domaines Platform disposent de tests ciblés couvrant selon les cas :
 
 - routes et gardes `super_admin` ;
 - validation Zod ;
 - services de lecture ;
 - mutations métier et invariants ;
 - cas de conflit/ressource absente ;
-- audit des mutations sensibles.
+- audit des mutations sensibles ;
+- registre de capabilities Plans ;
+- cohérence trial et complétude des métriques ;
+- résolution minimale et sécurisée des acteurs Workspace.
 
-Cet audit confirme qu’aucune modification backend n’est requise pour commencer **F9.1 RTK Query Platform Users** et **F9.2 Users Platform**.
+Les tests backend globaux, les tests frontend globaux et le build Vite ont été signalés verts le 2026-09-03 après finalisation de F9.4.
 
-La présence des tests dans le dépôt ne remplace pas leur exécution locale lors de la validation du lot frontend.
-
-## 8. Décisions frontend issues de F9.0
+## 8. Décisions frontend figées à l’issue de F9.4
 
 - conserver un seul `baseApi` RTK Query ;
-- commencer par Users ;
-- ne pas ajouter recherche/filtres Users tant que le backend n’en expose pas ;
-- utiliser `DataTable` et `DataPagination` pour la liste ;
-- utiliser `EntityDetailsDrawer` pour le détail ;
-- utiliser `ConfirmationDialog` pour désactivation, réactivation, révocation des sessions et changement de rôle ;
+- utiliser `DataTable` et `DataPagination` pour les listes Platform compatibles ;
+- utiliser `EntityDetailsDrawer` pour les détails ;
+- utiliser `ConfirmationDialog` pour les actions bloquantes ;
 - succès durable en Toast ;
 - erreur de mutation conservée dans la confirmation lorsqu’un retry est possible ;
-- masquer les opérations sensibles sur le compte courant comme garde UX, sans considérer ce masquage comme une autorisation ;
-- laisser Workspaces, Plans, Subscriptions et Audit Logs en placeholder jusqu’à leurs sous-lots dédiés ;
+- masquer une action reste une garde UX et ne remplace jamais l’autorisation backend ;
+- Users, Workspaces et Plans sont désormais raccordés à leurs contrats réels ;
+- les Plans utilisent le registre backend pour construire features et limites ;
+- aucune restauration de plan archivé n’est inventée ;
+- Subscriptions et Audit Logs restent à traiter dans leurs lots dédiés ;
 - ne pas introduire `EntitlementOverride` avant F10.
+
+## 9. État F9 au 2026-09-03
+
+```text
+F9.0  Audit contrat backend Platform      TERMINÉ
+F9.1  RTK Query Platform                  TERMINÉ
+F9.2  Users Platform                      TERMINÉ
+F9.3  Workspaces Platform                 TERMINÉ
+F9.4  Plans Platform                      TERMINÉ
+F9.5  Subscriptions Platform              PROCHAIN BLOC
+F9.6  Audit Logs Platform                 À FAIRE
+```
