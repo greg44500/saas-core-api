@@ -149,11 +149,20 @@ const snapshotOverride = (override) => ({
 });
 
 /**
- * Liste paginée destinée exclusivement à Platform.
+ * Liste paginée des overrides visibles depuis Platform.
  *
  * Les filtres restent simples et indexables. L'état temporel n'est pas stocké
  * ni filtré ici : il est dérivé dans le DTO afin d'éviter un statut persistant
  * qui pourrait se désynchroniser à l'expiration d'une période.
+ *
+ * @param {object} params
+ * @param {number} [params.page]
+ * @param {number} [params.limit]
+ * @param {string|null} [params.workspaceId]
+ * @param {string|null} [params.targetType]
+ * @param {string|null} [params.source]
+ * @param {Date} [params.at]
+ * @returns {Promise<{overrides: object[], pagination: object}>}
  */
 const listPlatformEntitlementOverrides = async ({
     page = 1,
@@ -229,6 +238,14 @@ const listPlatformEntitlementOverrides = async ({
     };
 };
 
+/**
+ * Retourne un override administratif avec ses références minimales peuplées.
+ *
+ * @param {object} params
+ * @param {string|mongoose.Types.ObjectId} params.overrideId
+ * @param {Date} [params.at]
+ * @returns {Promise<object>}
+ */
 const getPlatformEntitlementOverrideById = async ({
     overrideId,
     at = new Date(),
@@ -261,6 +278,19 @@ const getPlatformEntitlementOverrideById = async ({
  * resolver Core possède une priorité déterministe. Garantir l'absence absolue
  * d'overlap concurrent nécessiterait une sérialisation dédiée qui dépasse la
  * V1 et ne doit pas être simulée par un simple check-then-insert fragile.
+ *
+ * L'override et son AuditLog sont validés dans la même transaction. La réponse
+ * est construite depuis le document committé : aucune seconde lecture
+ * obligatoire ne peut transformer un succès durable en faux échec HTTP.
+ *
+ * @param {object} params
+ * @param {object} params.overrideData
+ * @param {string|mongoose.Types.ObjectId} params.actorId
+ * @param {Date} [params.now]
+ * @param {object} [params.registry]
+ * @param {string|null} [params.ipAddress]
+ * @param {string|null} [params.userAgent]
+ * @returns {Promise<object>}
  */
 const createPlatformEntitlementOverride = async ({
     overrideData,
@@ -334,8 +364,8 @@ const createPlatformEntitlementOverride = async ({
         );
     });
 
-    return getPlatformEntitlementOverrideById({
-        overrideId: createdOverride._id,
+    return serializePlatformEntitlementOverride({
+        override: createdOverride,
         at: now,
     });
 };
@@ -383,6 +413,21 @@ const assertUpdateMatchesTarget = ({ override, overrideData }) => {
     }
 };
 
+/**
+ * Modifie uniquement les propriétés mutables d'un override planifié ou actif.
+ *
+ * Une dérogation expirée ou révoquée est un fait historique : elle n'est jamais
+ * réécrite. Une nouvelle exception doit être créée pour un nouveau besoin.
+ *
+ * @param {object} params
+ * @param {string|mongoose.Types.ObjectId} params.overrideId
+ * @param {object} params.overrideData
+ * @param {string|mongoose.Types.ObjectId} params.actorId
+ * @param {Date} [params.now]
+ * @param {string|null} [params.ipAddress]
+ * @param {string|null} [params.userAgent]
+ * @returns {Promise<object>}
+ */
 const updatePlatformEntitlementOverride = async ({
     overrideId,
     overrideData,
@@ -402,7 +447,7 @@ const updatePlatformEntitlementOverride = async ({
         throw new TypeError('now must be a valid Date');
     }
 
-    let updatedOverrideId;
+    let updatedOverride;
 
     await mongoose.connection.transaction(async (session) => {
         const override = await EntitlementOverride.findById(
@@ -433,7 +478,7 @@ const updatePlatformEntitlementOverride = async ({
 
         override.updatedBy = actorId;
         await override.save({ session });
-        updatedOverrideId = override._id;
+        updatedOverride = override;
 
         await createAuditLog(
             {
@@ -454,12 +499,28 @@ const updatePlatformEntitlementOverride = async ({
         );
     });
 
-    return getPlatformEntitlementOverrideById({
-        overrideId: updatedOverrideId,
+    return serializePlatformEntitlementOverride({
+        override: updatedOverride,
         at: now,
     });
 };
 
+/**
+ * Révoque immédiatement un override planifié ou actif.
+ *
+ * La révocation conserve date, acteur et motif dans le document, puis écrit la
+ * trace AuditLog dans la même transaction afin que l'action et sa preuve soient
+ * validées ou annulées ensemble.
+ *
+ * @param {object} params
+ * @param {string|mongoose.Types.ObjectId} params.overrideId
+ * @param {string} params.reason
+ * @param {string|mongoose.Types.ObjectId} params.actorId
+ * @param {Date} [params.now]
+ * @param {string|null} [params.ipAddress]
+ * @param {string|null} [params.userAgent]
+ * @returns {Promise<object>}
+ */
 const revokePlatformEntitlementOverride = async ({
     overrideId,
     reason,
@@ -479,7 +540,7 @@ const revokePlatformEntitlementOverride = async ({
         throw new TypeError('now must be a valid Date');
     }
 
-    let revokedOverrideId;
+    let revokedOverride;
 
     await mongoose.connection.transaction(async (session) => {
         const override = await EntitlementOverride.findById(
@@ -497,7 +558,7 @@ const revokePlatformEntitlementOverride = async ({
         override.revokeReason = reason.trim();
         override.updatedBy = actorId;
         await override.save({ session });
-        revokedOverrideId = override._id;
+        revokedOverride = override;
 
         await createAuditLog(
             {
@@ -521,8 +582,8 @@ const revokePlatformEntitlementOverride = async ({
         );
     });
 
-    return getPlatformEntitlementOverrideById({
-        overrideId: revokedOverrideId,
+    return serializePlatformEntitlementOverride({
+        override: revokedOverride,
         at: now,
     });
 };
