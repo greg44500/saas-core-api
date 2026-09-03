@@ -55,26 +55,29 @@ describe('composeEffectiveEntitlementCapabilities', () => {
         expect(plan.limits).toEqual(originalLimits);
     });
 
-    it('remplace les limites catalogue et conserve null comme illimité', () => {
+    it('augmente, réduit ou rend illimitée une limite par remplacement exact', () => {
         const result = composeEffectiveEntitlementCapabilities({
             plan: {
                 features: [],
                 limits: new Map([
                     ['members', 5],
                     ['storage_bytes', 1_000],
+                    ['file_uploads_monthly', 10],
                 ]),
             },
             activeOverrides: createActiveOverrides({
                 limits: {
-                    members: 12,
-                    storage_bytes: null,
+                    members: 2,
+                    storage_bytes: 2_000,
+                    file_uploads_monthly: null,
                 },
             }),
         });
 
         expect(result.limits).toEqual({
-            members: 12,
-            storage_bytes: null,
+            file_uploads_monthly: null,
+            members: 2,
+            storage_bytes: 2_000,
         });
     });
 
