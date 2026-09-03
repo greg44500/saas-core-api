@@ -120,6 +120,15 @@ const createFreeSubscriptionForWorkspace = async ({
  * EntitlementOverride et UsageMetric sur la même horloge. Sans lui, des droits
  * proches d'une échéance pourraient être calculés depuis deux instants
  * différents au sein d'une même décision.
+ *
+ * @param {object} params
+ * @param {string|import('mongoose').Types.ObjectId} params.workspaceId
+ * @param {Date} [params.at]
+ * @param {import('mongoose').ClientSession|null} [params.session]
+ * @returns {Promise<{
+ *     subscription: import('mongoose').Document,
+ *     plan: import('mongoose').Document
+ * }>}
  */
 const getWorkspacePlanEntitlement = async ({
     workspaceId,
@@ -209,6 +218,22 @@ const getWorkspacePlanEntitlement = async ({
  * Les lectures restent séquentielles lorsqu'une session MongoDB est fournie :
  * cette fonction peut être appelée depuis une transaction et ne doit pas
  * introduire d'opérations concurrentes sur une même session.
+ *
+ * @param {object} params
+ * @param {string|import('mongoose').Types.ObjectId} params.workspaceId
+ * @param {Date} [params.at]
+ * @param {{features: Set<string>, metrics: Set<string>}} [params.registry]
+ * @param {import('mongoose').ClientSession|null} [params.session]
+ * @returns {Promise<{
+ *     subscription: import('mongoose').Document,
+ *     plan: import('mongoose').Document,
+ *     at: Date,
+ *     effectiveCapabilities: {
+ *         features: string[],
+ *         limits: Record<string, number|null>,
+ *         appliedOverrides: object[]
+ *     }
+ * }>}
  */
 const getWorkspaceEffectiveEntitlement = async ({
     workspaceId,
@@ -265,6 +290,12 @@ const getWorkspaceEffectiveEntitlement = async ({
  * L'état n'est pas persisté : dès que les capacités bloquantes redeviennent
  * conformes, le prochain contrôle retourne automatiquement `normal`, sans job
  * ni action manuelle de déverrouillage.
+ *
+ * @param {object} params
+ * @param {string|import('mongoose').Types.ObjectId} params.workspaceId
+ * @param {import('mongoose').ClientSession|null} [params.session]
+ * @param {Date} [params.at]
+ * @returns {Promise<object>}
  */
 const getWorkspaceAccessEntitlement = async ({
     workspaceId,
