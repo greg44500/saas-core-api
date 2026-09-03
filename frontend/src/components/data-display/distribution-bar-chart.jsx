@@ -18,11 +18,16 @@ function formatPercentage(value) {
  * sémantique métier côté React. La barre ne sert qu'à la représentation : le
  * libellé, la valeur et le pourcentage restent présents en texte pour garantir
  * une lecture complète sans dépendre du rendu visuel.
+ *
+ * `renderLabel` permet aux features d'enrichir visuellement un libellé (icône,
+ * badge, etc.) sans dupliquer la primitive de graphique ni déplacer la logique
+ * de calcul dans le composant.
  */
 function DistributionBarChart({
   items = [],
   emptyMessage = 'Aucune donnée disponible.',
   formatValue = (item) => String(item.value ?? '—'),
+  renderLabel = (item) => item.label,
   className,
   'aria-label': ariaLabel = 'Répartition',
 }) {
@@ -41,8 +46,8 @@ function DistributionBarChart({
 
         return (
           <div className="space-y-2" key={item.key}>
-            <div className="flex items-baseline justify-between gap-4 text-sm">
-              <span className="min-w-0 truncate font-medium">{item.label}</span>
+            <div className="flex items-center justify-between gap-4 text-sm">
+              <span className="min-w-0 font-medium">{renderLabel(item)}</span>
               <span className="shrink-0 text-muted-foreground">
                 {formatValue(item)} · {formatPercentage(item.percentage)}
               </span>
@@ -52,7 +57,7 @@ function DistributionBarChart({
               className="h-2 overflow-hidden rounded-full bg-muted"
             >
               <div
-                className="h-full rounded-full bg-primary transition-[width] duration-300"
+                className="h-full rounded-full bg-primary transition-[width] duration-300 motion-reduce:transition-none"
                 style={{ width: `${visualPercentage}%` }}
               />
             </div>
