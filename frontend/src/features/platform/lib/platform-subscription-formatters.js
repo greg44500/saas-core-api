@@ -48,6 +48,14 @@ function formatPlatformSubscriptionPrice(value, currency = 'EUR') {
   }).format(value / 100);
 }
 
+function formatPlatformSubscriptionDiscountValue(type, value, currency = 'EUR') {
+  if (type === 'none') return '—';
+  if (!Number.isInteger(value)) return '—';
+  if (type === 'percentage') return `${value} %`;
+  if (type === 'fixed_amount') return formatPlatformSubscriptionPrice(value, currency);
+  return String(value);
+}
+
 function formatPlatformSubscriptionDate(value) {
   if (!value) return '—';
   const date = new Date(value);
@@ -63,6 +71,7 @@ export {
   formatPlatformSubscriptionBillingInterval,
   formatPlatformSubscriptionDate,
   formatPlatformSubscriptionDiscountType,
+  formatPlatformSubscriptionDiscountValue,
   formatPlatformSubscriptionKind,
   formatPlatformSubscriptionPrice,
   formatPlatformSubscriptionStatus,
