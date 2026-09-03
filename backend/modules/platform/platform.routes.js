@@ -4,6 +4,9 @@ import { authenticate } from '../../middlewares/authenticate.js';
 import {
     platformAuditLogsRouter,
 } from './auditLogs/platformAuditLogs.routes.js';
+import {
+    platformEntitlementOverridesRouter,
+} from './entitlementOverrides/platformEntitlementOverrides.routes.js';
 import { platformPlansRouter } from './plans/platformPlans.routes.js';
 import {
     platformSubscriptionsRouter,
@@ -26,6 +29,10 @@ platformRouter.use('/users', platformUsersRouter);
 platformRouter.use('/workspaces', platformWorkspacesRouter);
 platformRouter.use('/plans', platformPlansRouter);
 platformRouter.use('/subscriptions', platformSubscriptionsRouter);
+platformRouter.use(
+    '/entitlement-overrides',
+    platformEntitlementOverridesRouter,
+);
 platformRouter.use('/audit-logs', platformAuditLogsRouter);
 
 
