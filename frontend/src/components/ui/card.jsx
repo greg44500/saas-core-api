@@ -24,8 +24,8 @@ function CardHeader({ className, ...props }) {
   return <div className={cn('p-5 pb-0', className)} {...props} />;
 }
 
-function CardTitle({ className, ...props }) {
-  return <h3 className={cn('font-semibold', className)} {...props} />;
+function CardTitle({ as: Component = 'h3', className, ...props }) {
+  return <Component className={cn('font-semibold', className)} {...props} />;
 }
 
 function CardDescription({ className, ...props }) {
