@@ -1,11 +1,15 @@
 import mongoose from 'mongoose';
 
 import {
+    ACTIVE_PLAN_CAPABILITY_REGISTRY,
+} from '../../../config/applicationCapability.registry.js';
+import {
     AUDIT_ACTION,
     AUDIT_ENTITY_TYPE,
     AUDIT_STATUS,
 } from '../../../constants/auditActions.constants.js';
 import {
+    ENTITLEMENT_OVERRIDE_SOURCE,
     ENTITLEMENT_OVERRIDE_TARGET,
 } from '../../../constants/entitlementOverride.constants.js';
 import { AppError } from '../../../utils/appError.js';
@@ -63,6 +67,57 @@ const assertPagination = ({ page, limit }) => {
     }
 };
 
+const assertRegistryContract = (registry) => {
+    if (
+        !registry
+        || !(registry.features instanceof Set)
+        || !(registry.metrics instanceof Set)
+    ) {
+        throw new TypeError(
+            'registry must expose features and metrics sets',
+        );
+    }
+};
+
+/**
+ * La validation HTTP est une première barrière, mais le service reste une
+ * frontière métier réutilisable. Un appel interne ne doit donc jamais pouvoir
+ * persister une capability que le logiciel courant ne sait pas appliquer.
+ */
+const assertRegisteredOverrideCapability = ({
+    overrideData,
+    registry,
+}) => {
+    assertRegistryContract(registry);
+
+    if (overrideData.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE) {
+        if (!registry.features.has(overrideData.featureKey)) {
+            throw new AppError(
+                'Feature inconnue du registre de capabilities.',
+                400,
+            );
+        }
+
+        return;
+    }
+
+    if (overrideData.targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT) {
+        if (!registry.metrics.has(overrideData.metricKey)) {
+            throw new AppError(
+                'Métrique inconnue du registre de capabilities.',
+                400,
+            );
+        }
+
+        return;
+    }
+
+    throw new AppError(
+        'Le type de dérogation est invalide.',
+        400,
+    );
+};
+
 const populatePlatformOverrideQuery = (query) => query
     .populate({
         path: 'workspace',
@@ -112,6 +167,20 @@ const listPlatformEntitlementOverrides = async ({
 
     if (!isValidDate(at)) {
         throw new TypeError('at must be a valid Date');
+    }
+
+    if (
+        targetType !== null
+        && !Object.values(ENTITLEMENT_OVERRIDE_TARGET).includes(targetType)
+    ) {
+        throw new TypeError('targetType must be a supported override target');
+    }
+
+    if (
+        source !== null
+        && !Object.values(ENTITLEMENT_OVERRIDE_SOURCE).includes(source)
+    ) {
+        throw new TypeError('source must be a supported override source');
     }
 
     const filter = {};
@@ -197,6 +266,7 @@ const createPlatformEntitlementOverride = async ({
     overrideData,
     actorId,
     now = new Date(),
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
     ipAddress = null,
     userAgent = null,
 }) => {
@@ -206,6 +276,10 @@ const createPlatformEntitlementOverride = async ({
 
     assertObjectId(actorId, 'actorId');
     assertObjectId(overrideData.workspaceId, 'workspaceId');
+    assertRegisteredOverrideCapability({
+        overrideData,
+        registry,
+    });
 
     if (!isValidDate(now)) {
         throw new TypeError('now must be a valid Date');
