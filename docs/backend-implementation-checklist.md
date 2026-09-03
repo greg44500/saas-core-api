@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Backend Core V1
 
-Dernière consolidation : 2026-09-02 — checkpoint RBAC-EXT clôturé après régression globale verte
+Dernière consolidation : 2026-09-03 — contrat de configuration commerciale générique ajouté
 
 ## 1. Rôle du document
 
@@ -14,6 +14,14 @@ Il conserve simultanément :
 4. les dettes explicitement différées avant production commerciale.
 
 Il ne remplace ni les contrats frontend/backend ni les documents de dette fonctionnelle.
+
+Référence commerciale générique :
+
+```text
+docs/commercial-configuration-contract.md
+```
+
+Cette référence impose que `saas-core-api` reste un socle clonable : le Core fournit les mécanismes commerciaux, tandis que chaque application dérivée définit son catalogue réel, ses prix, ses capabilities métier et ses métriques après clonage.
 
 ### Statuts
 
@@ -46,6 +54,7 @@ Il ne remplace ni les contrats frontend/backend ni les documents de dette foncti
 - [x] TERMINÉ — `.env.test` pour les tests.
 - [x] TERMINÉ — Vitest + Supertest.
 - [x] TERMINÉ — MongoDB replica set disponible pour les transactions.
+- [x] TERMINÉ — séparation contractuelle `.env` / catalogue commercial documentée : secrets et paramètres techniques dans `.env`, offres/prix/trial/features/limits en données persistées/seeds/administration.
 
 ## 3. Sécurité Express et contexte requête
 
@@ -106,6 +115,7 @@ Il ne remplace ni les contrats frontend/backend ni les documents de dette foncti
 - [x] TERMINÉ — seed Super Admin transactionnel et refusant toute promotion implicite d’un utilisateur existant.
 - [x] TERMINÉ — rôles système créés par Workspace lors de sa création. `REMPLACÉ PAR` rapport à un seed global de rôles.
 - [x] TERMINÉ — chaque seed exécutable est exposé par un script npm et contrôlé par test d’exploitation.
+- [x] TERMINÉ — les valeurs de seed commercial sont considérées comme configuration initiale et non comme invariants immuables du Core.
 
 ## 8. Workspaces
 
@@ -180,16 +190,19 @@ Bloc prévu par la checklist initiale, finalisé en lots O1 → O4.
 
 - [x] TERMINÉ — modèle Plan.
 - [x] TERMINÉ — registre/seed Plans.
-- [x] TERMINÉ — plan Free réel et limité.
+- [x] TERMINÉ — plan Free réel et limité servant de baseline V1.
+- [x] TERMINÉ — contenu du plan Free piloté par les données ; aucune liste fixe de features/limits ne doit être considérée comme invariant du Core.
 - [x] TERMINÉ — `features` séparées des `limits`.
 - [x] TERMINÉ — `Plan.limits` extensible via Map.
 - [x] TERMINÉ — prix catalogue mensuel/annuel HT en minor units.
+- [x] TERMINÉ — prix, devise, trial, features et limits considérés comme données de catalogue paramétrables, pas comme constantes de logique métier.
 - [x] TERMINÉ — configuration de trial par Plan.
 - [x] TERMINÉ — routes publiques de lecture des Plans nécessaires au Core.
 - [x] TERMINÉ — administration Platform des Plans nécessaire au Core, dont archivage.
 - [x] TERMINÉ — registre de capabilities Plan extensible par une future application sans ajouter ses features/métriques au Core.
+- [x] TERMINÉ — `Free/Premium/IA` et `79 € HT/mois` ne sont pas des invariants universels du Core ; ce sont des valeurs de catalogue de travail modifiables après clonage.
 - [ ] DIFFÉRÉ — mutation commerciale avancée des Plans au-delà du périmètre actuel.
-- [ ] À CONFIRMER AVANT BILLING RÉEL — valeurs commerciales définitives Free/Premium/IA et confirmation du prix Premium par Workspace.
+- [ ] À CONFIRMER AVANT BILLING RÉEL — catalogue et valeurs commerciales définitifs de chaque application dérivée.
 
 ## 13. Subscriptions / Entitlements / Trial
 
@@ -207,6 +220,7 @@ Bloc prévu par la checklist initiale, finalisé en lots O1 → O4.
 - [x] TERMINÉ — remises/manual overrides du provider manuel dans le périmètre actuel.
 - [x] TERMINÉ — TrialEligibility par fingerprint HMAC.
 - [x] TERMINÉ — trial unique par identité commerciale.
+- [x] TERMINÉ — trial paramétrable par Plan via `trialEnabled` / `trialDurationDays` ; aucune durée globale universelle imposée par le Core.
 - [x] TERMINÉ — changement de Plan pendant trial sans réinitialiser `trialEndsAt`.
 - [x] TERMINÉ — retour volontaire Free pendant trial consomme définitivement l’éligibilité.
 - [x] TERMINÉ — expiration automatique des trials via job.
@@ -244,148 +258,26 @@ Bloc prévu par la checklist initiale, finalisé en lots O1 → O4.
 - [x] TERMINÉ — service `createAuditLog()` compatible transaction.
 - [x] TERMINÉ — audits Auth sensibles disponibles dans le Core.
 - [x] TERMINÉ — audits Workspace/Members/Roles.
-- [x] TERMINÉ — audits Subscription/Plan/Platform.
 - [x] TERMINÉ — audits Files.
-- [x] TERMINÉ — permission `audit:read`.
-- [x] TERMINÉ — migration idempotente `audit:read` pour owner/admin existants.
-- [x] TERMINÉ — `GET /api/workspaces/:workspaceId/audit-logs` read-only.
-- [x] TERMINÉ — filtres/pagination/tri déterministe.
-- [x] TERMINÉ — DTO frontend sans IP, user-agent ni metadata.
-- [x] TERMINÉ — accès Workspace owner/admin uniquement dans le Core actuel.
-- [x] TERMINÉ — endpoint Platform global AuditLog réservé SUPER_ADMIN.
+- [x] TERMINÉ — audits Subscription/Trial nécessaires aux workflows implémentés.
 
-## 16. Platform Admin
+## 16. Réutilisabilité du Core
 
-La checklist initiale prévoyait `platform.controller.js` et `platform.service.js` génériques. L’architecture réelle les a remplacés par des sous-modules dédiés conformément à l’architecture modulaire cible.
+- [x] TERMINÉ — le dépôt est explicitement défini comme un socle SaaS générique clonable.
+- [x] TERMINÉ — les modules métier sont ajoutés uniquement après clonage dans l’application dérivée.
+- [x] TERMINÉ — le Core ne doit jamais importer un module métier de l’application dérivée.
+- [x] TERMINÉ — les registres RBAC, capabilities et métriques sont les points d’extension prévus pour les domaines métier.
+- [x] TERMINÉ — le moteur commercial est générique ; le catalogue réel appartient à l’application dérivée.
+- [x] TERMINÉ — workflow de dérivation documenté dans `docs/commercial-configuration-contract.md` : clone → `.env` technique → seeds Core → catalogue → extensions métier → modules métier.
 
-- [x] TERMINÉ — `platform.routes.js`.
-- [x] TERMINÉ — contrôle de rôle Platform `SUPER_ADMIN`.
-- [x] TERMINÉ — seed Super Admin.
-- [x] TERMINÉ — sous-module Platform Users.
-- [x] TERMINÉ — sous-module Platform Workspaces.
-- [x] TERMINÉ — sous-module Platform Plans.
-- [x] TERMINÉ — sous-module Platform Subscriptions.
-- [x] TERMINÉ — sous-module Platform AuditLogs.
-- [x] TERMINÉ — révocation des sessions lors des opérations Platform concernées.
-- [x] TERMINÉ — `platform.controller.js` générique : `REMPLACÉ PAR` controllers par sous-domaine.
-- [x] TERMINÉ — `platform.service.js` générique : `REMPLACÉ PAR` services par sous-domaine.
-- [ ] À FAIRE PLUS TARD — administration Platform des `EntitlementOverride` Workspace-scoped.
-
-## 17. Jobs / maintenance déjà présents
-
-- [x] TERMINÉ — expiration des trials.
-- [x] TERMINÉ — finalisation des annulations programmées.
-- [x] TERMINÉ — application des downgrades programmés.
-- [x] TERMINÉ — purge différée des fichiers supprimés.
-- [x] TERMINÉ — runners CLI dédiés et scripts npm.
-- [x] TERMINÉ — audit d’idempotence, rejouabilité et concurrence des jobs lifecycle.
-- [x] TERMINÉ — traitements Subscription bornés par batch (`100` par défaut, `500` maximum), sans `skip()`, avec tri déterministe et indicateur `hasMore`.
-- [x] TERMINÉ — purge Files bornée, tri déterministe, idempotence et `hasMore`.
-- [x] TERMINÉ — les runners journalisent un résultat exploitable et propagent l’échec au scheduler via code de sortie/rejet approprié.
-- [x] TERMINÉ — aucun job de réconciliation générique ajouté sans invariant métier concret ; une réconciliation ciblée UsageMetric `members` est fournie sous forme de migration rejouable.
-
-## 18. Migrations
-
-- [x] TERMINÉ — migration `Subscription.kind` et index d’unicité `workspace + kind`.
-- [x] TERMINÉ — preflight du runner `Subscription.kind` avant suppression de l’index legacy.
-- [x] TERMINÉ — indexes lifecycle Subscription.
-- [x] TERMINÉ — indexes opérationnels alignés sur les requêtes/jobs Core V1 via migration additive forward-only.
-- [x] TERMINÉ — migrations d’indexes fail-fast en cas de définition incompatible ; aucune suppression destructive implicite.
-- [x] TERMINÉ — permission `subscription:read`.
-- [x] TERMINÉ — permission `audit:read`.
-- [x] TERMINÉ — backfill UsageMetric `members`.
-- [x] TERMINÉ — réconciliation forward-only UsageMetric `members`, y compris remise à zéro d’une métrique obsolète.
-- [x] TERMINÉ — permission `member:invite`.
-- [x] TERMINÉ — permission `file:read`.
-- [x] TERMINÉ — permission `file:delete`.
-- [x] TERMINÉ — permission `workspace:ownership:transfer`.
-- [x] TERMINÉ — migrations historiques conservées immuables ; corrections tardives ajoutées sous forme de migrations forward-only.
-- [x] TERMINÉ — `backfillRegisteredSystemRolePermissions()` fournit un backfill générique idempotent des permissions enregistrées vers les rôles système existants. `RBAC-EXT`.
-- [x] TERMINÉ — le backfill RBAC-EXT ne modifie jamais les rôles personnalisés.
-- [x] TERMINÉ — tests ciblés du backfill RBAC-EXT verts.
-
-## 19. Notifications / API Keys / modèles optionnels
-
-- [ ] DIFFÉRÉ — Notifications : aucun besoin Core concret ne justifie encore un centre de notifications générique.
-- [ ] DIFFÉRÉ — API Keys : à introduire lorsqu’une API machine-to-machine / Make / Zapier / scripts / intégrations tierces devient réellement nécessaire.
-- [ ] HORS V1 — Webhooks génériques sans provider ou événement concret.
-- [ ] HORS V1 — fonctionnalités métier propres aux futurs SaaS construits sur le Core.
-
-## 20. Dettes fonctionnelles explicitement conservées
-
-- [ ] DETTE — fermeture/suppression compte utilisateur et Workspace avant production réelle. Voir `docs/functional-debt-account-workspace-closure.md`.
-- [ ] DETTE — trash/restore Files. Voir `docs/functional-debt-file-trash-restore.md`.
-- [ ] DETTE — Billing/Payment réel et fiscalité.
-- [ ] DETTE — stockage cloud/antivirus de production selon environnement de déploiement.
-- [ ] DETTE — RGPD, politique de conservation/confidentialité et gestion des cookies selon les traceurs réellement utilisés. Voir `docs/functional-debt-privacy-cookies-rgpd.md`.
-
-## 21. Documentation / contrat frontend
-
-- [x] TERMINÉ — `docs/frontend-backend-integration-contract.md` existe et décrit les responsabilités d’intégration stabilisées.
-- [x] TERMINÉ — `docs/frontend-backend-subscription-contract.md` documente le contrat Subscription/Trial.
-- [x] TERMINÉ — `docs/frontend-backend-roles-permissions-contract.md` documente le contrat observable des rôles et permissions.
-- [x] TERMINÉ — dettes Account/Workspace Closure, File Trash/Restore et Privacy/Cookies/RGPD documentées.
-- [x] TERMINÉ — présente checklist backend vivante.
-- [x] TERMINÉ — checkpoint `docs/backend-core-v1-ready-for-frontend.md` conservé comme checkpoint historique R1.
-- [x] TERMINÉ — OpenAPI différé pendant la phase actuelle ; les contrats Markdown restent les références d’intégration.
-- [x] TERMINÉ — `docs/commercial-plans-entitlements-platform-admin.md` corrigé le 2026-09-02 : ancienne architecture `CommercialAccount` / `Premium = 5 workspaces` explicitement supplantée.
-- [x] TERMINÉ — RBAC-EXT n’introduit aucun changement HTTP observable ; aucune modification du contrat frontend/backend Roles n’est requise pour ce lot interne.
-
-## 22. Qualité / sécurité / readiness
-
-Le Backend Core V1 est considéré prêt à soutenir la finalisation du frontend lorsque le périmètre stabilisé est implémenté, les entrées strictement validées, les contrats uniformes, l’auth/sessions testées, les permissions centralisées et extensibles, l’isolation tenant démontrée, les opérations critiques atomiques, les index adaptés, les secrets absents des sorties/logs, les quotas protégés, les actions sensibles auditées, l’environnement documenté, les migrations maîtrisées et la suite globale verte.
-
-État :
-
-- [x] TERMINÉ — validation Zod stricte sur les endpoints développés.
-- [x] TERMINÉ — authentification/sessions largement couvertes par tests.
-- [x] TERMINÉ — permissions centralisées.
-- [x] TERMINÉ — registre RBAC extensible sans ajout de permission métier au Core. `RBAC-EXT`.
-- [x] TERMINÉ — tests d’isolation tenant sur les domaines sensibles développés.
-- [x] TERMINÉ — transactions sur les opérations multi-documents critiques.
-- [x] TERMINÉ — quotas protégés côté backend.
-- [x] TERMINÉ — actions sensibles auditées.
-- [x] TERMINÉ — audit global des index MongoDB par rapport aux requêtes réellement utilisées. `H2.1`.
-- [x] TERMINÉ — audit final de non-exposition des secrets/PII dans réponses, erreurs et logs. `H2.2`.
-- [x] TERMINÉ — audit final des variables d’environnement et `.env.example`. `H2.3`.
-- [x] TERMINÉ — audit des seeds/migrations : idempotence, rejouabilité, scripts d’exploitation, preflight des index et réconciliation ciblée. `H2.4`.
-- [x] TERMINÉ — audit warnings runtime/dette technique et validation associée. `H2.5`.
-- [x] TERMINÉ — audit final des jobs, idempotence, batchs bornés, tris déterministes et `hasMore`. `H1`.
-- [x] TERMINÉ — contrats frontend/backend consolidés. `D1`.
-- [x] HISTORIQUE — suite globale R1 : `181` fichiers de tests, `845` tests passés, aucun échec.
-- [x] TERMINÉ — checkpoint historique `Backend Core V1 Ready for Frontend`. `R1`.
-- [x] TERMINÉ — décision R2 : OpenAPI différé.
-- [x] TERMINÉ — suite globale backend post-RBAC-EXT verte le 2026-09-02 ; aucun échec signalé lors de l’exécution locale.
-
-## 23. Ordre restant recommandé
+## 17. Références documentaires à maintenir ensemble
 
 ```text
-RBAC-EXT  Registre extensible + rôles système + backfill     TERMINÉ
-R-EXT     Suite globale backend post-RBAC-EXT                TERMINÉ
-F8.5      Files frontend                                     PROCHAINE ÉTAPE
-F8.6      Subscription / Plan / Trial frontend
-F8.7      Workspace Settings / Ownership frontend
-F8.8      Audit / Dashboard Core frontend
-F8.9      Account / Security frontend
-F9.x      Platform Admin frontend réel
-F10       EntitlementOverride Workspace-scoped + Platform
-F11       Consolidation frontend + E2E
+docs/commercial-configuration-contract.md
+docs/commercial-plans-entitlements-platform-admin.md
+docs/frontend-backend-subscription-contract.md
+docs/frontend-backend-integration-contract.md
+docs/backend-implementation-checklist.md
 ```
 
-Ne démarrer aucun module métier avant d’atteindre le Gate A défini dans la synthèse de reprise du 2 septembre 2026.
-
-## 24. Règle de maintenance
-
-À la fin de chaque lot :
-
-```text
-cadrage
-→ implémentation
-→ tests ciblés
-→ tests de régression
-→ documentation/contrats si impact observable
-→ mise à jour de cette checklist
-→ commit
-```
-
-Ne jamais marquer un item `TERMINÉ` uniquement parce qu’un fichier existe : le comportement doit être implémenté et validé. Inversement, ne pas recréer artificiellement un fichier prévu historiquement lorsqu’une architecture plus modulaire remplit déjà la responsabilité.
+En cas de contradiction historique concernant `Premium = 5 workspaces`, `CommercialAccount` obligatoire ou un prix particulier considéré comme invariant, ces décisions sont **supplantées** par les contrats commerciaux actifs du 3 septembre 2026.
