@@ -45,7 +45,6 @@ app.use('/platform', platformRouter);
 describe('GET /platform/plans/capabilities', () => {
     beforeEach(() => {
         authenticate.mockClear();
-        authorizePlatformPermission.mockClear();
         permissionMiddleware.mockClear();
     });
 
