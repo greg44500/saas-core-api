@@ -8,6 +8,7 @@ import {
 import {
     serializePlan,
     serializeSubscription,
+    serializeWorkspaceEffectiveEntitlement,
 } from '../../modules/subscriptions/services/getWorkspaceSubscriptionOverview.service.js';
 
 const { ObjectId } = mongoose.Types;
@@ -96,5 +97,92 @@ describe('workspace subscription overview projection', () => {
             'targetPriceExclTaxMinor',
         );
         expect(result.scheduledChange).not.toHaveProperty('requestedBy');
+    });
+
+    it('expose les capabilities effectives sans révéler les overrides Platform', () => {
+        const access = {
+            subscription: {
+                kind: 'commercial',
+                status: 'active',
+            },
+            plan: buildPlan(),
+            effectiveCapabilities: {
+                features: [
+                    'file_upload',
+                    'team_management',
+                ],
+                limits: {
+                    members: 25,
+                    storage_bytes: null,
+                },
+                appliedOverrides: [
+                    {
+                        id: new ObjectId().toString(),
+                        source: 'commercial_gesture',
+                        reason: 'Geste commercial interne',
+                        grantedBy: new ObjectId(),
+                    },
+                ],
+            },
+            accessMode: 'normal',
+            reason: null,
+            blockingLimits: [],
+            nonBlockingLimits: [],
+        };
+
+        const result =
+            serializeWorkspaceEffectiveEntitlement(access);
+
+        expect(result).toEqual({
+            plan: expect.objectContaining({
+                id: expect.any(String),
+                key: 'pro',
+                name: 'Pro',
+            }),
+            features: [
+                'file_upload',
+                'team_management',
+            ],
+            limits: {
+                members: 25,
+                storage_bytes: null,
+            },
+            subscriptionKind: 'commercial',
+            subscriptionStatus: 'active',
+            accessMode: 'normal',
+            reason: null,
+            blockingLimits: [],
+            nonBlockingLimits: [],
+        });
+
+        expect(result).not.toHaveProperty('appliedOverrides');
+        expect(JSON.stringify(result)).not.toContain(
+            'commercial_gesture',
+        );
+        expect(JSON.stringify(result)).not.toContain(
+            'Geste commercial interne',
+        );
+    });
+
+    it('refuse un entitlement effectif incomplet au lieu de fabriquer des droits', () => {
+        expect(() => {
+            serializeWorkspaceEffectiveEntitlement({
+                subscription: {
+                    kind: 'baseline',
+                    status: 'active',
+                },
+                plan: buildPlan(),
+                effectiveCapabilities: {
+                    features: null,
+                    limits: {},
+                },
+                accessMode: 'normal',
+                reason: null,
+                blockingLimits: [],
+                nonBlockingLimits: [],
+            });
+        }).toThrow(
+            'Workspace effective entitlement is incomplete.',
+        );
     });
 });
