@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Backend Core V1
 
-Dernière consolidation : 2026-09-03 — contrat de configuration commerciale générique ajouté
+Dernière consolidation : 2026-09-03 — F10.1 résolution des EntitlementOverride actifs validée
 
 ## 1. Rôle du document
 
@@ -226,7 +226,13 @@ Bloc prévu par la checklist initiale, finalisé en lots O1 → O4.
 - [x] TERMINÉ — expiration automatique des trials via job.
 - [x] TERMINÉ — activation payante manuelle avec ancrage de période.
 - [x] SUPPLANTÉ — architecture `CommercialAccount`, abonnement Premium couvrant 5 Workspaces, métrique `workspaces` et scope `commercial_account` abandonnés pour la V1.
-- [ ] À FAIRE PLUS TARD — `EntitlementOverride` Workspace-scoped pour les exceptions commerciales Platform, après reprise de la finalisation frontend Core.
+- [x] TERMINÉ — F10.0 : constantes, modèle Mongoose et validation stricte `EntitlementOverride` Workspace-scoped ; feature/limit discriminés, période, source, auteur/motif et révocation traçable ; tests ciblés verts le 2026-09-03.
+- [x] TERMINÉ — F10.1 : résolution backend des `EntitlementOverride` actifs ; exclusion des futurs/expirés/révoqués, priorité déterministe des overrides chevauchants, `null = illimité`, registre de capabilities extensible et support de session MongoDB ; tests ciblés verts le 2026-09-03.
+- [ ] À FAIRE — F10.2 : composer l’entitlement effectif `Plan + EntitlementOverride actifs` sans modifier le Plan catalogue ni la Subscription.
+- [ ] À FAIRE — F10.3 : intégrer les features/limites effectives aux contrôles d’accès, quotas et remédiation.
+- [ ] À FAIRE — F10.4 : API Platform `SUPER_ADMIN` pour créer, modifier, révoquer et consulter les overrides avec AuditLog.
+- [ ] À FAIRE — F10.5 : exposition Workspace sûre de l’entitlement effectif.
+- [ ] À FAIRE — F10.6 : administration frontend Platform des dérogations.
 - [ ] DETTE — Billing/Payment réel : provider de paiement, moyens de paiement, TVA/taxes, factures, webhooks et gestion définitive de `past_due`.
 
 ## 14. Files / Storage
