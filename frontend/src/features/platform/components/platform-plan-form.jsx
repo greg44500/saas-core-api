@@ -2,8 +2,11 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
+  buildPlatformFeatureGroups,
+  buildPlatformMetricGroups,
+} from '@/features/platform/lib/platform-capability-groups';
+import {
   PLATFORM_PLAN_STATUS,
-  formatPlatformPlanFeature,
   formatPlatformPlanMetric,
 } from '@/features/platform/lib/platform-plan-formatters';
 
@@ -15,9 +18,16 @@ function minorToMajor(value) {
   return String(value / 100);
 }
 
+function isByteMetric(metric) {
+  return metric?.presentation?.unit === 'bytes'
+    || metric?.unit === 'bytes'
+    || metric?.key === 'storage_bytes';
+}
+
 function getInitialLimitState(plan, metrics) {
   return Object.fromEntries(
-    metrics.map(({ key }) => {
+    metrics.map((metric) => {
+      const { key } = metric;
       const value = plan?.limits?.[key];
 
       if (value === null) {
@@ -29,7 +39,7 @@ function getInitialLimitState(plan, metrics) {
           key,
           {
             mode: 'limited',
-            value: key === 'storage_bytes'
+            value: isByteMetric(metric)
               ? String(value / (1024 * 1024))
               : String(value),
           },
@@ -51,7 +61,10 @@ function PlatformPlanForm({
   submitError = null,
 }) {
   const metrics = capabilities?.metrics ?? [];
-  const availableFeatures = capabilities?.features ?? [];
+  const featureGroups = buildPlatformFeatureGroups(capabilities);
+  const metricGroups = buildPlatformMetricGroups(capabilities);
+  const metricsByKey = new Map(metrics.map((metric) => [metric.key, metric]));
+
   const [formError, setFormError] = useState(null);
   const [key, setKey] = useState(plan?.key ?? '');
   const [name, setName] = useState(plan?.name ?? '');
@@ -102,7 +115,8 @@ function PlatformPlanForm({
 
   function buildLimits() {
     return Object.fromEntries(
-      metrics.map(({ key: metricKey }) => {
+      metrics.map((metric) => {
+        const metricKey = metric.key;
         const config = limits[metricKey] ?? { mode: 'none', value: '' };
 
         if (config.mode === 'unlimited') return [metricKey, null];
@@ -113,7 +127,7 @@ function PlatformPlanForm({
           throw new Error(`Renseignez un plafond positif pour ${formatPlatformPlanMetric(metricKey)}.`);
         }
 
-        if (metricKey === 'storage_bytes') {
+        if (isByteMetric(metric)) {
           const megabytes = Number(normalized);
           if (!Number.isFinite(megabytes)) {
             throw new Error('Le plafond de stockage est invalide.');
@@ -263,52 +277,88 @@ function PlatformPlanForm({
         )}
       </section>
 
-      <section className="space-y-3">
-        <h3 className="font-semibold">Fonctionnalités</h3>
-        {availableFeatures.length === 0 ? (
+      <section className="space-y-4">
+        <div>
+          <h3 className="font-semibold">Fonctionnalités</h3>
+          <p className="text-sm text-muted-foreground">Sélectionnez uniquement les fonctionnalités réellement déclarées par l’application.</p>
+        </div>
+
+        {featureGroups.length === 0 ? (
           <p className="text-sm text-muted-foreground">Aucune fonctionnalité déclarée.</p>
         ) : (
-          <div className="grid gap-2 sm:grid-cols-2">
-            {availableFeatures.map((feature) => (
-              <label className="flex items-center gap-2 rounded-md border border-border p-3 text-sm" key={feature}>
-                <input checked={features.has(feature)} onChange={() => toggleFeature(feature)} type="checkbox" />
-                {formatPlatformPlanFeature(feature)}
-              </label>
+          <div className="space-y-4">
+            {featureGroups.map((group) => (
+              <fieldset className="space-y-2" key={group.key}>
+                <legend className="text-sm font-semibold">{group.label}</legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {group.items.map((feature) => (
+                    <label className="flex items-start gap-2 rounded-md border border-border p-3 text-sm" key={feature.key}>
+                      <input
+                        checked={features.has(feature.key)}
+                        className="mt-0.5"
+                        onChange={() => toggleFeature(feature.key)}
+                        type="checkbox"
+                      />
+                      <span>
+                        <span className="block font-medium">{feature.label}</span>
+                        {feature.description && (
+                          <span className="mt-1 block text-xs text-muted-foreground">{feature.description}</span>
+                        )}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
             ))}
           </div>
         )}
       </section>
 
-      <section className="space-y-3">
+      <section className="space-y-4">
         <div>
           <h3 className="font-semibold">Limites</h3>
-          <p className="text-sm text-muted-foreground">Chaque métrique doit être configurée explicitement.</p>
+          <p className="text-sm text-muted-foreground">Chaque métrique déclarée par l’application doit être configurée explicitement.</p>
         </div>
-        <div className="space-y-3">
-          {metrics.map(({ key: metricKey }) => {
-            const config = limits[metricKey] ?? { mode: 'none', value: '' };
-            return (
-              <div className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-[1fr_170px_170px] sm:items-end" key={metricKey}>
-                <div className="text-sm font-medium">{formatPlatformPlanMetric(metricKey)}</div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground" htmlFor={`platform-plan-limit-mode-${metricKey}`}>Mode</label>
-                  <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id={`platform-plan-limit-mode-${metricKey}`} onChange={(event) => updateLimit(metricKey, { mode: event.target.value })} value={config.mode}>
-                    <option value="none">Aucune</option>
-                    <option value="limited">Plafond</option>
-                    <option value="unlimited">Illimité</option>
-                  </select>
-                </div>
-                {config.mode === 'limited' && (
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground" htmlFor={`platform-plan-limit-value-${metricKey}`}>
-                      {metricKey === 'storage_bytes' ? 'Valeur (Mo)' : 'Valeur'}
-                    </label>
-                    <input className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id={`platform-plan-limit-value-${metricKey}`} min="0" onChange={(event) => updateLimit(metricKey, { value: event.target.value })} type="number" value={config.value} />
+
+        <div className="space-y-4">
+          {metricGroups.map((group) => (
+            <fieldset className="space-y-3" key={group.key}>
+              <legend className="text-sm font-semibold">{group.label}</legend>
+
+              {group.items.map((metric) => {
+                const metricKey = metric.key;
+                const config = limits[metricKey] ?? { mode: 'none', value: '' };
+                const sourceMetric = metricsByKey.get(metricKey) ?? metric;
+
+                return (
+                  <div className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-[1fr_170px_170px] sm:items-end" key={metricKey}>
+                    <div>
+                      <div className="text-sm font-medium">{metric.label}</div>
+                      {metric.description && (
+                        <p className="mt-1 text-xs text-muted-foreground">{metric.description}</p>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground" htmlFor={`platform-plan-limit-mode-${metricKey}`}>Mode</label>
+                      <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id={`platform-plan-limit-mode-${metricKey}`} onChange={(event) => updateLimit(metricKey, { mode: event.target.value })} value={config.mode}>
+                        <option value="none">Aucune</option>
+                        <option value="limited">Plafond</option>
+                        <option value="unlimited">Illimité</option>
+                      </select>
+                    </div>
+                    {config.mode === 'limited' && (
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground" htmlFor={`platform-plan-limit-value-${metricKey}`}>
+                          {isByteMetric(sourceMetric) ? 'Valeur (Mo)' : 'Valeur'}
+                        </label>
+                        <input className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id={`platform-plan-limit-value-${metricKey}`} min="0" onChange={(event) => updateLimit(metricKey, { value: event.target.value })} type="number" value={config.value} />
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </fieldset>
+          ))}
         </div>
       </section>
 
