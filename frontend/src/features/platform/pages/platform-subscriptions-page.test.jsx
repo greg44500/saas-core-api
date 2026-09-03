@@ -104,7 +104,7 @@ describe('PlatformSubscriptionsPage', () => {
     const table = screen.getByRole('table');
     expect(within(table).getByText('Workspace Démo')).toBeInTheDocument();
     expect(within(table).getByText('Premium')).toBeInTheDocument();
-    expect(within(table).getByText('79,00 €')).toBeInTheDocument();
+    expect(within(table).getByText(/79,00\s*€/)).toBeInTheDocument();
   });
 
   it('ouvre le détail de la souscription', async () => {
