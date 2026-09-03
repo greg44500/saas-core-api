@@ -12,15 +12,15 @@ import {
 } from '../plan/planCapability.registry.js';
 
 import {
-    assertPlanFeatureAvailable,
+    assertEntitlementFeatureAvailable,
 } from '../plan/planFeature.service.js';
 
 import {
-    reservePlanLimitForEntitlement,
+    reserveEffectiveLimitForEntitlement,
 } from '../plan/planLimit.service.js';
 
 import {
-    getWorkspacePlanEntitlement,
+    getWorkspaceEffectiveEntitlement,
 } from '../subscriptions/subscription.service.js';
 
 import {
@@ -33,8 +33,9 @@ import { File } from './file.model.js';
 /**
  * Vérifie qu'une date représente un instant valide.
  *
- * Le même instant doit être utilisé pour les deux réservations afin que les
- * métriques temporelles soient calculées dans une période cohérente.
+ * Le même instant doit être utilisé pour la résolution commerciale et les deux
+ * réservations afin qu'un override ou une métrique temporelle ne change pas de
+ * période au milieu d'une seule décision transactionnelle.
  */
 const isValidDate = (value) =>
     value instanceof Date
@@ -50,17 +51,17 @@ const isValidDate = (value) =>
  */
 const createFilePersistenceService = ({
     runTransaction,
-    resolvePlanEntitlement,
+    resolveEffectiveEntitlement,
     assertFeatureAvailable,
-    reservePlanLimit,
+    reserveEffectiveLimit,
     createFileDocuments,
     createAuditEvent,
 }) => {
     if (
         typeof runTransaction !== 'function'
-        || typeof resolvePlanEntitlement !== 'function'
+        || typeof resolveEffectiveEntitlement !== 'function'
         || typeof assertFeatureAvailable !== 'function'
-        || typeof reservePlanLimit !== 'function'
+        || typeof reserveEffectiveLimit !== 'function'
         || typeof createFileDocuments !== 'function'
         || typeof createAuditEvent !== 'function'
     ) {
@@ -72,10 +73,10 @@ const createFilePersistenceService = ({
     /**
      * Réserve les quotas puis crée le document File dans une transaction.
      *
-     * L'entitlement transmis par le middleware HTTP n'est volontairement pas
-     * utilisé : il pourrait avoir changé entre le contrôle effectué avant
-     * Multer et l'écriture finale. La souscription et le plan sont donc relus
-     * dans le snapshot transactionnel.
+     * L'entitlement lu avant Multer n'est volontairement pas réutilisé : une
+     * Subscription ou un EntitlementOverride peut changer pendant l'inspection
+     * et le stockage physique. L'autorité est donc relue dans le snapshot
+     * transactionnel juste avant les écritures MongoDB.
      *
      * @param {object} parameters
      * @param {object} parameters.fileData
@@ -125,30 +126,32 @@ const createFilePersistenceService = ({
              * session. Un refus ou une erreur après la première réservation
              * provoquera l'annulation des deux compteurs et du document File.
              */
-            const planEntitlement =
-                await resolvePlanEntitlement({
+            const effectiveEntitlement =
+                await resolveEffectiveEntitlement({
                     workspaceId,
+                    at,
                     session,
                 });
 
             /*
              * Le middleware placé avant Multer évite les uploads inutiles,
-             * mais cette seconde vérification protège l'écriture contre un
-             * changement de plan intervenu pendant le traitement du fichier.
+             * mais cette seconde vérification protège l'écriture contre une
+             * modification de Plan ou d'override pendant le traitement.
              */
             assertFeatureAvailable({
-                plan: planEntitlement?.plan,
+                entitlement: effectiveEntitlement,
                 featureKey:
                     CORE_PLAN_FEATURE.FILE_UPLOAD,
             });
 
             /*
              * Chaque fichier accepté consomme une unité du nombre mensuel
-             * d'uploads, indépendamment de sa taille.
+             * d'uploads, indépendamment de sa taille. La limite utilisée est
+             * celle de l'entitlement effectif au même instant `at`.
              */
-            await reservePlanLimit({
+            await reserveEffectiveLimit({
                 workspaceId,
-                planEntitlement,
+                effectiveEntitlement,
                 metricKey:
                     CORE_PLAN_METRIC.FILE_UPLOADS_MONTHLY,
                 amount: 1,
@@ -161,9 +164,9 @@ const createFilePersistenceService = ({
              * Le stockage courant est mesuré avec la taille exacte inspectée
              * par le backend, jamais avec une valeur déclarée par le client.
              */
-            await reservePlanLimit({
+            await reserveEffectiveLimit({
                 workspaceId,
-                planEntitlement,
+                effectiveEntitlement,
                 metricKey:
                     CORE_PLAN_METRIC.STORAGE_BYTES,
                 amount: fileData.sizeBytes,
@@ -184,7 +187,7 @@ const createFilePersistenceService = ({
 
             if (
                 !Array.isArray(createdFiles)
-                || !createdFiles[0]._id
+                || !createdFiles[0]?._id
             ) {
                 throw new TypeError(
                     'La création du document File a retourné un résultat invalide.',
@@ -228,7 +231,7 @@ const createFilePersistenceService = ({
 /**
  * Instance applicative utilisant une véritable transaction MongoDB.
  *
- * connection.transaction prend en charge l'ouverture, le commit, l'abandon
+ * `connection.transaction` prend en charge l'ouverture, le commit, l'abandon
  * et les nouvelles tentatives prévues par le pilote pour certaines erreurs
  * transactionnelles transitoires.
  */
@@ -237,14 +240,14 @@ const filePersistenceService =
         runTransaction: (callback) =>
             mongoose.connection.transaction(callback),
 
-        resolvePlanEntitlement: (parameters) =>
-            getWorkspacePlanEntitlement(parameters),
+        resolveEffectiveEntitlement: (parameters) =>
+            getWorkspaceEffectiveEntitlement(parameters),
 
         assertFeatureAvailable: (parameters) =>
-            assertPlanFeatureAvailable(parameters),
+            assertEntitlementFeatureAvailable(parameters),
 
-        reservePlanLimit: (parameters) =>
-            reservePlanLimitForEntitlement(parameters),
+        reserveEffectiveLimit: (parameters) =>
+            reserveEffectiveLimitForEntitlement(parameters),
 
         createFileDocuments: (documents, options) =>
             File.create(documents, options),
