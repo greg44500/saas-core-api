@@ -1,5 +1,5 @@
 import { Gauge, LogOut, ShieldCheck, UserRound } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
 import { Button } from '@/components/ui/button';
@@ -24,9 +24,49 @@ function getLocationPath(location) {
 function UserMenu() {
   const navigate = useNavigate();
   const location = useLocation();
+  const rootRef = useRef(null);
   const [open, setOpen] = useState(false);
   const { data: user, isLoading } = useGetCurrentUserQuery();
   const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    /*
+     * Le menu doit se comporter comme un vrai popover de navigation : une
+     * interaction extérieure ou Escape le referme sans imposer un second clic
+     * sur l'avatar. Les listeners n'existent que pendant l'ouverture afin de
+     * ne pas ajouter d'écoute globale permanente à l'application.
+     */
+    function handlePointerDown(event) {
+      if (!rootRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    /*
+     * Une navigation peut provenir de la sidebar ou d'un autre composant alors
+     * que le menu est encore ouvert. La route devient donc une seconde borne de
+     * cycle de vie : le popover ne doit jamais persister sur la page suivante.
+     */
+    setOpen(false);
+  }, [location.pathname, location.search, location.hash]);
 
   async function handleLogout() {
     setOpen(false);
@@ -57,7 +97,7 @@ function UserMenu() {
   const isPlatformContext = location.pathname.startsWith('/platform');
 
   return (
-    <div className="relative">
+    <div className="relative" ref={rootRef}>
       <Button
         aria-expanded={open}
         aria-haspopup="menu"
