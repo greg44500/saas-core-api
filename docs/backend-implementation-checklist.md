@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Checklist d’implémentation Backend Core V1
 
-Dernière consolidation : 2026-09-03 — F10.2 et F10.3 validés ; F10.4 Platform EntitlementOverride prêt à démarrer
+Dernière consolidation : 2026-09-03 — F10.4 validé ; F10.5 en validation
 
 ## 1. Rôle du document
 
@@ -244,8 +244,8 @@ Bloc prévu par la checklist initiale, finalisé en lots O1 → O4.
 - [x] TERMINÉ — checkpoint pré-F10.2 : validation et résolution `EntitlementOverride` utilisent par défaut le registre applicatif actif afin de supporter les capabilities des applications dérivées.
 - [x] TERMINÉ — F10.2 : composition pure de l’entitlement effectif `Plan + EntitlementOverride actifs`, sans mutation du Plan ni de la Subscription ; features et limites dérivées, `null = illimité`, registre actif et horloge `at` cohérente ; tests ciblés puis régression backend globale verts le 2026-09-03.
 - [x] TERMINÉ — F10.3 : contrôles runtime basculés sur l’entitlement effectif ; feature gates, réservation atomique des quotas et remédiation utilisent les features/limites effectives ; défense en profondeur de l’upload File conservée avec relecture transactionnelle ; tests ciblés puis régression backend globale verts le 2026-09-03.
-- [ ] À FAIRE — F10.4 : API Platform sécurisée par permissions Platform pour créer, modifier, révoquer et consulter les overrides avec AuditLog.
-- [ ] À FAIRE — F10.5 : exposition Workspace sûre de l’entitlement effectif.
+- [x] TERMINÉ — F10.4 : API Platform `EntitlementOverride` sécurisée par permissions distinctes read/create/update/revoke ; validation stricte, registre applicatif actif comme autorité, lifecycle dérivé, mutations transactionnelles avec `AuditLog` `CREATED/UPDATED/REVOKED`, historique expiré/révoqué non réécrit ; tests ciblés puis régression backend globale verts le 2026-09-03 (211 fichiers / 990 tests).
+- [ ] À FAIRE — F10.5 : valider l’exposition Workspace sûre des features/limites effectives sans détails commerciaux internes d’override.
 - [ ] À FAIRE — F10.6 : administration frontend Platform des dérogations.
 - [ ] DETTE — Billing/Payment réel : provider de paiement, moyens de paiement, TVA/taxes, factures, webhooks et gestion définitive de `past_due`.
 
