@@ -5,6 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '@/components/shared/toast-provider';
 
 const mocks = vi.hoisted(() => ({
+  cancelSubscription: vi.fn(),
+  grantTrial: vi.fn(),
+  resumeSubscription: vi.fn(),
+  updateSubscription: vi.fn(),
   useCancelPlatformSubscriptionMutation: vi.fn(),
   useGetPlatformSubscriptionQuery: vi.fn(),
   useGrantPlatformSubscriptionTrialMutation: vi.fn(),
@@ -47,13 +51,20 @@ const subscription = {
   billingInterval: 'monthly',
   currency: 'EUR',
   priceExclTaxMinor: 7900,
+  discountType: 'none',
+  discountValue: 0,
+  discountReason: null,
+  discountEndsAt: null,
   manualOverride: false,
+  manualOverrideReason: null,
+  manualOverrideBy: null,
   createdAt: '2026-09-01T00:00:00.000Z',
   updatedAt: '2026-09-01T00:00:00.000Z',
 };
 
-function mutationState() {
-  return [vi.fn(() => ({ unwrap: vi.fn().mockResolvedValue({}) })), { isLoading: false }];
+function resolvedMutation(mock) {
+  mock.mockReturnValue({ unwrap: vi.fn().mockResolvedValue({}) });
+  return [mock, { isLoading: false }];
 }
 
 function renderPage() {
@@ -66,6 +77,8 @@ function renderPage() {
 
 describe('PlatformSubscriptionsPage', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+
     mocks.useListPlatformSubscriptionsQuery.mockReturnValue({
       data: {
         subscriptions: [subscription],
@@ -93,10 +106,18 @@ describe('PlatformSubscriptionsPage', () => {
       error: undefined,
       isLoading: false,
     });
-    mocks.useCancelPlatformSubscriptionMutation.mockReturnValue(mutationState());
-    mocks.useGrantPlatformSubscriptionTrialMutation.mockReturnValue(mutationState());
-    mocks.useResumePlatformSubscriptionMutation.mockReturnValue(mutationState());
-    mocks.useUpdatePlatformSubscriptionMutation.mockReturnValue(mutationState());
+    mocks.useCancelPlatformSubscriptionMutation.mockReturnValue(
+      resolvedMutation(mocks.cancelSubscription),
+    );
+    mocks.useGrantPlatformSubscriptionTrialMutation.mockReturnValue(
+      resolvedMutation(mocks.grantTrial),
+    );
+    mocks.useResumePlatformSubscriptionMutation.mockReturnValue(
+      resolvedMutation(mocks.resumeSubscription),
+    );
+    mocks.useUpdatePlatformSubscriptionMutation.mockReturnValue(
+      resolvedMutation(mocks.updateSubscription),
+    );
   });
 
   it('affiche la liste via le tableau partagé', () => {
@@ -116,14 +137,95 @@ describe('PlatformSubscriptionsPage', () => {
     expect(screen.getByRole('dialog', { name: 'Workspace Démo' })).toBeInTheDocument();
   });
 
-  it('ouvre le formulaire d’attribution de trial', async () => {
+  it('accorde un trial avec le workspace, le plan et la périodicité sélectionnés', async () => {
     const user = userEvent.setup();
     renderPage();
 
     await user.click(screen.getByRole('button', { name: 'Accorder un trial' }));
+    await user.selectOptions(screen.getByLabelText('Périodicité'), 'yearly');
+    await user.click(screen.getByRole('button', { name: 'Accorder le trial' }));
 
-    expect(screen.getByRole('dialog', { name: 'Accorder un trial' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Workspace')).toBeInTheDocument();
-    expect(screen.getByLabelText('Plan')).toBeInTheDocument();
+    expect(mocks.grantTrial).toHaveBeenCalledWith({
+      workspaceId: subscription.workspace.id,
+      planId: subscription.plan.id,
+      billingInterval: 'yearly',
+    });
+    expect(await screen.findByText('Trial accordé')).toBeInTheDocument();
+  });
+
+  it('modifie les conditions commerciales de la souscription', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: 'Voir' }));
+    const detailsDrawer = screen.getByRole('dialog', { name: 'Workspace Démo' });
+    await user.click(within(detailsDrawer).getByRole('button', { name: 'Modifier' }));
+
+    const editDrawer = screen.getByRole('dialog', { name: 'Modifier la souscription' });
+    await user.selectOptions(within(editDrawer).getByLabelText('Type de remise'), 'percentage');
+    await user.clear(within(editDrawer).getByLabelText('Valeur de la remise'));
+    await user.type(within(editDrawer).getByLabelText('Valeur de la remise'), '15');
+    await user.type(within(editDrawer).getByLabelText('Motif de la remise'), 'Offre lancement');
+    const endDateInput = within(editDrawer).getByLabelText('Fin de la remise');
+    await user.type(endDateInput, '31/12/2026');
+    await user.tab();
+    await user.click(within(editDrawer).getByRole('button', { name: 'Enregistrer' }));
+
+    expect(mocks.updateSubscription).toHaveBeenCalledWith({
+      subscriptionId: subscription.id,
+      plan: subscription.plan.id,
+      billingInterval: 'monthly',
+      discountType: 'percentage',
+      discountValue: 15,
+      discountReason: 'Offre lancement',
+      discountEndsAt: '2026-12-31',
+      manualOverride: false,
+      manualOverrideReason: null,
+    });
+    expect(await screen.findByText('Souscription mise à jour')).toBeInTheDocument();
+  });
+
+  it('annule une souscription avec un mode et un motif explicites', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: 'Voir' }));
+    const detailsDrawer = screen.getByRole('dialog', { name: 'Workspace Démo' });
+    await user.click(within(detailsDrawer).getByRole('button', { name: 'Annuler' }));
+
+    const confirmation = screen.getByRole('dialog', { name: 'Annuler la souscription' });
+    await user.selectOptions(within(confirmation).getByLabelText('Prise d’effet'), 'immediate');
+    await user.type(within(confirmation).getByLabelText('Motif'), 'Demande commerciale');
+    await user.click(within(confirmation).getByRole('button', { name: 'Confirmer' }));
+
+    expect(mocks.cancelSubscription).toHaveBeenCalledWith({
+      subscriptionId: subscription.id,
+      mode: 'immediate',
+      reason: 'Demande commerciale',
+    });
+    expect(await screen.findByText('Annulation enregistrée')).toBeInTheDocument();
+  });
+
+  it('reprend une souscription dont l’annulation est programmée', async () => {
+    const user = userEvent.setup();
+    mocks.useGetPlatformSubscriptionQuery.mockReturnValue({
+      data: { ...subscription, cancelAtPeriodEnd: true },
+      error: undefined,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: 'Voir' }));
+    const detailsDrawer = screen.getByRole('dialog', { name: 'Workspace Démo' });
+    await user.click(within(detailsDrawer).getByRole('button', { name: 'Reprendre' }));
+
+    const confirmation = screen.getByRole('dialog', { name: 'Reprendre la souscription' });
+    await user.click(within(confirmation).getByRole('button', { name: 'Reprendre' }));
+
+    expect(mocks.resumeSubscription).toHaveBeenCalledWith(subscription.id);
+    expect(await screen.findByText('Annulation programmée retirée')).toBeInTheDocument();
   });
 });
