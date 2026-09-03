@@ -1,9 +1,9 @@
-import { Plan } from './plan.model.js';
 import {
-    DEFAULT_PLAN_CAPABILITY_REGISTRY,
-} from './planCapability.registry.js';
+    ACTIVE_PLAN_CAPABILITY_REGISTRY,
+} from '../../config/applicationCapability.registry.js';
 import { PLAN_STATUS } from '../../constants/plan.constants.js';
 import { AppError } from '../../utils/appError.js';
+import { Plan } from './plan.model.js';
 
 
 const getLimitKeys = (limits) => {
@@ -29,10 +29,14 @@ const getLimitKeys = (limits) => {
  * Lorsqu'un objet `limits` est fourni, il doit décrire toutes les métriques
  * actives. Le moteur de quotas distingue volontairement `null` (illimité),
  * `0` (aucune consommation) et une clé absente (configuration invalide).
+ *
+ * Le registre reste injectable pour les tests et les services spécialisés,
+ * mais le comportement normal de l'application utilise son registre actif
+ * composé dans `config/applicationCapability.registry.js`.
  */
 const validatePlanCapabilities = (
     planData,
-    registry = DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
 ) => {
     const features = planData?.features ?? [];
     const limits = planData?.limits ?? {};
@@ -86,7 +90,7 @@ const validatePlanCapabilities = (
 const createPlan = async ({
     planData,
     actorId = null,
-    registry = DEFAULT_PLAN_CAPABILITY_REGISTRY,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
     session,
 }) => {
     validatePlanCapabilities(
