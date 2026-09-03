@@ -260,10 +260,14 @@ describe('application routing', () => {
   it('rend le shell Platform et sa navigation pour une session authentifiée', async () => {
     renderRoute('/platform/overview', 'authenticated');
 
-    expect(await screen.findByText('Console Platform')).toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: 'Navigation Platform' })).toBeInTheDocument();
+    expect(
+      await screen.findByText('Console d’administration globale'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: 'Navigation de la plateforme' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Utilisateurs' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Vue d’ensemble' })).toBeInTheDocument();
   });
 
   it('navigue vers une section Platform préparée', async () => {
