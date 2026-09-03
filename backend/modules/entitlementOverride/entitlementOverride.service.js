@@ -184,17 +184,34 @@ const resolveActiveEntitlementOverrides = async ({
         return query;
     };
 
+    const boundedEndsAtFilter = mongoose.trusted({
+        $gt: at,
+    });
+
+    let permanentOverrides;
+    let boundedOverrides;
+
     /*
-     * Deux requêtes évitent un `$or` top-level alors que sanitizeFilter est
-     * activé globalement. Les seuls opérateurs MongoDB construits ici sont
-     * internes et explicitement marqués trusted.
+     * Hors transaction, les deux lectures indépendantes peuvent être lancées
+     * en parallèle. Avec une session, elles restent séquentielles : les appels
+     * au resolver peuvent participer à une transaction plus large et ne doivent
+     * pas introduire d'opérations concurrentes sur cette même session.
+     *
+     * Les opérateurs MongoDB sont entièrement construits par le backend et
+     * restent explicitement trusted afin de conserver sanitizeFilter global.
      */
-    const [permanentOverrides, boundedOverrides] = await Promise.all([
-        buildQuery(null),
-        buildQuery(mongoose.trusted({
-            $gt: at,
-        })),
-    ]);
+    if (session) {
+        permanentOverrides = await buildQuery(null);
+        boundedOverrides = await buildQuery(boundedEndsAtFilter);
+    } else {
+        [
+            permanentOverrides,
+            boundedOverrides,
+        ] = await Promise.all([
+            buildQuery(null),
+            buildQuery(boundedEndsAtFilter),
+        ]);
+    }
 
     const candidates = [
         ...permanentOverrides,
