@@ -1,6 +1,16 @@
 import { useState } from 'react';
 
+import { DatePicker } from '@/components/forms/date-picker';
 import { Button } from '@/components/ui/button';
+
+function toDateInputValue(value) {
+  if (!value) return '';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  return date.toISOString().slice(0, 10);
+}
 
 function PlatformSubscriptionEditForm({
   onCancel,
@@ -17,16 +27,21 @@ function PlatformSubscriptionEditForm({
   const [discountType, setDiscountType] = useState(subscription.discountType ?? 'none');
   const [discountValue, setDiscountValue] = useState(String(subscription.discountValue ?? 0));
   const [discountReason, setDiscountReason] = useState(subscription.discountReason ?? '');
+  const [discountEndsAt, setDiscountEndsAt] = useState(
+    toDateInputValue(subscription.discountEndsAt),
+  );
 
   function submit(event) {
     event.preventDefault();
 
+    const discountEnabled = discountType !== 'none';
     const payload = {
       plan,
       billingInterval,
       discountType,
-      discountValue: Number(discountValue || 0),
-      discountReason: discountType === 'none' ? null : discountReason.trim(),
+      discountValue: discountEnabled ? Number(discountValue || 0) : 0,
+      discountReason: discountEnabled ? discountReason.trim() : null,
+      discountEndsAt: discountEnabled && discountEndsAt ? discountEndsAt : null,
       manualOverride,
       manualOverrideReason: manualOverride ? manualOverrideReason.trim() : null,
     };
@@ -88,6 +103,18 @@ function PlatformSubscriptionEditForm({
             <label className="text-sm font-medium" htmlFor="subscription-discount-reason">Motif de la remise</label>
             <textarea className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" id="subscription-discount-reason" maxLength={500} onChange={(event) => setDiscountReason(event.target.value)} required value={discountReason} />
           </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="subscription-discount-end">Fin de la remise</label>
+            <DatePicker
+              disabled={pending}
+              id="subscription-discount-end"
+              onChange={setDiscountEndsAt}
+              value={discountEndsAt}
+            />
+            <p className="text-xs text-muted-foreground">
+              Laissez vide pour une remise sans date d’expiration programmée.
+            </p>
+          </div>
         </>
       )}
 
@@ -113,4 +140,4 @@ function PlatformSubscriptionEditForm({
   );
 }
 
-export { PlatformSubscriptionEditForm };
+export { PlatformSubscriptionEditForm, toDateInputValue };
