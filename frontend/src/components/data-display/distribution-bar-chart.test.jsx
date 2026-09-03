@@ -21,7 +21,7 @@ describe('DistributionBarChart', () => {
       />,
     );
 
-    expect(screen.getByRole('img', { name: 'Répartition des plans' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Répartition des plans' })).toBeInTheDocument();
     expect(screen.getByText('Premium')).toBeInTheDocument();
     expect(screen.getByText('30 espaces · 60 %')).toBeInTheDocument();
     expect(screen.getByText('20 espaces · 40 %')).toBeInTheDocument();
