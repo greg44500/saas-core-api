@@ -54,6 +54,7 @@ function UserMenu() {
     ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email
     : 'Compte utilisateur';
   const isSuperAdmin = user?.platformRole === PLATFORM_ROLE.SUPER_ADMIN;
+  const isPlatformContext = location.pathname.startsWith('/platform');
 
   return (
     <div className="relative">
@@ -104,7 +105,7 @@ function UserMenu() {
               <ShieldCheck aria-hidden="true" className="size-4" />
               Sécurité
             </button>
-            {isSuperAdmin && (
+            {isSuperAdmin && !isPlatformContext && (
               <button
                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => navigateFromMenu('/platform/overview')}
@@ -112,7 +113,7 @@ function UserMenu() {
                 type="button"
               >
                 <Gauge aria-hidden="true" className="size-4" />
-                Console plateforme
+                Console d’administration
               </button>
             )}
           </div>
