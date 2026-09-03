@@ -49,16 +49,33 @@ describe('File persistence audit', () => {
                 async (callback) =>
                     callback(session),
             ),
-            resolvePlanEntitlement: vi.fn()
+            /*
+             * F10.3 fait de l'entitlement effectif l'autorité transactionnelle.
+             * Ce test d'audit n'évalue pas les règles commerciales elles-mêmes,
+             * mais son double doit respecter le contrat réel de la factory afin
+             * de ne pas masquer une dérive de dépendances.
+             */
+            resolveEffectiveEntitlement: vi.fn()
                 .mockResolvedValue({
+                    subscription: {
+                        _id: 'subscription-id',
+                    },
                     plan: {
+                        _id: 'plan-id',
+                    },
+                    effectiveCapabilities: {
                         features: [
                             'file_upload',
                         ],
+                        limits: {
+                            file_uploads_monthly: 10,
+                            storage_bytes: 10_000,
+                        },
+                        appliedOverrides: [],
                     },
                 }),
             assertFeatureAvailable: vi.fn(),
-            reservePlanLimit: vi.fn()
+            reserveEffectiveLimit: vi.fn()
                 .mockResolvedValue({
                     usageMetric: {},
                 }),
