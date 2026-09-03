@@ -1,9 +1,9 @@
 import {
-    getWorkspacePlanEntitlement,
+    getWorkspaceEffectiveEntitlement,
 } from '../modules/subscriptions/subscription.service.js';
 
 import {
-    assertPlanFeatureAvailable,
+    assertEntitlementFeatureAvailable,
 } from '../modules/plan/planFeature.service.js';
 
 import {
@@ -16,32 +16,31 @@ const PLAN_FEATURE_KEY_PATTERN =
 
 
 /**
- * Construit la factory de contrôle des fonctionnalités du plan.
+ * Construit la factory de contrôle des fonctionnalités commerciales effectives.
  *
- * La résolution de la souscription est injectée afin que le middleware soit
- * testable sans interroger MongoDB.
- *
- * Cette couche dépend de req et next : elle appartient donc aux middlewares.
- * La logique de résolution du plan reste dans SubscriptionService.
+ * La résolution de l'entitlement est injectée afin que le middleware reste
+ * testable sans interroger MongoDB. La logique commerciale elle-même demeure
+ * dans les services de domaine et ne dépend pas de req/res.
  */
 const createEnforcePlanFeature = ({
-    resolveWorkspacePlanEntitlement,
+    resolveWorkspaceEffectiveEntitlement,
 }) => {
     if (
-        typeof resolveWorkspacePlanEntitlement
+        typeof resolveWorkspaceEffectiveEntitlement
         !== 'function'
     ) {
         throw new TypeError(
-            'Le résolveur des droits du plan est invalide.',
+            'Le résolveur des droits effectifs est invalide.',
         );
     }
 
 
     /**
-     * Crée un middleware pour une fonctionnalité stable du plan.
+     * Crée un middleware pour une capability commerciale stable.
      *
-     * Le contrôle porte sur le workspace et non sur l'utilisateur. La
-     * permission individuelle a déjà été vérifiée par authorizePermission.
+     * Le contrôle porte sur le Workspace, pas sur l'utilisateur. La permission
+     * individuelle doit déjà avoir été vérifiée par `authorizePermission`.
+     * Un override peut activer ou retirer la feature indépendamment du Plan.
      */
     return (requiredFeature) => {
         if (
@@ -71,38 +70,28 @@ const createEnforcePlanFeature = ({
             }
 
             try {
-                const planEntitlement =
-                    await resolveWorkspacePlanEntitlement({
+                const effectiveEntitlement =
+                    await resolveWorkspaceEffectiveEntitlement({
                         workspaceId:
                             req.workspace._id,
                     });
 
-                /*
-                * La règle fonctionnelle reste dans PlanService afin de pouvoir
-                * être réutilisée hors HTTP, notamment dans la transaction
-                * atomique qui créera File et réservera ses quotas.
-                */
-                assertPlanFeatureAvailable({
-                    plan: planEntitlement?.plan,
+                assertEntitlementFeatureAvailable({
+                    entitlement: effectiveEntitlement,
                     featureKey: requiredFeature,
                 });
 
                 /*
-                 * Ce résultat est conservé comme contexte utile à la requête.
-                 * Il ne constitue pas une autorité transactionnelle : le plan
-                 * sera relu et revérifié dans la session MongoDB au moment de
-                 * réserver les quotas et de créer File.
+                 * Cette lecture évite une opération inutile, notamment avant
+                 * Multer, mais ne constitue pas l'autorité d'une future
+                 * écriture transactionnelle. Un service d'écriture sensible
+                 * doit relire l'entitlement dans sa propre session MongoDB.
                  */
-                req.planEntitlement =
-                    planEntitlement;
+                req.effectiveEntitlement =
+                    effectiveEntitlement;
 
                 return next();
             } catch (error) {
-                /*
-                 * Les erreurs du service Subscription conservent leur nature :
-                 * absence de souscription utilisable, plan introuvable ou
-                 * erreur technique MongoDB.
-                 */
                 return next(error);
             }
         };
@@ -111,12 +100,12 @@ const createEnforcePlanFeature = ({
 
 
 /**
- * Factory applicative utilisant le véritable service Subscription.
+ * Factory applicative utilisant le véritable moteur d'entitlement.
  */
 const enforcePlanFeature =
     createEnforcePlanFeature({
-        resolveWorkspacePlanEntitlement:
-            getWorkspacePlanEntitlement,
+        resolveWorkspaceEffectiveEntitlement:
+            getWorkspaceEffectiveEntitlement,
     });
 
 
