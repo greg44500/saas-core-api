@@ -18,12 +18,7 @@ function PlatformLayout() {
       <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Console Platform
-              </p>
-              <p className="font-semibold">Administration globale</p>
-            </div>
+            <p className="font-semibold">Console d’administration globale</p>
 
             <div className="flex items-center gap-2">
               <ThemeToggle />
