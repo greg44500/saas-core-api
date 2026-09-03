@@ -1,12 +1,12 @@
 import { Router } from 'express';
 
 import {
-    PLATFORM_ROLE,
-} from '../../../constants/platformRoles.constants.js';
+    PLATFORM_PERMISSION,
+} from '../../../constants/platformPermissions.constants.js';
 
 import {
-    authorizePlatformRole,
-} from '../../../middlewares/authorizePlatformRole.js';
+    authorizePlatformPermission,
+} from '../../../middlewares/authorizePlatformPermission.js';
 
 import {
     validateRequest,
@@ -30,7 +30,7 @@ import {
 import {
     createPlatformPlanBodySchema,
     platformPlanIdParamsSchema,
-    updatePlatformPlanBodySchema
+    updatePlatformPlanBodySchema,
 } from './platformPlans.validation.js';
 
 
@@ -38,66 +38,45 @@ const platformPlansRouter = Router();
 
 
 /**
- * Toutes les routes d'administration des plans sont réservées au super-admin.
- *
- * L'authentification est déjà appliquée par le routeur Platform racine.
- * Ce sous-routeur reste responsable de l'autorisation propre au domaine Plans.
- */
-platformPlansRouter.use(
-    authorizePlatformRole(
-        PLATFORM_ROLE.SUPER_ADMIN,
-    ),
-);
-
-
-/**
- * Expose le registre actif des capabilities afin que l'administration
- * construise ses formulaires depuis la même source de vérité que le backend.
+ * Les routes expriment maintenant l'action Platform réellement requise.
+ * La politique Core V1 attribue toutes ces permissions uniquement au
+ * super-admin, donc cette migration n'élargit aucun accès existant.
  */
 platformPlansRouter.get(
     '/capabilities',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.CAPABILITIES_READ,
+    ),
     listPlanCapabilities,
 );
 
-
-/**
- * Retourne la liste administrative paginée des plans.
- *
- * Contrairement au catalogue public, cette route peut exposer des plans
- * privés, inactifs ou archivés nécessaires à l'administration Platform.
- */
 platformPlansRouter.get(
     '/',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.PLANS_READ,
+    ),
     validateRequest({
         query: paginationQuerySchema,
     }),
     listPlans,
 );
 
-
-/**
- * Crée une nouvelle offre commerciale depuis l'administration Platform.
- *
- * La validation HTTP protège la structure du payload avant son passage
- * au service. Les capabilities sont ensuite contrôlées par le module Plan,
- * qui reste propriétaire de cette règle métier.
- */
 platformPlansRouter.post(
     '/',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.PLANS_CREATE,
+    ),
     validateRequest({
         body: createPlatformPlanBodySchema,
     }),
     createPlan,
 );
 
-/**
- * Met à jour partiellement un plan existant.
- *
- * L'identifiant et le payload sont validés séparément afin de conserver
- * un contrat HTTP explicite sur chaque source de données.
- */
 platformPlansRouter.patch(
     '/:planId',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.PLANS_UPDATE,
+    ),
     validateRequest({
         params: platformPlanIdParamsSchema,
         body: updatePlatformPlanBodySchema,
@@ -105,14 +84,11 @@ platformPlansRouter.patch(
     updatePlan,
 );
 
-/**
- * Archive un plan existant.
- *
- * L'archivage est exposé comme une action dédiée afin de conserver
- * une transition métier explicite et auditée séparément.
- */
 platformPlansRouter.patch(
     '/:planId/archive',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.PLANS_ARCHIVE,
+    ),
     validateRequest({
         params: platformPlanIdParamsSchema,
     }),
