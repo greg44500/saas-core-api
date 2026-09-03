@@ -9,11 +9,13 @@ import {
 import {
     enforcePlanLimit,
     evaluatePlanLimit,
+    reserveEffectiveLimitForEntitlement,
     reservePlanLimitForEntitlement,
+    resolveEffectiveMetricLimit,
     resolvePlanMetricLimit,
 } from '../../modules/plan/planLimit.service.js';
 import {
-    getWorkspacePlanEntitlement,
+    getWorkspaceEffectiveEntitlement,
 } from '../../modules/subscriptions/subscription.service.js';
 
 import {
@@ -27,7 +29,7 @@ import {
 vi.mock(
     '../../modules/subscriptions/subscription.service.js',
     () => ({
-        getWorkspacePlanEntitlement: vi.fn(),
+        getWorkspaceEffectiveEntitlement: vi.fn(),
     }),
 );
 
@@ -57,7 +59,6 @@ describe('evaluatePlanLimit', () => {
         });
     });
 
-
     it('refuse une consommation qui dépasse la limite', () => {
         const result = evaluatePlanLimit({
             limit: 10,
@@ -79,7 +80,6 @@ describe('evaluatePlanLimit', () => {
             remaining: 3,
         });
     });
-
 
     it('autorise une consommation lorsque la limite est illimitée', () => {
         const result = evaluatePlanLimit({
@@ -108,43 +108,69 @@ describe('resolvePlanMetricLimit', () => {
             ]),
         };
 
-        const result = resolvePlanMetricLimit({
+        expect(resolvePlanMetricLimit({
             plan,
             metricKey: 'members',
-        });
-
-        expect(result).toBe(5);
+        })).toBe(5);
     });
 
-
-    it('conserve null comme limite explicitement illimitée', () => {
+    it('conserve null comme limite catalogue explicitement illimitée', () => {
         const plan = {
             limits: new Map([
                 ['storage_bytes', null],
             ]),
         };
 
-        const result = resolvePlanMetricLimit({
+        expect(resolvePlanMetricLimit({
             plan,
             metricKey: 'storage_bytes',
-        });
-
-        expect(result).toBeNull();
+        })).toBeNull();
     });
 
-
     it('refuse une métrique déclarée mais absente des limites du plan', () => {
-        const plan = {
-            limits: new Map(),
+        expect(() => resolvePlanMetricLimit({
+            plan: {
+                limits: new Map(),
+            },
+            metricKey: 'members',
+        })).toThrow(
+            'La limite members n’est pas configurée dans le plan.',
+        );
+    });
+});
+
+describe('resolveEffectiveMetricLimit', () => {
+    it('retourne la valeur résultant de la composition des overrides', () => {
+        const entitlement = {
+            effectiveCapabilities: {
+                limits: {
+                    members: 12,
+                    storage_bytes: null,
+                },
+            },
         };
 
-        expect(() => {
-            resolvePlanMetricLimit({
-                plan,
-                metricKey: 'members',
-            });
-        }).toThrow(
-            'La limite members n’est pas configurée dans le plan.',
+        expect(resolveEffectiveMetricLimit({
+            entitlement,
+            metricKey: 'members',
+        })).toBe(12);
+
+        expect(resolveEffectiveMetricLimit({
+            entitlement,
+            metricKey: 'storage_bytes',
+        })).toBeNull();
+    });
+
+    it('refuse une métrique effective absente au lieu de la considérer illimitée', () => {
+        expect(() => resolveEffectiveMetricLimit({
+            entitlement: {
+                effectiveCapabilities: {
+                    limits: {},
+                },
+            },
+            metricKey: 'members',
+        })).toThrow(
+            'La limite effective members n’est pas configurée pour le workspace.',
         );
     });
 });
@@ -154,31 +180,41 @@ describe('enforcePlanLimit', () => {
         vi.clearAllMocks();
     });
 
-
-    it('résout le plan puis réserve la consommation autorisée', async () => {
+    it('résout l’entitlement effectif puis réserve avec sa limite finale', async () => {
         const workspaceId = 'workspace-id';
         const actorId = 'actor-id';
-        const at = new Date('2026-08-17T12:00:00.000Z');
-
+        const at = new Date('2026-09-03T12:00:00.000Z');
         const subscription = {
             _id: 'subscription-id',
         };
-
         const plan = {
             _id: 'plan-id',
             limits: new Map([
                 ['members', 5],
             ]),
         };
-
+        const effectiveCapabilities = {
+            features: [],
+            limits: {
+                members: 12,
+            },
+            appliedOverrides: [
+                {
+                    id: 'override-id',
+                    metricKey: 'members',
+                    limitValue: 12,
+                },
+            ],
+        };
         const usageMetric = {
             metricKey: 'members',
-            value: 4,
+            value: 6,
         };
 
-        getWorkspacePlanEntitlement.mockResolvedValue({
+        getWorkspaceEffectiveEntitlement.mockResolvedValue({
             subscription,
             plan,
+            effectiveCapabilities,
         });
 
         reserveUsageMetricWithinLimit.mockResolvedValue(
@@ -194,9 +230,11 @@ describe('enforcePlanLimit', () => {
         });
 
         expect(
-            getWorkspacePlanEntitlement,
+            getWorkspaceEffectiveEntitlement,
         ).toHaveBeenCalledWith({
             workspaceId,
+            at,
+            registry: expect.any(Object),
             session: null,
         });
 
@@ -205,7 +243,7 @@ describe('enforcePlanLimit', () => {
         ).toHaveBeenCalledWith({
             workspaceId,
             metricKey: 'members',
-            limit: 5,
+            limit: 12,
             amount: 1,
             at,
             actorId,
@@ -216,32 +254,30 @@ describe('enforcePlanLimit', () => {
         expect(result).toEqual({
             subscription,
             plan,
+            effectiveCapabilities,
             usageMetric,
             metricKey: 'members',
-            limit: 5,
+            limit: 12,
         });
     });
 
-
-    it('refuse la demande lorsque la réservation atomique échoue', async () => {
-        const plan = {
-            _id: 'plan-id',
-            limits: new Map([
-                ['members', 5],
-            ]),
-        };
-
-        getWorkspacePlanEntitlement.mockResolvedValue({
+    it('refuse la demande lorsque la réservation atomique de la limite effective échoue', async () => {
+        getWorkspaceEffectiveEntitlement.mockResolvedValue({
             subscription: {
                 _id: 'subscription-id',
             },
-            plan,
+            plan: {
+                _id: 'plan-id',
+            },
+            effectiveCapabilities: {
+                features: [],
+                limits: {
+                    members: 3,
+                },
+                appliedOverrides: [],
+            },
         });
 
-        /*
-         * null signifie que la condition atomique n'a trouvé aucune capacité
-         * suffisante au moment exact de la réservation.
-         */
         reserveUsageMetricWithinLimit.mockResolvedValue(
             null,
         );
@@ -261,31 +297,90 @@ describe('enforcePlanLimit', () => {
         expect(error).toMatchObject({
             name: 'PlanLimitExceededError',
             message:
-                'La limite members du plan est atteinte.',
+                'La limite members du workspace est atteinte.',
             statusCode: 403,
             metricKey: 'members',
         });
     });
 });
+
+describe('reserveEffectiveLimitForEntitlement', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('utilise directement une limite effective dans la même session', async () => {
+        const at = new Date('2026-09-03T12:00:00.000Z');
+        const session = {
+            id: 'mongo-session',
+        };
+        const effectiveEntitlement = {
+            subscription: {
+                _id: 'subscription-id',
+            },
+            plan: {
+                _id: 'plan-id',
+            },
+            effectiveCapabilities: {
+                features: [],
+                limits: {
+                    file_uploads_monthly: 25,
+                },
+                appliedOverrides: [],
+            },
+        };
+        const usageMetric = {
+            metricKey: 'file_uploads_monthly',
+            value: 4,
+        };
+
+        reserveUsageMetricWithinLimit
+            .mockResolvedValue(usageMetric);
+
+        const result =
+            await reserveEffectiveLimitForEntitlement({
+                workspaceId: 'workspace-id',
+                effectiveEntitlement,
+                metricKey: 'file_uploads_monthly',
+                amount: 1,
+                at,
+                actorId: 'actor-id',
+                session,
+            });
+
+        expect(
+            getWorkspaceEffectiveEntitlement,
+        ).not.toHaveBeenCalled();
+
+        expect(
+            reserveUsageMetricWithinLimit,
+        ).toHaveBeenCalledWith({
+            workspaceId: 'workspace-id',
+            metricKey: 'file_uploads_monthly',
+            limit: 25,
+            amount: 1,
+            at,
+            actorId: 'actor-id',
+            registry: expect.any(Object),
+            session,
+        });
+
+        expect(result.limit).toBe(25);
+        expect(result.effectiveCapabilities)
+            .toBe(effectiveEntitlement.effectiveCapabilities);
+    });
+});
+
 describe('reservePlanLimitForEntitlement', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-
-    it('réserve une limite depuis un entitlement déjà résolu', async () => {
-        const workspaceId = 'workspace-id';
-        const actorId = 'actor-id';
-
-        const at =
-            new Date(
-                '2026-08-19T10:00:00.000Z',
-            );
-
+    it('conserve la primitive Plan-only pour les opérations de catalogue', async () => {
+        const at = new Date('2026-08-19T10:00:00.000Z');
         const session = {
             id: 'mongo-session',
         };
-
         const planEntitlement = {
             subscription: {
                 _id: 'subscription-id',
@@ -293,86 +388,47 @@ describe('reservePlanLimitForEntitlement', () => {
             plan: {
                 _id: 'plan-id',
                 limits: new Map([
-                    [
-                        'file_uploads_monthly',
-                        10,
-                    ],
+                    ['file_uploads_monthly', 10],
                 ]),
             },
         };
-
         const usageMetric = {
-            metricKey:
-                'file_uploads_monthly',
+            metricKey: 'file_uploads_monthly',
             value: 4,
         };
 
         reserveUsageMetricWithinLimit
-            .mockResolvedValue(
-                usageMetric,
-            );
+            .mockResolvedValue(usageMetric);
 
         const result =
             await reservePlanLimitForEntitlement({
-                workspaceId,
+                workspaceId: 'workspace-id',
                 planEntitlement,
-                metricKey:
-                    'file_uploads_monthly',
+                metricKey: 'file_uploads_monthly',
                 amount: 1,
                 at,
-                actorId,
+                actorId: 'actor-id',
                 session,
             });
 
-        /*
-         * L'entitlement fourni doit être utilisé directement. Aucune seconde
-         * lecture Subscription n'est autorisée dans cette variante.
-         */
         expect(
-            getWorkspacePlanEntitlement,
+            getWorkspaceEffectiveEntitlement,
         ).not.toHaveBeenCalled();
 
-        expect(
-            reserveUsageMetricWithinLimit,
-        ).toHaveBeenCalledWith({
-            workspaceId,
-            metricKey:
-                'file_uploads_monthly',
-            limit: 10,
-            amount: 1,
-            at,
-            actorId,
-            registry: expect.any(Object),
-            session,
-        });
-
-        expect(result).toEqual({
-            subscription:
-                planEntitlement.subscription,
-            plan:
-                planEntitlement.plan,
-            usageMetric,
-            metricKey:
-                'file_uploads_monthly',
-            limit: 10,
-        });
+        expect(result.limit).toBe(10);
     });
 
-
-    it('refuse un entitlement incomplet avant toute réservation', async () => {
+    it('refuse un entitlement Plan incomplet avant toute réservation', async () => {
         await expect(
             reservePlanLimitForEntitlement({
-                workspaceId:
-                    'workspace-id',
+                workspaceId: 'workspace-id',
                 planEntitlement: {
                     subscription: {
-                        _id:
-                            'subscription-id',
+                        _id: 'subscription-id',
                     },
                     plan: null,
                 },
-                metricKey:
-                    'file_uploads_monthly',
+                metricKey: 'file_uploads_monthly',
             }),
         ).rejects.toThrow(
             'A valid plan entitlement is required to reserve a plan limit',
