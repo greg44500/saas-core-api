@@ -23,6 +23,7 @@ const baseApi = createApi({
     'PlatformPlans',
     'PlatformPlanCapabilities',
     'PlatformSubscriptions',
+    'PlatformAuditLogs',
   ],
   endpoints: () => ({}),
 });
