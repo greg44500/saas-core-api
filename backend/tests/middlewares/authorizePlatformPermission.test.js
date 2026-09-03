@@ -36,6 +36,24 @@ describe('authorizePlatformPermission', () => {
         expect(next).toHaveBeenCalledWith();
     });
 
+    it('autorise le super-admin à lire le cockpit Platform', () => {
+        const next = vi.fn();
+
+        authorizePlatformPermission(
+            PLATFORM_PERMISSION.OVERVIEW_READ,
+        )(
+            {
+                user: {
+                    platformRole: PLATFORM_ROLE.SUPER_ADMIN,
+                },
+            },
+            {},
+            next,
+        );
+
+        expect(next).toHaveBeenCalledWith();
+    });
+
     it('ne donne aucun droit implicite au rôle admin Core V1', () => {
         const next = vi.fn();
 
