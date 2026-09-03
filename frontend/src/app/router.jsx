@@ -259,10 +259,10 @@ function createAppRoutes() {
                 {
                   path: 'subscriptions',
                   lazy: async () => {
-                    const { PlatformSectionPlaceholderPage } = await import(
-                      '@/features/platform/pages/platform-section-placeholder-page'
+                    const { PlatformSubscriptionsPage } = await import(
+                      '@/features/platform/pages/platform-subscriptions-page'
                     );
-                    return { Component: () => <PlatformSectionPlaceholderPage title="Abonnements" /> };
+                    return { Component: PlatformSubscriptionsPage };
                   },
                 },
                 {
