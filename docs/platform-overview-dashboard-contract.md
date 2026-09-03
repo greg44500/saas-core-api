@@ -73,7 +73,7 @@ P-DASH.2 ajoute côté frontend les presets :
 7 derniers jours
 30 derniers jours (défaut canonique)
 90 derniers jours
-12 derniers mois
+365 derniers jours
 Période personnalisée
 ```
 
