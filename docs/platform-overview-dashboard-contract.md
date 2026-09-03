@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Contrat du dashboard Platform
 
 **Date :** 3 septembre 2026  
-**Statut :** P-UI + P-DASH.1 validés — P-DASH.2 et P-DASH.3 en validation
+**Statut :** P-UI + P-DASH.1 validés — P-DASH.2 / P-DASH.3 / raffinements P-DASH.4 en validation
 
 ## 1. Objet
 
@@ -22,9 +22,9 @@ Décisions actives :
 - le menu utilisateur se ferme au clic extérieur, avec `Escape` et lors d'un changement de route afin qu'un popover ouvert ne persiste jamais sur la page suivante ;
 - largeur de sidebar et densité des tableaux inchangées ;
 - `DataTable` reste l'unique primitive de tableau ;
-- cartes construites via les primitives réutilisables `Card`, `MetricCard`, `CollapsibleCard` et `DashboardSection` ;
-- contenu dépliable uniquement lorsque le détail est secondaire ;
-- tooltips réservés aux notions réellement ambiguës ;
+- cartes construites via les primitives réutilisables `Card`, `MetricCard`, `CollapsibleCard`, `SignalSummaryCard` et `DashboardSection` ;
+- les descriptions de cartes sont exposées via `InfoTooltip` au survol et au focus clavier afin de libérer l'espace sans perdre l'explication ;
+- contenu dépliable uniquement lorsque le détail apporte une information nouvelle ;
 - pas d'infinite scroll pour les listes administratives ; pagination, filtres et état URL restent la règle ;
 - le frontend ne calcule aucune métrique commerciale ou de sécurité.
 
@@ -87,13 +87,14 @@ La réponse regroupe :
 - KPI utilisateurs : total, créations période, période précédente, variation ;
 - KPI workspaces : total, créations période, période précédente, variation ;
 - nombre de subscriptions commerciales actives et temporellement valides ;
-- MRR contractuel estimé brut par devise ;
+- estimation mensuelle contractuelle brute par devise via le champ technique `contractedMrrEstimate` ;
 - répartition User et Workspace par statut ;
 - répartition des Workspaces par Plan réellement effectif ;
 - santé Subscription : active, trialing, past_due, résiliations et downgrades programmés ;
 - trials arrivant à échéance dans les 7 jours ;
 - overrides actifs, programmés et expirant dans les 7 jours ;
 - UsageMetric agrégées pour l'état courant ;
+- usage File actif : nombre, taille et répartition par type MIME ;
 - signaux nécessitant une attention ;
 - derniers événements `AuditLog` fonctionnels en échec sur la période.
 
@@ -138,13 +139,21 @@ P-DASH.3 affiche cette distribution par barres horizontales en conservant nom, n
 
 ## 8. Finance : vocabulaire obligatoire
 
-Le premier indicateur financier est :
+Le champ technique du DTO reste :
 
 ```text
-MRR contractuel estimé brut
+contractedMrrEstimate
 ```
 
-Il repose sur `Subscription.priceExclTaxMinor` pour les subscriptions commerciales actives et ramène les contrats annuels à un équivalent mensuel.
+`MRR` signifie historiquement `Monthly Recurring Revenue`, mais cet acronyme n'est pas affiché dans l'interface Core car la métrique disponible n'est pas encore un revenu comptable réellement encaissé.
+
+Le libellé utilisateur obligatoire est :
+
+```text
+Valeur mensuelle contractuelle estimée
+```
+
+Le tooltip précise qu'il s'agit de l'équivalent mensuel brut des abonnements commerciaux actifs, calculé à partir des prix contractuels, et qu'il ne représente ni facturation ni encaissement.
 
 Contraintes :
 
@@ -154,9 +163,31 @@ Contraintes :
 - il ne représente ni facturation, ni encaissement, ni revenu reconnu ;
 - le futur domaine Billing/Payment restera l'autorité pour les données financières réelles.
 
-Le frontend affiche une valeur monétaire uniquement lorsqu'une seule devise est présente. En multi-devises, il indique le nombre de devises au lieu de produire une somme artificielle. Un tooltip explicatif pourra être ajouté lorsque la primitive retenue apportera une information réellement utile.
+Le frontend affiche une valeur monétaire uniquement lorsqu'une seule devise est présente. En multi-devises, il indique le nombre de devises au lieu de produire une somme artificielle.
 
-## 9. Signaux d'attention
+## 9. Usage File générique
+
+La carte `Usage de la plateforme` conserve un résumé court des principales `UsageMetric`. Son contenu déplié ne répète plus ces métriques : il expose des informations File complémentaires.
+
+L'agrégation backend utilise uniquement les fichiers `active`, cohérents avec le quota fonctionnel de stockage. Les fichiers supprimés logiquement ne réapparaissent donc pas dans la consommation fonctionnelle même s'ils restent physiquement conservés pendant la période de rétention.
+
+Le DTO File contient :
+
+```text
+files.totalCount
+files.totalSizeBytes
+files.byType[]
+  mimeType
+  extensions
+  count
+  sizeBytes
+  percentageOfCount
+  percentageOfStorage
+```
+
+Le frontend peut ainsi afficher deux lectures complémentaires : répartition par nombre de fichiers et répartition par stockage occupé. Le rendu reste data-driven ; un futur type autorisé apparaît sans modification du composant de distribution.
+
+## 10. Signaux d'attention
 
 La V1 agrège notamment :
 
@@ -166,13 +197,17 @@ La V1 agrège notamment :
 - trials expirant dans les 7 jours ;
 - overrides expirant dans les 7 jours.
 
+Les clés techniques restent en anglais dans le modèle et le DTO lorsqu'elles font partie du contrat existant. L'interface traduit systématiquement les libellés visibles : `past_due` devient par exemple `Abonnements en retard`, `trial` devient `essai`, et `downgrade` devient `baisse de formule`.
+
 `AuditLog.status = failed` décrit un échec fonctionnel d'une action auditée. Il ne constitue pas un système de monitoring des erreurs techniques serveur.
+
+Les valeurs non nulles de cette synthèse utilisent par défaut le ton `warning`; `destructive` reste réservé aux incidents réellement critiques. Une valeur nulle reste neutre.
 
 Les erreurs 5xx, timeouts, jobs en échec, disponibilité MongoDB, SMTP ou antivirus appartiendront à une future couche d'observabilité dédiée.
 
-P-DASH.2 expose les compteurs synthétiques. Le tableau détaillé restera réservé à P-DASH.5 et utilisera obligatoirement le `DataTable` partagé.
+Le tableau détaillé restera réservé à P-DASH.5 et utilisera obligatoirement le `DataTable` partagé.
 
-## 10. Performance et cohérence
+## 11. Performance et cohérence
 
 Les agrégations par collection sont indépendantes et exécutables en parallèle. Le dashboard accepte un léger décalage analytique entre collections : il ne sert jamais d'autorité transactionnelle.
 
@@ -187,13 +222,13 @@ Côté frontend :
 - le test du router mocke la page Overview afin de ne pas transformer un test de navigation en test réseau ;
 - les primitives graphiques ne déclenchent aucune requête et ne portent aucun state serveur.
 
-## 11. Ordre d'implémentation actualisé
+## 12. Ordre d'implémentation actualisé
 
 ```text
 P-DASH.1  backend / permission / validation / agrégats / tests         VALIDÉ
 P-DASH.2  RTK Query / période URL / binding des agrégats               EN VALIDATION
 P-DASH.3  primitives / croissance / répartition Plan                   EN VALIDATION
-P-DASH.4  visualisations santé commerciale / finance / usage
+P-DASH.4  raffinement cartes / usage File / santé / finance            EN VALIDATION
 P-DASH.5  DataTable des points nécessitant une attention
 F10.6      administration frontend des dérogations
 ```
