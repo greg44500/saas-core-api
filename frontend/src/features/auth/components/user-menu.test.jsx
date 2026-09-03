@@ -14,16 +14,16 @@ vi.mock('@/features/auth/api/auth-api', () => ({
 
 import { UserMenu, getInitials } from '@/features/auth/components/user-menu';
 
-function renderUserMenu() {
+function renderUserMenu(initialPath = '/workspaces/workspace-1/dashboard') {
   const router = createMemoryRouter(
     [
       { path: '/workspaces/:workspaceId/dashboard', Component: UserMenu },
       { path: '/account/profile', Component: () => <h1>Profil cible</h1> },
       { path: '/account/security', Component: () => <h1>Sécurité cible</h1> },
-      { path: '/platform/overview', Component: () => <h1>Console cible</h1> },
+      { path: '/platform/overview', Component: UserMenu },
       { path: '/login', Component: () => <h1>Connexion cible</h1> },
     ],
-    { initialEntries: ['/workspaces/workspace-1/dashboard'] },
+    { initialEntries: [initialPath] },
   );
 
   render(<RouterProvider router={router} />);
@@ -79,7 +79,7 @@ describe('UserMenu', () => {
     expect(screen.getByText('greg@example.com')).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Profil' })).toBeEnabled();
     expect(screen.getByRole('menuitem', { name: 'Sécurité' })).toBeEnabled();
-    expect(screen.queryByRole('menuitem', { name: 'Console plateforme' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Console d’administration' })).not.toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Déconnexion' })).toBeEnabled();
   });
 
@@ -97,7 +97,7 @@ describe('UserMenu', () => {
     });
   });
 
-  it('affiche la Console plateforme uniquement au super_admin', async () => {
+  it('propose un retour vers la console au super_admin situé hors Platform', async () => {
     const user = userEvent.setup();
     useGetCurrentUserQueryMock.mockReturnValue({
       data: {
@@ -115,10 +115,33 @@ describe('UserMenu', () => {
     await user.click(
       screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' }),
     );
-    await user.click(screen.getByRole('menuitem', { name: 'Console plateforme' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Console d’administration' }));
 
-    expect(await screen.findByRole('heading', { name: 'Console cible' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/platform/overview');
+  });
+
+  it('masque le raccourci console lorsque le super_admin est déjà dans Platform', async () => {
+    const user = userEvent.setup();
+    useGetCurrentUserQueryMock.mockReturnValue({
+      data: {
+        id: 'admin-1',
+        firstName: 'Super',
+        lastName: 'Admin',
+        email: 'admin@example.com',
+        platformRole: 'super_admin',
+      },
+      isLoading: false,
+    });
+
+    renderUserMenu('/platform/overview');
+
+    await user.click(
+      screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' }),
+    );
+
+    expect(
+      screen.queryByRole('menuitem', { name: 'Console d’administration' }),
+    ).not.toBeInTheDocument();
   });
 
   it('déconnecte la session puis revient vers Login', async () => {
