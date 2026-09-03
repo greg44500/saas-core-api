@@ -198,7 +198,7 @@ function WorkspaceSubscriptionPage() {
 
       <SubscriptionSummaryCard subscription={subscription} />
 
-      <EffectivePlanCapabilities plan={entitlement?.plan} />
+      <EffectivePlanCapabilities entitlement={entitlement} />
 
       <TrialProgress
         active={trialIsEffective}
