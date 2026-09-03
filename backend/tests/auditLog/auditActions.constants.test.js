@@ -54,4 +54,16 @@ describe('Audit actions constants', () => {
         expect(AUDIT_ACTION.FILE_PURGED)
             .toBe('FILE_PURGED');
     });
+
+
+    it('prévoit les trois mutations auditables des entitlement overrides', () => {
+        expect(AUDIT_ENTITY_TYPE.ENTITLEMENT_OVERRIDE)
+            .toBe('EntitlementOverride');
+        expect(AUDIT_ACTION.ENTITLEMENT_OVERRIDE_CREATED)
+            .toBe('ENTITLEMENT_OVERRIDE_CREATED');
+        expect(AUDIT_ACTION.ENTITLEMENT_OVERRIDE_UPDATED)
+            .toBe('ENTITLEMENT_OVERRIDE_UPDATED');
+        expect(AUDIT_ACTION.ENTITLEMENT_OVERRIDE_REVOKED)
+            .toBe('ENTITLEMENT_OVERRIDE_REVOKED');
+    });
 });
