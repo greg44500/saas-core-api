@@ -114,11 +114,27 @@ describe('PlatformOverviewPage', () => {
     expect(within(kpis).getByText('50')).toBeInTheDocument();
     expect(within(kpis).getByText('20')).toBeInTheDocument();
     expect(within(kpis).getByText(/237,00/)).toBeInTheDocument();
-    expect(screen.getByText('Premium')).toBeInTheDocument();
-    expect(screen.getByText(/30 · 60/)).toBeInTheDocument();
     expect(within(attention).getByText('10')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Croissance et répartition' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Santé et exploitation' })).toBeInTheDocument();
+  });
+
+  it('visualise la croissance et la répartition sans recalculer les agrégats backend', () => {
+    renderPage();
+
+    const growth = screen.getByRole('group', {
+      name: 'Comparaison de la croissance de la plateforme',
+    });
+    const distribution = screen.getByRole('group', {
+      name: 'Répartition des espaces de travail par plan effectif',
+    });
+
+    expect(within(growth).getByText('Nouveaux utilisateurs')).toBeInTheDocument();
+    expect(within(growth).getByText('10')).toBeInTheDocument();
+    expect(within(growth).getByText('5')).toBeInTheDocument();
+    expect(within(distribution).getByText('Premium')).toBeInTheDocument();
+    expect(within(distribution).getByText('30 espaces · 60 %')).toBeInTheDocument();
+    expect(within(distribution).getByText('20 espaces · 40 %')).toBeInTheDocument();
   });
 
   it('utilise la période canonique backend par défaut puis transmet un preset différent à RTK Query', async () => {
