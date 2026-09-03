@@ -17,6 +17,12 @@ import { cn } from '@/lib/utils';
  * Le résumé et le détail doivent apporter deux niveaux d'information distincts :
  * ouvrir la carte ne doit pas simplement répéter ce qui est déjà visible. Les
  * explications longues sont déplacées dans un tooltip pour préserver l'espace.
+ *
+ * Le détail reste monté pendant la transition afin que l'ouverture ET la
+ * fermeture puissent être animées sans hauteur fixe. `inert` et `aria-hidden`
+ * empêchent toutefois le contenu replié de devenir interactif ou accessible au
+ * clavier. La variante `motion-reduce` respecte le choix système de réduire les
+ * animations.
  */
 function CollapsibleCard({
   title,
@@ -53,7 +59,7 @@ function CollapsibleCard({
               <ChevronDown
                 aria-hidden="true"
                 className={cn(
-                  'transition-transform duration-200',
+                  'transition-transform duration-300 ease-out motion-reduce:transition-none',
                   open && 'rotate-180',
                 )}
               />
@@ -64,12 +70,29 @@ function CollapsibleCard({
 
       {summary && <CardContent>{summary}</CardContent>}
 
-      {children && open && (
+      {children && (
         <div
-          className="border-t border-border px-5 py-4"
+          aria-hidden={!open}
+          className={cn(
+            'grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none',
+            open
+              ? 'grid-rows-[1fr] opacity-100'
+              : 'pointer-events-none grid-rows-[0fr] opacity-0',
+          )}
+          data-state={open ? 'open' : 'closed'}
           id={contentId}
+          inert={open ? undefined : true}
         >
-          {children}
+          <div className="overflow-hidden">
+            <div
+              className={cn(
+                'border-t border-border px-5 transition-[padding] duration-300 ease-out motion-reduce:transition-none',
+                open ? 'py-4' : 'py-0',
+              )}
+            >
+              {children}
+            </div>
+          </div>
         </div>
       )}
     </Card>
