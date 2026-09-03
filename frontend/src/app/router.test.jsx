@@ -72,6 +72,13 @@ vi.mock('@/features/platform/components/platform-guard', () => ({
   PlatformGuard: () => <Outlet />,
 }));
 
+// Le test du router vérifie uniquement le branchement des routes. La page
+// Overview possède ses propres tests RTK Query et ne doit pas déclencher un
+// fetch réseau ici, ce qui mélangerait deux responsabilités de test.
+vi.mock('@/features/platform/pages/platform-overview-page', () => ({
+  PlatformOverviewPage: () => <h1>Vue d’ensemble</h1>,
+}));
+
 vi.mock('@/features/platform/pages/platform-users-page', () => ({
   PlatformUsersPage: () => <h1>Utilisateurs</h1>,
 }));
