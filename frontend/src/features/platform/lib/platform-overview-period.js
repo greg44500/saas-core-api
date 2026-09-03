@@ -20,7 +20,7 @@ const PERIOD_OPTIONS = Object.freeze([
   { value: OVERVIEW_PERIOD_PRESET.DAYS_7, label: '7 derniers jours' },
   { value: OVERVIEW_PERIOD_PRESET.DAYS_30, label: '30 derniers jours' },
   { value: OVERVIEW_PERIOD_PRESET.DAYS_90, label: '90 derniers jours' },
-  { value: OVERVIEW_PERIOD_PRESET.DAYS_365, label: '12 derniers mois' },
+  { value: OVERVIEW_PERIOD_PRESET.DAYS_365, label: '365 derniers jours' },
   { value: OVERVIEW_PERIOD_PRESET.CUSTOM, label: 'Période personnalisée' },
 ]);
 
