@@ -27,6 +27,17 @@ vi.mock('@/features/auth/components/user-menu', () => ({
   UserMenu: () => <button type="button">Compte test</button>,
 }));
 
+// Le router teste ici le branchement de la route lazy, pas le formulaire Login
+// lui-même. La page réelle possède ses propres tests de formulaire/API.
+vi.mock('@/features/auth/pages/login-page', () => ({
+  LoginPage: () => (
+    <>
+      <h1>Connexion</h1>
+      <button type="button">Se connecter</button>
+    </>
+  ),
+}));
+
 vi.mock('@/features/auth/pages/forgot-password-page', () => ({
   ForgotPasswordPage: () => <h1>Mot de passe oublié</h1>,
 }));
