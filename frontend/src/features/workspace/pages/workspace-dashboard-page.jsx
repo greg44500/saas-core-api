@@ -25,7 +25,7 @@ function WorkspaceDashboardPage() {
         <p className="text-sm font-medium text-primary">{workspace.name}</p>
         <h1 className="text-3xl font-semibold tracking-tight">Tableau de bord</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Vue synthétique du workspace courant. Chaque indicateur respecte les permissions de votre rôle et renvoie vers la surface spécialisée lorsqu’elle est disponible.
+          Vue synthétique du workspace courant. Les indicateurs affichés respectent les fonctionnalités réellement disponibles et les permissions de votre rôle.
         </p>
       </header>
 
