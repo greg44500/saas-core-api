@@ -1,6 +1,7 @@
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
 
@@ -53,11 +54,13 @@ function resolvedMutation(mock, result = {}) {
   return [mock, { isLoading: false }];
 }
 
-function renderPage() {
+function renderPage(initialEntry = '/platform/workspaces') {
   return render(
-    <ToastProvider>
-      <PlatformWorkspacesPage />
-    </ToastProvider>,
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <ToastProvider>
+        <PlatformWorkspacesPage />
+      </ToastProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -73,13 +76,13 @@ describe('PlatformWorkspacesPage', () => {
       isLoading: false,
       refetch: vi.fn(),
     });
-    mocks.useGetPlatformWorkspaceQuery.mockReturnValue({
-      data: detailedWorkspace,
+    mocks.useGetPlatformWorkspaceQuery.mockImplementation((workspaceId) => ({
+      data: workspaceId ? detailedWorkspace : undefined,
       error: undefined,
       isFetching: false,
       isLoading: false,
       refetch: vi.fn(),
-    });
+    }));
     mocks.useSuspendPlatformWorkspaceMutation.mockReturnValue(
       resolvedMutation(mocks.suspendWorkspace, { ...detailedWorkspace, status: 'suspended' }),
     );
@@ -116,6 +119,16 @@ describe('PlatformWorkspacesPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Suivant' }));
     expect(mocks.useListPlatformWorkspacesQuery).toHaveBeenLastCalledWith({ page: 2, limit: 20 });
+  });
+
+  it('ouvre directement la fiche workspace indiquée dans l’URL', () => {
+    renderPage(`/platform/workspaces?workspaceId=${listedWorkspace.id}`);
+
+    expect(mocks.useGetPlatformWorkspaceQuery).toHaveBeenCalledWith(
+      listedWorkspace.id,
+      { skip: false },
+    );
+    expect(screen.getByRole('dialog', { name: 'Workspace Démo' })).toBeInTheDocument();
   });
 
   it('affiche un état vide explicite', () => {
@@ -211,13 +224,13 @@ describe('PlatformWorkspacesPage', () => {
       statusReason: 'administrative_review',
       statusReasonDetails: 'Contrôle en cours',
     };
-    mocks.useGetPlatformWorkspaceQuery.mockReturnValue({
-      data: suspendedWorkspace,
+    mocks.useGetPlatformWorkspaceQuery.mockImplementation((workspaceId) => ({
+      data: workspaceId ? suspendedWorkspace : undefined,
       error: undefined,
       isFetching: false,
       isLoading: false,
       refetch: vi.fn(),
-    });
+    }));
 
     renderPage();
     await user.click(screen.getByRole('button', { name: 'Voir' }));
