@@ -1,7 +1,11 @@
 import {
     ACTIVE_PLAN_CAPABILITY_REGISTRY,
 } from '../../config/applicationCapability.registry.js';
-import { PLAN_STATUS } from '../../constants/plan.constants.js';
+import {
+    PLAN_KEY,
+    PLAN_STATUS,
+    PLAN_SYSTEM_ROLE,
+} from '../../constants/plan.constants.js';
 import { AppError } from '../../utils/appError.js';
 import { Plan } from './plan.model.js';
 
@@ -20,6 +24,18 @@ const getLimitKeys = (limits) => {
 
     return [];
 };
+
+/**
+ * Le fallback `key=free` n'existe que pour rendre la migration des anciennes
+ * bases progressive. Une fois `systemRole` backfillé, il devient l'autorité.
+ */
+const isBaselinePlan = (plan) => Boolean(
+    plan
+    && (
+        plan.systemRole === PLAN_SYSTEM_ROLE.BASELINE
+        || plan.key === PLAN_KEY.FREE
+    )
+);
 
 const validatePlanCapabilities = (
     planData,
@@ -121,6 +137,7 @@ const listPublicPlans = async () => {
 
 export {
     createPlan,
+    isBaselinePlan,
     listPublicPlans,
     validatePlanCapabilities,
 };
