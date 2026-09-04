@@ -12,10 +12,14 @@ import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
 import { authorizeRoleDelegation } from '../../middlewares/authorizeRoleDelegation.js';
+import { enforcePlanFeature } from '../../middlewares/enforcePlanFeature.js';
 import {
     enforceWorkspaceAccessMode,
 } from '../../middlewares/enforceWorkspaceAccessMode.js';
 import { loadWorkspaceContext } from '../../middlewares/loadWorkspaceContext.js';
+import {
+    CORE_PLAN_FEATURE,
+} from '../../modules/plan/planCapability.registry.js';
 import {
     accept,
     create,
@@ -30,6 +34,7 @@ const {
     validationMiddleware,
     workspaceContextMiddleware,
     permissionMiddleware,
+    featureMiddleware,
     accessModeMiddleware,
     delegationMiddleware,
 } = vi.hoisted(() => ({
@@ -47,6 +52,7 @@ const {
         next();
     }),
     permissionMiddleware: vi.fn((req, res, next) => next()),
+    featureMiddleware: vi.fn((req, res, next) => next()),
     accessModeMiddleware: vi.fn((req, res, next) => next()),
     delegationMiddleware: vi.fn((req, res, next) => next()),
 }));
@@ -72,6 +78,10 @@ vi.mock('../../middlewares/authorizePermission.js', () => ({
 
 vi.mock('../../middlewares/authorizeRoleDelegation.js', () => ({
     authorizeRoleDelegation: delegationMiddleware,
+}));
+
+vi.mock('../../middlewares/enforcePlanFeature.js', () => ({
+    enforcePlanFeature: vi.fn(() => featureMiddleware),
 }));
 
 vi.mock('../../middlewares/enforceWorkspaceAccessMode.js', () => ({
@@ -111,6 +121,7 @@ beforeEach(() => {
     validationMiddleware.mockClear();
     workspaceContextMiddleware.mockClear();
     permissionMiddleware.mockClear();
+    featureMiddleware.mockClear();
     accessModeMiddleware.mockClear();
     delegationMiddleware.mockClear();
     create.mockClear();
@@ -119,7 +130,7 @@ beforeEach(() => {
 });
 
 describe('workspaceInvitation.routes', () => {
-    it('protège la création avec member:invite, le mode normal et l’anti-escalade', async () => {
+    it('protège la création avec member:invite, team_management, le mode normal et l’anti-escalade', async () => {
         const response = await request(createApp())
             .post('/workspaces/507f1f77bcf86cd799439011/invitations')
             .send({
@@ -133,19 +144,26 @@ describe('workspaceInvitation.routes', () => {
         expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.MEMBER_INVITE,
         );
+        expect(enforcePlanFeature).toHaveBeenCalledWith(
+            CORE_PLAN_FEATURE.TEAM_MANAGEMENT,
+        );
+        expect(featureMiddleware).toHaveBeenCalledOnce();
         expect(enforceWorkspaceAccessMode).toHaveBeenCalledWith();
         expect(accessModeMiddleware).toHaveBeenCalledOnce();
         expect(authorizeRoleDelegation).toHaveBeenCalledOnce();
         expect(create).toHaveBeenCalledOnce();
     });
 
-    it('autorise explicitement la révocation pendant la remédiation', async () => {
+    it('autorise la révocation en remédiation seulement si team_management reste disponible', async () => {
         const response = await request(createApp())
             .delete(
                 '/workspaces/507f1f77bcf86cd799439011/invitations/507f1f77bcf86cd799439012',
             );
 
         expect(response.status).toBe(200);
+        expect(enforcePlanFeature).toHaveBeenCalledWith(
+            CORE_PLAN_FEATURE.TEAM_MANAGEMENT,
+        );
         expect(enforceWorkspaceAccessMode).toHaveBeenCalledWith({
             allowDuringRemediation: true,
         });
@@ -161,6 +179,7 @@ describe('workspaceInvitation.routes', () => {
         expect(authenticate).toHaveBeenCalledOnce();
         expect(workspaceContextMiddleware).not.toHaveBeenCalled();
         expect(permissionMiddleware).not.toHaveBeenCalled();
+        expect(featureMiddleware).not.toHaveBeenCalled();
         expect(delegationMiddleware).not.toHaveBeenCalled();
         expect(accept).toHaveBeenCalledOnce();
     });
