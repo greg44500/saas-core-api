@@ -152,8 +152,13 @@ const snapshotOverride = (override) => ({
 /**
  * Traduit un lifecycle dérivé en filtre MongoDB à l'instant demandé.
  *
- * Le statut n'est volontairement jamais stocké. Cette traduction permet donc
- * de paginer et compter correctement côté serveur sans introduire un état
+ * Les opérateurs sont construits uniquement à partir de valeurs déjà validées
+ * par le service. `mongoose.trusted()` permet donc de conserver la protection
+ * globale `sanitizeFilter` pour les entrées non fiables sans neutraliser ces
+ * sélecteurs temporels internes.
+ *
+ * Le statut n'est volontairement jamais stocké. Cette traduction permet de
+ * paginer et compter correctement côté serveur sans introduire un état
  * persistant qui pourrait devenir faux lorsque le temps passe.
  */
 const buildLifecycleFilter = ({ lifecycle, at }) => {
@@ -162,10 +167,10 @@ const buildLifecycleFilter = ({ lifecycle, at }) => {
     if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE) {
         return {
             revokedAt: null,
-            startsAt: { $lte: at },
+            startsAt: mongoose.trusted({ $lte: at }),
             $or: [
                 { endsAt: null },
-                { endsAt: { $gt: at } },
+                { endsAt: mongoose.trusted({ $gt: at }) },
             ],
         };
     }
@@ -173,23 +178,23 @@ const buildLifecycleFilter = ({ lifecycle, at }) => {
     if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.SCHEDULED) {
         return {
             revokedAt: null,
-            startsAt: { $gt: at },
+            startsAt: mongoose.trusted({ $gt: at }),
         };
     }
 
     if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.EXPIRED) {
         return {
             revokedAt: null,
-            endsAt: {
+            endsAt: mongoose.trusted({
                 $ne: null,
                 $lte: at,
-            },
+            }),
         };
     }
 
     if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.REVOKED) {
         return {
-            revokedAt: { $ne: null },
+            revokedAt: mongoose.trusted({ $ne: null }),
         };
     }
 
