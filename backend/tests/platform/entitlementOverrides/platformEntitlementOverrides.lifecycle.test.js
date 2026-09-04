@@ -34,6 +34,12 @@ const buildListQuery = (result = []) => {
     return query;
 };
 
+const expectTrustedOperator = ({ condition, operator, value }) => {
+    expect(condition[operator]).toBe(value);
+    expect(condition).not.toHaveProperty('$eq');
+    expect(Object.keys(condition)).toContain(operator);
+};
+
 
 describe('platformEntitlementOverrides lifecycle filtering', () => {
     afterEach(() => {
@@ -41,43 +47,55 @@ describe('platformEntitlementOverrides lifecycle filtering', () => {
     });
 
     it('traduit chaque lifecycle en filtre temporel non persisté', () => {
-        expect(buildLifecycleFilter({
+        const active = buildLifecycleFilter({
             lifecycle: ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE,
             at: NOW,
-        })).toEqual({
-            revokedAt: null,
-            startsAt: { $lte: NOW },
-            $or: [
-                { endsAt: null },
-                { endsAt: { $gt: NOW } },
-            ],
         });
 
-        expect(buildLifecycleFilter({
+        expect(active.revokedAt).toBeNull();
+        expectTrustedOperator({
+            condition: active.startsAt,
+            operator: '$lte',
+            value: NOW,
+        });
+        expect(active.$or[0]).toEqual({ endsAt: null });
+        expectTrustedOperator({
+            condition: active.$or[1].endsAt,
+            operator: '$gt',
+            value: NOW,
+        });
+
+        const scheduled = buildLifecycleFilter({
             lifecycle: ENTITLEMENT_OVERRIDE_LIFECYCLE.SCHEDULED,
             at: NOW,
-        })).toEqual({
-            revokedAt: null,
-            startsAt: { $gt: NOW },
         });
 
-        expect(buildLifecycleFilter({
+        expect(scheduled.revokedAt).toBeNull();
+        expectTrustedOperator({
+            condition: scheduled.startsAt,
+            operator: '$gt',
+            value: NOW,
+        });
+
+        const expired = buildLifecycleFilter({
             lifecycle: ENTITLEMENT_OVERRIDE_LIFECYCLE.EXPIRED,
             at: NOW,
-        })).toEqual({
-            revokedAt: null,
-            endsAt: {
-                $ne: null,
-                $lte: NOW,
-            },
         });
 
-        expect(buildLifecycleFilter({
+        expect(expired.revokedAt).toBeNull();
+        expect(expired.endsAt.$ne).toBeNull();
+        expect(expired.endsAt.$lte).toBe(NOW);
+        expect(expired.endsAt).not.toHaveProperty('$eq');
+        expect(Object.keys(expired.endsAt).sort()).toEqual(['$lte', '$ne'].sort());
+
+        const revoked = buildLifecycleFilter({
             lifecycle: ENTITLEMENT_OVERRIDE_LIFECYCLE.REVOKED,
             at: NOW,
-        })).toEqual({
-            revokedAt: { $ne: null },
         });
+
+        expect(revoked.revokedAt.$ne).toBeNull();
+        expect(revoked.revokedAt).not.toHaveProperty('$eq');
+        expect(Object.keys(revoked.revokedAt)).toEqual(['$ne']);
     });
 
     it('préserve les opérateurs internes lorsque sanitizeFilter est appliqué', () => {
@@ -88,10 +106,16 @@ describe('platformEntitlementOverrides lifecycle filtering', () => {
 
         mongoose.sanitizeFilter(filter);
 
-        expect(filter.startsAt).toEqual({ $lte: NOW });
-        expect(filter.startsAt).not.toHaveProperty('$eq');
-        expect(filter.$or[1].endsAt).toEqual({ $gt: NOW });
-        expect(filter.$or[1].endsAt).not.toHaveProperty('$eq');
+        expectTrustedOperator({
+            condition: filter.startsAt,
+            operator: '$lte',
+            value: NOW,
+        });
+        expectTrustedOperator({
+            condition: filter.$or[1].endsAt,
+            operator: '$gt',
+            value: NOW,
+        });
     });
 
     it('applique le filtre active avant pagination et comptage', async () => {
@@ -107,17 +131,22 @@ describe('platformEntitlementOverrides lifecycle filtering', () => {
             at: NOW,
         });
 
-        const expectedFilter = {
-            revokedAt: null,
-            startsAt: { $lte: NOW },
-            $or: [
-                { endsAt: null },
-                { endsAt: { $gt: NOW } },
-            ],
-        };
+        const [findFilter] = findSpy.mock.calls[0];
+        const [countFilter] = countSpy.mock.calls[0];
 
-        expect(findSpy).toHaveBeenCalledWith(expectedFilter);
-        expect(countSpy).toHaveBeenCalledWith(expectedFilter);
+        expect(findFilter.revokedAt).toBeNull();
+        expectTrustedOperator({
+            condition: findFilter.startsAt,
+            operator: '$lte',
+            value: NOW,
+        });
+        expect(findFilter.$or[0]).toEqual({ endsAt: null });
+        expectTrustedOperator({
+            condition: findFilter.$or[1].endsAt,
+            operator: '$gt',
+            value: NOW,
+        });
+        expect(countFilter).toBe(findFilter);
     });
 
     it('compose lifecycle et workspace sans dépendre du nom du workspace', async () => {
@@ -133,10 +162,14 @@ describe('platformEntitlementOverrides lifecycle filtering', () => {
             at: NOW,
         });
 
-        expect(findSpy).toHaveBeenCalledWith(expect.objectContaining({
-            workspace: workspaceId,
-            revokedAt: null,
-            startsAt: { $lte: NOW },
-        }));
+        const [filter] = findSpy.mock.calls[0];
+
+        expect(filter.workspace).toBe(workspaceId);
+        expect(filter.revokedAt).toBeNull();
+        expectTrustedOperator({
+            condition: filter.startsAt,
+            operator: '$lte',
+            value: NOW,
+        });
     });
 });
