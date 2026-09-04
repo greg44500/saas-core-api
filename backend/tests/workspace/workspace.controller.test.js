@@ -14,7 +14,7 @@ import {
 } from '../../modules/workspace/workspace.controller.js';
 
 import {
-    getWorkspaceEffectiveFeatures,
+    getWorkspaceEntitlementPresentation,
 } from '../../modules/workspace/workspaceEntitlement.service.js';
 import {
     createWorkspace,
@@ -25,7 +25,7 @@ import {
 
 
 vi.mock('../../modules/workspace/workspaceEntitlement.service.js', () => ({
-    getWorkspaceEffectiveFeatures: vi.fn(),
+    getWorkspaceEntitlementPresentation: vi.fn(),
 }));
 
 vi.mock('../../modules/workspace/workspace.service.js', () => ({
@@ -98,9 +98,11 @@ describe('workspace.controller', () => {
     });
 
 
-    it('renvoie le contexte workspace, ses permissions et ses features effectives', async () => {
+    it('renvoie le contexte workspace, ses permissions, ses features effectives et la prochaine échéance', async () => {
         const createdAt = new Date('2026-08-12T10:00:00.000Z');
         const updatedAt = new Date('2026-08-12T11:00:00.000Z');
+        const nextEntitlementChangeAt =
+            new Date('2026-09-05T08:00:00.000Z');
 
         const req = {
             workspace: {
@@ -127,9 +129,12 @@ describe('workspace.controller', () => {
             ],
         };
 
-        getWorkspaceEffectiveFeatures.mockResolvedValue([
-            'team_management',
-        ]);
+        getWorkspaceEntitlementPresentation.mockResolvedValue({
+            features: [
+                'team_management',
+            ],
+            nextEntitlementChangeAt,
+        });
 
         const res = {
             status: vi.fn().mockReturnThis(),
@@ -138,7 +143,9 @@ describe('workspace.controller', () => {
 
         await getById(req, res);
 
-        expect(getWorkspaceEffectiveFeatures).toHaveBeenCalledWith({
+        expect(
+            getWorkspaceEntitlementPresentation,
+        ).toHaveBeenCalledWith({
             workspaceId: req.workspace._id,
         });
         expect(res.status).toHaveBeenCalledWith(200);
@@ -167,6 +174,7 @@ describe('workspace.controller', () => {
                 features: [
                     'team_management',
                 ],
+                nextEntitlementChangeAt,
             },
         });
     });
