@@ -74,9 +74,9 @@ function mutationHook(mock) {
   return [mock, { isLoading: false }];
 }
 
-function renderPage() {
+function renderPage(initialEntry = '/platform/entitlement-overrides') {
   return render(
-    <MemoryRouter initialEntries={['/platform/entitlement-overrides']}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <ToastProvider>
         <PlatformEntitlementOverridesPage />
       </ToastProvider>
@@ -175,7 +175,22 @@ describe('PlatformEntitlementOverridesPage', () => {
         workspaceId: undefined,
         targetType: 'feature',
         source: undefined,
+        lifecycle: undefined,
       });
+    });
+  });
+
+  it('applique le filtre lifecycle transmis par un drill-down du dashboard', () => {
+    renderPage('/platform/entitlement-overrides?lifecycle=active');
+
+    expect(screen.getByLabelText('État')).toHaveValue('active');
+    expect(mocks.useListPlatformEntitlementOverridesQuery).toHaveBeenCalledWith({
+      page: 1,
+      limit: 20,
+      workspaceId: undefined,
+      targetType: undefined,
+      source: undefined,
+      lifecycle: 'active',
     });
   });
 
