@@ -6,15 +6,21 @@ vi.mock('@/features/workspace-members/pages/workspace-members-page', () => ({
 }));
 
 import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
+import { WORKSPACE_FEATURE } from '@/features/workspace/constants/workspace-features';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 import { WorkspaceMembersRoute } from '@/features/workspace-members/components/workspace-members-route';
 
 const workspace = { id: 'workspace-1', name: 'Acme', status: 'active' };
 const membership = { id: 'membership-1', role: { key: 'reader', name: 'Lecteur' } };
 
-function renderRoute(permissions) {
+function renderRoute(permissions, features = []) {
   render(
-    <WorkspaceProvider workspace={workspace} membership={membership} permissions={permissions}>
+    <WorkspaceProvider
+      features={features}
+      workspace={workspace}
+      membership={membership}
+      permissions={permissions}
+    >
       <WorkspaceMembersRoute />
     </WorkspaceProvider>,
   );
@@ -23,18 +29,36 @@ function renderRoute(permissions) {
 describe('WorkspaceMembersRoute', () => {
   afterEach(cleanup);
 
-  it('refuse la surface Membres sans member:read', () => {
-    renderRoute([WORKSPACE_PERMISSION.WORKSPACE_READ]);
+  it('refuse la surface Membres lorsque team_management est absent', () => {
+    renderRoute([
+      WORKSPACE_PERMISSION.WORKSPACE_READ,
+      WORKSPACE_PERMISSION.MEMBER_READ,
+    ]);
+
+    expect(
+      screen.getByRole('heading', { name: 'Fonctionnalité indisponible' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Gestion autorisée' })).not.toBeInTheDocument();
+  });
+
+  it('refuse la surface Membres sans member:read même si la feature est active', () => {
+    renderRoute(
+      [WORKSPACE_PERMISSION.WORKSPACE_READ],
+      [WORKSPACE_FEATURE.TEAM_MANAGEMENT],
+    );
 
     expect(screen.getByRole('heading', { name: 'Accès refusé' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Gestion autorisée' })).not.toBeInTheDocument();
   });
 
-  it('rend la page Membres avec member:read', () => {
-    renderRoute([
-      WORKSPACE_PERMISSION.WORKSPACE_READ,
-      WORKSPACE_PERMISSION.MEMBER_READ,
-    ]);
+  it('rend la page Membres avec team_management et member:read', () => {
+    renderRoute(
+      [
+        WORKSPACE_PERMISSION.WORKSPACE_READ,
+        WORKSPACE_PERMISSION.MEMBER_READ,
+      ],
+      [WORKSPACE_FEATURE.TEAM_MANAGEMENT],
+    );
 
     expect(screen.getByRole('heading', { name: 'Gestion autorisée' })).toBeInTheDocument();
   });
