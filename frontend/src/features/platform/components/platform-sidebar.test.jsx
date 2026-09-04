@@ -29,6 +29,7 @@ describe('PlatformSidebar', () => {
     expect(screen.getByText('Espaces de travail')).toBeInTheDocument();
     expect(screen.getByText('Plans')).toBeInTheDocument();
     expect(screen.getByText('Abonnements')).toBeInTheDocument();
+    expect(screen.getByText('Dérogations')).toBeInTheDocument();
     expect(screen.getByText('Journaux d’audit')).toBeInTheDocument();
   });
 
