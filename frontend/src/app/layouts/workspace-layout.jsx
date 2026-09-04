@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router';
 
+import { workspaceNavigation } from '@/app/workspace-navigation';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 import { WorkspaceSidebar } from '@/features/workspace/components/workspace-sidebar';
 import { WorkspaceTopbar } from '@/features/workspace/components/workspace-topbar';
@@ -13,6 +14,7 @@ function WorkspaceLayout() {
     <div className="min-h-screen bg-background text-foreground md:flex">
       <WorkspaceSidebar
         collapsed={sidebarCollapsed}
+        navigation={workspaceNavigation}
         onToggle={() => setSidebarCollapsed((current) => !current)}
         workspace={workspace}
       />
