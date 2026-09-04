@@ -27,7 +27,9 @@ describe('EndTrialToFreeDialog', () => {
     );
 
     await user.click(
-      screen.getByRole('button', { name: 'Mettre fin à l’essai et revenir à Free' }),
+      screen.getByRole('button', {
+        name: 'Mettre fin à l’essai et revenir au plan de référence',
+      }),
     );
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
@@ -36,7 +38,7 @@ describe('EndTrialToFreeDialog', () => {
   it('affiche un refus serveur dans la confirmation plutôt que dans un toast global', () => {
     render(
       <EndTrialToFreeDialog
-        errorMessage="Retour Free refusé"
+        errorMessage="Retour au plan de référence refusé"
         onCancel={vi.fn()}
         onConfirm={vi.fn()}
         open
@@ -44,7 +46,9 @@ describe('EndTrialToFreeDialog', () => {
       />,
     );
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Retour Free refusé');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Retour au plan de référence refusé',
+    );
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
