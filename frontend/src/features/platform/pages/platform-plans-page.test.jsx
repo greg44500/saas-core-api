@@ -27,7 +27,7 @@ import { PlatformPlansPage } from '@/features/platform/pages/platform-plans-page
 
 const plan = {
   id: '507f1f77bcf86cd799439031',
-  key: 'premium',
+  isBaseline: false,
   name: 'Premium',
   description: 'Offre premium',
   status: 'active',
@@ -111,7 +111,7 @@ describe('PlatformPlansPage', () => {
     expect(screen.getByText('Chargement des plans…')).toBeInTheDocument();
   });
 
-  it('affiche le DataTable et pagine côté serveur', async () => {
+  it('affiche le DataTable sans identifiant technique et pagine côté serveur', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -120,6 +120,7 @@ describe('PlatformPlansPage', () => {
     expect(within(table).getByText('Actif')).toBeInTheDocument();
     expect(within(table).getByText(/79,00\s*€/)).toBeInTheDocument();
     expect(within(table).getByText('14 jour(s)')).toBeInTheDocument();
+    expect(within(table).queryByText('premium')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Suivant' }));
     expect(mocks.useListPlatformPlansQuery).toHaveBeenLastCalledWith({ page: 2, limit: 20 });
@@ -171,20 +172,19 @@ describe('PlatformPlansPage', () => {
     expect(refetch).toHaveBeenCalledOnce();
   });
 
-  it('crée un plan via le formulaire partagé', async () => {
+  it('crée un plan sans demander ni envoyer de clé technique', async () => {
     const user = userEvent.setup();
     renderPage();
 
     await user.click(screen.getByRole('button', { name: 'Créer un plan' }));
     const drawer = screen.getByRole('dialog', { name: 'Créer un plan' });
-    await user.type(within(drawer).getByLabelText('Clé technique'), 'starter');
+    expect(within(drawer).queryByLabelText('Clé technique')).not.toBeInTheDocument();
     await user.type(within(drawer).getByLabelText('Nom'), 'Starter');
     await user.click(within(drawer).getByRole('button', { name: 'Créer le plan' }));
 
     await waitFor(() => {
       expect(mocks.createPlan).toHaveBeenCalledWith(
         expect.objectContaining({
-          key: 'starter',
           name: 'Starter',
           trialEnabled: false,
           trialDurationDays: null,
@@ -196,10 +196,11 @@ describe('PlatformPlansPage', () => {
         }),
       );
     });
+    expect(mocks.createPlan.mock.calls[0][0]).not.toHaveProperty('key');
     expect(await screen.findByText('Plan créé')).toBeInTheDocument();
   });
 
-  it('ouvre les détails puis archive avec confirmation', async () => {
+  it('ouvre les détails puis archive un plan ordinaire avec confirmation', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -216,6 +217,26 @@ describe('PlatformPlansPage', () => {
       expect(mocks.archivePlan).toHaveBeenCalledWith(plan.id);
     });
     expect(await screen.findByText('Plan archivé')).toBeInTheDocument();
+  });
+
+  it('ne propose pas l’archivage du plan de référence', async () => {
+    const user = userEvent.setup();
+    mocks.useListPlatformPlansQuery.mockReturnValue({
+      data: {
+        plans: [{ ...plan, id: 'baseline-id', isBaseline: true, name: 'Découverte' }],
+        pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+      },
+      error: undefined,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+    expect(screen.getByText('Plan de référence')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Voir' }));
+    const drawer = screen.getByRole('dialog', { name: 'Découverte' });
+    expect(within(drawer).queryByRole('button', { name: 'Archiver' })).not.toBeInTheDocument();
   });
 
   it('ouvre le formulaire de modification depuis le drawer', async () => {
