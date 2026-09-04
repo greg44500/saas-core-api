@@ -7,7 +7,6 @@ import {
 } from '../../../constants/auditActions.constants.js';
 
 import {
-    PLAN_KEY,
     PLAN_STATUS,
 } from '../../../constants/plan.constants.js';
 
@@ -31,6 +30,10 @@ import {
 } from '../../plan/plan.model.js';
 
 import {
+    isBaselinePlan,
+} from '../../plan/plan.service.js';
+
+import {
     Subscription,
 } from '../subscription.model.js';
 
@@ -52,13 +55,13 @@ import {
  * Invariants métier protégés :
  * - seule une Subscription commerciale encore `trialing` peut être convertie ;
  * - trialEndsAt doit être strictement postérieur à paidAt ;
- * - le plan cible doit être actif et différent de Free ;
+ * - le plan cible doit être actif et ne pas être le plan baseline ;
  * - la date réelle du paiement devient currentPeriodStart ;
  * - currentPeriodEnd est calculé selon une période calendaire mensuelle/annuelle ;
  * - le prix et la devise sont snapshotés depuis le Plan actif ;
  * - trialEndsAt est conservé comme historique et ne prolonge plus les droits ;
  * - TrialEligibility n'est jamais modifié ;
- * - la baseline Free reste intacte ;
+ * - la baseline reste intacte ;
  * - la transition et l'audit sont atomiques ;
  * - une transition concurrente ne peut pas écraser un nouvel état.
  *
@@ -140,9 +143,9 @@ const activatePaidSubscriptionFromTrial = async ({
             );
         }
 
-        if (plan.key === PLAN_KEY.FREE) {
+        if (isBaselinePlan(plan)) {
             throw new AppError(
-                'Le plan gratuit ne peut pas être activé comme abonnement payant',
+                'Le plan de référence ne peut pas être activé comme abonnement payant',
                 409,
             );
         }
