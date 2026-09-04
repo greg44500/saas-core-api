@@ -46,8 +46,8 @@ roleRouter.post(
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.ROLE_CREATE),
-    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     create,
 );
 
@@ -60,8 +60,8 @@ roleRouter.patch(
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.ROLE_UPDATE),
-    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     update,
 );
 
@@ -71,8 +71,8 @@ roleRouter.delete(
     validateRequest({ params: roleParamsSchema }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.ROLE_DELETE),
-    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     remove,
 );
 
