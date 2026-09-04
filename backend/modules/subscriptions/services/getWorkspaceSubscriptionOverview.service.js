@@ -4,6 +4,9 @@ import {
 } from '../../../constants/subscription.constants.js';
 
 import {
+    isBaselinePlan,
+} from '../../plan/plan.service.js';
+import {
     hasConsumedTrial,
 } from '../../trialEligibility/trialEligibility.service.js';
 import { Subscription } from '../subscription.model.js';
@@ -14,12 +17,6 @@ import {
     resolveCurrentWorkspaceOwner,
 } from './grantTrial.helpers.js';
 
-/**
- * Transforme un Plan en contrat de lecture destiné au frontend.
- *
- * La projection est volontairement explicite : un nouveau champ ajouté au
- * modèle MongoDB ne doit jamais devenir publiquement lisible par accident.
- */
 const serializePlan = (plan) => {
     if (!plan) {
         return null;
@@ -31,22 +28,13 @@ const serializePlan = (plan) => {
 
     return {
         id: plan._id.toString(),
-        key: plan.key,
+        isBaseline: isBaselinePlan(plan),
         name: plan.name,
         features: [...(plan.features ?? [])],
         limits,
     };
 };
 
-/**
- * Transforme une Subscription en état contractuel opérationnel.
- *
- * Les montants, moyens de paiement, identifiants provider, réductions et
- * informations de facturation sont volontairement absents. Ils appartiennent
- * au futur domaine Billing, dont l'accès sera réservé au propriétaire du
- * workspace (ou au représentant de l'organisation propriétaire lorsqu'un tel
- * modèle existera).
- */
 const serializeSubscription = (subscription) => {
     if (!subscription) {
         return null;
@@ -79,19 +67,6 @@ const serializeSubscription = (subscription) => {
     };
 };
 
-/**
- * Construit la vue Workspace des droits réellement applicables.
- *
- * `effectiveCapabilities` contient aussi, côté domaine, les overrides ayant
- * participé au calcul. Cette projection ne les propage volontairement jamais :
- * source commerciale, motif, auteur Platform et identifiants d'override sont
- * des données d'administration et non des droits nécessaires au Workspace.
- *
- * Le Plan reste exposé comme contexte contractuel historique. Pour toute
- * décision runtime ou tout affichage intitulé "effectif", les consommateurs
- * doivent utiliser `features` et `limits` situés directement sur
- * `effectiveEntitlement`, jamais `effectiveEntitlement.plan.features/limits`.
- */
 const serializeWorkspaceEffectiveEntitlement = (access) => {
     if (
         !access?.subscription
@@ -137,19 +112,6 @@ const serializeWorkspaceEffectiveEntitlement = (access) => {
     };
 };
 
-/**
- * Retourne la vue de lecture consolidée de l'abonnement d'un workspace.
- *
- * Subscription reste l'autorité contractuelle et
- * getWorkspaceAccessEntitlement reste l'autorité des droits effectifs. Le
- * frontend reçoit donc un DTO prêt à consommer et ne doit jamais reconstruire
- * lui-même le fallback commercial -> Free, les overrides ni le mode de
- * remédiation.
- *
- * L'état de consommation du trial est également résolu côté serveur à partir
- * de l'owner actuel. Le frontend peut ainsi éviter de proposer un nouveau trial
- * lorsque l'identité l'a déjà consommé, sans jamais recevoir son empreinte HMAC.
- */
 const getWorkspaceSubscriptionOverview = async ({
     workspaceId,
     session,
@@ -196,11 +158,6 @@ const getWorkspaceSubscriptionOverview = async ({
     let owner;
 
     if (session) {
-        /*
-         * Le pilote MongoDB ne garantit pas les opérations parallèles dans une
-         * même transaction. Une session fournie impose donc des lectures
-         * séquentielles, tandis que le chemin HTTP ordinaire reste parallélisé.
-         */
         baseline = await baselineQuery;
         commercial = await commercialQuery;
         access = await getWorkspaceAccessEntitlement({
