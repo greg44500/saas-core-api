@@ -5,11 +5,14 @@ import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, AUDIT_STATUS } from '../../../constant
 import { PLAN_STATUS } from '../../../constants/plan.constants.js';
 import { createAuditLog } from '../../../modules/auditLog/auditLog.service.js';
 import { Plan } from '../../../modules/plan/plan.model.js';
-import { validatePlanCapabilities } from '../../../modules/plan/plan.service.js';
+import { isBaselinePlan, validatePlanCapabilities } from '../../../modules/plan/plan.service.js';
 import { updatePlatformPlan } from '../../../modules/platform/plans/services/updatePlatformPlan.service.js';
 
 vi.mock('../../../modules/auditLog/auditLog.service.js', () => ({ createAuditLog: vi.fn() }));
-vi.mock('../../../modules/plan/plan.service.js', () => ({ validatePlanCapabilities: vi.fn() }));
+vi.mock('../../../modules/plan/plan.service.js', () => ({
+    isBaselinePlan: vi.fn(),
+    validatePlanCapabilities: vi.fn(),
+}));
 vi.mock('../../../modules/plan/plan.model.js', () => ({
     Plan: {
         findOneAndUpdate: vi.fn(),
@@ -32,6 +35,11 @@ describe('updatePlatformPlan', () => {
             storage_bytes: 200000000,
             file_uploads_monthly: 200,
         },
+    };
+    const currentPlan = {
+        _id: planId,
+        key: 'starter',
+        status: PLAN_STATUS.ACTIVE,
     };
     const updatedPlan = {
         _id: { toString: () => planId },
@@ -58,6 +66,10 @@ describe('updatePlatformPlan', () => {
             async (callback) => callback(session),
         );
         validatePlanCapabilities.mockReturnValue(undefined);
+        isBaselinePlan.mockReturnValue(false);
+        Plan.findById.mockReturnValue({
+            session: vi.fn().mockResolvedValue(currentPlan),
+        });
         Plan.findOneAndUpdate.mockResolvedValue(updatedPlan);
         createAuditLog.mockResolvedValue({ _id: 'audit-id' });
     });
@@ -74,6 +86,18 @@ describe('updatePlatformPlan', () => {
             planData: { status: PLAN_STATUS.ARCHIVED },
             actorId,
         })).rejects.toMatchObject({ statusCode: 409 });
+        expect(Plan.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('refuse de rendre inactive la baseline', async () => {
+        isBaselinePlan.mockReturnValueOnce(true);
+
+        await expect(updatePlatformPlan({
+            planId,
+            planData: { status: PLAN_STATUS.INACTIVE },
+            actorId,
+        })).rejects.toMatchObject({ statusCode: 409 });
+
         expect(Plan.findOneAndUpdate).not.toHaveBeenCalled();
     });
 
@@ -111,12 +135,12 @@ describe('updatePlatformPlan', () => {
         );
     });
 
-    it('retourne le DTO administratif incluant le trial', async () => {
+    it('retourne le DTO administratif sans clé technique', async () => {
         const result = await updatePlatformPlan({ planId, planData, actorId });
 
         expect(result).toEqual({
             id: planId,
-            key: 'starter',
+            isBaseline: false,
             name: 'Starter Plus',
             description: null,
             status: PLAN_STATUS.ACTIVE,
@@ -132,11 +156,11 @@ describe('updatePlatformPlan', () => {
             createdAt: updatedPlan.createdAt,
             updatedAt: updatedPlan.updatedAt,
         });
+        expect(result).not.toHaveProperty('key');
     });
 
     it('retourne 404 lorsque le plan n’existe pas', async () => {
-        Plan.findOneAndUpdate.mockResolvedValue(null);
-        Plan.findById.mockReturnValue({ session: vi.fn().mockResolvedValue(null) });
+        Plan.findById.mockReturnValueOnce({ session: vi.fn().mockResolvedValue(null) });
 
         await expect(updatePlatformPlan({ planId, planData, actorId }))
             .rejects.toMatchObject({ statusCode: 404 });
@@ -144,8 +168,7 @@ describe('updatePlatformPlan', () => {
     });
 
     it('retourne 409 lorsque le plan existe mais est archivé', async () => {
-        Plan.findOneAndUpdate.mockResolvedValue(null);
-        Plan.findById.mockReturnValue({
+        Plan.findById.mockReturnValueOnce({
             session: vi.fn().mockResolvedValue({ _id: planId, status: PLAN_STATUS.ARCHIVED }),
         });
 
