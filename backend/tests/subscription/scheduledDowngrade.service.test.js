@@ -16,7 +16,10 @@ import {
     SUBSCRIPTION_PLAN_CHANGE_TYPE,
     SUBSCRIPTION_STATUS,
 } from '../../constants/subscription.constants.js';
-import { PLAN_STATUS } from '../../constants/plan.constants.js';
+import {
+    PLAN_STATUS,
+    PLAN_SYSTEM_ROLE,
+} from '../../constants/plan.constants.js';
 import { createAuditLog } from '../../modules/auditLog/auditLog.service.js';
 import { Plan } from '../../modules/plan/plan.model.js';
 import { Subscription } from '../../modules/subscriptions/subscription.model.js';
@@ -41,6 +44,7 @@ const queryResult = (value) => ({
 const createPlan = ({
     id = new ObjectId(),
     key = 'premium',
+    systemRole = null,
     status = PLAN_STATUS.ACTIVE,
     currency = 'EUR',
     monthly = 7900,
@@ -48,6 +52,7 @@ const createPlan = ({
 } = {}) => ({
     _id: id,
     key,
+    systemRole,
     status,
     currency,
     priceMonthlyExclTaxMinor: monthly,
@@ -210,11 +215,12 @@ describe('scheduled downgrade lifecycle', () => {
         ).rejects.toMatchObject({ statusCode: 409 });
     });
 
-    it('refuse de traiter Free comme un downgrade commercial', async () => {
+    it('refuse de traiter le plan baseline comme un downgrade commercial indépendamment de sa clé', async () => {
         const subscription = createSubscription();
         const currentPlan = createPlan({ id: subscription.plan });
         const targetPlan = createPlan({
-            key: 'free',
+            key: 'reference-technique',
+            systemRole: PLAN_SYSTEM_ROLE.BASELINE,
             monthly: 0,
             yearly: 0,
         });
