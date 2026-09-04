@@ -26,6 +26,7 @@ import {
 import { createSystemRolesForWorkspace } from '../role/role.service.js';
 import {
     createFreeSubscriptionForWorkspace,
+    getWorkspaceEffectiveEntitlement,
 } from '../subscriptions/subscription.service.js';
 import {
     createAuditLog,
@@ -216,6 +217,29 @@ const listUserWorkspaces = async (userId) => {
             createdAt: membership.workspace.createdAt,
             updatedAt: membership.workspace.updatedAt,
         }));
+};
+
+/**
+ * Expose uniquement les clés de features réellement applicables au workspace.
+ *
+ * Cette projection est destinée à la composition de l'UI tenant. Les sources,
+ * motifs et identifiants d'override restent strictement réservés à Platform.
+ * Le backend conserve l'autorité de sécurité sur chaque route protégée.
+ */
+const getWorkspaceEffectiveFeatures = async ({ workspaceId }) => {
+    if (!workspaceId) {
+        throw new TypeError(
+            'workspaceId is required to read workspace effective features',
+        );
+    }
+
+    const entitlement = await getWorkspaceEffectiveEntitlement({
+        workspaceId,
+    });
+
+    return [
+        ...entitlement.effectiveCapabilities.features,
+    ];
 };
 
 /**
@@ -421,6 +445,7 @@ const updateWorkspace = async ({
 
 export {
     createWorkspace,
+    getWorkspaceEffectiveFeatures,
     listUserWorkspaces,
     listWorkspaceMembers,
     updateWorkspace,
