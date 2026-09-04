@@ -10,26 +10,28 @@ import {
 } from '../../modules/plan/plan.controller.js';
 
 import {
+    isBaselinePlan,
     listPublicPlans,
 } from '../../modules/plan/plan.service.js';
-
 
 vi.mock(
     '../../modules/plan/plan.service.js',
     () => ({
+        isBaselinePlan: vi.fn(),
         listPublicPlans: vi.fn(),
     }),
 );
 
-
 describe('plan.controller', () => {
-    it('retourne le catalogue public avec un contrat JSON explicite', async () => {
+    it('retourne le catalogue public sans exposer la clé technique', async () => {
+        isBaselinePlan.mockReturnValue(false);
         listPublicPlans.mockResolvedValue([
             {
                 _id: {
                     toString: () => 'plan-id',
                 },
-                key: 'premium',
+                key: 'plan_internal',
+                systemRole: null,
                 name: 'Premium',
                 description: 'Plan premium.',
                 displayOrder: 10,
@@ -38,24 +40,16 @@ describe('plan.controller', () => {
                 priceYearlyExclTaxMinor: 79000,
                 trialEnabled: true,
                 trialDurationDays: 14,
-                features: [
-                    'file_upload',
-                ],
+                features: ['file_upload'],
                 limits: new Map([
                     ['members', 5],
                     ['storage_bytes', null],
                 ]),
-
-                /*
-                 * Ce champ interne ne doit pas être recopié par le contrôleur
-                 * dans la réponse publique.
-                 */
                 createdBy: 'internal-user-id',
             },
         ]);
 
         const req = {};
-
         const res = {
             status: vi.fn().mockReturnThis(),
             json: vi.fn(),
@@ -64,15 +58,15 @@ describe('plan.controller', () => {
         await list(req, res);
 
         expect(listPublicPlans).toHaveBeenCalledOnce();
+        expect(isBaselinePlan).toHaveBeenCalledOnce();
         expect(res.status).toHaveBeenCalledWith(200);
-
         expect(res.json).toHaveBeenCalledWith({
             status: 'success',
             data: {
                 plans: [
                     {
                         id: 'plan-id',
-                        key: 'premium',
+                        isBaseline: false,
                         name: 'Premium',
                         description: 'Plan premium.',
                         displayOrder: 10,
@@ -81,9 +75,7 @@ describe('plan.controller', () => {
                         priceYearlyExclTaxMinor: 79000,
                         trialEnabled: true,
                         trialDurationDays: 14,
-                        features: [
-                            'file_upload',
-                        ],
+                        features: ['file_upload'],
                         limits: {
                             members: 5,
                             storage_bytes: null,
@@ -92,5 +84,8 @@ describe('plan.controller', () => {
                 ],
             },
         });
+
+        const payload = res.json.mock.calls[0][0];
+        expect(payload.data.plans[0]).not.toHaveProperty('key');
     });
 });
