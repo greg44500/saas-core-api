@@ -22,12 +22,19 @@ import {
     createAuditLog,
 } from '../../modules/auditLog/auditLog.service.js';
 import {
+    CORE_PLAN_FEATURE,
     CORE_PLAN_METRIC,
 } from '../../modules/plan/planCapability.registry.js';
+import {
+    assertEntitlementFeatureAvailable,
+} from '../../modules/plan/planFeature.service.js';
 import {
     enforcePlanLimit,
 } from '../../modules/plan/planLimit.service.js';
 import { Role } from '../../modules/role/role.model.js';
+import {
+    getWorkspaceEffectiveEntitlement,
+} from '../../modules/subscriptions/subscription.service.js';
 import { User } from '../../modules/users/user.model.js';
 import {
     WorkspaceMember,
@@ -49,11 +56,17 @@ vi.mock('mongoose', () => ({
 vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
 }));
+vi.mock('../../modules/plan/planFeature.service.js', () => ({
+    assertEntitlementFeatureAvailable: vi.fn(),
+}));
 vi.mock('../../modules/plan/planLimit.service.js', () => ({
     enforcePlanLimit: vi.fn(),
 }));
 vi.mock('../../modules/role/role.model.js', () => ({
     Role: { findOne: vi.fn() },
+}));
+vi.mock('../../modules/subscriptions/subscription.service.js', () => ({
+    getWorkspaceEffectiveEntitlement: vi.fn(),
 }));
 vi.mock('../../modules/users/user.model.js', () => ({
     User: { findById: vi.fn() },
@@ -93,12 +106,21 @@ function prepareAcceptance({ existingMembership = null } = {}) {
         status: WORKSPACE_INVITATION_STATUS.PENDING,
         save: vi.fn().mockResolvedValue(undefined),
     };
+    const entitlement = {
+        effectiveCapabilities: {
+            features: [CORE_PLAN_FEATURE.TEAM_MANAGEMENT],
+            limits: {},
+            appliedOverrides: [],
+        },
+    };
 
     mongoose.connection.transaction.mockImplementation(
         async (callback) => callback(session),
     );
     User.findById.mockReturnValue(chainedResult(actor));
     WorkspaceInvitation.findOne.mockReturnValue(chainedResult(invitation));
+    getWorkspaceEffectiveEntitlement.mockResolvedValue(entitlement);
+    assertEntitlementFeatureAvailable.mockReturnValue(true);
     Role.findOne.mockReturnValue(chainedResult(role));
     WorkspaceMember.findOne.mockReturnValue(
         chainedResult(existingMembership),
@@ -108,7 +130,7 @@ function prepareAcceptance({ existingMembership = null } = {}) {
     });
     createAuditLog.mockResolvedValue(undefined);
 
-    return { session, now, invitation };
+    return { session, now, invitation, entitlement };
 }
 
 describe('acceptWorkspaceInvitation', () => {
@@ -116,8 +138,8 @@ describe('acceptWorkspaceInvitation', () => {
         vi.clearAllMocks();
     });
 
-    it('crée le membership et clôture l’invitation dans la transaction', async () => {
-        const { session, now, invitation } = prepareAcceptance();
+    it('vérifie team_management puis crée le membership dans la transaction', async () => {
+        const { session, now, invitation, entitlement } = prepareAcceptance();
         const membership = { _id: 'membership-id' };
         WorkspaceMember.create.mockResolvedValue([membership]);
 
@@ -127,6 +149,15 @@ describe('acceptWorkspaceInvitation', () => {
             now,
         });
 
+        expect(getWorkspaceEffectiveEntitlement).toHaveBeenCalledWith({
+            workspaceId: 'workspace-id',
+            at: now,
+            session,
+        });
+        expect(assertEntitlementFeatureAvailable).toHaveBeenCalledWith({
+            entitlement,
+            featureKey: CORE_PLAN_FEATURE.TEAM_MANAGEMENT,
+        });
         expect(enforcePlanLimit).toHaveBeenCalledWith({
             workspaceId: 'workspace-id',
             metricKey: CORE_PLAN_METRIC.MEMBERS,
@@ -151,6 +182,28 @@ describe('acceptWorkspaceInvitation', () => {
             }),
             { session },
         );
+    });
+
+    it('refuse une invitation devenue commercialement indisponible avant acceptation', async () => {
+        prepareAcceptance();
+        const featureError = Object.assign(
+            new Error('feature unavailable'),
+            { statusCode: 403 },
+        );
+        assertEntitlementFeatureAvailable.mockImplementation(() => {
+            throw featureError;
+        });
+
+        await expect(
+            acceptWorkspaceInvitation({
+                token: 'raw-token',
+                actorId: 'actor-id',
+            }),
+        ).rejects.toBe(featureError);
+
+        expect(enforcePlanLimit).not.toHaveBeenCalled();
+        expect(WorkspaceMember.create).not.toHaveBeenCalled();
+        expect(createAuditLog).not.toHaveBeenCalled();
     });
 
     it('réactive le même membership lorsqu’il avait été removed', async () => {
@@ -193,6 +246,7 @@ describe('acceptWorkspaceInvitation', () => {
             }),
         ).rejects.toMatchObject({ statusCode: 403 });
 
+        expect(getWorkspaceEffectiveEntitlement).not.toHaveBeenCalled();
         expect(enforcePlanLimit).not.toHaveBeenCalled();
     });
 
