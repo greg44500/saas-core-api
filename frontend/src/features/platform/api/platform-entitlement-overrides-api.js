@@ -6,6 +6,12 @@ function compactParams(params) {
   );
 }
 
+function entitlementContextTag(workspaceId) {
+  return workspaceId
+    ? { type: 'PlatformEntitlementContext', id: workspaceId }
+    : null;
+}
+
 const platformEntitlementOverridesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     listPlatformEntitlementOverrides: builder.query({
@@ -51,51 +57,64 @@ const platformEntitlementOverridesApi = baseApi.injectEndpoints({
       ],
     }),
 
+    getPlatformEntitlementContext: builder.query({
+      query: (workspaceId) =>
+        `/platform/entitlement-overrides/workspaces/${workspaceId}/context`,
+      transformResponse: (response) => response?.data?.context ?? null,
+      providesTags: (_result, _error, workspaceId) => [
+        { type: 'PlatformEntitlementContext', id: workspaceId },
+      ],
+    }),
+
     createPlatformEntitlementOverride: builder.mutation({
       query: (body) => ({
         url: '/platform/entitlement-overrides',
         method: 'POST',
         body,
       }),
-      invalidatesTags: [
+      invalidatesTags: (_result, _error, body) => [
         { type: 'PlatformEntitlementOverrides', id: 'LIST' },
+        entitlementContextTag(body?.workspaceId),
         'PlatformOverview',
         'WorkspaceSubscription',
-      ],
+      ].filter(Boolean),
     }),
 
     updatePlatformEntitlementOverride: builder.mutation({
-      query: ({ overrideId, ...body }) => ({
+      query: ({ overrideId, workspaceId: _workspaceId, ...body }) => ({
         url: `/platform/entitlement-overrides/${overrideId}`,
         method: 'PATCH',
         body,
       }),
-      invalidatesTags: (_result, _error, { overrideId }) => [
+      invalidatesTags: (_result, _error, { overrideId, workspaceId }) => [
         { type: 'PlatformEntitlementOverrides', id: 'LIST' },
         { type: 'PlatformEntitlementOverrides', id: overrideId },
+        entitlementContextTag(workspaceId),
         'PlatformOverview',
         'WorkspaceSubscription',
-      ],
+      ].filter(Boolean),
     }),
 
     revokePlatformEntitlementOverride: builder.mutation({
-      query: ({ overrideId, reason }) => ({
+      query: ({ overrideId, reason, workspaceId: _workspaceId }) => ({
         url: `/platform/entitlement-overrides/${overrideId}/revoke`,
         method: 'PATCH',
         body: { reason },
       }),
-      invalidatesTags: (_result, _error, { overrideId }) => [
+      invalidatesTags: (_result, _error, { overrideId, workspaceId }) => [
         { type: 'PlatformEntitlementOverrides', id: 'LIST' },
         { type: 'PlatformEntitlementOverrides', id: overrideId },
+        entitlementContextTag(workspaceId),
         'PlatformOverview',
         'WorkspaceSubscription',
-      ],
+      ].filter(Boolean),
     }),
   }),
 });
 
 export const {
   useCreatePlatformEntitlementOverrideMutation,
+  useGetPlatformEntitlementContextQuery,
   useGetPlatformEntitlementOverrideQuery,
   useListPlatformEntitlementOverridesQuery,
   useRevokePlatformEntitlementOverrideMutation,
