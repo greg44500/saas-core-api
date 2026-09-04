@@ -41,8 +41,8 @@ workspaceInvitationRouter.post(
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_INVITE),
-    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     authorizeRoleDelegation,
     create,
 );
@@ -68,8 +68,8 @@ workspaceInvitationRouter.post(
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_INVITE),
-    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     resend,
 );
 
@@ -81,10 +81,10 @@ workspaceInvitationRouter.delete(
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_INVITE),
-    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode({
         allowDuringRemediation: true,
     }),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     revoke,
 );
 
