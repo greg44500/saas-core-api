@@ -80,6 +80,20 @@ describe('platformEntitlementOverrides lifecycle filtering', () => {
         });
     });
 
+    it('préserve les opérateurs internes lorsque sanitizeFilter est appliqué', () => {
+        const filter = buildLifecycleFilter({
+            lifecycle: ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE,
+            at: NOW,
+        });
+
+        mongoose.sanitizeFilter(filter);
+
+        expect(filter.startsAt).toEqual({ $lte: NOW });
+        expect(filter.startsAt).not.toHaveProperty('$eq');
+        expect(filter.$or[1].endsAt).toEqual({ $gt: NOW });
+        expect(filter.$or[1].endsAt).not.toHaveProperty('$eq');
+    });
+
     it('applique le filtre active avant pagination et comptage', async () => {
         const findSpy = vi.spyOn(EntitlementOverride, 'find')
             .mockReturnValue(buildListQuery());
