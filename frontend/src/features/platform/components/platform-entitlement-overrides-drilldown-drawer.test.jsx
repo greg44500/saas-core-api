@@ -143,7 +143,7 @@ describe('PlatformEntitlementOverridesDrilldownDrawer', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('charge les dérogations actives côté serveur et les rend dans le DataTable partagé', () => {
+  it('charge les dérogations actives dans un DataTable compact', () => {
     renderDrawer();
 
     expect(mocks.useListPlatformEntitlementOverridesQuery).toHaveBeenCalledWith({
@@ -154,9 +154,18 @@ describe('PlatformEntitlementOverridesDrilldownDrawer', () => {
 
     const drawer = screen.getByRole('dialog', { name: 'Dérogations actives (1)' });
     const table = within(drawer).getByRole('table');
+
+    expect(table).toHaveClass('table-fixed');
+    expect(within(table).getByRole('columnheader', { name: 'Workspace' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Dérogation' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Action' })).toBeInTheDocument();
+    expect(within(table).queryByRole('columnheader', { name: 'Valeur' })).not.toBeInTheDocument();
+    expect(within(table).queryByRole('columnheader', { name: 'Fin' })).not.toBeInTheDocument();
     expect(within(table).getByText('Workspace Démo')).toBeInTheDocument();
     expect(within(table).getByText('Téléversement de fichiers')).toBeInTheDocument();
-    expect(within(table).getByText('Activée')).toBeInTheDocument();
+    expect(within(table).getByRole('button', { name: 'Voir' })).toBeInTheDocument();
+    expect(within(table).queryByText('Activée')).not.toBeInTheDocument();
+    expect(within(table).queryByText('Permanente')).not.toBeInTheDocument();
   });
 
   it('passe de la liste au détail puis à l’édition dans le même drawer', async () => {
