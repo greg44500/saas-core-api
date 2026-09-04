@@ -1,4 +1,7 @@
 import {
+    getNextEntitlementChangeAt,
+} from '../../entitlementOverride/entitlementOverrideSchedule.service.js';
+import {
     getWorkspaceEffectiveEntitlement,
 } from '../../subscriptions/subscription.service.js';
 import { Workspace } from '../../workspace/workspace.model.js';
@@ -29,6 +32,10 @@ const serializeAppliedOverride = (override) => ({
  * identifiants d'override sont exposés uniquement ici afin qu'un retour au Plan
  * puisse révoquer l'exception responsable au lieu d'empiler une exception
  * inverse.
+ *
+ * `nextEntitlementChangeAt` expose uniquement la prochaine borne temporelle
+ * utile à l'UI. Elle permet un refetch ciblé sans exposer les motifs ou auteurs
+ * des dérogations.
  */
 const getPlatformEntitlementContext = async ({
     workspaceId,
@@ -48,10 +55,16 @@ const getPlatformEntitlementContext = async ({
         throw new AppError('Workspace introuvable.', 404);
     }
 
-    const entitlement = await getWorkspaceEffectiveEntitlement({
-        workspaceId,
-        at,
-    });
+    const [entitlement, nextEntitlementChangeAt] = await Promise.all([
+        getWorkspaceEffectiveEntitlement({
+            workspaceId,
+            at,
+        }),
+        getNextEntitlementChangeAt({
+            workspaceId,
+            at,
+        }),
+    ]);
 
     return {
         workspace: {
@@ -74,6 +87,7 @@ const getPlatformEntitlementContext = async ({
         appliedOverrides:
             entitlement.effectiveCapabilities.appliedOverrides
                 .map(serializeAppliedOverride),
+        nextEntitlementChangeAt,
     };
 };
 
