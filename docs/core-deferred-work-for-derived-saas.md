@@ -265,7 +265,47 @@ Elles ne doivent pas être introduites dans le Core uniquement pour anticiper un
 
 ---
 
-## 11. Validation E2E et exploitation de chaque produit dérivé
+## 11. Préférences d'affichage utilisateur
+
+### Statut Core
+
+```text
+À CADRER — évolution UX différée
+```
+
+Une application dérivée peut devenir suffisamment riche pour qu'un utilisateur souhaite alléger son interface en masquant certaines cartes ou informations secondaires qu'il est pourtant autorisé à consulter.
+
+Cette évolution doit rester strictement une préférence de présentation. Elle ne doit jamais devenir un mécanisme de permission ou d'entitlement.
+
+Document de cadrage associé :
+
+```text
+docs/functional-debt-ui-display-preferences.md
+```
+
+Points à réévaluer lorsque les dashboards ou modules métier deviennent plus denses :
+
+- cartes ou sections réellement personnalisables ;
+- portée User globale ou User / Workspace ;
+- persistance locale ou backend ;
+- synchronisation multi-appareils ;
+- valeurs par défaut ;
+- restauration de l'affichage initial ;
+- comportement des nouvelles cartes après évolution de l'application ;
+- impossibilité de masquer une information obligatoire pour la sécurité ou la conformité.
+
+### Invariant
+
+```text
+Préférence d'affichage
+≠ permission
+≠ entitlement
+≠ suppression de donnée
+```
+
+---
+
+## 12. Validation E2E et exploitation de chaque produit dérivé
 
 Même si le Core est testé, chaque application dérivée modifie le système par ses capacités, permissions et routes métier.
 
@@ -284,7 +324,7 @@ Les tests Core ne remplacent pas les tests du produit dérivé.
 
 ---
 
-## 12. Déploiement et configuration production
+## 13. Déploiement et configuration production
 
 ### Statut Core
 
@@ -314,7 +354,7 @@ Aucune valeur de développement ne doit être considérée comme une configurati
 
 ---
 
-## 13. Petite dette finale annoncée
+## 14. Petite dette finale annoncée
 
 ### Statut
 
@@ -332,7 +372,7 @@ Consigne :
 
 ---
 
-## 14. Ce qui n'est pas une dette du Core
+## 15. Ce qui n'est pas une dette du Core
 
 Les éléments suivants appartiennent normalement aux applications dérivées et ne doivent pas être ajoutés au Core générique sans justification transverse :
 
@@ -362,7 +402,7 @@ valeur métier spécifique
 
 ---
 
-## 15. Checklist obligatoire lors d'une duplication
+## 16. Checklist obligatoire lors d'une duplication
 
 Lors de la création d'un nouveau SaaS à partir du Core :
 
@@ -374,13 +414,14 @@ Lors de la création d'un nouveau SaaS à partir du Core :
 - [ ] compléter l'inventaire des trackers et providers ;
 - [ ] définir stockage et rétention ;
 - [ ] mettre en place l'observabilité nécessaire ;
+- [ ] réévaluer les préférences d'affichage si les dashboards ou modules deviennent denses ;
 - [ ] valider la configuration de production ;
 - [ ] ajouter les tests E2E métier ;
 - [ ] vérifier qu'aucune dette applicable n'est oubliée avant le go-live.
 
 ---
 
-## 16. Critère de clôture
+## 17. Critère de clôture
 
 Le Core peut être dupliqué avant la résolution de ces chantiers, car plusieurs dépendent du produit, du modèle commercial ou de l'infrastructure choisis.
 
