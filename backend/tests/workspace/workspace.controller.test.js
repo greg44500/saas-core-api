@@ -15,6 +15,7 @@ import {
 
 import {
     createWorkspace,
+    getWorkspaceEffectiveFeatures,
     listUserWorkspaces,
     listWorkspaceMembers,
     updateWorkspace,
@@ -23,6 +24,7 @@ import {
 
 vi.mock('../../modules/workspace/workspace.service.js', () => ({
     createWorkspace: vi.fn(),
+    getWorkspaceEffectiveFeatures: vi.fn(),
     listUserWorkspaces: vi.fn(),
     listWorkspaceMembers: vi.fn(),
     updateWorkspace: vi.fn(),
@@ -91,7 +93,7 @@ describe('workspace.controller', () => {
     });
 
 
-    it('renvoie le contexte workspace déjà chargé et ses permissions effectives', () => {
+    it('renvoie le contexte workspace, ses permissions et ses features effectives', async () => {
         const createdAt = new Date('2026-08-12T10:00:00.000Z');
         const updatedAt = new Date('2026-08-12T11:00:00.000Z');
 
@@ -120,13 +122,20 @@ describe('workspace.controller', () => {
             ],
         };
 
+        getWorkspaceEffectiveFeatures.mockResolvedValue([
+            'team_management',
+        ]);
+
         const res = {
             status: vi.fn().mockReturnThis(),
             json: vi.fn(),
         };
 
-        getById(req, res);
+        await getById(req, res);
 
+        expect(getWorkspaceEffectiveFeatures).toHaveBeenCalledWith({
+            workspaceId: req.workspace._id,
+        });
         expect(res.status).toHaveBeenCalledWith(200);
 
         expect(res.json).toHaveBeenCalledWith({
@@ -149,6 +158,9 @@ describe('workspace.controller', () => {
                 permissions: [
                     'workspace:read',
                     'member:read',
+                ],
+                features: [
+                    'team_management',
                 ],
             },
         });
