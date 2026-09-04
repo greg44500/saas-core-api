@@ -2,10 +2,11 @@ import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 
 /**
  * Confirme une transition irréversible du point de vue de l'éligibilité : le
- * retour vers Free arrête immédiatement la période d'essai et ne redonne jamais
- * droit à un nouvel essai pour la même identité.
+ * retour vers le plan baseline arrête immédiatement la période d'essai et ne
+ * redonne jamais droit à un nouvel essai pour la même identité.
  */
 function EndTrialToFreeDialog({
+  baselinePlanName = 'plan de référence',
   errorMessage,
   onCancel,
   onConfirm,
@@ -14,7 +15,7 @@ function EndTrialToFreeDialog({
 }) {
   return (
     <ConfirmationDialog
-      confirmLabel="Mettre fin à l’essai et revenir à Free"
+      confirmLabel={`Mettre fin à l’essai et revenir à ${baselinePlanName}`}
       confirmVariant="destructive"
       description={(
         <>
@@ -27,7 +28,7 @@ function EndTrialToFreeDialog({
       onConfirm={onConfirm}
       open={open}
       pending={pending}
-      title="Revenir au plan Free ?"
+      title={`Revenir au plan ${baselinePlanName} ?`}
     />
   );
 }
