@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { DateTimePicker } from '@/components/forms/date-time-picker';
 import { Button } from '@/components/ui/button';
 import {
   ENTITLEMENT_OVERRIDE_SOURCE,
@@ -10,25 +11,6 @@ import {
   formatPlatformPlanFeature,
   formatPlatformPlanMetric,
 } from '@/features/platform/lib/platform-plan-formatters';
-
-function toLocalDateTimeInput(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-
-  const offset = date.getTimezoneOffset();
-  const localDate = new Date(date.getTime() - offset * 60_000);
-  return localDate.toISOString().slice(0, 16);
-}
-
-function toIsoDateTime(value) {
-  if (!value) return undefined;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    throw new Error('La date renseignée est invalide.');
-  }
-  return date.toISOString();
-}
 
 function isByteMetric(metric) {
   return metric?.presentation?.unit === 'bytes'
@@ -98,8 +80,8 @@ function PlatformEntitlementOverrideForm({
   const [source, setSource] = useState(
     override?.source ?? ENTITLEMENT_OVERRIDE_SOURCE.ADMINISTRATIVE,
   );
-  const [startsAt, setStartsAt] = useState(toLocalDateTimeInput(override?.startsAt));
-  const [endsAt, setEndsAt] = useState(toLocalDateTimeInput(override?.endsAt));
+  const [startsAt, setStartsAt] = useState(override?.startsAt ?? '');
+  const [endsAt, setEndsAt] = useState(override?.endsAt ?? '');
   const [reason, setReason] = useState(override?.reason ?? '');
 
   async function handleSubmit(event) {
@@ -112,12 +94,10 @@ function PlatformEntitlementOverrideForm({
         throw new Error('Le motif doit contenir entre 3 et 500 caractères.');
       }
 
-      const normalizedStartsAt = toIsoDateTime(startsAt);
-      const normalizedEndsAt = endsAt ? toIsoDateTime(endsAt) : null;
       if (
-        normalizedStartsAt
-        && normalizedEndsAt
-        && new Date(normalizedEndsAt) <= new Date(normalizedStartsAt)
+        startsAt
+        && endsAt
+        && new Date(endsAt) <= new Date(startsAt)
       ) {
         throw new Error('La fin de la dérogation doit être postérieure à son début.');
       }
@@ -125,8 +105,8 @@ function PlatformEntitlementOverrideForm({
       const payload = {
         source,
         reason: normalizedReason,
-        ...(normalizedStartsAt ? { startsAt: normalizedStartsAt } : {}),
-        endsAt: normalizedEndsAt,
+        ...(startsAt ? { startsAt } : {}),
+        endsAt: endsAt || null,
       };
 
       if (mode === 'create') {
@@ -342,24 +322,20 @@ function PlatformEntitlementOverrideForm({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="override-starts-at">Début</label>
-            <input
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            <p className="text-sm font-medium">Début</p>
+            <DateTimePicker
               id="override-starts-at"
-              onChange={(event) => setStartsAt(event.target.value)}
-              type="datetime-local"
+              onChange={setStartsAt}
               value={startsAt}
             />
             <p className="text-xs text-muted-foreground">Vide : prise d’effet immédiate.</p>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="override-ends-at">Fin</label>
-            <input
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            <p className="text-sm font-medium">Fin</p>
+            <DateTimePicker
               id="override-ends-at"
-              onChange={(event) => setEndsAt(event.target.value)}
-              type="datetime-local"
+              onChange={setEndsAt}
               value={endsAt}
             />
             <p className="text-xs text-muted-foreground">Vide : dérogation permanente jusqu’à révocation.</p>
