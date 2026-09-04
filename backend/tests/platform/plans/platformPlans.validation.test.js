@@ -13,7 +13,6 @@ import {
 
 describe('createPlatformPlanBodySchema', () => {
     const validPayload = {
-        key: 'starter',
         name: 'Starter',
         description: 'Offre de démarrage',
         status: 'active',
@@ -32,8 +31,7 @@ describe('createPlatformPlanBodySchema', () => {
         },
     };
 
-
-    it('accepte un payload de création valide', () => {
+    it('accepte un payload de création valide sans clé technique', () => {
         const result =
             createPlatformPlanBodySchema.safeParse(
                 validPayload,
@@ -41,7 +39,6 @@ describe('createPlatformPlanBodySchema', () => {
 
         expect(result.success).toBe(true);
     });
-
 
     it('normalise la devise en majuscules', () => {
         const result =
@@ -52,7 +49,6 @@ describe('createPlatformPlanBodySchema', () => {
 
         expect(result.currency).toBe('EUR');
     });
-
 
     it('accepte null pour une limite explicitement illimitée', () => {
         const result =
@@ -66,17 +62,15 @@ describe('createPlatformPlanBodySchema', () => {
         expect(result.success).toBe(true);
     });
 
-
-    it('refuse une clé de plan invalide', () => {
+    it('refuse une clé technique fournie par le client', () => {
         const result =
             createPlatformPlanBodySchema.safeParse({
                 ...validPayload,
-                key: 'Starter Plan',
+                key: 'starter',
             });
 
         expect(result.success).toBe(false);
     });
-
 
     it('refuse une feature dont le format est invalide', () => {
         const result =
@@ -89,7 +83,6 @@ describe('createPlatformPlanBodySchema', () => {
 
         expect(result.success).toBe(false);
     });
-
 
     it('refuse les features dupliquées', () => {
         const result =
@@ -104,7 +97,6 @@ describe('createPlatformPlanBodySchema', () => {
         expect(result.success).toBe(false);
     });
 
-
     it('refuse une clé de limite dont le format est invalide', () => {
         const result =
             createPlatformPlanBodySchema.safeParse({
@@ -116,7 +108,6 @@ describe('createPlatformPlanBodySchema', () => {
 
         expect(result.success).toBe(false);
     });
-
 
     it('refuse une limite décimale', () => {
         const result =
@@ -130,7 +121,6 @@ describe('createPlatformPlanBodySchema', () => {
         expect(result.success).toBe(false);
     });
 
-
     it('refuse une limite négative', () => {
         const result =
             createPlatformPlanBodySchema.safeParse({
@@ -143,7 +133,6 @@ describe('createPlatformPlanBodySchema', () => {
         expect(result.success).toBe(false);
     });
 
-
     it('refuse un prix mensuel décimal', () => {
         const result =
             createPlatformPlanBodySchema.safeParse({
@@ -153,7 +142,6 @@ describe('createPlatformPlanBodySchema', () => {
 
         expect(result.success).toBe(false);
     });
-
 
     it('refuse un prix annuel négatif', () => {
         const result =
@@ -165,7 +153,6 @@ describe('createPlatformPlanBodySchema', () => {
         expect(result.success).toBe(false);
     });
 
-
     it('refuse un statut inconnu', () => {
         const result =
             createPlatformPlanBodySchema.safeParse({
@@ -175,7 +162,6 @@ describe('createPlatformPlanBodySchema', () => {
 
         expect(result.success).toBe(false);
     });
-
 
     it('refuse les propriétés inconnues', () => {
         const result =
@@ -187,11 +173,9 @@ describe('createPlatformPlanBodySchema', () => {
         expect(result.success).toBe(false);
     });
 
-
     it('accepte les champs optionnels absents', () => {
         const result =
             createPlatformPlanBodySchema.safeParse({
-                key: 'starter',
                 name: 'Starter',
                 currency: 'EUR',
                 priceMonthlyExclTaxMinor: 1990,
@@ -212,7 +196,6 @@ describe('platformPlanIdParamsSchema', () => {
         expect(result.success).toBe(true);
     });
 
-
     it('refuse un planId invalide', () => {
         const result =
             platformPlanIdParamsSchema.safeParse({
@@ -222,7 +205,6 @@ describe('platformPlanIdParamsSchema', () => {
         expect(result.success).toBe(false);
     });
 });
-
 
 describe('updatePlatformPlanBodySchema', () => {
     it('accepte une modification partielle valide', () => {
@@ -235,7 +217,6 @@ describe('updatePlatformPlanBodySchema', () => {
         expect(result.success).toBe(true);
     });
 
-
     it('normalise la devise en majuscules', () => {
         const result =
             updatePlatformPlanBodySchema.parse({
@@ -244,7 +225,6 @@ describe('updatePlatformPlanBodySchema', () => {
 
         expect(result.currency).toBe('EUR');
     });
-
 
     it('accepte le passage du plan au statut inactive', () => {
         const result =
@@ -255,7 +235,6 @@ describe('updatePlatformPlanBodySchema', () => {
         expect(result.success).toBe(true);
     });
 
-
     it('refuse le statut archived', () => {
         const result =
             updatePlatformPlanBodySchema.safeParse({
@@ -264,7 +243,6 @@ describe('updatePlatformPlanBodySchema', () => {
 
         expect(result.success).toBe(false);
     });
-
 
     it('refuse la modification de key', () => {
         const result =
@@ -275,14 +253,12 @@ describe('updatePlatformPlanBodySchema', () => {
         expect(result.success).toBe(false);
     });
 
-
     it('refuse un payload vide', () => {
         const result =
             updatePlatformPlanBodySchema.safeParse({});
 
         expect(result.success).toBe(false);
     });
-
 
     it('refuse les features dupliquées', () => {
         const result =
@@ -296,7 +272,6 @@ describe('updatePlatformPlanBodySchema', () => {
         expect(result.success).toBe(false);
     });
 
-
     it('accepte null pour une limite explicitement illimitée', () => {
         const result =
             updatePlatformPlanBodySchema.safeParse({
@@ -308,7 +283,6 @@ describe('updatePlatformPlanBodySchema', () => {
         expect(result.success).toBe(true);
     });
 
-
     it('refuse une limite négative', () => {
         const result =
             updatePlatformPlanBodySchema.safeParse({
@@ -319,7 +293,6 @@ describe('updatePlatformPlanBodySchema', () => {
 
         expect(result.success).toBe(false);
     });
-
 
     it('refuse une propriété inconnue', () => {
         const result =
