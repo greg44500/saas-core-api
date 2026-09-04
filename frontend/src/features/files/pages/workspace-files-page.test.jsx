@@ -28,6 +28,7 @@ vi.mock('@/features/files/lib/download-blob', () => ({
 
 import { WorkspaceFilesPage } from '@/features/files/pages/workspace-files-page';
 import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
+import { WORKSPACE_FEATURE } from '@/features/workspace/constants/workspace-features';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
 const workspace = { id: 'workspace-1', name: 'Acme', status: 'active' };
@@ -45,10 +46,14 @@ const file = {
   updatedAt: '2026-09-02T10:00:00.000Z',
 };
 
-function renderPage(permissions = [WORKSPACE_PERMISSION.FILE_READ]) {
+function renderPage(
+  permissions = [WORKSPACE_PERMISSION.FILE_READ],
+  features = [],
+) {
   return render(
     <ToastProvider>
       <WorkspaceProvider
+        features={features}
         membership={membership}
         permissions={permissions}
         workspace={workspace}
@@ -116,16 +121,22 @@ describe('WorkspaceFilesPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('affiche l’action d’upload uniquement avec file:upload', () => {
-    const { unmount } = renderPage([WORKSPACE_PERMISSION.FILE_READ]);
+  it('affiche l’action d’upload uniquement avec file:upload et file_upload', () => {
+    const { unmount } = renderPage([
+      WORKSPACE_PERMISSION.FILE_READ,
+      WORKSPACE_PERMISSION.FILE_UPLOAD,
+    ]);
 
     expect(screen.queryByRole('button', { name: 'Ajouter un fichier' })).not.toBeInTheDocument();
 
     unmount();
-    renderPage([
-      WORKSPACE_PERMISSION.FILE_READ,
-      WORKSPACE_PERMISSION.FILE_UPLOAD,
-    ]);
+    renderPage(
+      [
+        WORKSPACE_PERMISSION.FILE_READ,
+        WORKSPACE_PERMISSION.FILE_UPLOAD,
+      ],
+      [WORKSPACE_FEATURE.FILE_UPLOAD],
+    );
 
     expect(screen.getByRole('button', { name: 'Ajouter un fichier' })).toBeInTheDocument();
   });
