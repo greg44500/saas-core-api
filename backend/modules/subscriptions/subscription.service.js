@@ -214,67 +214,58 @@ const getWorkspaceEffectiveEntitlement = async ({
     };
 };
 
-const resolveWorkspaceAccess = async ({
+const getWorkspaceAccessEntitlement = async ({
     workspaceId,
+    session = null,
     at = new Date(),
     registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
-    session = null,
 }) => {
-    const entitlement = await getWorkspaceEffectiveEntitlement({
-        workspaceId,
-        at,
-        registry,
-        session,
-    });
-
-    const { subscription } = entitlement;
-
-    if (subscription.status === SUBSCRIPTION_STATUS.PAST_DUE) {
-        return {
-            ...entitlement,
-            accessMode: WORKSPACE_ACCESS_MODE.REMEDIATION,
-            accessReason: WORKSPACE_ACCESS_REASON.PAST_DUE,
-        };
-    }
-
-    return {
-        ...entitlement,
-        accessMode: WORKSPACE_ACCESS_MODE.FULL,
-        accessReason: WORKSPACE_ACCESS_REASON.NONE,
-    };
-};
-
-const assertWorkspacePlanCompatible = async ({
-    workspaceId,
-    targetPlan,
-    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
-    session = null,
-}) => {
-    const compatibility = await assessWorkspaceLimitsCompatibility({
-        workspaceId,
-        targetPlan,
-        registry,
-        session,
-    });
-
-    if (!compatibility.isCompatible) {
-        throw new AppError(
-            'Le workspace dépasse les limites du plan demandé.',
-            409,
-            {
-                code: 'PLAN_LIMITS_EXCEEDED',
-                details: compatibility.violations,
-            },
+    if (!workspaceId) {
+        throw new TypeError(
+            'workspaceId is required to resolve workspace access',
         );
     }
 
-    return compatibility;
+    if (!isValidDate(at)) {
+        throw new TypeError('at must be a valid Date');
+    }
+
+    const effectiveEntitlement =
+        await getWorkspaceEffectiveEntitlement({
+            workspaceId,
+            at,
+            registry,
+            session,
+        });
+
+    const compatibility =
+        await assessWorkspaceLimitsCompatibility({
+            workspaceId,
+            limits:
+                effectiveEntitlement.effectiveCapabilities.limits,
+            at,
+            registry,
+            session,
+        });
+
+    const accessMode = compatibility.compatible
+        ? WORKSPACE_ACCESS_MODE.NORMAL
+        : WORKSPACE_ACCESS_MODE.REMEDIATION;
+
+    return {
+        ...effectiveEntitlement,
+        accessMode,
+        reason: accessMode === WORKSPACE_ACCESS_MODE.REMEDIATION
+            ? WORKSPACE_ACCESS_REASON.PLAN_LIMITS_EXCEEDED
+            : null,
+        blockingLimits: compatibility.blockingLimits,
+        nonBlockingLimits: compatibility.nonBlockingLimits,
+    };
 };
 
 export {
-    assertWorkspacePlanCompatible,
     createFreeSubscriptionForWorkspace,
+    getWorkspaceAccessEntitlement,
     getWorkspaceEffectiveEntitlement,
     getWorkspacePlanEntitlement,
-    resolveWorkspaceAccess,
 };
