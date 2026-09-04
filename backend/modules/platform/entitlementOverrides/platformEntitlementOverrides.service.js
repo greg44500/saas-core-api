@@ -9,6 +9,7 @@ import {
     AUDIT_STATUS,
 } from '../../../constants/auditActions.constants.js';
 import {
+    ENTITLEMENT_OVERRIDE_LIFECYCLE,
     ENTITLEMENT_OVERRIDE_SOURCE,
     ENTITLEMENT_OVERRIDE_TARGET,
 } from '../../../constants/entitlementOverride.constants.js';
@@ -149,11 +150,57 @@ const snapshotOverride = (override) => ({
 });
 
 /**
+ * Traduit un lifecycle dérivé en filtre MongoDB à l'instant demandé.
+ *
+ * Le statut n'est volontairement jamais stocké. Cette traduction permet donc
+ * de paginer et compter correctement côté serveur sans introduire un état
+ * persistant qui pourrait devenir faux lorsque le temps passe.
+ */
+const buildLifecycleFilter = ({ lifecycle, at }) => {
+    if (lifecycle === null) return {};
+
+    if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE) {
+        return {
+            revokedAt: null,
+            startsAt: { $lte: at },
+            $or: [
+                { endsAt: null },
+                { endsAt: { $gt: at } },
+            ],
+        };
+    }
+
+    if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.SCHEDULED) {
+        return {
+            revokedAt: null,
+            startsAt: { $gt: at },
+        };
+    }
+
+    if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.EXPIRED) {
+        return {
+            revokedAt: null,
+            endsAt: {
+                $ne: null,
+                $lte: at,
+            },
+        };
+    }
+
+    if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.REVOKED) {
+        return {
+            revokedAt: { $ne: null },
+        };
+    }
+
+    throw new TypeError('lifecycle must be a supported override lifecycle');
+};
+
+/**
  * Liste paginée des overrides visibles depuis Platform.
  *
- * Les filtres restent simples et indexables. L'état temporel n'est pas stocké
- * ni filtré ici : il est dérivé dans le DTO afin d'éviter un statut persistant
- * qui pourrait se désynchroniser à l'expiration d'une période.
+ * Les filtres sont construits côté serveur avant pagination. Le lifecycle reste
+ * dérivé des bornes temporelles et de la révocation ; il n'est pas persisté.
  *
  * @param {object} params
  * @param {number} [params.page]
@@ -161,6 +208,7 @@ const snapshotOverride = (override) => ({
  * @param {string|null} [params.workspaceId]
  * @param {string|null} [params.targetType]
  * @param {string|null} [params.source]
+ * @param {string|null} [params.lifecycle]
  * @param {Date} [params.at]
  * @returns {Promise<{overrides: object[], pagination: object}>}
  */
@@ -170,6 +218,7 @@ const listPlatformEntitlementOverrides = async ({
     workspaceId = null,
     targetType = null,
     source = null,
+    lifecycle = null,
     at = new Date(),
 }) => {
     assertPagination({ page, limit });
@@ -192,7 +241,14 @@ const listPlatformEntitlementOverrides = async ({
         throw new TypeError('source must be a supported override source');
     }
 
-    const filter = {};
+    if (
+        lifecycle !== null
+        && !Object.values(ENTITLEMENT_OVERRIDE_LIFECYCLE).includes(lifecycle)
+    ) {
+        throw new TypeError('lifecycle must be a supported override lifecycle');
+    }
+
+    const filter = buildLifecycleFilter({ lifecycle, at });
 
     if (workspaceId !== null) {
         assertObjectId(workspaceId, 'workspaceId');
@@ -590,6 +646,7 @@ const revokePlatformEntitlementOverride = async ({
 
 
 export {
+    buildLifecycleFilter,
     createPlatformEntitlementOverride,
     getPlatformEntitlementOverrideById,
     listPlatformEntitlementOverrides,
