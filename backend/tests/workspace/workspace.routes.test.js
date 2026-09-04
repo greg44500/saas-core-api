@@ -10,6 +10,7 @@ import {
 
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
+import { enforcePlanFeature } from '../../middlewares/enforcePlanFeature.js';
 import {
     enforceWorkspaceAccessMode,
 } from '../../middlewares/enforceWorkspaceAccessMode.js';
@@ -34,11 +35,15 @@ import {
 } from '../../modules/workspace/workspace.validation.js';
 
 import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
+import {
+    CORE_PLAN_FEATURE,
+} from '../../modules/plan/planCapability.registry.js';
 
 const {
     validationMiddleware,
     workspaceContextMiddleware,
     permissionMiddleware,
+    featureMiddleware,
     workspaceAccessMiddleware,
 } = vi.hoisted(() => ({
     validationMiddleware: vi.fn((req, res, next) => {
@@ -61,6 +66,10 @@ const {
     }),
 
     permissionMiddleware: vi.fn((req, res, next) => {
+        next();
+    }),
+
+    featureMiddleware: vi.fn((req, res, next) => {
         next();
     }),
 
@@ -93,6 +102,12 @@ vi.mock('../../middlewares/loadWorkspaceContext.js', () => ({
 vi.mock('../../middlewares/authorizePermission.js', () => ({
     authorizePermission: vi.fn(
         () => permissionMiddleware,
+    ),
+}));
+
+vi.mock('../../middlewares/enforcePlanFeature.js', () => ({
+    enforcePlanFeature: vi.fn(
+        () => featureMiddleware,
     ),
 }));
 
@@ -138,6 +153,7 @@ beforeEach(() => {
     validationMiddleware.mockClear();
     workspaceContextMiddleware.mockClear();
     permissionMiddleware.mockClear();
+    featureMiddleware.mockClear();
     workspaceAccessMiddleware.mockClear();
     create.mockClear();
     list.mockClear();
@@ -238,10 +254,11 @@ describe('workspace.routes', () => {
         expect(validationMiddleware).not.toHaveBeenCalled();
         expect(workspaceContextMiddleware).not.toHaveBeenCalled();
         expect(permissionMiddleware).not.toHaveBeenCalled();
+        expect(featureMiddleware).not.toHaveBeenCalled();
         expect(workspaceAccessMiddleware).not.toHaveBeenCalled();
     });
 
-    it('protège la liste des membres avec le contexte tenant et la permission member:read', async () => {
+    it('protège la liste des membres avec member:read et team_management', async () => {
         const app = express();
 
         app.use(express.json());
@@ -260,6 +277,10 @@ describe('workspace.routes', () => {
         expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.MEMBER_READ,
         );
+        expect(enforcePlanFeature).toHaveBeenCalledWith(
+            CORE_PLAN_FEATURE.TEAM_MANAGEMENT,
+        );
+        expect(featureMiddleware).toHaveBeenCalledOnce();
         expect(workspaceAccessMiddleware).not.toHaveBeenCalled();
         expect(listMembers).toHaveBeenCalledOnce();
     });
