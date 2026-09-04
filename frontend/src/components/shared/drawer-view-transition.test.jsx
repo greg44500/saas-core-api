@@ -1,11 +1,22 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DrawerViewTransition } from '@/components/shared/drawer-view-transition';
 
 
 describe('DrawerViewTransition', () => {
-  afterEach(() => cleanup());
+  beforeEach(() => {
+    vi.stubGlobal('requestAnimationFrame', (callback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   it('utilise une transition courte et respecte reduced motion', () => {
     render(
