@@ -89,6 +89,7 @@ function PlatformPlansPage() {
   }
 
   function requestArchive(plan) {
+    if (plan.isBaseline) return;
     setArchiveError(null);
     setSelectedPlan(null);
     setArchiveTarget(plan);
@@ -133,9 +134,11 @@ function PlatformPlansPage() {
       id: 'plan',
       header: 'Plan',
       cell: (plan) => (
-        <div>
+        <div className="space-y-1">
           <p className="font-medium">{plan.name}</p>
-          <p className="text-xs text-muted-foreground">{plan.key}</p>
+          {plan.isBaseline && (
+            <p className="text-xs text-muted-foreground">Plan de référence</p>
+          )}
         </div>
       ),
     },
@@ -253,7 +256,7 @@ function PlatformPlansPage() {
         description={
           formState?.mode === 'create'
             ? 'Définissez une offre complète à partir du registre actif des fonctionnalités et limites.'
-            : 'Modifiez l’offre sans changer sa clé technique immuable.'
+            : 'Modifiez le contenu commercial de l’offre. Son identité technique reste gérée par le backend.'
         }
         onClose={closeForm}
         open={Boolean(formState)}
