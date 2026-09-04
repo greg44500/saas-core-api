@@ -2,6 +2,7 @@ import { AppError } from '../../utils/appError.js';
 
 import {
     createWorkspace,
+    getWorkspaceEffectiveFeatures,
     listUserWorkspaces,
     listWorkspaceMembers,
     updateWorkspace,
@@ -90,18 +91,22 @@ export const listMembers = async (req, res) => {
  * Retourne le contexte tenant déjà chargé et validé par
  * loadWorkspaceContext.
  *
- * Le frontend reçoit les permissions effectives du rôle courant afin de
- * présenter uniquement les surfaces cohérentes avec l'autorisation serveur.
- * Cette exposition ne remplace jamais authorizePermission : le backend reste
- * l'autorité de sécurité pour chaque requête protégée.
+ * Le frontend reçoit les permissions RBAC et les seules clés de features
+ * effectives nécessaires à la composition de son interface. Aucune donnée
+ * administrative d'override n'est exposée ici. Ces informations d'affichage ne
+ * remplacent jamais les contrôles backend appliqués aux routes protégées.
  */
-export const getById = (req, res) => {
+export const getById = async (req, res) => {
     const {
         workspace,
         membership,
         role,
         permissions,
     } = req;
+
+    const features = await getWorkspaceEffectiveFeatures({
+        workspaceId: workspace._id,
+    });
 
     res.status(200).json({
         status: 'success',
@@ -121,6 +126,7 @@ export const getById = (req, res) => {
                 },
             },
             permissions: [...permissions],
+            features,
         },
     });
 };
