@@ -7,14 +7,16 @@ vi.mock('@/features/audit-log/pages/workspace-audit-log-page', () => ({
 
 import { WorkspaceAuditLogRoute } from '@/features/audit-log/components/workspace-audit-log-route';
 import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
+import { WORKSPACE_FEATURE } from '@/features/workspace/constants/workspace-features';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
 const workspace = { id: 'workspace-1', name: 'Acme', status: 'active' };
 const membership = { id: 'membership-1', role: { key: 'member', name: 'Membre' } };
 
-function renderRoute(permissions) {
+function renderRoute(permissions, features = []) {
   return render(
     <WorkspaceProvider
+      features={features}
       membership={membership}
       permissions={permissions}
       workspace={workspace}
@@ -29,14 +31,29 @@ describe('WorkspaceAuditLogRoute', () => {
     cleanup();
   });
 
-  it('rend l’historique avec audit:read', () => {
-    renderRoute([WORKSPACE_PERMISSION.AUDIT_READ]);
+  it('rend l’historique avec audit:read et audit_logs', () => {
+    renderRoute(
+      [WORKSPACE_PERMISSION.AUDIT_READ],
+      [WORKSPACE_FEATURE.AUDIT_LOGS],
+    );
 
     expect(screen.getByText('Activity page allowed')).toBeInTheDocument();
   });
 
-  it('refuse la page sans audit:read', () => {
-    renderRoute([WORKSPACE_PERMISSION.WORKSPACE_READ]);
+  it('refuse commercialement la page lorsque audit_logs est absent', () => {
+    renderRoute([WORKSPACE_PERMISSION.AUDIT_READ]);
+
+    expect(
+      screen.getByRole('heading', { name: 'Fonctionnalité indisponible' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Activity page allowed')).not.toBeInTheDocument();
+  });
+
+  it('refuse la page sans audit:read même si audit_logs est actif', () => {
+    renderRoute(
+      [WORKSPACE_PERMISSION.WORKSPACE_READ],
+      [WORKSPACE_FEATURE.AUDIT_LOGS],
+    );
 
     expect(screen.getByRole('heading', { name: 'Accès refusé' })).toBeInTheDocument();
     expect(
