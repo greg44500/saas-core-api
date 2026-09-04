@@ -1,5 +1,5 @@
 import { ArrowLeft, Eye, ExternalLink } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
@@ -37,11 +37,10 @@ function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
 }
 
-function PlatformEntitlementOverridesDrilldownDrawer({
-  lifecycle = ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE,
+function PlatformEntitlementOverridesDrilldownContent({
+  lifecycle,
   onClose,
-  open,
-  title = 'Dérogations actives',
+  title,
 }) {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -54,31 +53,17 @@ function PlatformEntitlementOverridesDrilldownDrawer({
   const [revokeReason, setRevokeReason] = useState('');
   const [revokeError, setRevokeError] = useState(null);
 
-  const listQuery = useListPlatformEntitlementOverridesQuery(
-    { page, limit: PAGE_SIZE, lifecycle },
-    { skip: !open },
-  );
+  const listQuery = useListPlatformEntitlementOverridesQuery({
+    page,
+    limit: PAGE_SIZE,
+    lifecycle,
+  });
   const detailQuery = useGetPlatformEntitlementOverrideQuery(selectedId, {
-    skip: !open || !selectedId,
+    skip: !selectedId,
   });
-  const capabilitiesQuery = useListPlatformPlanCapabilitiesQuery(undefined, {
-    skip: !open,
-  });
+  const capabilitiesQuery = useListPlatformPlanCapabilitiesQuery();
   const [updateOverride, updateState] = useUpdatePlatformEntitlementOverrideMutation();
   const [revokeOverride, revokeState] = useRevokePlatformEntitlementOverrideMutation();
-
-  useEffect(() => {
-    if (!open) return;
-
-    setView(VIEW.LIST);
-    setPage(1);
-    setSelectedId(null);
-    setEditTarget(null);
-    setEditError(null);
-    setRevokeTarget(null);
-    setRevokeReason('');
-    setRevokeError(null);
-  }, [lifecycle, open]);
 
   const overrides = listQuery.data?.overrides ?? [];
   const total = listQuery.data?.pagination?.total ?? 0;
@@ -235,7 +220,7 @@ function PlatformEntitlementOverridesDrilldownDrawer({
         onClose={() => {
           if (!updateState.isLoading) onClose();
         }}
-        open={open}
+        open
         title={drawerTitle}
       >
         <DrawerViewTransition viewKey={view}>
@@ -358,6 +343,23 @@ function PlatformEntitlementOverridesDrilldownDrawer({
         </div>
       </ConfirmationDialog>
     </>
+  );
+}
+
+function PlatformEntitlementOverridesDrilldownDrawer({
+  lifecycle = ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE,
+  onClose,
+  open,
+  title = 'Dérogations actives',
+}) {
+  if (!open) return null;
+
+  return (
+    <PlatformEntitlementOverridesDrilldownContent
+      lifecycle={lifecycle}
+      onClose={onClose}
+      title={title}
+    />
   );
 }
 
