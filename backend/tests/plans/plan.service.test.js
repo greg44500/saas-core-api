@@ -5,7 +5,10 @@ import {
     it,
     vi,
 } from 'vitest';
-import { PLAN_STATUS } from '../../constants/plan.constants.js';
+import {
+    PLAN_STATUS,
+    PLAN_SYSTEM_ROLE,
+} from '../../constants/plan.constants.js';
 import { Plan } from '../../modules/plan/plan.model.js';
 
 import {
@@ -14,6 +17,7 @@ import {
 
 import {
     createPlan,
+    isBaselinePlan,
     listPublicPlans,
     validatePlanCapabilities,
 } from '../../modules/plan/plan.service.js';
@@ -22,6 +26,23 @@ import {
 describe('Plan service', () => {
     afterEach(() => {
         vi.restoreAllMocks();
+    });
+
+
+    describe('isBaselinePlan', () => {
+        it('identifie la baseline par son rôle système indépendamment de sa clé', () => {
+            expect(isBaselinePlan({
+                key: 'reference-technique',
+                systemRole: PLAN_SYSTEM_ROLE.BASELINE,
+            })).toBe(true);
+        });
+
+        it('ne considère pas un plan commercial ordinaire comme baseline', () => {
+            expect(isBaselinePlan({
+                key: 'premium',
+                systemRole: null,
+            })).toBe(false);
+        });
     });
 
 
@@ -184,11 +205,13 @@ describe('listPublicPlans', () => {
         const publicPlans = [
             {
                 key: 'free',
+                systemRole: PLAN_SYSTEM_ROLE.BASELINE,
                 name: 'Free',
                 displayOrder: 0,
             },
             {
                 key: 'starter',
+                systemRole: null,
                 name: 'Starter',
                 displayOrder: 10,
             },
@@ -226,6 +249,7 @@ describe('listPublicPlans', () => {
         expect(selectMock).toHaveBeenCalledWith(
             [
                 'key',
+                'systemRole',
                 'name',
                 'description',
                 'displayOrder',
