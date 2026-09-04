@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Eye, Plus } from 'lucide-react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
@@ -53,6 +53,7 @@ function readPositivePage(searchParams) {
 }
 
 function PlatformEntitlementOverridesPage() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedId, setSelectedId] = useState(null);
@@ -68,6 +69,7 @@ function PlatformEntitlementOverridesPage() {
   const workspaceId = searchParams.get('workspaceId') ?? '';
   const targetType = searchParams.get('targetType') ?? '';
   const source = searchParams.get('source') ?? '';
+  const lifecycle = searchParams.get('lifecycle') ?? '';
 
   const listQuery = useListPlatformEntitlementOverridesQuery({
     page,
@@ -75,6 +77,7 @@ function PlatformEntitlementOverridesPage() {
     workspaceId: workspaceId || undefined,
     targetType: targetType || undefined,
     source: source || undefined,
+    lifecycle: lifecycle || undefined,
   });
   const detailQuery = useGetPlatformEntitlementOverrideQuery(selectedId, {
     skip: !selectedId,
@@ -283,7 +286,7 @@ function PlatformEntitlementOverridesPage() {
           </p>
         </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="override-filter-workspace">Espace de travail</label>
             <select
@@ -331,9 +334,26 @@ function PlatformEntitlementOverridesPage() {
               ))}
             </select>
           </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="override-filter-lifecycle">État</label>
+            <select
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              id="override-filter-lifecycle"
+              onChange={(event) => updateFilter('lifecycle', event.target.value)}
+              value={lifecycle}
+            >
+              <option value="">Tous</option>
+              {Object.values(ENTITLEMENT_OVERRIDE_LIFECYCLE).map((value) => (
+                <option key={value} value={value}>
+                  {formatPlatformEntitlementOverrideLifecycle(value)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {(workspaceId || targetType || source) && (
+        {(workspaceId || targetType || source || lifecycle) && (
           <Button className="mt-4" onClick={resetFilters} type="button" variant="ghost">
             Réinitialiser les filtres
           </Button>
@@ -392,6 +412,12 @@ function PlatformEntitlementOverridesPage() {
           setRevokeError(null);
           setRevokeReason('');
           setRevokeTarget(override);
+        }}
+        onViewWorkspace={(workspace) => {
+          if (workspace?.id) {
+            setSelectedId(null);
+            navigate(`/platform/workspaces?workspaceId=${workspace.id}`);
+          }
         }}
         open={Boolean(selectedId)}
         override={detailQuery.data}
