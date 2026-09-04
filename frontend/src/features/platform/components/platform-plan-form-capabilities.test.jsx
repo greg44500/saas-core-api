@@ -6,7 +6,7 @@ import { PlatformPlanForm } from '@/features/platform/components/platform-plan-f
 
 
 describe('PlatformPlanForm dynamic capabilities', () => {
-  it('affiche une feature métier avec switch et aide contextuelle puis l’inclut par défaut', async () => {
+  it('affiche une feature métier avec switch et aide contextuelle puis permet de l’inclure', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
 
@@ -37,14 +37,17 @@ describe('PlatformPlanForm dynamic capabilities', () => {
       screen.getByRole('heading', { name: 'Fonctionnalités incluses par défaut' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Produits')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Informations sur Historique des prix' }),
-    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Clé technique')).not.toBeInTheDocument();
+
+    const infoButton = screen.getByRole('button', {
+      name: 'Informations sur Historique des prix',
+    });
+    await user.hover(infoButton);
+
     expect(screen.getByRole('tooltip')).toHaveTextContent(
       'Consulter les évolutions de prix.',
     );
 
-    await user.type(screen.getByLabelText('Clé technique'), 'premium');
     await user.type(screen.getByLabelText('Nom'), 'Premium');
     await user.click(
       screen.getByRole('switch', {
