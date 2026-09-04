@@ -1,6 +1,5 @@
 import { Plan } from '../../../plan/plan.model.js';
 
-
 const listPlatformPlans = async ({
     page = 1,
     limit = 20,
@@ -24,6 +23,7 @@ const listPlatformPlans = async ({
             .select([
                 '_id',
                 'key',
+                'systemRole',
                 'name',
                 'description',
                 'status',
@@ -62,6 +62,5 @@ const listPlatformPlans = async ({
         },
     };
 };
-
 
 export { listPlatformPlans };
