@@ -85,6 +85,7 @@ vi.mock('@/features/platform/pages/platform-users-page', () => ({
 
 import { createAppRoutes } from '@/app/router';
 import { ThemeProvider } from '@/components/shared/theme-provider';
+import { ToastProvider } from '@/components/shared/toast-provider';
 import { createAppStore } from '@/store/store';
 
 function renderRoute(initialEntry, authStatus = 'unauthenticated') {
@@ -101,7 +102,9 @@ function renderRoute(initialEntry, authStatus = 'unauthenticated') {
   render(
     <Provider store={store}>
       <ThemeProvider storageScope="router-tests">
-        <RouterProvider router={router} />
+        <ToastProvider>
+          <RouterProvider router={router} />
+        </ToastProvider>
       </ThemeProvider>
     </Provider>,
   );
@@ -149,6 +152,7 @@ describe('application routing', () => {
           'team_management',
           'audit_logs',
         ],
+        nextEntitlementChangeAt: null,
       },
       error: undefined,
       isLoading: false,
