@@ -6,7 +6,10 @@ import {
     vi,
 } from 'vitest';
 
-import { PLAN_KEY } from '../../constants/plan.constants.js';
+import {
+    PLAN_KEY,
+    PLAN_SYSTEM_ROLE,
+} from '../../constants/plan.constants.js';
 
 import { Plan } from '../../modules/plan/plan.model.js';
 
@@ -23,7 +26,7 @@ describe('seedPlans', () => {
     });
 
 
-    it('crée le plan gratuit lorsqu’il est absent', async () => {
+    it('crée le plan baseline lorsqu’il est absent', async () => {
         const findOneSpy = vi
             .spyOn(Plan, 'findOne')
             .mockResolvedValue(null);
@@ -35,28 +38,36 @@ describe('seedPlans', () => {
             });
 
         const result = await seedPlans();
+        const baselineDefinition = INITIAL_PLAN_DEFINITIONS[0];
 
         expect(findOneSpy).toHaveBeenCalledOnce();
 
         expect(findOneSpy).toHaveBeenCalledWith({
-            key: PLAN_KEY.FREE,
+            $or: [
+                { systemRole: PLAN_SYSTEM_ROLE.BASELINE },
+                { key: PLAN_KEY.FREE },
+            ],
         });
 
         expect(saveSpy).toHaveBeenCalledOnce();
 
         expect(result).toEqual({
-            created: [PLAN_KEY.FREE],
+            created: [baselineDefinition.name],
             skipped: [],
         });
 
         expect(INITIAL_PLAN_DEFINITIONS).toHaveLength(1);
+        expect(baselineDefinition.systemRole).toBe(
+            PLAN_SYSTEM_ROLE.BASELINE,
+        );
     });
 
 
-    it('ne recrée pas le plan gratuit lorsqu’il existe déjà', async () => {
+    it('ne recrée pas le plan baseline lorsqu’il existe déjà', async () => {
         const existingPlan = {
             _id: 'existing-plan-id',
             key: PLAN_KEY.FREE,
+            systemRole: PLAN_SYSTEM_ROLE.BASELINE,
         };
 
         vi.spyOn(Plan, 'findOne')
@@ -65,12 +76,13 @@ describe('seedPlans', () => {
         const saveSpy = vi.spyOn(Plan.prototype, 'save');
 
         const result = await seedPlans();
+        const baselineDefinition = INITIAL_PLAN_DEFINITIONS[0];
 
         expect(saveSpy).not.toHaveBeenCalled();
 
         expect(result).toEqual({
             created: [],
-            skipped: [PLAN_KEY.FREE],
+            skipped: [baselineDefinition.name],
         });
     });
 });
