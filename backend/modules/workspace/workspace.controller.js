@@ -1,8 +1,10 @@
 import { AppError } from '../../utils/appError.js';
 
 import {
-    createWorkspace,
     getWorkspaceEffectiveFeatures,
+} from './workspaceEntitlement.service.js';
+import {
+    createWorkspace,
     listUserWorkspaces,
     listWorkspaceMembers,
     updateWorkspace,
