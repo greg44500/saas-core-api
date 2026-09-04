@@ -5,37 +5,22 @@ import {
     AUDIT_ENTITY_TYPE,
     AUDIT_STATUS,
 } from '../../../../constants/auditActions.constants.js';
-
 import {
     PLAN_STATUS,
 } from '../../../../constants/plan.constants.js';
-
 import {
     AppError,
 } from '../../../../utils/appError.js';
-
 import {
     createAuditLog,
 } from '../../../auditLog/auditLog.service.js';
-
 import {
     Plan,
 } from '../../../plan/plan.model.js';
+import {
+    isBaselinePlan,
+} from '../../../plan/plan.service.js';
 
-
-/**
- * Archive un plan depuis l'administration Platform.
- *
- * L'archivage constitue une transition métier dédiée :
- * un plan déjà archivé ne peut pas être archivé une seconde fois.
- *
- * @param {object} params
- * @param {string} params.planId
- * @param {import('mongoose').Types.ObjectId|string} params.actorId
- * @param {string|null} [params.ipAddress]
- * @param {string|null} [params.userAgent]
- * @returns {Promise<object>}
- */
 const archivePlatformPlan = async ({
     planId,
     actorId,
@@ -44,14 +29,30 @@ const archivePlatformPlan = async ({
 }) => {
     if (!planId || !actorId) {
         throw new TypeError(
-            'planId and actorId are required '
-            + 'to archive a platform plan',
+            'planId and actorId are required to archive a platform plan',
         );
     }
 
     let archivedPlan;
 
     await mongoose.connection.transaction(async (session) => {
+        const currentPlan = await Plan.findById(planId).session(session);
+
+        if (!currentPlan) {
+            throw new AppError('Plan introuvable', 404);
+        }
+
+        if (isBaselinePlan(currentPlan)) {
+            throw new AppError(
+                'Le plan baseline ne peut pas être archivé',
+                409,
+            );
+        }
+
+        if (currentPlan.status === PLAN_STATUS.ARCHIVED) {
+            throw new AppError('Ce plan est déjà archivé', 409);
+        }
+
         archivedPlan = await Plan.findOneAndUpdate(
             {
                 _id: planId,
@@ -74,18 +75,8 @@ const archivePlatformPlan = async ({
         );
 
         if (!archivedPlan) {
-            const existingPlan = await Plan.findById(planId)
-                .session(session);
-
-            if (!existingPlan) {
-                throw new AppError(
-                    'Plan introuvable',
-                    404,
-                );
-            }
-
             throw new AppError(
-                'Ce plan est déjà archivé',
+                'Le plan a été modifié avant son archivage',
                 409,
             );
         }
@@ -109,13 +100,12 @@ const archivePlatformPlan = async ({
 
     return {
         id: archivedPlan._id.toString(),
-        key: archivedPlan.key,
+        isBaseline: false,
         status: archivedPlan.status,
         isPublic: archivedPlan.isPublic,
         updatedAt: archivedPlan.updatedAt,
     };
 };
-
 
 export {
     archivePlatformPlan,
