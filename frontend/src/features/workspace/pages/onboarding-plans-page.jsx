@@ -40,7 +40,7 @@ function OnboardingPlansPage() {
         <p className="text-sm font-medium text-primary">Choix facultatif</p>
         <h1 className="text-2xl font-semibold tracking-tight">Comparer les plans</h1>
         <p className="text-sm text-muted-foreground">
-          {workspace.name} dispose déjà du plan Free. Vous pouvez consulter le catalogue maintenant ou continuer directement vers votre espace.
+          {workspace.name} dispose déjà de son plan de référence. Vous pouvez consulter le catalogue maintenant ou continuer directement vers votre espace.
         </p>
       </div>
 
@@ -49,7 +49,7 @@ function OnboardingPlansPage() {
           <div className="space-y-2">
             <h2 className="font-semibold">Catalogue indisponible</h2>
             <p className="text-sm text-muted-foreground">
-              Votre workspace reste utilisable avec le plan Free. Vous pourrez comparer les offres plus tard.
+              Votre workspace reste utilisable avec son plan de référence. Vous pourrez comparer les offres plus tard.
             </p>
           </div>
           <Button type="button" variant="outline" onClick={refetchPlans}>Réessayer</Button>
@@ -64,7 +64,7 @@ function OnboardingPlansPage() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
         <Button asChild>
-          <Link to={`/workspaces/${workspace.id}/dashboard`}>Continuer avec Free</Link>
+          <Link to={`/workspaces/${workspace.id}/dashboard`}>Continuer vers mon espace</Link>
         </Button>
       </div>
 
