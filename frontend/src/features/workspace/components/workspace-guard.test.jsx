@@ -11,15 +11,22 @@ vi.mock('@/features/workspace/api/workspace-api', () => ({
 
 import { WorkspaceGuard } from '@/features/workspace/components/workspace-guard';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
+import { WORKSPACE_FEATURE } from '@/features/workspace/constants/workspace-features';
 
 function WorkspaceProbe() {
-  const { can, membership, workspace } = useWorkspaceContext();
+  const {
+    can,
+    hasFeature,
+    membership,
+    workspace,
+  } = useWorkspaceContext();
 
   return (
     <div>
       <h1>{workspace.name}</h1>
       <p>{membership.role.name}</p>
       <p>{can('member:read') ? 'Membres autorisés' : 'Membres interdits'}</p>
+      <p>{hasFeature(WORKSPACE_FEATURE.TEAM_MANAGEMENT) ? 'Équipe disponible' : 'Équipe indisponible'}</p>
     </div>
   );
 }
@@ -48,7 +55,7 @@ describe('WorkspaceGuard', () => {
     cleanup();
   });
 
-  it('fournit le workspace, le membership et les permissions aux routes enfants', async () => {
+  it('fournit le workspace, le membership, les permissions et les features aux routes enfants', async () => {
     useGetWorkspaceByIdQueryMock.mockReturnValue({
       data: {
         workspace: { id: 'workspace-1', name: 'Acme', status: 'active' },
@@ -57,6 +64,7 @@ describe('WorkspaceGuard', () => {
           role: { key: 'admin', name: 'Administrateur' },
         },
         permissions: ['workspace:read', 'member:read'],
+        features: [WORKSPACE_FEATURE.TEAM_MANAGEMENT],
       },
       error: undefined,
       isLoading: false,
@@ -69,6 +77,7 @@ describe('WorkspaceGuard', () => {
     expect(await screen.findByRole('heading', { name: 'Acme' })).toBeInTheDocument();
     expect(screen.getByText('Administrateur')).toBeInTheDocument();
     expect(screen.getByText('Membres autorisés')).toBeInTheDocument();
+    expect(screen.getByText('Équipe disponible')).toBeInTheDocument();
     expect(useGetWorkspaceByIdQueryMock).toHaveBeenCalledWith('workspace-1', {
       skip: false,
     });
