@@ -12,7 +12,6 @@ import {
 } from '@/features/platform/lib/platform-plan-formatters';
 
 const PRICE_PATTERN = /^\d+(?:[.,]\d{1,2})?$/;
-const PLAN_KEY_PATTERN = /^[a-z][a-z0-9_-]*$/;
 
 function minorToMajor(value) {
   if (!Number.isInteger(value)) return '0';
@@ -65,9 +64,9 @@ function PlatformPlanForm({
   const featureGroups = buildPlatformFeatureGroups(capabilities);
   const metricGroups = buildPlatformMetricGroups(capabilities);
   const metricsByKey = new Map(metrics.map((metric) => [metric.key, metric]));
+  const isBaseline = plan?.isBaseline === true;
 
   const [formError, setFormError] = useState(null);
-  const [key, setKey] = useState(plan?.key ?? '');
   const [name, setName] = useState(plan?.name ?? '');
   const [description, setDescription] = useState(plan?.description ?? '');
   const [status, setStatus] = useState(plan?.status ?? PLATFORM_PLAN_STATUS.ACTIVE);
@@ -150,14 +149,10 @@ function PlatformPlanForm({
     setFormError(null);
 
     try {
-      const normalizedKey = key.trim();
       const normalizedName = name.trim();
       const normalizedCurrency = currency.trim().toUpperCase();
       const order = Number(displayOrder);
 
-      if (mode === 'create' && !PLAN_KEY_PATTERN.test(normalizedKey)) {
-        throw new Error('La clé doit commencer par une lettre minuscule et ne contenir que lettres, chiffres, _ ou -.');
-      }
       if (normalizedName.length < 2 || normalizedName.length > 120) {
         throw new Error('Le nom doit contenir entre 2 et 120 caractères.');
       }
@@ -176,10 +171,10 @@ function PlatformPlanForm({
         }
       }
 
-      const payload = {
+      await onSubmit({
         name: normalizedName,
         description: description.trim() || null,
-        status,
+        status: isBaseline ? PLATFORM_PLAN_STATUS.ACTIVE : status,
         isPublic,
         displayOrder: order,
         trialEnabled,
@@ -189,11 +184,7 @@ function PlatformPlanForm({
         priceYearlyExclTaxMinor: parsePrice(yearlyPrice, 'Le prix annuel'),
         features: [...features],
         limits: buildLimits(),
-      };
-
-      if (mode === 'create') payload.key = normalizedKey;
-
-      await onSubmit(payload);
+      });
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Le formulaire est invalide.');
     }
@@ -202,20 +193,17 @@ function PlatformPlanForm({
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <section className="space-y-4">
-        <h3 className="font-semibold">Offre commerciale</h3>
+        <div>
+          <h3 className="font-semibold">Offre commerciale</h3>
+          <p className="text-sm text-muted-foreground">
+            L’identité technique est gérée automatiquement par le backend. Le nom commercial peut évoluer librement.
+          </p>
+        </div>
 
-        {mode === 'create' && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="platform-plan-key">Clé technique</label>
-            <input
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              id="platform-plan-key"
-              onChange={(event) => setKey(event.target.value)}
-              placeholder="premium"
-              value={key}
-            />
-            <p className="text-xs text-muted-foreground">Immuable après création.</p>
-          </div>
+        {isBaseline && (
+          <p className="rounded-md border border-primary/30 bg-primary/10 p-3 text-sm">
+            Plan de référence du workspace. Son nom et son contenu commercial sont modifiables, mais il doit rester actif.
+          </p>
         )}
 
         <div className="space-y-2">
@@ -231,7 +219,7 @@ function PlatformPlanForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="platform-plan-status">Statut</label>
-            <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id="platform-plan-status" onChange={(event) => setStatus(event.target.value)} value={status}>
+            <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" disabled={isBaseline} id="platform-plan-status" onChange={(event) => setStatus(event.target.value)} value={isBaseline ? PLATFORM_PLAN_STATUS.ACTIVE : status}>
               <option value="active">Actif</option>
               <option value="inactive">Inactif</option>
             </select>
