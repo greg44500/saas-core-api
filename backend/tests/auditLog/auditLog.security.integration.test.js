@@ -18,12 +18,18 @@ import {
 
 const {
     authenticateMock,
+    enforcePlanFeatureMock,
     loadWorkspaceContextMock,
 } = vi.hoisted(() => ({
     authenticateMock: vi.fn((req, res, next) => {
         req.user = { _id: '507f1f77bcf86cd799439099' };
         next();
     }),
+    enforcePlanFeatureMock: vi.fn(() => (
+        req,
+        res,
+        next,
+    ) => next()),
     loadWorkspaceContextMock: vi.fn((req, res, next) => {
         const role = req.get('x-test-role');
 
@@ -48,6 +54,10 @@ const {
 
 vi.mock('../../middlewares/authenticate.js', () => ({
     authenticate: authenticateMock,
+}));
+
+vi.mock('../../middlewares/enforcePlanFeature.js', () => ({
+    enforcePlanFeature: enforcePlanFeatureMock,
 }));
 
 vi.mock('../../middlewares/loadWorkspaceContext.js', () => ({
