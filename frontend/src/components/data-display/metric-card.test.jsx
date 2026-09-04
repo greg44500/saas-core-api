@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { MetricCard } from '@/components/data-display/metric-card';
@@ -6,7 +7,9 @@ import { MetricCard } from '@/components/data-display/metric-card';
 describe('MetricCard', () => {
   afterEach(() => cleanup());
 
-  it('affiche une métrique déjà résolue et rattache son explication à une icône info', () => {
+  it('affiche une métrique déjà résolue et rattache son explication à une icône info', async () => {
+    const user = userEvent.setup();
+
     render(
       <MetricCard
         description="Comptes inscrits"
@@ -24,8 +27,9 @@ describe('MetricCard', () => {
     expect(screen.getByText(/sur 30 jours/)).toBeInTheDocument();
 
     const infoButton = screen.getByRole('button', { name: 'À propos de Utilisateurs' });
-    const tooltip = screen.getByRole('tooltip');
+    await user.hover(infoButton);
 
+    const tooltip = screen.getByRole('tooltip');
     expect(tooltip).toHaveTextContent('Comptes inscrits');
     expect(infoButton).toHaveAttribute('aria-describedby', tooltip.id);
   });
