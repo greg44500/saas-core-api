@@ -6,16 +6,20 @@ import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
  * redonne jamais droit à un nouvel essai pour la même identité.
  */
 function EndTrialToFreeDialog({
-  baselinePlanName = 'plan de référence',
+  baselinePlanName = null,
   errorMessage,
   onCancel,
   onConfirm,
   open,
   pending,
 }) {
+  const targetLabel = baselinePlanName
+    ? `au plan ${baselinePlanName}`
+    : 'au plan de référence';
+
   return (
     <ConfirmationDialog
-      confirmLabel={`Mettre fin à l’essai et revenir à ${baselinePlanName}`}
+      confirmLabel={`Mettre fin à l’essai et revenir ${targetLabel}`}
       confirmVariant="destructive"
       description={(
         <>
@@ -28,7 +32,7 @@ function EndTrialToFreeDialog({
       onConfirm={onConfirm}
       open={open}
       pending={pending}
-      title={`Revenir au plan ${baselinePlanName} ?`}
+      title={`Revenir ${targetLabel} ?`}
     />
   );
 }
