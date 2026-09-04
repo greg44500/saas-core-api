@@ -1,4 +1,7 @@
 import {
+    getNextEntitlementChangeAt,
+} from '../entitlementOverride/entitlementOverrideSchedule.service.js';
+import {
     getWorkspaceEffectiveEntitlement,
 } from '../subscriptions/subscription.service.js';
 
@@ -25,4 +28,43 @@ const getWorkspaceEffectiveFeatures = async ({ workspaceId }) => {
     ];
 };
 
-export { getWorkspaceEffectiveFeatures };
+/**
+ * Construit la vue minimale nécessaire à l'UI tenant pour refléter les droits
+ * commerciaux dynamiques sans exposer les détails administratifs d'override.
+ *
+ * La prochaine échéance permet au navigateur de refetch au bon moment. Elle ne
+ * constitue pas une autorisation et ne remplace jamais les contrôles backend.
+ */
+const getWorkspaceEntitlementPresentation = async ({
+    workspaceId,
+    at = new Date(),
+}) => {
+    if (!workspaceId) {
+        throw new TypeError(
+            'workspaceId is required to read workspace entitlement presentation',
+        );
+    }
+
+    const [entitlement, nextEntitlementChangeAt] = await Promise.all([
+        getWorkspaceEffectiveEntitlement({
+            workspaceId,
+            at,
+        }),
+        getNextEntitlementChangeAt({
+            workspaceId,
+            at,
+        }),
+    ]);
+
+    return {
+        features: [
+            ...entitlement.effectiveCapabilities.features,
+        ],
+        nextEntitlementChangeAt,
+    };
+};
+
+export {
+    getWorkspaceEffectiveFeatures,
+    getWorkspaceEntitlementPresentation,
+};
