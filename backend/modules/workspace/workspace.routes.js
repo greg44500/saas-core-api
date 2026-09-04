@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
+import { enforcePlanFeature } from '../../middlewares/enforcePlanFeature.js';
 import {
     enforceWorkspaceAccessMode,
 } from '../../middlewares/enforceWorkspaceAccessMode.js';
@@ -11,6 +12,9 @@ import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
     auditLogRouter,
 } from '../auditLog/auditLog.routes.js';
+import {
+    CORE_PLAN_FEATURE,
+} from '../plan/planCapability.registry.js';
 import { roleRouter } from '../role/role.routes.js';
 import {
     subscriptionRouter,
@@ -97,6 +101,9 @@ router.get(
     loadWorkspaceContext,
     authorizePermission(
         CORE_PERMISSION.MEMBER_READ,
+    ),
+    enforcePlanFeature(
+        CORE_PLAN_FEATURE.TEAM_MANAGEMENT,
     ),
     listMembers,
 );
