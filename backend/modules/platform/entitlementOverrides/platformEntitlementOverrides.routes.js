@@ -11,6 +11,7 @@ import {
 } from '../../../middlewares/validateRequest.js';
 import {
     createEntitlementOverride,
+    getEntitlementContext,
     getEntitlementOverrideById,
     listEntitlementOverrides,
     revokeEntitlementOverride,
@@ -19,6 +20,7 @@ import {
 import {
     createPlatformEntitlementOverrideBodySchema,
     listPlatformEntitlementOverridesQuerySchema,
+    platformEntitlementContextWorkspaceParamsSchema,
     platformEntitlementOverrideIdParamsSchema,
     revokePlatformEntitlementOverrideBodySchema,
     updatePlatformEntitlementOverrideBodySchema,
@@ -41,6 +43,17 @@ platformEntitlementOverridesRouter.get(
         query: listPlatformEntitlementOverridesQuerySchema,
     }),
     listEntitlementOverrides,
+);
+
+platformEntitlementOverridesRouter.get(
+    '/workspaces/:workspaceId/context',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.ENTITLEMENT_OVERRIDES_READ,
+    ),
+    validateRequest({
+        params: platformEntitlementContextWorkspaceParamsSchema,
+    }),
+    getEntitlementContext,
 );
 
 platformEntitlementOverridesRouter.get(
