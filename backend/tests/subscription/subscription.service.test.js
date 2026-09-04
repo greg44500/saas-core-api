@@ -16,7 +16,6 @@ import {
 } from '../../constants/subscription.constants.js';
 
 import {
-    PLAN_KEY,
     PLAN_STATUS,
     PLAN_SYSTEM_ROLE,
 } from '../../constants/plan.constants.js';
@@ -71,10 +70,7 @@ describe('createFreeSubscriptionForWorkspace', () => {
 
         expect(findOneSpy).toHaveBeenCalledWith({
             status: PLAN_STATUS.ACTIVE,
-            $or: [
-                { systemRole: PLAN_SYSTEM_ROLE.BASELINE },
-                { key: PLAN_KEY.FREE },
-            ],
+            systemRole: PLAN_SYSTEM_ROLE.BASELINE,
         });
         expect(querySessionMock).toHaveBeenCalledWith(session);
         expect(createSpy).toHaveBeenCalledWith(
@@ -134,7 +130,7 @@ describe('createFreeSubscriptionForWorkspace', () => {
                 session,
             }),
         ).rejects.toThrow(
-            'Le plan baseline actif est introuvable. Exécutez le seed et la migration des plans.',
+            'Le plan baseline actif est introuvable. Exécutez le seed des plans.',
         );
 
         expect(createSpy).not.toHaveBeenCalled();
@@ -238,7 +234,10 @@ describe('getWorkspacePlanEntitlement', () => {
 
     it('retombe immédiatement sur la baseline lorsqu’une période payante est arrivée à échéance', async () => {
         const workspaceId = new ObjectId();
-        const baselinePlan = { _id: new ObjectId(), key: PLAN_KEY.FREE };
+        const baselinePlan = {
+            _id: new ObjectId(),
+            systemRole: PLAN_SYSTEM_ROLE.BASELINE,
+        };
         const baselineSubscription = {
             _id: new ObjectId(),
             workspace: workspaceId,
@@ -262,7 +261,10 @@ describe('getWorkspacePlanEntitlement', () => {
 
     it('retombe immédiatement sur la baseline lorsqu’un trial a dépassé trialEndsAt', async () => {
         const workspaceId = new ObjectId();
-        const baselinePlan = { _id: new ObjectId(), key: PLAN_KEY.FREE };
+        const baselinePlan = {
+            _id: new ObjectId(),
+            systemRole: PLAN_SYSTEM_ROLE.BASELINE,
+        };
         const baselineSubscription = {
             _id: new ObjectId(),
             workspace: workspaceId,
@@ -295,7 +297,10 @@ describe('getWorkspacePlanEntitlement', () => {
 
     it('utilise la baseline lorsqu’aucune souscription commerciale utilisable n’existe', async () => {
         const workspaceId = new ObjectId();
-        const baselinePlan = { _id: new ObjectId(), key: PLAN_KEY.FREE };
+        const baselinePlan = {
+            _id: new ObjectId(),
+            systemRole: PLAN_SYSTEM_ROLE.BASELINE,
+        };
         const baselineSubscription = {
             _id: new ObjectId(),
             workspace: workspaceId,
