@@ -6,7 +6,6 @@ import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { StatusBadge } from '@/components/data-display/status-badge';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
-import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,7 @@ import { useListPlatformPlanCapabilitiesQuery } from '@/features/platform/api/pl
 import { useListPlatformWorkspacesQuery } from '@/features/platform/api/platform-workspaces-api';
 import { PlatformEntitlementOverrideDetailsDrawer } from '@/features/platform/components/platform-entitlement-override-details-drawer';
 import { PlatformEntitlementOverrideForm } from '@/features/platform/components/platform-entitlement-override-form';
+import { PlatformEntitlementOverrideRevokeDialog } from '@/features/platform/components/platform-entitlement-override-revoke-dialog';
 import { PlatformWorkspaceFeatureOverrides } from '@/features/platform/components/platform-workspace-feature-overrides';
 import {
   ENTITLEMENT_OVERRIDE_LIFECYCLE,
@@ -62,7 +62,6 @@ function PlatformEntitlementOverridesPage() {
   const [editTarget, setEditTarget] = useState(null);
   const [editError, setEditError] = useState(null);
   const [revokeTarget, setRevokeTarget] = useState(null);
-  const [revokeReason, setRevokeReason] = useState('');
   const [revokeError, setRevokeError] = useState(null);
 
   const page = readPositivePage(searchParams);
@@ -154,13 +153,8 @@ function PlatformEntitlementOverridesPage() {
     }
   }
 
-  async function confirmRevoke() {
+  async function confirmRevoke(reason) {
     if (!revokeTarget) return;
-    const reason = revokeReason.trim();
-    if (reason.length < 3 || reason.length > 500) {
-      setRevokeError('Le motif de révocation doit contenir entre 3 et 500 caractères.');
-      return;
-    }
 
     setRevokeError(null);
     try {
@@ -171,7 +165,6 @@ function PlatformEntitlementOverridesPage() {
       }).unwrap();
       toast({ title: 'Dérogation révoquée', variant: 'success' });
       setRevokeTarget(null);
-      setRevokeReason('');
     } catch (error) {
       setRevokeError(getApiMessage(error, 'La dérogation n’a pas pu être révoquée.'));
     }
@@ -410,7 +403,6 @@ function PlatformEntitlementOverridesPage() {
         onRevoke={(override) => {
           setSelectedId(null);
           setRevokeError(null);
-          setRevokeReason('');
           setRevokeTarget(override);
         }}
         onViewWorkspace={(workspace) => {
@@ -464,35 +456,17 @@ function PlatformEntitlementOverridesPage() {
         )}
       </EntityDetailsDrawer>
 
-      {revokeTarget && (
-        <ConfirmationDialog
-          confirmLabel="Révoquer"
-          description={`La dérogation de ${revokeTarget.workspace?.name ?? 'ce workspace'} cessera d’être applicable. L’historique sera conservé.`}
-          errorMessage={revokeError}
-          onCancel={() => {
-            if (revokeState.isLoading) return;
-            setRevokeTarget(null);
-            setRevokeReason('');
-            setRevokeError(null);
-          }}
-          onConfirm={confirmRevoke}
-          pending={revokeState.isLoading}
-          pendingLabel="Révocation…"
-          title="Révoquer la dérogation ?"
-        >
-          <div className="mt-4 space-y-2">
-            <label className="text-sm font-medium" htmlFor="override-revoke-reason">Motif de révocation</label>
-            <textarea
-              className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              id="override-revoke-reason"
-              maxLength={500}
-              onChange={(event) => setRevokeReason(event.target.value)}
-              placeholder="Pourquoi cette dérogation doit-elle être révoquée ?"
-              value={revokeReason}
-            />
-          </div>
-        </ConfirmationDialog>
-      )}
+      <PlatformEntitlementOverrideRevokeDialog
+        errorMessage={revokeError}
+        onCancel={() => {
+          if (revokeState.isLoading) return;
+          setRevokeTarget(null);
+          setRevokeError(null);
+        }}
+        onConfirm={confirmRevoke}
+        override={revokeTarget}
+        pending={revokeState.isLoading}
+      />
     </div>
   );
 }
