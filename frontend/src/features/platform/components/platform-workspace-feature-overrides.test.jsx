@@ -23,8 +23,16 @@ import { PlatformWorkspaceFeatureOverrides } from '@/features/platform/component
 const capabilities = {
   features: ['file_upload', 'team_management'],
   featureDefinitions: [
-    { key: 'file_upload', label: 'Téléversement de fichiers' },
-    { key: 'team_management', label: 'Gestion d’équipe' },
+    {
+      key: 'file_upload',
+      label: 'Téléversement de fichiers',
+      description: 'Permet de téléverser des fichiers dans le workspace.',
+    },
+    {
+      key: 'team_management',
+      label: 'Gestion d’équipe',
+      description: 'Permet d’administrer les membres du workspace.',
+    },
   ],
 };
 
@@ -61,6 +69,7 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
           limits: {},
         },
         appliedOverrides: [],
+        nextEntitlementChangeAt: null,
       },
       error: undefined,
       isLoading: false,
@@ -90,6 +99,11 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
     expect(includedSwitch).toBeDisabled();
     expect(
       screen.getByText('Incluse par défaut dans le plan Premium'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: 'Informations sur Téléversement de fichiers',
+      }),
     ).toBeInTheDocument();
   });
 
@@ -138,6 +152,7 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
           featureKey: 'team_management',
           featureEnabled: true,
         }],
+        nextEntitlementChangeAt: null,
       },
       error: undefined,
       isLoading: false,
@@ -157,7 +172,7 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
     });
   });
 
-  it('signale une désactivation avancée sans rendre le switch rapide éditable', () => {
+  it('signale une désactivation exceptionnelle sans rendre le switch rapide éditable', () => {
     mocks.useGetPlatformEntitlementContextQuery.mockReturnValue({
       data: {
         workspace: { id: 'workspace-id', name: 'Workspace Démo' },
@@ -178,6 +193,7 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
           featureKey: 'file_upload',
           featureEnabled: false,
         }],
+        nextEntitlementChangeAt: null,
       },
       error: undefined,
       isLoading: false,
@@ -192,7 +208,7 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
     expect(includedSwitch).toHaveAttribute('aria-checked', 'false');
     expect(includedSwitch).toBeDisabled();
     expect(
-      screen.getByText('Incluse par défaut dans le plan Premium — désactivée par une dérogation avancée'),
+      screen.getByText('Incluse par défaut dans le plan Premium — désactivée par une dérogation exceptionnelle'),
     ).toBeInTheDocument();
   });
 });
