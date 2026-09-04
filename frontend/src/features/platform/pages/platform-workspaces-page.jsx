@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Eye } from 'lucide-react';
+import { useSearchParams } from 'react-router';
 import { z } from 'zod';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
@@ -49,12 +50,13 @@ function getApiMessage(error, fallback) {
 
 function PlatformWorkspacesPage() {
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
   const [pendingActionError, setPendingActionError] = useState(null);
   const [statusReason, setStatusReason] = useState('');
   const [statusReasonDetails, setStatusReasonDetails] = useState('');
+  const selectedWorkspaceId = searchParams.get('workspaceId');
 
   const workspacesQuery = useListPlatformWorkspacesQuery({ page, limit: PAGE_SIZE });
   const workspaceDetailsQuery = useGetPlatformWorkspaceQuery(selectedWorkspaceId, {
@@ -63,6 +65,22 @@ function PlatformWorkspacesPage() {
   const [suspendWorkspace, suspendState] = useSuspendPlatformWorkspaceMutation();
   const [reactivateWorkspace, reactivateState] = useReactivatePlatformWorkspaceMutation();
   const mutationPending = suspendState.isLoading || reactivateState.isLoading;
+
+  function selectWorkspace(workspaceId) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set('workspaceId', workspaceId);
+      return next;
+    });
+  }
+
+  function closeWorkspaceDetails() {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete('workspaceId');
+      return next;
+    });
+  }
 
   function openPendingAction(action) {
     setPendingActionError(null);
@@ -169,7 +187,7 @@ function PlatformWorkspacesPage() {
           <ActionIconButton
             Icon={Eye}
             label="Voir"
-            onClick={() => setSelectedWorkspaceId(workspace.id)}
+            onClick={() => selectWorkspace(workspace.id)}
             variant="outline"
           />
         </DataTableActions>
@@ -213,7 +231,7 @@ function PlatformWorkspacesPage() {
       <PlatformWorkspaceDetailsDrawer
         error={workspaceDetailsQuery.error}
         isLoading={workspaceDetailsQuery.isLoading || workspaceDetailsQuery.isFetching}
-        onClose={() => setSelectedWorkspaceId(null)}
+        onClose={closeWorkspaceDetails}
         onRequestAction={openPendingAction}
         onRetry={workspaceDetailsQuery.refetch}
         open={Boolean(selectedWorkspaceId)}
