@@ -11,6 +11,7 @@ import {
 import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
+import { enforcePlanFeature } from '../../middlewares/enforcePlanFeature.js';
 import { loadWorkspaceContext } from '../../middlewares/loadWorkspaceContext.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
@@ -23,6 +24,9 @@ import {
     workspaceAuditLogQuerySchema,
 } from '../../modules/auditLog/auditLog.validation.js';
 import {
+    CORE_PLAN_FEATURE,
+} from '../../modules/plan/planCapability.registry.js';
+import {
     workspaceIdParamsSchema,
 } from '../../modules/workspace/workspace.validation.js';
 
@@ -30,6 +34,7 @@ const {
     validationMiddleware,
     workspaceContextMiddleware,
     permissionMiddleware,
+    featureMiddleware,
 } = vi.hoisted(() => ({
     validationMiddleware: vi.fn((req, res, next) => next()),
     workspaceContextMiddleware: vi.fn((req, res, next) => {
@@ -38,6 +43,7 @@ const {
         next();
     }),
     permissionMiddleware: vi.fn((req, res, next) => next()),
+    featureMiddleware: vi.fn((req, res, next) => next()),
 }));
 
 vi.mock('../../middlewares/authenticate.js', () => ({
@@ -59,6 +65,10 @@ vi.mock('../../middlewares/authorizePermission.js', () => ({
     authorizePermission: vi.fn(() => permissionMiddleware),
 }));
 
+vi.mock('../../middlewares/enforcePlanFeature.js', () => ({
+    enforcePlanFeature: vi.fn(() => featureMiddleware),
+}));
+
 vi.mock(
     '../../modules/auditLog/auditLog.controller.js',
     () => ({
@@ -73,6 +83,7 @@ beforeEach(() => {
     validationMiddleware.mockClear();
     workspaceContextMiddleware.mockClear();
     permissionMiddleware.mockClear();
+    featureMiddleware.mockClear();
     listWorkspaceAuditLogEntries.mockClear();
 });
 
@@ -86,7 +97,7 @@ const createApp = () => {
 };
 
 describe('auditLog.routes', () => {
-    it('protège la lecture workspace avec audit:read après validation et contexte', async () => {
+    it('protège la lecture workspace avec audit:read et audit_logs', async () => {
         const response = await request(createApp())
             .get('/workspaces/507f1f77bcf86cd799439011/audit-logs');
 
@@ -98,8 +109,12 @@ describe('auditLog.routes', () => {
         expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.AUDIT_READ,
         );
+        expect(enforcePlanFeature).toHaveBeenCalledWith(
+            CORE_PLAN_FEATURE.AUDIT_LOGS,
+        );
         expect(workspaceContextMiddleware).toHaveBeenCalledOnce();
         expect(permissionMiddleware).toHaveBeenCalledOnce();
+        expect(featureMiddleware).toHaveBeenCalledOnce();
         expect(listWorkspaceAuditLogEntries).toHaveBeenCalledOnce();
         expect(
             workspaceContextMiddleware.mock.invocationCallOrder[0],
@@ -108,6 +123,11 @@ describe('auditLog.routes', () => {
         );
         expect(
             permissionMiddleware.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            featureMiddleware.mock.invocationCallOrder[0],
+        );
+        expect(
+            featureMiddleware.mock.invocationCallOrder[0],
         ).toBeLessThan(
             listWorkspaceAuditLogEntries.mock.invocationCallOrder[0],
         );
