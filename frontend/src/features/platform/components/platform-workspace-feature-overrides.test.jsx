@@ -7,18 +7,15 @@ import { ToastProvider } from '@/components/shared/toast-provider';
 const mocks = vi.hoisted(() => ({
   createOverride: vi.fn(),
   revokeOverride: vi.fn(),
-  updateOverride: vi.fn(),
   useCreatePlatformEntitlementOverrideMutation: vi.fn(),
   useGetPlatformEntitlementContextQuery: vi.fn(),
   useRevokePlatformEntitlementOverrideMutation: vi.fn(),
-  useUpdatePlatformEntitlementOverrideMutation: vi.fn(),
 }));
 
 vi.mock('@/features/platform/api/platform-entitlement-overrides-api', () => ({
   useCreatePlatformEntitlementOverrideMutation: mocks.useCreatePlatformEntitlementOverrideMutation,
   useGetPlatformEntitlementContextQuery: mocks.useGetPlatformEntitlementContextQuery,
   useRevokePlatformEntitlementOverrideMutation: mocks.useRevokePlatformEntitlementOverrideMutation,
-  useUpdatePlatformEntitlementOverrideMutation: mocks.useUpdatePlatformEntitlementOverrideMutation,
 }));
 
 import { PlatformWorkspaceFeatureOverrides } from '@/features/platform/components/platform-workspace-feature-overrides';
@@ -54,8 +51,8 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
         workspace: { id: 'workspace-id', name: 'Workspace Démo' },
         plan: {
           id: 'plan-id',
-          key: 'free',
-          name: 'Free',
+          key: 'premium',
+          name: 'Premium',
           features: ['file_upload'],
           limits: {},
         },
@@ -72,9 +69,6 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
     mocks.useCreatePlatformEntitlementOverrideMutation.mockReturnValue(
       mutationHook(mocks.createOverride),
     );
-    mocks.useUpdatePlatformEntitlementOverrideMutation.mockReturnValue(
-      mutationHook(mocks.updateOverride),
-    );
     mocks.useRevokePlatformEntitlementOverrideMutation.mockReturnValue(
       mutationHook(mocks.revokeOverride),
     );
@@ -85,24 +79,30 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
     vi.clearAllMocks();
   });
 
-  it('représente l’état effectif avec les switches réutilisables', () => {
+  it('verrouille une fonctionnalité incluse par défaut dans le plan', () => {
     renderComponent();
 
+    const includedSwitch = screen.getByRole('switch', {
+      name: 'Désactiver Téléversement de fichiers',
+    });
+
+    expect(includedSwitch).toHaveAttribute('aria-checked', 'true');
+    expect(includedSwitch).toBeDisabled();
     expect(
-      screen.getByRole('switch', { name: 'Désactiver Téléversement de fichiers' }),
-    ).toHaveAttribute('aria-checked', 'true');
-    expect(
-      screen.getByRole('switch', { name: 'Activer Gestion d’équipe' }),
-    ).toHaveAttribute('aria-checked', 'false');
-    expect(screen.getByText('Plan Free : incluse')).toBeInTheDocument();
-    expect(screen.getByText('Plan Free : non incluse')).toBeInTheDocument();
+      screen.getByText('Incluse par défaut dans le plan Premium'),
+    ).toBeInTheDocument();
   });
 
-  it('crée une exception rapide uniquement lorsque le nouvel état diffère du plan', async () => {
+  it('laisse modifiable une fonctionnalité absente du plan', async () => {
     const user = userEvent.setup();
     renderComponent();
 
-    await user.click(screen.getByRole('switch', { name: 'Activer Gestion d’équipe' }));
+    const teamSwitch = screen.getByRole('switch', { name: 'Activer Gestion d’équipe' });
+    expect(teamSwitch).toHaveAttribute('aria-checked', 'false');
+    expect(teamSwitch).not.toBeDisabled();
+    expect(screen.getByText('Non incluse dans le plan Premium')).toBeInTheDocument();
+
+    await user.click(teamSwitch);
 
     await waitFor(() => {
       expect(mocks.createOverride).toHaveBeenCalledWith(expect.objectContaining({
@@ -116,7 +116,7 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
     });
   });
 
-  it('révoque l’override actif lorsque le switch revient à l’état du plan', async () => {
+  it('révoque une dérogation positive lorsque le switch revient à off', async () => {
     const user = userEvent.setup();
     mocks.useGetPlatformEntitlementContextQuery.mockReturnValue({
       data: {
@@ -145,6 +145,8 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
     });
 
     renderComponent();
+    expect(screen.getByText('Ajoutée par dérogation pour ce workspace')).toBeInTheDocument();
+
     await user.click(screen.getByRole('switch', { name: 'Désactiver Gestion d’équipe' }));
 
     await waitFor(() => {
@@ -153,5 +155,44 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
         workspaceId: 'workspace-id',
       }));
     });
+  });
+
+  it('signale une désactivation avancée sans rendre le switch rapide éditable', () => {
+    mocks.useGetPlatformEntitlementContextQuery.mockReturnValue({
+      data: {
+        workspace: { id: 'workspace-id', name: 'Workspace Démo' },
+        plan: {
+          id: 'plan-id',
+          key: 'premium',
+          name: 'Premium',
+          features: ['file_upload'],
+          limits: {},
+        },
+        effective: {
+          features: [],
+          limits: {},
+        },
+        appliedOverrides: [{
+          id: 'override-negative',
+          targetType: 'feature',
+          featureKey: 'file_upload',
+          featureEnabled: false,
+        }],
+      },
+      error: undefined,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    renderComponent();
+
+    const includedSwitch = screen.getByRole('switch', {
+      name: 'Activer Téléversement de fichiers',
+    });
+    expect(includedSwitch).toHaveAttribute('aria-checked', 'false');
+    expect(includedSwitch).toBeDisabled();
+    expect(
+      screen.getByText('Incluse par défaut dans le plan Premium — désactivée par une dérogation avancée'),
+    ).toBeInTheDocument();
   });
 });
