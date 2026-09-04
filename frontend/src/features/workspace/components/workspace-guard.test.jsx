@@ -11,9 +11,17 @@ import { RouterProvider } from 'react-router/dom';
 import { ToastProvider } from '@/components/shared/toast-provider';
 
 const useGetWorkspaceByIdQueryMock = vi.hoisted(() => vi.fn());
+const useEntitlementAutoRefreshMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/features/workspace/api/workspace-api', () => ({
   useGetWorkspaceByIdQuery: useGetWorkspaceByIdQueryMock,
+}));
+
+// Le comportement temporel du hook possède son propre test avec fake timers.
+// Ici, on vérifie seulement la réaction du WorkspaceGuard à un changement
+// d'entitlement afin de ne pas coupler le router aux timers du navigateur.
+vi.mock('@/hooks/use-entitlement-auto-refresh', () => ({
+  useEntitlementAutoRefresh: useEntitlementAutoRefreshMock,
 }));
 
 import { WorkspaceGuard } from '@/features/workspace/components/workspace-guard';
@@ -62,11 +70,11 @@ function renderGuard(initialEntry = '/workspaces/workspace-1/dashboard') {
 describe('WorkspaceGuard', () => {
   beforeEach(() => {
     useGetWorkspaceByIdQueryMock.mockReset();
+    useEntitlementAutoRefreshMock.mockReset();
   });
 
   afterEach(() => {
     cleanup();
-    vi.useRealTimers();
   });
 
   it('fournit le workspace, le membership et les permissions aux routes enfants', async () => {
@@ -98,22 +106,6 @@ describe('WorkspaceGuard', () => {
   });
 
   it('redirige vers le dashboard si une échéance retire la feature de la route courante', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-09-04T12:00:00.000Z'));
-
-    const refetch = vi.fn().mockResolvedValue({
-      data: {
-        workspace: { id: 'workspace-1', name: 'Acme', status: 'active' },
-        membership: {
-          id: 'membership-1',
-          role: { key: 'admin', name: 'Administrateur' },
-        },
-        permissions: ['workspace:read', 'member:read'],
-        features: [],
-        nextEntitlementChangeAt: null,
-      },
-    });
-
     useGetWorkspaceByIdQueryMock.mockReturnValue({
       data: {
         workspace: { id: 'workspace-1', name: 'Acme', status: 'active' },
@@ -128,17 +120,31 @@ describe('WorkspaceGuard', () => {
       error: undefined,
       isLoading: false,
       isFetching: false,
-      refetch,
+      refetch: vi.fn(),
     });
 
     const router = renderGuard('/workspaces/workspace-1/members');
-    expect(await screen.findByRole('heading', { name: 'Membres' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Membres' })).toBeInTheDocument();
+
+    const refreshOptions = useEntitlementAutoRefreshMock.mock.calls.at(-1)?.[0];
+    expect(refreshOptions).toBeDefined();
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(10_000);
+      refreshOptions.onChanged({
+        data: {
+          workspace: { id: 'workspace-1', name: 'Acme', status: 'active' },
+          membership: {
+            id: 'membership-1',
+            role: { key: 'admin', name: 'Administrateur' },
+          },
+          permissions: ['workspace:read', 'member:read'],
+          features: [],
+          nextEntitlementChangeAt: null,
+        },
+        reason: 'schedule',
+      });
     });
 
-    expect(refetch).toHaveBeenCalledOnce();
     expect(router.state.location.pathname).toBe(
       '/workspaces/workspace-1/dashboard',
     );
