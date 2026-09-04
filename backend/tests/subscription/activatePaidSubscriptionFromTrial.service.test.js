@@ -16,8 +16,8 @@ import {
 } from '../../constants/auditActions.constants.js';
 
 import {
-    PLAN_KEY,
     PLAN_STATUS,
+    PLAN_SYSTEM_ROLE,
 } from '../../constants/plan.constants.js';
 
 import {
@@ -343,11 +343,12 @@ describe('activatePaidSubscriptionFromTrial', () => {
         );
     });
 
-    it('refuse le plan Free comme cible payante', async () => {
+    it('refuse le plan baseline comme cible payante indépendamment de sa clé', async () => {
         Plan.findOne.mockReturnValue(
             buildSessionQuery({
                 ...targetPlan,
-                key: PLAN_KEY.FREE,
+                key: 'reference-technique',
+                systemRole: PLAN_SYSTEM_ROLE.BASELINE,
             }),
         );
 
