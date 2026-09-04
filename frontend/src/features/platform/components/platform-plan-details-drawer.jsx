@@ -27,6 +27,7 @@ function PlatformPlanDetailsDrawer({
   plan,
 }) {
   const archived = plan?.status === PLATFORM_PLAN_STATUS.ARCHIVED;
+  const baseline = plan?.isBaseline === true;
 
   return (
     <EntityDetailsDrawer
@@ -37,12 +38,18 @@ function PlatformPlanDetailsDrawer({
     >
       {plan && (
         <div className="space-y-6">
+          {baseline && (
+            <p className="rounded-md border border-primary/30 bg-primary/10 p-3 text-sm">
+              Ce plan est le plan de référence automatiquement associé aux nouveaux workspaces. Son contenu commercial peut évoluer, mais il doit rester actif et ne peut pas être archivé.
+            </p>
+          )}
+
           <section>
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Offre</h3>
             <dl className="mt-2">
-              <DetailRow label="Clé" value={plan.key} />
               <DetailRow label="Nom" value={plan.name} />
               <DetailRow label="Description" value={plan.description ?? '—'} />
+              <DetailRow label="Rôle système" value={baseline ? 'Plan de référence' : 'Aucun'} />
               <DetailRow label="Statut" value={formatPlatformPlanStatus(plan.status)} />
               <DetailRow label="Catalogue public" value={plan.isPublic ? 'Oui' : 'Non'} />
               <DetailRow label="Ordre d’affichage" value={String(plan.displayOrder ?? 0)} />
@@ -96,13 +103,22 @@ function PlatformPlanDetailsDrawer({
                 Un plan archivé est conservé pour l’historique et ne peut plus être modifié.
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => onEdit(plan)} type="button" variant="secondary">
-                  Modifier
-                </Button>
-                <Button onClick={() => onArchive(plan)} type="button" variant="destructive">
-                  Archiver
-                </Button>
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => onEdit(plan)} type="button" variant="secondary">
+                    Modifier
+                  </Button>
+                  {!baseline && (
+                    <Button onClick={() => onArchive(plan)} type="button" variant="destructive">
+                      Archiver
+                    </Button>
+                  )}
+                </div>
+                {baseline && (
+                  <p className="text-xs text-muted-foreground">
+                    Le plan de référence ne peut pas être archivé.
+                  </p>
+                )}
               </div>
             )}
           </section>
