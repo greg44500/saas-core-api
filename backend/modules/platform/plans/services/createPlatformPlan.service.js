@@ -5,15 +5,12 @@ import {
     AUDIT_ENTITY_TYPE,
     AUDIT_STATUS,
 } from '../../../../constants/auditActions.constants.js';
-
 import {
     createAuditLog,
 } from '../../../auditLog/auditLog.service.js';
-
 import {
     createPlan,
 } from '../../../plan/plan.service.js';
-
 
 const createPlatformPlan = async ({
     planData,
@@ -46,7 +43,6 @@ const createPlatformPlan = async ({
                 ipAddress,
                 userAgent,
                 metadata: {
-                    key: createdPlan.key,
                     name: createdPlan.name,
                     status: createdPlan.status,
                     isPublic: createdPlan.isPublic,
@@ -58,7 +54,7 @@ const createPlatformPlan = async ({
 
     return {
         id: createdPlan._id.toString(),
-        key: createdPlan.key,
+        isBaseline: false,
         name: createdPlan.name,
         description: createdPlan.description ?? null,
         status: createdPlan.status,
@@ -79,7 +75,6 @@ const createPlatformPlan = async ({
         updatedAt: createdPlan.updatedAt,
     };
 };
-
 
 export {
     createPlatformPlan,
