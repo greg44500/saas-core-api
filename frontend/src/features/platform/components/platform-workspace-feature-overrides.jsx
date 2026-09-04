@@ -8,7 +8,6 @@ import {
   useCreatePlatformEntitlementOverrideMutation,
   useGetPlatformEntitlementContextQuery,
   useRevokePlatformEntitlementOverrideMutation,
-  useUpdatePlatformEntitlementOverrideMutation,
 } from '@/features/platform/api/platform-entitlement-overrides-api';
 import {
   ENTITLEMENT_OVERRIDE_SOURCE,
@@ -23,6 +22,22 @@ function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
 }
 
+function getFeatureDescription(row, planName) {
+  if (row.planEnabled) {
+    if (!row.effectiveEnabled) {
+      return `Incluse par défaut dans le plan ${planName} — désactivée par une dérogation avancée`;
+    }
+
+    return `Incluse par défaut dans le plan ${planName}`;
+  }
+
+  if (row.effectiveEnabled) {
+    return 'Ajoutée par dérogation pour ce workspace';
+  }
+
+  return `Non incluse dans le plan ${planName}`;
+}
+
 function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
   const { toast } = useToast();
   const [pendingFeatureKey, setPendingFeatureKey] = useState(null);
@@ -30,7 +45,6 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
     skip: !workspaceId,
   });
   const [createOverride] = useCreatePlatformEntitlementOverrideMutation();
-  const [updateOverride] = useUpdatePlatformEntitlementOverrideMutation();
   const [revokeOverride] = useRevokePlatformEntitlementOverrideMutation();
 
   const featureDefinitionsByKey = useMemo(
@@ -89,47 +103,39 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
   });
 
   async function changeFeature(row, desiredState) {
-    if (desiredState === row.effectiveEnabled) return;
+    if (row.planEnabled || desiredState === row.effectiveEnabled) return;
 
     setPendingFeatureKey(row.featureKey);
 
     try {
-      if (desiredState === row.planEnabled) {
-        if (!row.appliedOverride) return;
-
-        await revokeOverride({
-          overrideId: row.appliedOverride.id,
+      if (desiredState) {
+        await createOverride({
           workspaceId,
-          reason: QUICK_REVOKE_REASON,
+          targetType: ENTITLEMENT_OVERRIDE_TARGET.FEATURE,
+          featureKey: row.featureKey,
+          featureEnabled: true,
+          source: ENTITLEMENT_OVERRIDE_SOURCE.ADMINISTRATIVE,
+          endsAt: null,
+          reason: QUICK_OVERRIDE_REASON,
         }).unwrap();
 
         toast({
-          title: 'Configuration du plan restaurée',
+          title: 'Fonctionnalité ajoutée au workspace',
           variant: 'success',
         });
         return;
       }
 
-      if (row.appliedOverride) {
-        await updateOverride({
-          overrideId: row.appliedOverride.id,
-          workspaceId,
-          featureEnabled: desiredState,
-        }).unwrap();
-      } else {
-        await createOverride({
-          workspaceId,
-          targetType: ENTITLEMENT_OVERRIDE_TARGET.FEATURE,
-          featureKey: row.featureKey,
-          featureEnabled: desiredState,
-          source: ENTITLEMENT_OVERRIDE_SOURCE.ADMINISTRATIVE,
-          endsAt: null,
-          reason: QUICK_OVERRIDE_REASON,
-        }).unwrap();
-      }
+      if (!row.appliedOverride) return;
+
+      await revokeOverride({
+        overrideId: row.appliedOverride.id,
+        workspaceId,
+        reason: QUICK_REVOKE_REASON,
+      }).unwrap();
 
       toast({
-        title: desiredState ? 'Fonctionnalité activée' : 'Fonctionnalité désactivée',
+        title: 'Dérogation retirée',
         variant: 'success',
       });
     } catch (error) {
@@ -142,26 +148,20 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
     }
   }
 
+  const planName = context.plan?.name ?? 'courant';
   const columns = [
     {
       id: 'feature',
       header: 'Fonctionnalités',
-      cell: (row) => {
-        const planState = row.planEnabled ? 'incluse' : 'non incluse';
-        const description = row.appliedOverride
-          ? `Personnalisation du workspace — plan ${context.plan?.name ?? 'courant'} : ${planState}`
-          : `Plan ${context.plan?.name ?? 'courant'} : ${planState}`;
-
-        return (
-          <FeatureToggle
-            checked={row.effectiveEnabled}
-            description={description}
-            disabled={pendingFeatureKey !== null}
-            label={row.label}
-            onCheckedChange={(checked) => changeFeature(row, checked)}
-          />
-        );
-      },
+      cell: (row) => (
+        <FeatureToggle
+          checked={row.effectiveEnabled}
+          description={getFeatureDescription(row, planName)}
+          disabled={row.planEnabled || pendingFeatureKey !== null}
+          label={row.label}
+          onCheckedChange={(checked) => changeFeature(row, checked)}
+        />
+      ),
     },
   ];
 
@@ -170,7 +170,7 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
       <div className="border-b border-border p-5">
         <h2 className="text-lg font-semibold">Offre personnalisée du workspace</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Les interrupteurs représentent l’état effectif. Revenir à l’état du plan révoque la personnalisation correspondante.
+          Les fonctionnalités incluses par défaut dans le plan sont verrouillées ici. Le réglage rapide sert uniquement à ajouter ou retirer une dérogation positive propre à ce workspace.
         </p>
       </div>
 
@@ -185,4 +185,4 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
   );
 }
 
-export { PlatformWorkspaceFeatureOverrides };
+export { PlatformWorkspaceFeatureOverrides, getFeatureDescription };
