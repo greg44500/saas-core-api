@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   revokeOverride: vi.fn(),
   updateOverride: vi.fn(),
   useCreatePlatformEntitlementOverrideMutation: vi.fn(),
+  useGetPlatformEntitlementContextQuery: vi.fn(),
   useGetPlatformEntitlementOverrideQuery: vi.fn(),
   useListPlatformEntitlementOverridesQuery: vi.fn(),
   useRevokePlatformEntitlementOverrideMutation: vi.fn(),
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/features/platform/api/platform-entitlement-overrides-api', () => ({
   useCreatePlatformEntitlementOverrideMutation: mocks.useCreatePlatformEntitlementOverrideMutation,
+  useGetPlatformEntitlementContextQuery: mocks.useGetPlatformEntitlementContextQuery,
   useGetPlatformEntitlementOverrideQuery: mocks.useGetPlatformEntitlementOverrideQuery,
   useListPlatformEntitlementOverridesQuery: mocks.useListPlatformEntitlementOverridesQuery,
   useRevokePlatformEntitlementOverrideMutation: mocks.useRevokePlatformEntitlementOverrideMutation,
@@ -65,7 +67,7 @@ const capabilities = {
 };
 
 function mutationHook(mock) {
-  mock.mockImplementation(() => ({ unwrap: vi.fn().mockResolvedValue({}) }));
+  mock.mockReturnValue({ unwrap: vi.fn().mockResolvedValue({}) });
   return [mock, { isLoading: false }];
 }
 
@@ -95,6 +97,23 @@ describe('PlatformEntitlementOverridesPage', () => {
       data: override,
       error: undefined,
       isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    mocks.useGetPlatformEntitlementContextQuery.mockReturnValue({
+      data: {
+        workspace: { id: 'workspace-id', name: 'Workspace Démo' },
+        plan: {
+          id: 'plan-id',
+          key: 'free',
+          name: 'Free',
+          features: ['file_upload'],
+          limits: {},
+        },
+        effective: { features: ['file_upload'], limits: {} },
+        appliedOverrides: [],
+      },
+      error: undefined,
       isLoading: false,
       refetch: vi.fn(),
     });
@@ -154,11 +173,25 @@ describe('PlatformEntitlementOverridesPage', () => {
     });
   });
 
-  it('crée une dérogation depuis le Drawer', async () => {
+  it('affiche les réglages rapides lorsque le workspace est sélectionné', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole('button', { name: 'Nouvelle dérogation' }));
+    await user.selectOptions(screen.getByLabelText('Espace de travail'), 'workspace-id');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Offre personnalisée du workspace' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('switch', { name: 'Désactiver Téléversement de fichiers' }),
+    ).toBeInTheDocument();
+  });
+
+  it('crée une dérogation avancée depuis le Drawer', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: 'Dérogation avancée' }));
     const drawer = screen.getByRole('dialog', { name: 'Nouvelle dérogation' });
 
     await user.selectOptions(within(drawer).getByLabelText('Espace de travail'), 'workspace-id');
