@@ -59,7 +59,6 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
         workspace: { id: 'workspace-id', name: 'Workspace Démo' },
         plan: {
           id: 'plan-id',
-          key: 'premium',
           name: 'Premium',
           features: ['file_upload'],
           limits: {},
@@ -88,7 +87,8 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
     vi.clearAllMocks();
   });
 
-  it('verrouille une fonctionnalité incluse par défaut dans le plan', () => {
+  it('crée une dérogation négative lorsqu’une fonctionnalité du plan est désactivée', async () => {
+    const user = userEvent.setup();
     renderComponent();
 
     const includedSwitch = screen.getByRole('switch', {
@@ -96,7 +96,7 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
     });
 
     expect(includedSwitch).toHaveAttribute('aria-checked', 'true');
-    expect(includedSwitch).toBeDisabled();
+    expect(includedSwitch).not.toBeDisabled();
     expect(
       screen.getByText('Incluse par défaut dans le plan Premium'),
     ).toBeInTheDocument();
@@ -105,9 +105,22 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
         name: 'Informations sur Téléversement de fichiers',
       }),
     ).toBeInTheDocument();
+
+    await user.click(includedSwitch);
+
+    await waitFor(() => {
+      expect(mocks.createOverride).toHaveBeenCalledWith(expect.objectContaining({
+        workspaceId: 'workspace-id',
+        targetType: 'feature',
+        featureKey: 'file_upload',
+        featureEnabled: false,
+        source: 'administrative',
+        endsAt: null,
+      }));
+    });
   });
 
-  it('laisse modifiable une fonctionnalité absente du plan', async () => {
+  it('crée une dérogation positive pour une fonctionnalité absente du plan', async () => {
     const user = userEvent.setup();
     renderComponent();
 
@@ -130,14 +143,13 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
     });
   });
 
-  it('révoque une dérogation positive lorsque le switch revient à off', async () => {
+  it('révoque une dérogation positive lorsque le switch revient à l’état du plan', async () => {
     const user = userEvent.setup();
     mocks.useGetPlatformEntitlementContextQuery.mockReturnValue({
       data: {
         workspace: { id: 'workspace-id', name: 'Workspace Démo' },
         plan: {
           id: 'plan-id',
-          key: 'free',
           name: 'Free',
           features: [],
           limits: {},
@@ -172,13 +184,13 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
     });
   });
 
-  it('signale une désactivation exceptionnelle sans rendre le switch rapide éditable', () => {
+  it('révoque une dérogation négative lorsque le switch revient à l’état du plan', async () => {
+    const user = userEvent.setup();
     mocks.useGetPlatformEntitlementContextQuery.mockReturnValue({
       data: {
         workspace: { id: 'workspace-id', name: 'Workspace Démo' },
         plan: {
           id: 'plan-id',
-          key: 'premium',
           name: 'Premium',
           features: ['file_upload'],
           limits: {},
@@ -206,9 +218,18 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
       name: 'Activer Téléversement de fichiers',
     });
     expect(includedSwitch).toHaveAttribute('aria-checked', 'false');
-    expect(includedSwitch).toBeDisabled();
+    expect(includedSwitch).not.toBeDisabled();
     expect(
       screen.getByText('Incluse par défaut dans le plan Premium — désactivée par une dérogation exceptionnelle'),
     ).toBeInTheDocument();
+
+    await user.click(includedSwitch);
+
+    await waitFor(() => {
+      expect(mocks.revokeOverride).toHaveBeenCalledWith(expect.objectContaining({
+        overrideId: 'override-negative',
+        workspaceId: 'workspace-id',
+      }));
+    });
   });
 });
