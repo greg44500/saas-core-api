@@ -5,6 +5,9 @@ import {
     revokePlatformEntitlementOverride,
     updatePlatformEntitlementOverride,
 } from './platformEntitlementOverrides.service.js';
+import {
+    getPlatformEntitlementContext,
+} from './platformEntitlementContext.service.js';
 
 
 const listEntitlementOverrides = async (req, res) => {
@@ -28,6 +31,17 @@ const getEntitlementOverrideById = async (req, res) => {
     res.status(200).json({
         status: 'success',
         data: { override },
+    });
+};
+
+const getEntitlementContext = async (req, res) => {
+    const context = await getPlatformEntitlementContext({
+        workspaceId: req.validated.params.workspaceId,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: { context },
     });
 };
 
@@ -78,6 +92,7 @@ const revokeEntitlementOverride = async (req, res) => {
 
 export {
     createEntitlementOverride,
+    getEntitlementContext,
     getEntitlementOverrideById,
     listEntitlementOverrides,
     revokeEntitlementOverride,
