@@ -1,4 +1,7 @@
 import {
+    isBaselinePlan,
+} from '../../plan/plan.service.js';
+import {
     createPlatformPlan,
 } from './services/createPlatformPlan.service.js';
 import {
@@ -11,7 +14,6 @@ import {
     listPlatformPlans,
 } from './services/listPlatformPlans.service.js';
 
-
 const serializePlanLimits = (limits) => {
     if (limits instanceof Map) {
         return Object.fromEntries(limits);
@@ -19,7 +21,6 @@ const serializePlanLimits = (limits) => {
 
     return limits ?? {};
 };
-
 
 const createPlan = async (req, res) => {
     const plan = await createPlatformPlan({
@@ -35,11 +36,6 @@ const createPlan = async (req, res) => {
     });
 };
 
-
-/**
- * Construit explicitement le DTO administratif afin que l'ajout futur d'un
- * champ interne au modèle Plan ne l'expose jamais automatiquement au frontend.
- */
 const listPlans = async (req, res) => {
     const { plans, pagination } = await listPlatformPlans({
         page: req.validated.query.page,
@@ -51,7 +47,7 @@ const listPlans = async (req, res) => {
         data: {
             plans: plans.map((plan) => ({
                 id: plan._id.toString(),
-                key: plan.key,
+                isBaseline: isBaselinePlan(plan),
                 name: plan.name,
                 description: plan.description ?? null,
                 status: plan.status,
@@ -76,7 +72,6 @@ const listPlans = async (req, res) => {
     });
 };
 
-
 const updatePlan = async (req, res) => {
     const plan = await updatePlatformPlan({
         planId: req.validated.params.planId,
@@ -92,7 +87,6 @@ const updatePlan = async (req, res) => {
     });
 };
 
-
 const archivePlan = async (req, res) => {
     const plan = await archivePlatformPlan({
         planId: req.validated.params.planId,
@@ -106,7 +100,6 @@ const archivePlan = async (req, res) => {
         data: { plan },
     });
 };
-
 
 export {
     createPlan,
