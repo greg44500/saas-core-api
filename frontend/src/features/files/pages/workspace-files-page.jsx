@@ -14,6 +14,7 @@ import { FileUploadDialog } from '@/features/files/components/file-upload-dialog
 import { FilesTable } from '@/features/files/components/files-table';
 import { downloadBlob } from '@/features/files/lib/download-blob';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
+import { WORKSPACE_FEATURE } from '@/features/workspace/constants/workspace-features';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
 const PAGE_SIZE = 20;
@@ -23,7 +24,7 @@ function getApiMessage(error, fallback) {
 }
 
 function WorkspaceFilesPage() {
-  const { workspace, can } = useWorkspaceContext();
+  const { workspace, can, hasFeature } = useWorkspaceContext();
   const { toast } = useToast();
   const [page, setPage] = useState(1);
   const [downloadingFileId, setDownloadingFileId] = useState(null);
@@ -122,7 +123,8 @@ function WorkspaceFilesPage() {
   const files = filesQuery.data?.files ?? [];
   const pagination = filesQuery.data?.pagination;
   const totalFiles = pagination?.total ?? files.length;
-  const canUpload = can(WORKSPACE_PERMISSION.FILE_UPLOAD);
+  const canUpload = can(WORKSPACE_PERMISSION.FILE_UPLOAD)
+    && hasFeature(WORKSPACE_FEATURE.FILE_UPLOAD);
   const canDelete = can(WORKSPACE_PERMISSION.FILE_DELETE);
 
   return (
