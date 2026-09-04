@@ -43,6 +43,13 @@ describe('Plan service', () => {
                 systemRole: null,
             })).toBe(false);
         });
+
+        it('n’utilise plus la clé historique free comme autorité métier', () => {
+            expect(isBaselinePlan({
+                key: 'free',
+                systemRole: null,
+            })).toBe(false);
+        });
     });
 
 
@@ -204,13 +211,11 @@ describe('listPublicPlans', () => {
     it('retourne uniquement le catalogue actif et public dans l’ordre attendu', async () => {
         const publicPlans = [
             {
-                key: 'free',
                 systemRole: PLAN_SYSTEM_ROLE.BASELINE,
                 name: 'Free',
                 displayOrder: 0,
             },
             {
-                key: 'starter',
                 systemRole: null,
                 name: 'Starter',
                 displayOrder: 10,
@@ -248,7 +253,6 @@ describe('listPublicPlans', () => {
 
         expect(selectMock).toHaveBeenCalledWith(
             [
-                'key',
                 'systemRole',
                 'name',
                 'description',
