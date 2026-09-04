@@ -19,12 +19,19 @@ import {
 import { AppError } from '../../utils/appError.js';
 import { createAuditLog } from '../auditLog/auditLog.service.js';
 import {
+    CORE_PLAN_FEATURE,
     CORE_PLAN_METRIC,
 } from '../plan/planCapability.registry.js';
+import {
+    assertEntitlementFeatureAvailable,
+} from '../plan/planFeature.service.js';
 import {
     enforcePlanLimit,
 } from '../plan/planLimit.service.js';
 import { Role } from '../role/role.model.js';
+import {
+    getWorkspaceEffectiveEntitlement,
+} from '../subscriptions/subscription.service.js';
 import { User } from '../users/user.model.js';
 import {
     WorkspaceMember,
@@ -41,9 +48,11 @@ const hashInvitationToken = (token) => crypto
 /**
  * Accepte une invitation pour l'utilisateur authentifié.
  *
- * L'opération est atomique : réservation de la capacité membre, création ou
- * réactivation du WorkspaceMember, clôture de l'invitation et AuditLog sont
- * validés ensemble. Aucun état partiel ne doit survivre à un échec.
+ * L'opération est atomique : contrôle de l'entitlement courant, réservation de
+ * la capacité membre, création ou réactivation du WorkspaceMember, clôture de
+ * l'invitation et AuditLog sont validés ensemble. Une invitation créée lorsque
+ * team_management était actif ne peut donc pas contourner une désactivation
+ * commerciale intervenue avant son acceptation.
  */
 const acceptWorkspaceInvitation = async ({
     token,
@@ -88,6 +97,17 @@ const acceptWorkspaceInvitation = async ({
                 403,
             );
         }
+
+        const entitlement = await getWorkspaceEffectiveEntitlement({
+            workspaceId: invitation.workspace,
+            at: now,
+            session,
+        });
+
+        assertEntitlementFeatureAvailable({
+            entitlement,
+            featureKey: CORE_PLAN_FEATURE.TEAM_MANAGEMENT,
+        });
 
         const role = await Role.findOne({
             _id: invitation.role,
