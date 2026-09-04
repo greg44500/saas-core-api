@@ -4,6 +4,7 @@ import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
 import { authorizeRoleDelegation } from '../../middlewares/authorizeRoleDelegation.js';
+import { enforcePlanFeature } from '../../middlewares/enforcePlanFeature.js';
 import {
     enforceWorkspaceAccessMode,
 } from '../../middlewares/enforceWorkspaceAccessMode.js';
@@ -12,6 +13,9 @@ import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
     paginationQuerySchema,
 } from '../../utils/validations/pagination.validation.js';
+import {
+    CORE_PLAN_FEATURE,
+} from '../plan/planCapability.registry.js';
 import {
     accept,
     create,
@@ -37,6 +41,7 @@ workspaceInvitationRouter.post(
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_INVITE),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
     authorizeRoleDelegation,
     create,
@@ -51,6 +56,7 @@ workspaceInvitationRouter.get(
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_INVITE),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     list,
 );
 
@@ -62,6 +68,7 @@ workspaceInvitationRouter.post(
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_INVITE),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
     resend,
 );
@@ -74,6 +81,7 @@ workspaceInvitationRouter.delete(
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_INVITE),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode({
         allowDuringRemediation: true,
     }),
@@ -82,7 +90,9 @@ workspaceInvitationRouter.delete(
 
 /**
  * L'acceptation ne passe pas par loadWorkspaceContext : l'utilisateur n'est
- * précisément pas encore membre du workspace au moment de la requête.
+ * précisément pas encore membre du workspace au moment de la requête. Le
+ * service d'acceptation répète donc le contrôle team_management dans sa
+ * transaction avant toute création ou réactivation de membership.
  */
 const invitationAcceptanceRouter = Router();
 
