@@ -13,6 +13,7 @@ import { NavLink } from 'react-router';
 
 import { Button } from '@/components/ui/button';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
+import { WORKSPACE_FEATURE } from '@/features/workspace/constants/workspace-features';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
 const administrationNavigationItems = [
@@ -20,12 +21,14 @@ const administrationNavigationItems = [
     label: 'Membres',
     Icon: Users,
     permission: WORKSPACE_PERMISSION.MEMBER_READ,
+    feature: WORKSPACE_FEATURE.TEAM_MANAGEMENT,
     path: 'members',
   },
   {
     label: 'Rôles et permissions',
     Icon: ShieldCheck,
     permission: WORKSPACE_PERMISSION.ROLE_READ,
+    feature: WORKSPACE_FEATURE.TEAM_MANAGEMENT,
     path: 'roles',
   },
   {
@@ -44,6 +47,7 @@ const administrationNavigationItems = [
     label: 'Activité',
     Icon: History,
     permission: WORKSPACE_PERMISSION.AUDIT_READ,
+    feature: WORKSPACE_FEATURE.AUDIT_LOGS,
     path: 'activity',
   },
   {
@@ -80,10 +84,10 @@ function SidebarTooltip({ collapsed, label }) {
 }
 
 function WorkspaceSidebar({ collapsed, onToggle, workspace }) {
-  const { can } = useWorkspaceContext();
+  const { can, hasFeature } = useWorkspaceContext();
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
   const visibleAdministrationItems = administrationNavigationItems.filter(
-    ({ permission }) => can(permission),
+    ({ permission, feature }) => can(permission) && (!feature || hasFeature(feature)),
   );
 
   return (
