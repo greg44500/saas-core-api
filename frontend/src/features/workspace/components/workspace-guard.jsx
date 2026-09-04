@@ -73,6 +73,7 @@ function WorkspaceGuard() {
 
   return (
     <WorkspaceProvider
+      features={workspaceContext.features}
       membership={workspaceContext.membership}
       permissions={workspaceContext.permissions}
       workspace={workspaceContext.workspace}
@@ -82,4 +83,4 @@ function WorkspaceGuard() {
   );
 }
 
-export { WorkspaceGuard };
+export { WorkspaceAccessState, WorkspaceGuard };
