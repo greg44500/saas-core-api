@@ -1,3 +1,8 @@
+import {
+    ENTITLEMENT_OVERRIDE_LIFECYCLE,
+} from '../../../constants/entitlementOverride.constants.js';
+
+
 const isValidDate = (value) =>
     value instanceof Date
     && !Number.isNaN(value.getTime());
@@ -58,18 +63,18 @@ const resolveEntitlementOverrideLifecycle = ({
     }
 
     if (override.revokedAt) {
-        return 'revoked';
+        return ENTITLEMENT_OVERRIDE_LIFECYCLE.REVOKED;
     }
 
     if (override.startsAt > at) {
-        return 'scheduled';
+        return ENTITLEMENT_OVERRIDE_LIFECYCLE.SCHEDULED;
     }
 
     if (override.endsAt && override.endsAt <= at) {
-        return 'expired';
+        return ENTITLEMENT_OVERRIDE_LIFECYCLE.EXPIRED;
     }
 
-    return 'active';
+    return ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE;
 };
 
 /**
