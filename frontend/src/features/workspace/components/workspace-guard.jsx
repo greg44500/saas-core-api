@@ -1,10 +1,18 @@
-import { Outlet, useParams } from 'react-router';
+import {
+  Outlet,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router';
 
 import { PageLoader } from '@/components/shared/page-loader';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { useGetWorkspaceByIdQuery } from '@/features/workspace/api/workspace-api';
 import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
+import {
+  getWorkspaceRouteRequiredFeature,
+} from '@/features/workspace/lib/workspace-route-entitlement';
 import { useEntitlementAutoRefresh } from '@/hooks/use-entitlement-auto-refresh';
 
 function WorkspaceAccessState({ error, onRetry }) {
@@ -55,6 +63,8 @@ function WorkspaceAccessState({ error, onRetry }) {
 
 function WorkspaceGuard() {
   const { workspaceId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const {
     data: workspaceContext,
@@ -73,12 +83,31 @@ function WorkspaceGuard() {
     selectSnapshot: (data) => [
       ...(data?.features ?? []),
     ].sort(),
-    onChanged: ({ reason }) => {
+    onChanged: ({ data, reason }) => {
+      const requiredFeature = getWorkspaceRouteRequiredFeature({
+        pathname: location.pathname,
+        workspaceId,
+      });
+      const effectiveFeatures = new Set(data?.features ?? []);
+      const currentRouteBecameUnavailable = Boolean(
+        requiredFeature && !effectiveFeatures.has(requiredFeature),
+      );
+
+      if (currentRouteBecameUnavailable) {
+        navigate(`/workspaces/${workspaceId}/dashboard`, {
+          replace: true,
+        });
+      }
+
       toast({
-        title: 'Droits du workspace actualisés',
-        description: reason === 'schedule'
-          ? 'Une dérogation commerciale a pris effet ou a expiré. L’interface a été mise à jour sans reconnexion.'
-          : 'Les fonctionnalités disponibles ont été resynchronisées.',
+        title: currentRouteBecameUnavailable
+          ? 'Accès au workspace mis à jour'
+          : 'Droits du workspace actualisés',
+        description: currentRouteBecameUnavailable
+          ? 'Une dérogation a pris fin ou les droits ont changé. Vous avez été redirigé vers le tableau de bord.'
+          : reason === 'schedule'
+            ? 'Une dérogation commerciale a pris effet ou a expiré. L’interface a été mise à jour sans reconnexion.'
+            : 'Les fonctionnalités disponibles ont été resynchronisées.',
         variant: 'info',
       });
     },
