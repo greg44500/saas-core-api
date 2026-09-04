@@ -11,7 +11,11 @@ import {
     listPlatformEntitlementOverrides,
 } from '../../../modules/platform/entitlementOverrides/platformEntitlementOverrides.service.js';
 import {
+    getPlatformEntitlementContext,
+} from '../../../modules/platform/entitlementOverrides/platformEntitlementContext.service.js';
+import {
     createEntitlementOverride,
+    getEntitlementContext,
     listEntitlementOverrides,
 } from '../../../modules/platform/entitlementOverrides/platformEntitlementOverrides.controller.js';
 
@@ -23,6 +27,13 @@ vi.mock(
         listPlatformEntitlementOverrides: vi.fn(),
         revokePlatformEntitlementOverride: vi.fn(),
         updatePlatformEntitlementOverride: vi.fn(),
+    }),
+);
+
+vi.mock(
+    '../../../modules/platform/entitlementOverrides/platformEntitlementContext.service.js',
+    () => ({
+        getPlatformEntitlementContext: vi.fn(),
     }),
 );
 
@@ -115,6 +126,36 @@ describe('platformEntitlementOverrides.controller', () => {
             status: 'success',
             data: { overrides },
             meta: pagination,
+        });
+    });
+
+    it('retourne le contexte entitlement Platform du workspace', async () => {
+        const req = {
+            validated: {
+                params: {
+                    workspaceId: '507f1f77bcf86cd799439011',
+                },
+            },
+        };
+        const res = createResponse();
+        const context = {
+            workspace: {
+                id: req.validated.params.workspaceId,
+                name: 'Workspace Démo',
+            },
+        };
+
+        getPlatformEntitlementContext.mockResolvedValue(context);
+
+        await getEntitlementContext(req, res);
+
+        expect(getPlatformEntitlementContext).toHaveBeenCalledWith({
+            workspaceId: req.validated.params.workspaceId,
+        });
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+            status: 'success',
+            data: { context },
         });
     });
 });
