@@ -49,12 +49,14 @@ function WorkspaceSubscriptionPage() {
   const subscription = subscriptionQuery.data;
   const commercial = subscription?.commercial;
   const entitlement = subscription?.effectiveEntitlement;
+  const baselinePlan = subscription?.baseline?.plan ?? null;
+  const baselinePlanName = baselinePlan?.name ?? 'plan de référence';
   const trialConsumed = subscription?.trialEligibility?.consumed === true;
 
   /*
    * Le statut persistant `trialing` ne suffit pas. Un essai expiré peut rester
    * temporairement stocké comme tel alors que l'entitlement serveur a déjà
-   * basculé vers la baseline Free.
+   * rebasculé vers la baseline du workspace.
    */
   const trialIsEffective = Boolean(
     commercial?.status === 'trialing'
@@ -105,7 +107,7 @@ function WorkspaceSubscriptionPage() {
     setEndTrialDialogOpen(false);
   }
 
-  async function handleEndTrialToFree() {
+  async function handleEndTrialToBaseline() {
     setEndTrialError(null);
 
     try {
@@ -113,12 +115,12 @@ function WorkspaceSubscriptionPage() {
       setEndTrialDialogOpen(false);
       toast({
         title: 'Période d’essai terminée',
-        description: 'Le plan Free est de nouveau effectif.',
+        description: `Le plan ${baselinePlanName} est de nouveau effectif.`,
         variant: 'success',
       });
     } catch (error) {
       setEndTrialError(
-        getApiMessage(error, 'Le retour vers le plan Free a échoué.'),
+        getApiMessage(error, `Le retour vers le plan ${baselinePlanName} a échoué.`),
       );
     }
   }
@@ -126,25 +128,12 @@ function WorkspaceSubscriptionPage() {
   function renderPlanAction(plan) {
     if (!isOwner) return null;
 
-    if (plan.key === 'free') {
-      if (trialIsEffective) {
-        return (
-          <Button
-            disabled={mutationPending}
-            onClick={openEndTrialDialog}
-            type="button"
-            variant="outline"
-          >
-            Revenir au plan Free
-          </Button>
-        );
-      }
-
-      if (entitlement?.plan?.id === plan.id) {
+    if (plan.isBaseline) {
+      if (entitlement?.plan?.id === plan.id && !trialIsEffective) {
         return <p className="text-sm font-medium text-muted-foreground">Plan actuel</p>;
       }
 
-      return null;
+      return <p className="text-sm text-muted-foreground">Plan de référence</p>;
     }
 
     const trialAvailable = plan.trialEnabled === true
@@ -205,6 +194,25 @@ function WorkspaceSubscriptionPage() {
         startAt={commercial?.currentPeriodStart}
         endAt={commercial?.trialEndsAt}
       />
+
+      {isOwner && trialIsEffective && (
+        <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-semibold">Revenir au plan de référence</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Mettre fin à l’essai réactive immédiatement le plan {baselinePlanName}. Cette action consomme définitivement l’essai.
+            </p>
+          </div>
+          <Button
+            disabled={mutationPending}
+            onClick={openEndTrialDialog}
+            type="button"
+            variant="outline"
+          >
+            Revenir à {baselinePlanName}
+          </Button>
+        </section>
+      )}
 
       <CommercialLifecycleSection
         commercial={commercial}
@@ -279,7 +287,7 @@ function WorkspaceSubscriptionPage() {
       <EndTrialToFreeDialog
         errorMessage={endTrialError}
         onCancel={closeEndTrialDialog}
-        onConfirm={handleEndTrialToFree}
+        onConfirm={handleEndTrialToBaseline}
         open={endTrialDialogOpen}
         pending={endTrialMutation.isLoading}
       />
