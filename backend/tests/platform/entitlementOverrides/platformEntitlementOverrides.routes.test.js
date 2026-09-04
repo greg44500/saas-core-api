@@ -27,6 +27,7 @@ import {
 import {
     createPlatformEntitlementOverrideBodySchema,
     listPlatformEntitlementOverridesQuerySchema,
+    platformEntitlementContextWorkspaceParamsSchema,
     platformEntitlementOverrideIdParamsSchema,
     revokePlatformEntitlementOverrideBodySchema,
     updatePlatformEntitlementOverrideBodySchema,
@@ -46,6 +47,9 @@ const {
     ),
     handlers: {
         listEntitlementOverrides: vi.fn(
+            (req, res) => res.status(200).json({ status: 'success' }),
+        ),
+        getEntitlementContext: vi.fn(
             (req, res) => res.status(200).json({ status: 'success' }),
         ),
         getEntitlementOverrideById: vi.fn(
@@ -135,6 +139,22 @@ describe('platformEntitlementOverrides.routes', () => {
             query: listPlatformEntitlementOverridesQuerySchema,
         });
         expect(handlers.listEntitlementOverrides).toHaveBeenCalledOnce();
+    });
+
+    it('protège le contexte effectif du workspace avec la permission de lecture', async () => {
+        const workspaceId = '507f1f77bcf86cd799439011';
+
+        const response = await request(app)
+            .get(`/platform/entitlement-overrides/workspaces/${workspaceId}/context`);
+
+        expect(response.status).toBe(200);
+        expect(authorizePlatformPermission).toHaveBeenCalledWith(
+            PLATFORM_PERMISSION.ENTITLEMENT_OVERRIDES_READ,
+        );
+        expect(validateRequest).toHaveBeenCalledWith({
+            params: platformEntitlementContextWorkspaceParamsSchema,
+        });
+        expect(handlers.getEntitlementContext).toHaveBeenCalledOnce();
     });
 
     it('protège le détail avec la permission de lecture', async () => {
