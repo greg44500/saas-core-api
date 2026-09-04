@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router';
 
 import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
 import { WorkspaceSidebar } from '@/features/workspace/components/workspace-sidebar';
+import { WORKSPACE_FEATURE } from '@/features/workspace/constants/workspace-features';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
 const workspace = {
@@ -20,10 +21,14 @@ const membership = {
   },
 };
 
-function renderSidebar(permissions, { collapsed = false } = {}) {
+function renderSidebar(
+  permissions,
+  { collapsed = false, features = [] } = {},
+) {
   render(
     <MemoryRouter initialEntries={['/workspaces/workspace-1/dashboard']}>
       <WorkspaceProvider
+        features={features}
         membership={membership}
         permissions={permissions}
         workspace={workspace}
@@ -55,12 +60,26 @@ describe('WorkspaceSidebar', () => {
     expect(screen.queryByText('Paramètres')).not.toBeInTheDocument();
   });
 
-  it('affiche uniquement les entrées autorisées par les permissions effectives', () => {
+  it('masque la gestion d’équipe quand la permission existe mais pas la feature', () => {
     renderSidebar([
       WORKSPACE_PERMISSION.WORKSPACE_READ,
       WORKSPACE_PERMISSION.MEMBER_READ,
-      WORKSPACE_PERMISSION.SUBSCRIPTION_READ,
+      WORKSPACE_PERMISSION.ROLE_READ,
     ]);
+
+    expect(screen.queryByText('Membres')).not.toBeInTheDocument();
+    expect(screen.queryByText('Rôles et permissions')).not.toBeInTheDocument();
+  });
+
+  it('affiche la gestion d’équipe seulement avec feature et permission', () => {
+    renderSidebar(
+      [
+        WORKSPACE_PERMISSION.WORKSPACE_READ,
+        WORKSPACE_PERMISSION.MEMBER_READ,
+        WORKSPACE_PERMISSION.SUBSCRIPTION_READ,
+      ],
+      { features: [WORKSPACE_FEATURE.TEAM_MANAGEMENT] },
+    );
 
     expect(screen.getByText('Administration')).toBeInTheDocument();
     expect(screen.getByText('Membres')).toBeInTheDocument();
@@ -70,7 +89,7 @@ describe('WorkspaceSidebar', () => {
     expect(screen.queryByText('Paramètres')).not.toBeInTheDocument();
   });
 
-  it('rend Fichiers navigable uniquement avec file:read', () => {
+  it('rend Fichiers consultable avec file:read même si file_upload est absent', () => {
     renderSidebar([
       WORKSPACE_PERMISSION.WORKSPACE_READ,
       WORKSPACE_PERMISSION.FILE_READ,
@@ -94,11 +113,23 @@ describe('WorkspaceSidebar', () => {
     expect(subscriptionLink).toHaveAttribute('href', '/workspaces/workspace-1/subscription');
   });
 
-  it('rend Activité navigable uniquement avec audit:read', () => {
+  it('masque Activité avec audit:read lorsque audit_logs est absent', () => {
     renderSidebar([
       WORKSPACE_PERMISSION.WORKSPACE_READ,
       WORKSPACE_PERMISSION.AUDIT_READ,
     ]);
+
+    expect(screen.queryByText('Activité')).not.toBeInTheDocument();
+  });
+
+  it('rend Activité navigable avec audit:read et audit_logs', () => {
+    renderSidebar(
+      [
+        WORKSPACE_PERMISSION.WORKSPACE_READ,
+        WORKSPACE_PERMISSION.AUDIT_READ,
+      ],
+      { features: [WORKSPACE_FEATURE.AUDIT_LOGS] },
+    );
 
     const activityLink = screen.getByRole('link', { name: 'Activité' });
 
@@ -124,7 +155,10 @@ describe('WorkspaceSidebar', () => {
         WORKSPACE_PERMISSION.WORKSPACE_READ,
         WORKSPACE_PERMISSION.MEMBER_READ,
       ],
-      { collapsed: true },
+      {
+        collapsed: true,
+        features: [WORKSPACE_FEATURE.TEAM_MANAGEMENT],
+      },
     );
 
     expect(
