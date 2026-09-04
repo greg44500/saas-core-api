@@ -1,4 +1,6 @@
+import { WorkspaceFeatureGate } from '@/features/workspace/components/workspace-feature-gate';
 import { WorkspacePermissionGate } from '@/features/workspace/components/workspace-permission-gate';
+import { WORKSPACE_FEATURE } from '@/features/workspace/constants/workspace-features';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 import { WorkspaceMembersPage } from '@/features/workspace-members/pages/workspace-members-page';
 
@@ -13,15 +15,35 @@ function WorkspaceMembersAccessDenied() {
   );
 }
 
-function WorkspaceMembersRoute() {
+function WorkspaceTeamManagementUnavailable() {
   return (
-    <WorkspacePermissionGate
-      permission={WORKSPACE_PERMISSION.MEMBER_READ}
-      fallback={<WorkspaceMembersAccessDenied />}
-    >
-      <WorkspaceMembersPage />
-    </WorkspacePermissionGate>
+    <section className="space-y-2 rounded-xl border border-border bg-card p-6">
+      <h1 className="text-2xl font-semibold">Fonctionnalité indisponible</h1>
+      <p className="text-sm text-muted-foreground">
+        La gestion d’équipe n’est pas incluse dans l’offre effective de ce workspace.
+      </p>
+    </section>
   );
 }
 
-export { WorkspaceMembersAccessDenied, WorkspaceMembersRoute };
+function WorkspaceMembersRoute() {
+  return (
+    <WorkspaceFeatureGate
+      fallback={<WorkspaceTeamManagementUnavailable />}
+      feature={WORKSPACE_FEATURE.TEAM_MANAGEMENT}
+    >
+      <WorkspacePermissionGate
+        permission={WORKSPACE_PERMISSION.MEMBER_READ}
+        fallback={<WorkspaceMembersAccessDenied />}
+      >
+        <WorkspaceMembersPage />
+      </WorkspacePermissionGate>
+    </WorkspaceFeatureGate>
+  );
+}
+
+export {
+  WorkspaceMembersAccessDenied,
+  WorkspaceMembersRoute,
+  WorkspaceTeamManagementUnavailable,
+};
