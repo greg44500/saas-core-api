@@ -10,7 +10,6 @@ import {
 } from '../../constants/subscription.constants.js';
 
 import {
-    PLAN_KEY,
     PLAN_STATUS,
     PLAN_SYSTEM_ROLE,
 } from '../../constants/plan.constants.js';
@@ -40,9 +39,8 @@ const isValidDate = (value) =>
 /**
  * Crée la souscription baseline initiale d'un nouveau workspace.
  *
- * Le nom commercial du plan est libre. Le backend s'appuie sur son rôle
- * système `baseline`, avec un fallback sur l'ancienne clé `free` uniquement
- * pour permettre une transition sûre des bases existantes avant migration.
+ * Le nom commercial et la clé technique du plan sont sans influence : seul
+ * son rôle système `baseline` permet de résoudre l'offre de référence.
  */
 const createFreeSubscriptionForWorkspace = async ({
     workspaceId,
@@ -57,15 +55,12 @@ const createFreeSubscriptionForWorkspace = async ({
 
     const baselinePlan = await Plan.findOne({
         status: PLAN_STATUS.ACTIVE,
-        $or: [
-            { systemRole: PLAN_SYSTEM_ROLE.BASELINE },
-            { key: PLAN_KEY.FREE },
-        ],
+        systemRole: PLAN_SYSTEM_ROLE.BASELINE,
     }).session(session);
 
     if (!baselinePlan) {
         throw new AppError(
-            'Le plan baseline actif est introuvable. Exécutez le seed et la migration des plans.',
+            'Le plan baseline actif est introuvable. Exécutez le seed des plans.',
             500,
         );
     }
@@ -219,58 +214,67 @@ const getWorkspaceEffectiveEntitlement = async ({
     };
 };
 
-const getWorkspaceAccessEntitlement = async ({
+const resolveWorkspaceAccess = async ({
     workspaceId,
-    session = null,
     at = new Date(),
     registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
+    session = null,
 }) => {
-    if (!workspaceId) {
-        throw new TypeError(
-            'workspaceId is required to resolve workspace access',
-        );
+    const entitlement = await getWorkspaceEffectiveEntitlement({
+        workspaceId,
+        at,
+        registry,
+        session,
+    });
+
+    const { subscription } = entitlement;
+
+    if (subscription.status === SUBSCRIPTION_STATUS.PAST_DUE) {
+        return {
+            ...entitlement,
+            accessMode: WORKSPACE_ACCESS_MODE.REMEDIATION,
+            accessReason: WORKSPACE_ACCESS_REASON.PAST_DUE,
+        };
     }
-
-    if (!isValidDate(at)) {
-        throw new TypeError('at must be a valid Date');
-    }
-
-    const effectiveEntitlement =
-        await getWorkspaceEffectiveEntitlement({
-            workspaceId,
-            at,
-            registry,
-            session,
-        });
-
-    const compatibility =
-        await assessWorkspaceLimitsCompatibility({
-            workspaceId,
-            limits:
-                effectiveEntitlement.effectiveCapabilities.limits,
-            at,
-            registry,
-            session,
-        });
-
-    const accessMode = compatibility.compatible
-        ? WORKSPACE_ACCESS_MODE.NORMAL
-        : WORKSPACE_ACCESS_MODE.REMEDIATION;
 
     return {
-        ...effectiveEntitlement,
-        accessMode,
-        reason: accessMode === WORKSPACE_ACCESS_MODE.REMEDIATION
-            ? WORKSPACE_ACCESS_REASON.PLAN_LIMITS_EXCEEDED
-            : null,
-        blockingLimits: compatibility.blockingLimits,
-        nonBlockingLimits: compatibility.nonBlockingLimits,
+        ...entitlement,
+        accessMode: WORKSPACE_ACCESS_MODE.FULL,
+        accessReason: WORKSPACE_ACCESS_REASON.NONE,
     };
 };
 
+const assertWorkspacePlanCompatible = async ({
+    workspaceId,
+    targetPlan,
+    registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
+    session = null,
+}) => {
+    const compatibility = await assessWorkspaceLimitsCompatibility({
+        workspaceId,
+        targetPlan,
+        registry,
+        session,
+    });
+
+    if (!compatibility.isCompatible) {
+        throw new AppError(
+            'Le workspace dépasse les limites du plan demandé.',
+            409,
+            {
+                code: 'PLAN_LIMITS_EXCEEDED',
+                details: compatibility.violations,
+            },
+        );
+    }
+
+    return compatibility;
+};
+
 export {
+    assertWorkspacePlanCompatible,
     createFreeSubscriptionForWorkspace,
-    getWorkspaceAccessEntitlement,
     getWorkspaceEffectiveEntitlement,
     getWorkspacePlanEntitlement,
+    resolveWorkspaceAccess,
 };
