@@ -336,6 +336,35 @@ Pour une action payante protégée, les deux conditions peuvent être nécessair
 
 Une application dérivée doit pouvoir enregistrer ses permissions métier dans le registre RBAC extensible sans modifier la sémantique du Core.
 
+### 12.1. Dérogations temporelles et retour automatique au Plan
+
+Une `EntitlementOverride` reste une exception Workspace-scoped portant sur une seule capability. Elle peut accorder ou retirer une feature, ou remplacer temporairement une limite, sans modifier le Plan catalogue partagé.
+
+Règles temporelles :
+
+```text
+startsAt <= maintenant
+ET
+endsAt est null OU endsAt > maintenant
+ET
+revokedAt est null
+→ override actif
+```
+
+À l’instant `endsAt`, la dérogation cesse automatiquement d’être effective. Le moteur ne restaure pas une ancienne valeur mémorisée : il recalcule l’entitlement depuis le **Plan courant**, puis applique uniquement les overrides encore actifs.
+
+Conséquences :
+
+- aucune reconnexion utilisateur n’est nécessaire à `startsAt` ou `endsAt` ;
+- l’authentification reste séparée des droits commerciaux dynamiques ;
+- le backend reste l’autorité et refuse immédiatement une capability devenue indisponible ;
+- le frontend peut recevoir une prochaine échéance d’entitlement afin de refetch au bon moment ;
+- un refetch au retour sur l’onglet couvre les timers navigateur retardés ;
+- un toast n’est affiché que lorsqu’un changement effectif est réellement constaté ;
+- si la page courante dépend d’une feature qui vient de disparaître, l’UI redirige vers une route autorisée sans forcer de logout.
+
+L’historique de la dérogation expirée est conservé pour l’audit commercial ; l’expiration temporelle ne supprime jamais le document.
+
 ---
 
 ## 13. Workspace et politique commerciale
