@@ -90,6 +90,12 @@ function renderDrawer({ onClose = vi.fn(), open = true } = {}) {
 
 describe('PlatformEntitlementOverridesDrilldownDrawer', () => {
   beforeEach(() => {
+    vi.stubGlobal('requestAnimationFrame', (callback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
     mocks.useListPlatformEntitlementOverridesQuery.mockReturnValue({
       data: {
         overrides: [override],
@@ -127,6 +133,7 @@ describe('PlatformEntitlementOverridesDrilldownDrawer', () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('ne monte aucun appel de données tant que le drawer est fermé', () => {
