@@ -109,12 +109,12 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
         aria-hidden={!open}
         aria-labelledby={titleId}
         aria-modal="true"
-        className={`absolute inset-y-0 right-0 flex w-full max-w-xl transform-gpu flex-col border-l border-border bg-background text-foreground shadow-lg transition-transform duration-300 ease-in-out will-change-transform motion-reduce:transition-none ${
+        className={`absolute inset-y-0 right-0 flex w-full max-w-xl min-w-0 transform-gpu flex-col overflow-hidden border-l border-border bg-background text-foreground shadow-lg transition-transform duration-300 ease-in-out will-change-transform motion-reduce:transition-none ${
           isVisible ? 'translate-x-0' : 'translate-x-full'
         }`}
         role="dialog"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <header className="flex min-w-0 items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold" id={titleId}>
               {title}
@@ -139,7 +139,9 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
           </Button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
+        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-5 [scrollbar-gutter:stable]">
+          <div className="min-w-0 max-w-full">{children}</div>
+        </div>
       </aside>
     </div>
   );
