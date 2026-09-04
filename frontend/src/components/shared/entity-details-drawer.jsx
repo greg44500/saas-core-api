@@ -147,4 +147,4 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
   );
 }
 
-export { EntityDetailsDrawer };
+export { DRAWER_TRANSITION_MS, EntityDetailsDrawer };
