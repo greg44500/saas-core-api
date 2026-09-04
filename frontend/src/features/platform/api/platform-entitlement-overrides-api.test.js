@@ -18,6 +18,7 @@ vi.mock('@/services/api/base-api', () => ({
       endpoints(builder);
       return {
         useCreatePlatformEntitlementOverrideMutation: vi.fn(),
+        useGetPlatformEntitlementContextQuery: vi.fn(),
         useGetPlatformEntitlementOverrideQuery: vi.fn(),
         useListPlatformEntitlementOverridesQuery: vi.fn(),
         useRevokePlatformEntitlementOverrideMutation: vi.fn(),
@@ -30,7 +31,7 @@ vi.mock('@/services/api/base-api', () => ({
 import '@/features/platform/api/platform-entitlement-overrides-api';
 
 describe('platformEntitlementOverridesApi', () => {
-  it('conserve le contrat de liste et de mutation F10.4', () => {
+  it('conserve le contrat de liste, contexte et mutations F10.6', () => {
     expect(captured.queries[0].query({ page: 2, limit: 20, targetType: 'feature' })).toEqual({
       url: '/platform/entitlement-overrides',
       params: { page: 2, limit: 20, targetType: 'feature' },
@@ -40,19 +41,39 @@ describe('platformEntitlementOverridesApi', () => {
       '/platform/entitlement-overrides/override-id',
     );
 
-    expect(captured.mutations[0].query({ reason: 'Support', source: 'support' })).toEqual({
+    expect(captured.queries[2].query('workspace-id')).toBe(
+      '/platform/entitlement-overrides/workspaces/workspace-id/context',
+    );
+
+    expect(captured.mutations[0].query({
+      workspaceId: 'workspace-id',
+      reason: 'Support',
+      source: 'support',
+    })).toEqual({
       url: '/platform/entitlement-overrides',
       method: 'POST',
-      body: { reason: 'Support', source: 'support' },
+      body: {
+        workspaceId: 'workspace-id',
+        reason: 'Support',
+        source: 'support',
+      },
     });
 
-    expect(captured.mutations[1].query({ overrideId: 'override-id', reason: 'Mise à jour' })).toEqual({
+    expect(captured.mutations[1].query({
+      overrideId: 'override-id',
+      workspaceId: 'workspace-id',
+      reason: 'Mise à jour',
+    })).toEqual({
       url: '/platform/entitlement-overrides/override-id',
       method: 'PATCH',
       body: { reason: 'Mise à jour' },
     });
 
-    expect(captured.mutations[2].query({ overrideId: 'override-id', reason: 'Révocation' })).toEqual({
+    expect(captured.mutations[2].query({
+      overrideId: 'override-id',
+      workspaceId: 'workspace-id',
+      reason: 'Révocation',
+    })).toEqual({
       url: '/platform/entitlement-overrides/override-id/revoke',
       method: 'PATCH',
       body: { reason: 'Révocation' },
