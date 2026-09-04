@@ -21,6 +21,7 @@ import { useListPlatformPlanCapabilitiesQuery } from '@/features/platform/api/pl
 import { useListPlatformWorkspacesQuery } from '@/features/platform/api/platform-workspaces-api';
 import { PlatformEntitlementOverrideDetailsDrawer } from '@/features/platform/components/platform-entitlement-override-details-drawer';
 import { PlatformEntitlementOverrideForm } from '@/features/platform/components/platform-entitlement-override-form';
+import { PlatformWorkspaceFeatureOverrides } from '@/features/platform/components/platform-workspace-feature-overrides';
 import {
   ENTITLEMENT_OVERRIDE_LIFECYCLE,
   ENTITLEMENT_OVERRIDE_SOURCE,
@@ -130,7 +131,11 @@ function PlatformEntitlementOverridesPage() {
     if (!editTarget) return;
     setEditError(null);
     try {
-      await updateOverride({ overrideId: editTarget.id, ...payload }).unwrap();
+      await updateOverride({
+        overrideId: editTarget.id,
+        workspaceId: editTarget.workspace?.id,
+        ...payload,
+      }).unwrap();
       toast({ title: 'Dérogation mise à jour', variant: 'success' });
       setEditTarget(null);
     } catch (error) {
@@ -148,7 +153,11 @@ function PlatformEntitlementOverridesPage() {
 
     setRevokeError(null);
     try {
-      await revokeOverride({ overrideId: revokeTarget.id, reason }).unwrap();
+      await revokeOverride({
+        overrideId: revokeTarget.id,
+        workspaceId: revokeTarget.workspace?.id,
+        reason,
+      }).unwrap();
       toast({ title: 'Dérogation révoquée', variant: 'success' });
       setRevokeTarget(null);
       setRevokeReason('');
@@ -239,7 +248,7 @@ function PlatformEntitlementOverridesPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dérogations</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Activez, limitez ou étendez ponctuellement les capabilities d’un workspace sans modifier son plan catalogue.
+            Personnalisez l’offre d’un workspace sans modifier le plan catalogue partagé.
           </p>
         </div>
         <Button
@@ -251,7 +260,7 @@ function PlatformEntitlementOverridesPage() {
           type="button"
         >
           <Plus aria-hidden="true" />
-          Nouvelle dérogation
+          Dérogation avancée
         </Button>
       </div>
 
@@ -259,7 +268,7 @@ function PlatformEntitlementOverridesPage() {
         <div>
           <h2 className="text-lg font-semibold">Filtres</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Les filtres sont conservés dans l’URL afin de pouvoir partager ou retrouver une vue administrative.
+            Sélectionner un workspace affiche aussi ses fonctionnalités effectives et leurs réglages rapides.
           </p>
         </div>
 
@@ -320,9 +329,16 @@ function PlatformEntitlementOverridesPage() {
         )}
       </section>
 
+      {workspaceId && !capabilitiesQuery.error && (
+        <PlatformWorkspaceFeatureOverrides
+          capabilities={capabilities}
+          workspaceId={workspaceId}
+        />
+      )}
+
       {(capabilitiesQuery.error || workspacesQuery.error) && (
         <p className="text-sm text-warning" role="status">
-          La liste reste consultable, mais la création d’une dérogation est indisponible tant que les workspaces et le registre de capabilities ne sont pas chargés.
+          La liste reste consultable, mais les réglages commerciaux sont indisponibles tant que les workspaces et le registre de capabilities ne sont pas chargés.
         </p>
       )}
 
@@ -371,7 +387,7 @@ function PlatformEntitlementOverridesPage() {
       />
 
       <EntityDetailsDrawer
-        description="Créez une exception Workspace-scoped à partir des seules capabilities enregistrées par l’application."
+        description="Créez une exception avancée à partir des seules capabilities enregistrées par l’application."
         onClose={() => {
           if (!createState.isLoading) setCreateOpen(false);
         }}
