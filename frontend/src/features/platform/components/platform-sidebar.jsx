@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
+  SlidersHorizontal,
   Tags,
   Users,
 } from 'lucide-react';
@@ -34,6 +35,7 @@ const platformNavigationSections = [
     items: [
       { label: 'Plans', Icon: Tags, to: '/platform/plans' },
       { label: 'Abonnements', Icon: CreditCard, to: '/platform/subscriptions' },
+      { label: 'Dérogations', Icon: SlidersHorizontal, to: '/platform/entitlement-overrides' },
     ],
   },
   {
