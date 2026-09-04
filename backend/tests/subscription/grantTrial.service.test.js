@@ -9,6 +9,10 @@ import {
 } from 'vitest';
 
 import {
+    PLAN_SYSTEM_ROLE,
+} from '../../constants/plan.constants.js';
+
+import {
     BILLING_INTERVAL,
     BILLING_PROVIDER,
     SUBSCRIPTION_KIND,
@@ -240,11 +244,12 @@ describe('grantTrial', () => {
     });
 
 
-    it('refuse le plan Free', async () => {
+    it('refuse le plan baseline indépendamment de sa clé technique', async () => {
         Plan.findOne.mockReturnValue(
             sessionQuery({
                 ...plan,
-                key: 'free',
+                key: 'reference-technique',
+                systemRole: PLAN_SYSTEM_ROLE.BASELINE,
             }),
         );
 
