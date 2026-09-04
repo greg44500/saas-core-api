@@ -144,6 +144,11 @@ describe('application routing', () => {
           'subscription:read',
           'audit:read',
         ],
+        features: [
+          'file_upload',
+          'team_management',
+          'audit_logs',
+        ],
       },
       error: undefined,
       isLoading: false,
