@@ -3,11 +3,15 @@ import { Router } from 'express';
 import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
+import { enforcePlanFeature } from '../../middlewares/enforcePlanFeature.js';
 import {
     enforceWorkspaceAccessMode,
 } from '../../middlewares/enforceWorkspaceAccessMode.js';
 import { loadWorkspaceContext } from '../../middlewares/loadWorkspaceContext.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
+import {
+    CORE_PLAN_FEATURE,
+} from '../plan/planCapability.registry.js';
 import { workspaceIdParamsSchema } from '../workspace/workspace.validation.js';
 import {
     create,
@@ -29,6 +33,7 @@ roleRouter.get(
     validateRequest({ params: workspaceIdParamsSchema }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.ROLE_READ),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     list,
 );
 
@@ -41,6 +46,7 @@ roleRouter.post(
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.ROLE_CREATE),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
     create,
 );
@@ -54,6 +60,7 @@ roleRouter.patch(
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.ROLE_UPDATE),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
     update,
 );
@@ -64,6 +71,7 @@ roleRouter.delete(
     validateRequest({ params: roleParamsSchema }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.ROLE_DELETE),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
     remove,
 );
