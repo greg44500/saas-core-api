@@ -1,7 +1,7 @@
 import { AppError } from '../../utils/appError.js';
 
 import {
-    getWorkspaceEffectiveFeatures,
+    getWorkspaceEntitlementPresentation,
 } from './workspaceEntitlement.service.js';
 import {
     createWorkspace,
@@ -93,10 +93,11 @@ export const listMembers = async (req, res) => {
  * Retourne le contexte tenant déjà chargé et validé par
  * loadWorkspaceContext.
  *
- * Le frontend reçoit les permissions RBAC et les seules clés de features
- * effectives nécessaires à la composition de son interface. Aucune donnée
- * administrative d'override n'est exposée ici. Ces informations d'affichage ne
- * remplacent jamais les contrôles backend appliqués aux routes protégées.
+ * Le frontend reçoit les permissions RBAC, les seules clés de features
+ * effectives nécessaires à la composition de son interface et la prochaine
+ * échéance commerciale utile au rafraîchissement. Aucune donnée administrative
+ * d'override n'est exposée ici. Ces informations d'affichage ne remplacent
+ * jamais les contrôles backend appliqués aux routes protégées.
  */
 export const getById = async (req, res) => {
     const {
@@ -106,7 +107,10 @@ export const getById = async (req, res) => {
         permissions,
     } = req;
 
-    const features = await getWorkspaceEffectiveFeatures({
+    const {
+        features,
+        nextEntitlementChangeAt,
+    } = await getWorkspaceEntitlementPresentation({
         workspaceId: workspace._id,
     });
 
@@ -129,6 +133,7 @@ export const getById = async (req, res) => {
             },
             permissions: [...permissions],
             features,
+            nextEntitlementChangeAt,
         },
     });
 };
