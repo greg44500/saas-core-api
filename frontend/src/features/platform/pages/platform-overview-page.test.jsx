@@ -3,10 +3,20 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 
-const useGetPlatformOverviewQueryMock = vi.hoisted(() => vi.fn());
+const mocks = vi.hoisted(() => ({
+  drilldownProps: vi.fn(),
+  useGetPlatformOverviewQuery: vi.fn(),
+}));
 
 vi.mock('@/features/platform/api/platform-overview-api', () => ({
-  useGetPlatformOverviewQuery: useGetPlatformOverviewQueryMock,
+  useGetPlatformOverviewQuery: mocks.useGetPlatformOverviewQuery,
+}));
+
+vi.mock('@/features/platform/components/platform-entitlement-overrides-drilldown-drawer', () => ({
+  PlatformEntitlementOverridesDrilldownDrawer: (props) => {
+    mocks.drilldownProps(props);
+    return props.open ? <div data-testid="active-overrides-drilldown">Dérogations drill-down</div> : null;
+  },
 }));
 
 import { PlatformOverviewPage } from '@/features/platform/pages/platform-overview-page';
@@ -136,8 +146,9 @@ describe('PlatformOverviewPage', () => {
 
   beforeEach(() => {
     refetch.mockReset();
-    useGetPlatformOverviewQueryMock.mockReset();
-    useGetPlatformOverviewQueryMock.mockReturnValue({
+    mocks.drilldownProps.mockReset();
+    mocks.useGetPlatformOverviewQuery.mockReset();
+    mocks.useGetPlatformOverviewQuery.mockReturnValue({
       data: OVERVIEW,
       isLoading: false,
       isFetching: false,
@@ -185,18 +196,33 @@ describe('PlatformOverviewPage', () => {
     expect(within(distribution).getByText('20 espaces · 40 %')).toBeInTheDocument();
   });
 
+  it('ouvre le drill-down des dérogations actives depuis un compteur non nul', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(screen.queryByTestId('active-overrides-drilldown')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Voir les dérogations actives' }));
+
+    expect(screen.getByTestId('active-overrides-drilldown')).toBeInTheDocument();
+    expect(mocks.drilldownProps).toHaveBeenLastCalledWith(expect.objectContaining({
+      lifecycle: 'active',
+      open: true,
+      title: 'Dérogations actives',
+    }));
+  });
+
   it('utilise la période canonique backend par défaut puis transmet un preset différent à RTK Query', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(useGetPlatformOverviewQueryMock.mock.calls[0][0]).toEqual({});
+    expect(mocks.useGetPlatformOverviewQuery.mock.calls[0][0]).toEqual({});
 
     await user.selectOptions(
       screen.getByLabelText('Période d’analyse'),
       '90d',
     );
 
-    const lastArgs = useGetPlatformOverviewQueryMock.mock.calls.at(-1)[0];
+    const lastArgs = mocks.useGetPlatformOverviewQuery.mock.calls.at(-1)[0];
     const duration = new Date(lastArgs.to).getTime() - new Date(lastArgs.from).getTime();
 
     expect(duration).toBe(90 * 24 * 60 * 60 * 1000);
@@ -245,7 +271,7 @@ describe('PlatformOverviewPage', () => {
   });
 
   it('conserve le shell du dashboard et signale une erreur de chargement', () => {
-    useGetPlatformOverviewQueryMock.mockReturnValue({
+    mocks.useGetPlatformOverviewQuery.mockReturnValue({
       data: undefined,
       isLoading: false,
       isFetching: false,
