@@ -25,8 +25,6 @@ import { PlatformEntitlementOverrideRevokeDialog } from '@/features/platform/com
 import {
   ENTITLEMENT_OVERRIDE_LIFECYCLE,
   formatPlatformEntitlementOverrideCapability,
-  formatPlatformEntitlementOverrideDate,
-  formatPlatformEntitlementOverrideValue,
 } from '@/features/platform/lib/platform-entitlement-override-formatters';
 
 const PAGE_SIZE = 20;
@@ -157,37 +155,25 @@ function PlatformEntitlementOverridesDrilldownContent({
     {
       id: 'workspace',
       header: 'Workspace',
+      headerClassName: 'w-[45%]',
+      cellClassName: 'break-words',
       cell: (override) => (
-        <Button
-          className="h-auto justify-start p-0 text-left font-medium"
-          onClick={() => viewWorkspace(override.workspace)}
-          type="button"
-          variant="link"
-        >
+        <span className="font-medium">
           {override.workspace?.name ?? 'Workspace indisponible'}
-        </Button>
+        </span>
       ),
     },
     {
       id: 'capability',
       header: 'Dérogation',
+      headerClassName: 'w-[40%]',
+      cellClassName: 'break-words',
       cell: (override) => formatPlatformEntitlementOverrideCapability(override),
     },
     {
-      id: 'value',
-      header: 'Valeur',
-      cell: (override) => formatPlatformEntitlementOverrideValue(override),
-    },
-    {
-      id: 'endsAt',
-      header: 'Fin',
-      cell: (override) => override.endsAt
-        ? formatPlatformEntitlementOverrideDate(override.endsAt)
-        : 'Permanente',
-    },
-    {
       id: 'actions',
-      header: 'Actions',
+      header: 'Action',
+      headerClassName: 'w-[15%]',
       cell: (override) => (
         <DataTableActions>
           <ActionIconButton
@@ -267,6 +253,7 @@ function PlatformEntitlementOverridesDrilldownContent({
                   columns={columns}
                   data={overrides}
                   getRowKey={(override) => override.id}
+                  tableClassName="table-fixed"
                 />
               )}
 
