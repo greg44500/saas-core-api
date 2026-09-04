@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import {
-    ENTITLEMENT_OVERRIDE_LIFECYCLE,
     ENTITLEMENT_OVERRIDE_SOURCE,
     ENTITLEMENT_OVERRIDE_TARGET,
 } from '../../../constants/entitlementOverride.constants.js';
@@ -43,9 +42,6 @@ const listPlatformEntitlementOverridesQuerySchema = z.strictObject({
     ).optional(),
     source: z.enum(
         Object.values(ENTITLEMENT_OVERRIDE_SOURCE),
-    ).optional(),
-    lifecycle: z.enum(
-        Object.values(ENTITLEMENT_OVERRIDE_LIFECYCLE),
     ).optional(),
 });
 
