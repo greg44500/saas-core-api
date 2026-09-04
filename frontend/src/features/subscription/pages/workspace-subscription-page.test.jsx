@@ -47,14 +47,14 @@ import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-p
 const workspace = { id: 'workspace-1', name: 'Acme', status: 'active' };
 const freePlan = {
   id: 'plan-free',
-  key: 'free',
+  isBaseline: true,
   name: 'Free',
   trialEnabled: false,
   trialDurationDays: 0,
 };
 const premiumPlan = {
   id: 'plan-premium',
-  key: 'premium',
+  isBaseline: false,
   name: 'Premium',
   trialEnabled: true,
   trialDurationDays: 14,
@@ -67,7 +67,7 @@ const premiumPlan = {
 };
 const aiPlan = {
   id: 'plan-ai',
-  key: 'ai',
+  isBaseline: false,
   name: 'IA',
   trialEnabled: true,
   trialDurationDays: 14,
@@ -198,20 +198,20 @@ describe('WorkspaceSubscriptionPage', () => {
     );
   });
 
-  it('confirme le retour Free puis affiche le succès en toast', async () => {
+  it('confirme le retour au plan baseline puis affiche le succès en toast', async () => {
     const user = userEvent.setup();
     const unwrap = vi.fn().mockResolvedValue({ id: 'commercial-1' });
     mocks.endTrialToFree.mockReturnValue({ unwrap });
 
     renderPage();
-    await user.click(screen.getByRole('button', { name: 'Revenir au plan Free' }));
+    await user.click(screen.getByRole('button', { name: 'Revenir à Free' }));
 
     expect(screen.getByRole('dialog')).toHaveTextContent(
       'Votre éligibilité restera consommée',
     );
 
     await user.click(
-      screen.getByRole('button', { name: 'Mettre fin à l’essai et revenir à Free' }),
+      screen.getByRole('button', { name: 'Mettre fin à l’essai et revenir au plan de référence' }),
     );
 
     expect(mocks.endTrialToFree).toHaveBeenCalledWith({ workspaceId: 'workspace-1' });
@@ -220,25 +220,25 @@ describe('WorkspaceSubscriptionPage', () => {
     expect(status).toHaveTextContent('Le plan Free est de nouveau effectif.');
   });
 
-  it('conserve le refus du retour Free dans le dialogue de confirmation', async () => {
+  it('conserve le refus du retour baseline dans le dialogue de confirmation', async () => {
     const user = userEvent.setup();
     mocks.endTrialToFree.mockReturnValue({
       unwrap: vi.fn().mockRejectedValue({
-        data: { message: 'Retour Free refusé' },
+        data: { message: 'Retour baseline refusé' },
       }),
     });
 
     renderPage();
-    await user.click(screen.getByRole('button', { name: 'Revenir au plan Free' }));
+    await user.click(screen.getByRole('button', { name: 'Revenir à Free' }));
     await user.click(
-      screen.getByRole('button', { name: 'Mettre fin à l’essai et revenir à Free' }),
+      screen.getByRole('button', { name: 'Mettre fin à l’essai et revenir au plan de référence' }),
     );
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toHaveTextContent('Retour Free refusé');
+    expect(screen.getByRole('alert')).toHaveTextContent('Retour baseline refusé');
   });
 
-  it('ne repropose pas un trial déjà consommé après fallback serveur vers Free', () => {
+  it('ne repropose pas un trial déjà consommé après fallback serveur vers la baseline', () => {
     mocks.useGetWorkspaceSubscriptionQuery.mockReturnValue({
       data: {
         ...subscription,
