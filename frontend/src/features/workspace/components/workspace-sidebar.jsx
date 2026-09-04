@@ -1,5 +1,5 @@
 import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
 
 import { Button } from '@/components/ui/button';
@@ -64,6 +64,15 @@ function isNavigationItemActive({ item, pathname, workspaceId }) {
   return pathname === target || pathname.startsWith(`${target}/`);
 }
 
+function getActiveNavigationGroupId({ navigation, pathname, workspaceId }) {
+  const activeGroup = navigation.find((entry) =>
+    entry.type === 'group'
+    && entry.items.some((item) =>
+      isNavigationItemActive({ item, pathname, workspaceId })));
+
+  return activeGroup?.id ?? null;
+}
+
 function WorkspaceNavigationLink({
   collapsed = false,
   item,
@@ -95,18 +104,17 @@ function WorkspaceNavigationLink({
 
 function WorkspaceNavigationGroup({
   collapsed,
+  expanded,
   group,
   location,
   onFlyoutChange,
+  onGroupToggle,
   openFlyoutGroupId,
-  openGroups,
-  setOpenGroups,
   workspaceId,
 }) {
   const { Icon } = group;
   const active = group.items.some((item) =>
     isNavigationItemActive({ item, pathname: location.pathname, workspaceId }));
-  const expanded = active || openGroups.has(group.id);
   const flyoutOpen = collapsed && openFlyoutGroupId === group.id;
 
   function toggleGroup() {
@@ -115,12 +123,7 @@ function WorkspaceNavigationGroup({
       return;
     }
 
-    setOpenGroups((current) => {
-      const next = new Set(current);
-      if (next.has(group.id)) next.delete(group.id);
-      else next.add(group.id);
-      return next;
-    });
+    onGroupToggle(group.id);
   }
 
   return (
@@ -205,13 +208,32 @@ function WorkspaceSidebar({
 }) {
   const location = useLocation();
   const { can, hasFeature } = useWorkspaceContext();
-  const [openGroups, setOpenGroups] = useState(() => new Set());
-  const [openFlyoutGroupId, setOpenFlyoutGroupId] = useState(null);
-  const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
   const visibleNavigation = filterWorkspaceNavigation(navigation, {
     can,
     hasFeature,
   });
+  const activeGroupId = getActiveNavigationGroupId({
+    navigation: visibleNavigation,
+    pathname: location.pathname,
+    workspaceId: workspace.id,
+  });
+  const [openGroupId, setOpenGroupId] = useState(() => activeGroupId);
+  const [openFlyoutGroupId, setOpenFlyoutGroupId] = useState(null);
+  const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
+
+  /**
+   * Une vraie navigation resynchronise l'accordéon avec la section courante.
+   * Un simple rerender ne doit en revanche jamais rouvrir un groupe que
+   * l'utilisateur vient volontairement de refermer.
+   */
+  useEffect(() => {
+    setOpenGroupId(activeGroupId);
+    setOpenFlyoutGroupId(null);
+  }, [activeGroupId, location.pathname]);
+
+  function toggleGroup(groupId) {
+    setOpenGroupId((current) => current === groupId ? null : groupId);
+  }
 
   return (
     <aside
@@ -253,13 +275,13 @@ function WorkspaceSidebar({
           entry.type === 'group' ? (
             <WorkspaceNavigationGroup
               collapsed={collapsed}
+              expanded={openGroupId === entry.id}
               group={entry}
               key={entry.id}
               location={location}
               onFlyoutChange={setOpenFlyoutGroupId}
+              onGroupToggle={toggleGroup}
               openFlyoutGroupId={openFlyoutGroupId}
-              openGroups={openGroups}
-              setOpenGroups={setOpenGroups}
               workspaceId={workspace.id}
             />
           ) : (
@@ -283,4 +305,5 @@ export {
   WorkspaceNavigationLink,
   WorkspaceSidebar,
   filterWorkspaceNavigation,
+  getActiveNavigationGroupId,
 };
