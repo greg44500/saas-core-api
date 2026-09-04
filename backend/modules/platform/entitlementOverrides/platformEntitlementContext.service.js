@@ -33,6 +33,9 @@ const serializeAppliedOverride = (override) => ({
  * puisse révoquer l'exception responsable au lieu d'empiler une exception
  * inverse.
  *
+ * La clé technique du Plan n'appartient pas au contrat frontend : l'interface
+ * s'appuie uniquement sur son identifiant persistant et son nom commercial.
+ *
  * `nextEntitlementChangeAt` expose uniquement la prochaine borne temporelle
  * utile à l'UI. Elle permet un refetch ciblé sans exposer les motifs ou auteurs
  * des dérogations.
@@ -73,7 +76,6 @@ const getPlatformEntitlementContext = async ({
         },
         plan: {
             id: entitlement.plan._id.toString(),
-            key: entitlement.plan.key,
             name: entitlement.plan.name,
             features: [...(entitlement.plan.features ?? [])],
             limits: toLimitsObject(entitlement.plan.limits),
