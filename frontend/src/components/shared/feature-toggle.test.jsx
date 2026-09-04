@@ -26,19 +26,32 @@ describe('FeatureToggle', () => {
     expect(onCheckedChange).toHaveBeenCalledWith(true);
   });
 
-  it('conserve le libellé et la description lorsque la capability est active', () => {
+  it('compose le libellé avec le InfoTooltip partagé', async () => {
+    const user = userEvent.setup();
+
     render(
       <FeatureToggle
         checked
-        description="Inclus dans le plan Premium"
-        label="Téléversement de fichiers"
+        description="Incluse dans le plan Premium"
+        helpText="Permet d’administrer les membres du workspace."
+        label="Gestion d’équipe"
       />,
     );
 
-    expect(screen.getByText('Téléversement de fichiers')).toBeInTheDocument();
-    expect(screen.getByText('Inclus dans le plan Premium')).toBeInTheDocument();
+    expect(screen.getByText('Gestion d’équipe')).toBeInTheDocument();
+    expect(screen.getByText('Incluse dans le plan Premium')).toBeInTheDocument();
+
+    const infoButton = screen.getByRole('button', {
+      name: 'Informations sur Gestion d’équipe',
+    });
+    await user.tab();
+    expect(infoButton).toBeInTheDocument();
     expect(
-      screen.getByRole('switch', { name: 'Désactiver Téléversement de fichiers' }),
+      screen.getByRole('tooltip'),
+    ).toHaveTextContent('Permet d’administrer les membres du workspace.');
+
+    expect(
+      screen.getByRole('switch', { name: 'Désactiver Gestion d’équipe' }),
     ).toHaveAttribute('aria-checked', 'true');
   });
 });
