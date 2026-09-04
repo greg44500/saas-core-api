@@ -4,20 +4,22 @@ import {
     it,
 } from 'vitest';
 
-import { PLAN_KEY } from '../../constants/plan.constants.js';
+import {
+    PLAN_SYSTEM_ROLE,
+} from '../../constants/plan.constants.js';
 import {
     INITIAL_PLAN_DEFINITIONS,
 } from '../../seeds/seedPlans.js';
 
 
 describe('seedPlans', () => {
-    it('définit explicitement le plan Free sans trial', () => {
-        const freePlan = INITIAL_PLAN_DEFINITIONS.find(
-            (plan) => plan.key === PLAN_KEY.FREE,
+    it('définit explicitement le plan baseline sans trial', () => {
+        const baselinePlan = INITIAL_PLAN_DEFINITIONS.find(
+            (plan) => plan.systemRole === PLAN_SYSTEM_ROLE.BASELINE,
         );
 
-        expect(freePlan).toBeDefined();
-        expect(freePlan.trialEnabled).toBe(false);
-        expect(freePlan.trialDurationDays).toBeNull();
+        expect(baselinePlan).toBeDefined();
+        expect(baselinePlan.trialEnabled).toBe(false);
+        expect(baselinePlan.trialDurationDays).toBeNull();
     });
 });
