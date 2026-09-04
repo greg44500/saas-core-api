@@ -166,6 +166,15 @@ describe('PlatformEntitlementOverridesDrilldownDrawer', () => {
     expect(within(table).getByRole('button', { name: 'Voir' })).toBeInTheDocument();
     expect(within(table).queryByText('Activée')).not.toBeInTheDocument();
     expect(within(table).queryByText('Permanente')).not.toBeInTheDocument();
+
+    const dataRow = within(table).getByText('Workspace Démo').closest('tr');
+    expect(dataRow).toHaveClass(
+      'transition-colors',
+      'duration-150',
+      'hover:bg-muted/40',
+      'focus-within:bg-muted/40',
+      'motion-reduce:transition-none',
+    );
   });
 
   it('passe de la liste au détail puis à l’édition dans le même drawer', async () => {
