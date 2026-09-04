@@ -8,6 +8,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
     findWorkspaceById: vi.fn(),
+    getNextEntitlementChangeAt: vi.fn(),
     getWorkspaceEffectiveEntitlement: vi.fn(),
 }));
 
@@ -25,6 +26,14 @@ vi.mock(
     () => ({
         getWorkspaceEffectiveEntitlement:
             mocks.getWorkspaceEffectiveEntitlement,
+    }),
+);
+
+vi.mock(
+    '../../../modules/entitlementOverride/entitlementOverrideSchedule.service.js',
+    () => ({
+        getNextEntitlementChangeAt:
+            mocks.getNextEntitlementChangeAt,
     }),
 );
 
@@ -83,11 +92,17 @@ describe('platformEntitlementContext.service', () => {
                 ],
             },
         });
+
+        mocks.getNextEntitlementChangeAt.mockResolvedValue(
+            new Date('2026-09-05T08:00:00.000Z'),
+        );
     });
 
-    it('sépare le plan catalogue de l’état effectif et limite les données d’override exposées', async () => {
+    it('sépare le plan catalogue de l’état effectif et expose la prochaine échéance sans données sensibles', async () => {
+        const at = new Date('2026-09-04T12:00:00.000Z');
         const context = await getPlatformEntitlementContext({
             workspaceId: 'workspace-id',
+            at,
         });
 
         expect(context).toEqual({
@@ -125,6 +140,15 @@ describe('platformEntitlementContext.service', () => {
                     endsAt: null,
                 },
             ],
+            nextEntitlementChangeAt:
+                new Date('2026-09-05T08:00:00.000Z'),
+        });
+
+        expect(
+            mocks.getNextEntitlementChangeAt,
+        ).toHaveBeenCalledWith({
+            workspaceId: 'workspace-id',
+            at,
         });
 
         expect(
