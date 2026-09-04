@@ -7,7 +7,6 @@ import {
 } from '../../../constants/auditActions.constants.js';
 
 import {
-    PLAN_KEY,
     PLAN_STATUS,
 } from '../../../constants/plan.constants.js';
 
@@ -28,6 +27,10 @@ import {
 import {
     Plan,
 } from '../../plan/plan.model.js';
+
+import {
+    isBaselinePlan,
+} from '../../plan/plan.service.js';
 
 import {
     hasConsumedTrial,
@@ -53,10 +56,10 @@ const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
  * déjà en cours.
  *
  * Invariants métier protégés :
- * - aucun trial sur Free ;
+ * - aucun trial sur le plan baseline ;
  * - le plan doit être actif et explicitement éligible au trial ;
  * - une identité ne consomme qu'un seul premier trial ;
- * - la baseline Free reste active en parallèle ;
+ * - la baseline reste active en parallèle ;
  * - un changement de plan pendant le trial ne modifie jamais trialEndsAt ;
  * - une souscription commerciale active/past_due bloque un nouveau trial ;
  * - création de la Subscription et consommation de TrialEligibility sont
@@ -96,9 +99,9 @@ const grantTrial = async ({
             );
         }
 
-        if (plan.key === PLAN_KEY.FREE) {
+        if (isBaselinePlan(plan)) {
             throw new AppError(
-                'Le plan gratuit ne peut pas bénéficier d’un trial',
+                'Le plan de référence ne peut pas bénéficier d’un trial',
                 409,
             );
         }
