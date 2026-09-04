@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router';
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
-import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { DrawerViewTransition } from '@/components/shared/drawer-view-transition';
 import {
   DRAWER_TRANSITION_MS,
@@ -22,6 +21,7 @@ import {
 import { useListPlatformPlanCapabilitiesQuery } from '@/features/platform/api/platform-plans-api';
 import { PlatformEntitlementOverrideDetails } from '@/features/platform/components/platform-entitlement-override-details-drawer';
 import { PlatformEntitlementOverrideForm } from '@/features/platform/components/platform-entitlement-override-form';
+import { PlatformEntitlementOverrideRevokeDialog } from '@/features/platform/components/platform-entitlement-override-revoke-dialog';
 import {
   ENTITLEMENT_OVERRIDE_LIFECYCLE,
   formatPlatformEntitlementOverrideCapability,
@@ -54,7 +54,6 @@ function PlatformEntitlementOverridesDrilldownContent({
   const [editTarget, setEditTarget] = useState(null);
   const [editError, setEditError] = useState(null);
   const [revokeTarget, setRevokeTarget] = useState(null);
-  const [revokeReason, setRevokeReason] = useState('');
   const [revokeError, setRevokeError] = useState(null);
 
   const listQuery = useListPlatformEntitlementOverridesQuery({
@@ -98,7 +97,6 @@ function PlatformEntitlementOverridesDrilldownContent({
 
   function requestRevoke(override) {
     setRevokeTarget(override);
-    setRevokeReason('');
     setRevokeError(null);
   }
 
@@ -121,14 +119,8 @@ function PlatformEntitlementOverridesDrilldownContent({
     }
   }
 
-  async function confirmRevoke() {
+  async function confirmRevoke(reason) {
     if (!revokeTarget) return;
-
-    const reason = revokeReason.trim();
-    if (reason.length < 3 || reason.length > 500) {
-      setRevokeError('Le motif de révocation doit contenir entre 3 et 500 caractères.');
-      return;
-    }
 
     setRevokeError(null);
     try {
@@ -139,7 +131,6 @@ function PlatformEntitlementOverridesDrilldownContent({
       }).unwrap();
       toast({ title: 'Dérogation révoquée', variant: 'success' });
       setRevokeTarget(null);
-      setRevokeReason('');
       backToList();
     } catch (error) {
       setRevokeError(getApiMessage(error, 'La dérogation n’a pas pu être révoquée.'));
@@ -314,38 +305,17 @@ function PlatformEntitlementOverridesDrilldownContent({
         </DrawerViewTransition>
       </EntityDetailsDrawer>
 
-      <ConfirmationDialog
-        confirmLabel="Révoquer"
-        description={revokeTarget
-          ? `La dérogation de ${revokeTarget.workspace?.name ?? 'ce workspace'} cessera d’être applicable. L’historique sera conservé.`
-          : ''}
+      <PlatformEntitlementOverrideRevokeDialog
         errorMessage={revokeError}
         onCancel={() => {
           if (revokeState.isLoading) return;
           setRevokeTarget(null);
-          setRevokeReason('');
           setRevokeError(null);
         }}
         onConfirm={confirmRevoke}
-        open={Boolean(revokeTarget)}
+        override={revokeTarget}
         pending={revokeState.isLoading}
-        pendingLabel="Révocation…"
-        title="Révoquer la dérogation ?"
-      >
-        <div className="mt-4 space-y-2">
-          <label className="text-sm font-medium" htmlFor="drilldown-override-revoke-reason">
-            Motif de révocation
-          </label>
-          <textarea
-            className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            id="drilldown-override-revoke-reason"
-            maxLength={500}
-            onChange={(event) => setRevokeReason(event.target.value)}
-            placeholder="Pourquoi cette dérogation doit-elle être révoquée ?"
-            value={revokeReason}
-          />
-        </div>
-      </ConfirmationDialog>
+      />
     </>
   );
 }
