@@ -12,6 +12,7 @@ import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import {
   useCreatePlatformEntitlementOverrideMutation,
+  useGetPlatformEntitlementContextQuery,
   useGetPlatformEntitlementOverrideQuery,
   useListPlatformEntitlementOverridesQuery,
   useRevokePlatformEntitlementOverrideMutation,
@@ -78,6 +79,10 @@ function PlatformEntitlementOverridesPage() {
   const detailQuery = useGetPlatformEntitlementOverrideQuery(selectedId, {
     skip: !selectedId,
   });
+  const entitlementContextQuery = useGetPlatformEntitlementContextQuery(
+    workspaceId,
+    { skip: !workspaceId },
+  );
   const capabilitiesQuery = useListPlatformPlanCapabilitiesQuery();
   const workspacesQuery = useListPlatformWorkspacesQuery({ page: 1, limit: 100 });
 
@@ -120,7 +125,10 @@ function PlatformEntitlementOverridesPage() {
     setCreateError(null);
     try {
       await createOverride(payload).unwrap();
-      toast({ title: 'Dérogation créée', variant: 'success' });
+      toast({
+        title: 'Dérogation exceptionnelle créée',
+        variant: 'success',
+      });
       setCreateOpen(false);
     } catch (error) {
       setCreateError(getApiMessage(error, 'La dérogation n’a pas pu être créée.'));
@@ -239,8 +247,10 @@ function PlatformEntitlementOverridesPage() {
 
   const setupUnavailable = capabilitiesQuery.isLoading
     || workspacesQuery.isLoading
+    || entitlementContextQuery.isLoading
     || Boolean(capabilitiesQuery.error)
-    || Boolean(workspacesQuery.error);
+    || Boolean(workspacesQuery.error)
+    || Boolean(entitlementContextQuery.error);
 
   return (
     <div className="space-y-8">
@@ -252,15 +262,16 @@ function PlatformEntitlementOverridesPage() {
           </p>
         </div>
         <Button
-          disabled={setupUnavailable}
+          disabled={!workspaceId || setupUnavailable}
           onClick={() => {
             setCreateError(null);
             setCreateOpen(true);
           }}
           type="button"
+          variant="outline"
         >
           <Plus aria-hidden="true" />
-          Dérogation avancée
+          Dérogation exceptionnelle
         </Button>
       </div>
 
@@ -268,7 +279,7 @@ function PlatformEntitlementOverridesPage() {
         <div>
           <h2 className="text-lg font-semibold">Filtres</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Sélectionner un workspace affiche aussi ses fonctionnalités effectives et leurs réglages rapides.
+            Sélectionner un workspace affiche ses fonctionnalités effectives, active les réglages rapides et permet de créer une dérogation exceptionnelle contextualisée.
           </p>
         </div>
 
@@ -387,21 +398,22 @@ function PlatformEntitlementOverridesPage() {
       />
 
       <EntityDetailsDrawer
-        description="Créez une exception avancée à partir des seules capabilities enregistrées par l’application."
+        description="Accordez ou suspendez exceptionnellement une capability, éventuellement pour une période précise, sans modifier le plan catalogue."
         onClose={() => {
           if (!createState.isLoading) setCreateOpen(false);
         }}
         open={createOpen}
-        title="Nouvelle dérogation"
+        title="Dérogation exceptionnelle"
       >
         <PlatformEntitlementOverrideForm
           capabilities={capabilities}
+          entitlementContext={entitlementContextQuery.data}
           mode="create"
           onCancel={() => setCreateOpen(false)}
           onSubmit={submitCreate}
           pending={createState.isLoading}
           submitError={createError}
-          workspaces={workspaces}
+          workspaceId={workspaceId}
         />
       </EntityDetailsDrawer>
 
@@ -422,7 +434,6 @@ function PlatformEntitlementOverridesPage() {
             override={editTarget}
             pending={updateState.isLoading}
             submitError={editError}
-            workspaces={workspaces}
           />
         )}
       </EntityDetailsDrawer>
