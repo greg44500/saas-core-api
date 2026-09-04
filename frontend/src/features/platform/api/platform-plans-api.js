@@ -1,5 +1,13 @@
 import { baseApi } from '@/services/api/base-api';
 
+const PLAN_DEPENDENT_TAGS = [
+  'PlanCatalog',
+  'Workspace',
+  'WorkspaceSubscription',
+  'PlatformEntitlementContext',
+  'PlatformOverview',
+];
+
 const platformPlansApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     listPlatformPlanCapabilities: builder.query({
@@ -43,7 +51,7 @@ const platformPlansApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [
         { type: 'PlatformPlans', id: 'LIST' },
-        'PlanCatalog',
+        ...PLAN_DEPENDENT_TAGS,
       ],
     }),
 
@@ -53,10 +61,10 @@ const platformPlansApi = baseApi.injectEndpoints({
         method: 'PATCH',
         body,
       }),
-      invalidatesTags: (result, error, { planId }) => [
+      invalidatesTags: (_result, _error, { planId }) => [
         { type: 'PlatformPlans', id: 'LIST' },
         { type: 'PlatformPlans', id: planId },
-        'PlanCatalog',
+        ...PLAN_DEPENDENT_TAGS,
       ],
     }),
 
@@ -65,10 +73,10 @@ const platformPlansApi = baseApi.injectEndpoints({
         url: `/platform/plans/${planId}/archive`,
         method: 'PATCH',
       }),
-      invalidatesTags: (result, error, planId) => [
+      invalidatesTags: (_result, _error, planId) => [
         { type: 'PlatformPlans', id: 'LIST' },
         { type: 'PlatformPlans', id: planId },
-        'PlanCatalog',
+        ...PLAN_DEPENDENT_TAGS,
       ],
     }),
   }),
