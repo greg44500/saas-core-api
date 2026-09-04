@@ -12,6 +12,12 @@ function entitlementContextTag(workspaceId) {
     : null;
 }
 
+function workspaceTag(workspaceId) {
+  return workspaceId
+    ? { type: 'Workspace', id: workspaceId }
+    : null;
+}
+
 const platformEntitlementOverridesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     listPlatformEntitlementOverrides: builder.query({
@@ -75,6 +81,7 @@ const platformEntitlementOverridesApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, body) => [
         { type: 'PlatformEntitlementOverrides', id: 'LIST' },
         entitlementContextTag(body?.workspaceId),
+        workspaceTag(body?.workspaceId),
         'PlatformOverview',
         'WorkspaceSubscription',
       ].filter(Boolean),
@@ -90,6 +97,7 @@ const platformEntitlementOverridesApi = baseApi.injectEndpoints({
         { type: 'PlatformEntitlementOverrides', id: 'LIST' },
         { type: 'PlatformEntitlementOverrides', id: overrideId },
         entitlementContextTag(workspaceId),
+        workspaceTag(workspaceId),
         'PlatformOverview',
         'WorkspaceSubscription',
       ].filter(Boolean),
@@ -105,6 +113,7 @@ const platformEntitlementOverridesApi = baseApi.injectEndpoints({
         { type: 'PlatformEntitlementOverrides', id: 'LIST' },
         { type: 'PlatformEntitlementOverrides', id: overrideId },
         entitlementContextTag(workspaceId),
+        workspaceTag(workspaceId),
         'PlatformOverview',
         'WorkspaceSubscription',
       ].filter(Boolean),
