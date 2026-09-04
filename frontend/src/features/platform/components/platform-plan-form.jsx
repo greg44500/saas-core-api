@@ -279,8 +279,10 @@ function PlatformPlanForm({
 
       <section className="space-y-4">
         <div>
-          <h3 className="font-semibold">Fonctionnalités</h3>
-          <p className="text-sm text-muted-foreground">Sélectionnez uniquement les fonctionnalités réellement déclarées par l’application.</p>
+          <h3 className="font-semibold">Fonctionnalités incluses par défaut</h3>
+          <p className="text-sm text-muted-foreground">
+            Les fonctionnalités cochées seront incluses par défaut pour tous les workspaces utilisant ce plan. Les dérogations individuelles se gèrent séparément.
+          </p>
         </div>
 
         {featureGroups.length === 0 ? (
