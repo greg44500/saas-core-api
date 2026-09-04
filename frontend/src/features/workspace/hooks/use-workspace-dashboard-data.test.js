@@ -84,6 +84,7 @@ describe('useWorkspaceDashboardData', () => {
       workspace,
       membership,
       can: (permission) => grantedPermissions.has(permission),
+      hasFeature: () => true,
     });
 
     const { result } = renderHook(() => useWorkspaceDashboardData());
@@ -120,6 +121,7 @@ describe('useWorkspaceDashboardData', () => {
       workspace,
       membership,
       can: () => false,
+      hasFeature: () => true,
     });
 
     renderHook(() => useWorkspaceDashboardData());
