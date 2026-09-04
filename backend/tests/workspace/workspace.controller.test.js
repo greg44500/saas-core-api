@@ -14,17 +14,22 @@ import {
 } from '../../modules/workspace/workspace.controller.js';
 
 import {
-    createWorkspace,
     getWorkspaceEffectiveFeatures,
+} from '../../modules/workspace/workspaceEntitlement.service.js';
+import {
+    createWorkspace,
     listUserWorkspaces,
     listWorkspaceMembers,
     updateWorkspace,
 } from '../../modules/workspace/workspace.service.js';
 
 
+vi.mock('../../modules/workspace/workspaceEntitlement.service.js', () => ({
+    getWorkspaceEffectiveFeatures: vi.fn(),
+}));
+
 vi.mock('../../modules/workspace/workspace.service.js', () => ({
     createWorkspace: vi.fn(),
-    getWorkspaceEffectiveFeatures: vi.fn(),
     listUserWorkspaces: vi.fn(),
     listWorkspaceMembers: vi.fn(),
     updateWorkspace: vi.fn(),
