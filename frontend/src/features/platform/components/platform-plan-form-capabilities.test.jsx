@@ -6,7 +6,7 @@ import { PlatformPlanForm } from '@/features/platform/components/platform-plan-f
 
 
 describe('PlatformPlanForm dynamic capabilities', () => {
-  it('affiche une feature métier par section et permet de l’assigner au plan', async () => {
+  it('affiche une feature métier et permet de l’inclure par défaut dans le plan', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
 
@@ -33,6 +33,9 @@ describe('PlatformPlanForm dynamic capabilities', () => {
       />,
     );
 
+    expect(
+      screen.getByRole('heading', { name: 'Fonctionnalités incluses par défaut' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Produits')).toBeInTheDocument();
     expect(screen.getByText('Consulter les évolutions de prix.')).toBeInTheDocument();
 
