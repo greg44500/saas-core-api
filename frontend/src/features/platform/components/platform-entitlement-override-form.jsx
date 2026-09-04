@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { DateTimePicker } from '@/components/forms/date-time-picker';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,12 @@ import {
   formatPlatformPlanFeature,
   formatPlatformPlanMetric,
 } from '@/features/platform/lib/platform-plan-formatters';
+
+const EXCEPTION_KIND = Object.freeze({
+  GRANT_FEATURE: 'grant_feature',
+  SUSPEND_FEATURE: 'suspend_feature',
+  ADJUST_LIMIT: 'adjust_limit',
+});
 
 function isByteMetric(metric) {
   return metric?.presentation?.unit === 'bytes'
@@ -25,13 +31,14 @@ function getFeatureLabel(featureKey, definitionsByKey) {
 
 function PlatformEntitlementOverrideForm({
   capabilities,
+  entitlementContext = null,
   mode,
   onCancel,
   onSubmit,
   override = null,
   pending = false,
   submitError = null,
-  workspaces = [],
+  workspaceId = null,
 }) {
   const featureDefinitionsByKey = useMemo(
     () => new Map(
@@ -44,14 +51,29 @@ function PlatformEntitlementOverrideForm({
     () => new Map(metrics.map((metric) => [metric.key, metric])),
     [metrics],
   );
+  const effectiveFeatureSet = useMemo(
+    () => new Set(entitlementContext?.effective?.features ?? []),
+    [entitlementContext],
+  );
+  const grantableFeatures = useMemo(
+    () => (capabilities?.features ?? []).filter(
+      (featureKey) => !effectiveFeatureSet.has(featureKey),
+    ),
+    [capabilities, effectiveFeatureSet],
+  );
+  const suspendableFeatures = useMemo(
+    () => (capabilities?.features ?? []).filter(
+      (featureKey) => effectiveFeatureSet.has(featureKey),
+    ),
+    [capabilities, effectiveFeatureSet],
+  );
 
   const [formError, setFormError] = useState(null);
-  const [workspaceId, setWorkspaceId] = useState(override?.workspace?.id ?? '');
-  const [targetType, setTargetType] = useState(
-    override?.targetType ?? ENTITLEMENT_OVERRIDE_TARGET.FEATURE,
+  const [exceptionKind, setExceptionKind] = useState(
+    EXCEPTION_KIND.GRANT_FEATURE,
   );
   const [featureKey, setFeatureKey] = useState(
-    override?.featureKey ?? capabilities?.features?.[0] ?? '',
+    override?.featureKey ?? '',
   );
   const [metricKey, setMetricKey] = useState(
     override?.metricKey ?? metrics?.[0]?.key ?? '',
@@ -84,6 +106,29 @@ function PlatformEntitlementOverrideForm({
   const [endsAt, setEndsAt] = useState(override?.endsAt ?? '');
   const [reason, setReason] = useState(override?.reason ?? '');
 
+  const featureCandidates = exceptionKind === EXCEPTION_KIND.SUSPEND_FEATURE
+    ? suspendableFeatures
+    : grantableFeatures;
+
+  useEffect(() => {
+    if (mode !== 'create' || exceptionKind === EXCEPTION_KIND.ADJUST_LIMIT) return;
+
+    setFeatureKey((current) => (
+      featureCandidates.includes(current)
+        ? current
+        : featureCandidates[0] ?? ''
+    ));
+  }, [exceptionKind, featureCandidates, mode]);
+
+  const effectiveTargetType = mode === 'edit'
+    ? override?.targetType
+    : exceptionKind === EXCEPTION_KIND.ADJUST_LIMIT
+      ? ENTITLEMENT_OVERRIDE_TARGET.LIMIT
+      : ENTITLEMENT_OVERRIDE_TARGET.FEATURE;
+  const createFeatureEnabled = exceptionKind === EXCEPTION_KIND.GRANT_FEATURE;
+  const effectiveMetricKey = mode === 'edit' ? override?.metricKey : metricKey;
+  const effectiveMetric = metricsByKey.get(effectiveMetricKey);
+
   async function handleSubmit(event) {
     event.preventDefault();
     setFormError(null);
@@ -111,21 +156,23 @@ function PlatformEntitlementOverrideForm({
 
       if (mode === 'create') {
         if (!workspaceId) {
-          throw new Error('Sélectionnez un espace de travail.');
+          throw new Error('Sélectionnez un workspace avant de créer une dérogation exceptionnelle.');
         }
 
         payload.workspaceId = workspaceId;
-        payload.targetType = targetType;
+        payload.targetType = effectiveTargetType;
       }
-
-      const effectiveTargetType = mode === 'edit' ? override?.targetType : targetType;
 
       if (effectiveTargetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE) {
         if (mode === 'create') {
-          if (!featureKey) throw new Error('Sélectionnez une fonctionnalité.');
+          if (!featureKey) {
+            throw new Error('Aucune fonctionnalité n’est disponible pour cette nature de dérogation.');
+          }
           payload.featureKey = featureKey;
+          payload.featureEnabled = createFeatureEnabled;
+        } else {
+          payload.featureEnabled = featureEnabled;
         }
-        payload.featureEnabled = featureEnabled;
       } else {
         if (mode === 'create') {
           if (!metricKey) throw new Error('Sélectionnez une métrique.');
@@ -135,8 +182,6 @@ function PlatformEntitlementOverrideForm({
         if (limitMode === 'unlimited') {
           payload.limitValue = null;
         } else {
-          const effectiveMetricKey = mode === 'edit' ? override?.metricKey : metricKey;
-          const metric = metricsByKey.get(effectiveMetricKey);
           const normalizedValue = String(limitValue).replace(',', '.').trim();
           const numericValue = Number(normalizedValue);
 
@@ -144,7 +189,7 @@ function PlatformEntitlementOverrideForm({
             throw new Error('La limite doit être un nombre positif ou nul.');
           }
 
-          if (isByteMetric(metric)) {
+          if (isByteMetric(effectiveMetric)) {
             payload.limitValue = Math.round(numericValue * 1024 * 1024);
           } else {
             if (!Number.isInteger(numericValue)) {
@@ -161,61 +206,69 @@ function PlatformEntitlementOverrideForm({
     }
   }
 
-  const effectiveTargetType = mode === 'edit' ? override?.targetType : targetType;
-  const effectiveMetricKey = mode === 'edit' ? override?.metricKey : metricKey;
-  const effectiveMetric = metricsByKey.get(effectiveMetricKey);
-
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       {mode === 'create' ? (
         <section className="space-y-4">
-          <h3 className="font-semibold">Cible de la dérogation</h3>
+          <h3 className="font-semibold">Nature de l’exception</h3>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="override-workspace">Espace de travail</label>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              id="override-workspace"
-              onChange={(event) => setWorkspaceId(event.target.value)}
-              value={workspaceId}
-            >
-              <option value="">Sélectionner…</option>
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name ?? workspace.id}
-                </option>
-              ))}
-            </select>
+          <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm">
+            <p>
+              <span className="font-medium">Workspace :</span>{' '}
+              {entitlementContext?.workspace?.name ?? '—'}
+            </p>
+            <p className="mt-1">
+              <span className="font-medium">Plan actuel :</span>{' '}
+              {entitlementContext?.plan?.name ?? '—'}
+            </p>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="override-target-type">Type</label>
+            <label className="text-sm font-medium" htmlFor="override-exception-kind">Nature</label>
             <select
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              id="override-target-type"
-              onChange={(event) => setTargetType(event.target.value)}
-              value={targetType}
+              id="override-exception-kind"
+              onChange={(event) => setExceptionKind(event.target.value)}
+              value={exceptionKind}
             >
-              <option value={ENTITLEMENT_OVERRIDE_TARGET.FEATURE}>Fonctionnalité</option>
-              <option value={ENTITLEMENT_OVERRIDE_TARGET.LIMIT}>Limite</option>
+              <option value={EXCEPTION_KIND.GRANT_FEATURE}>
+                Accorder une fonctionnalité actuellement inactive
+              </option>
+              <option value={EXCEPTION_KIND.SUSPEND_FEATURE}>
+                Suspendre une fonctionnalité actuellement active
+              </option>
+              <option value={EXCEPTION_KIND.ADJUST_LIMIT}>
+                Modifier exceptionnellement une limite
+              </option>
             </select>
           </div>
 
-          {targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE ? (
+          {effectiveTargetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE ? (
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="override-feature">Fonctionnalité</label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                id="override-feature"
-                onChange={(event) => setFeatureKey(event.target.value)}
-                value={featureKey}
-              >
-                {(capabilities?.features ?? []).map((key) => (
-                  <option key={key} value={key}>
-                    {getFeatureLabel(key, featureDefinitionsByKey)}
-                  </option>
-                ))}
-              </select>
+              {featureCandidates.length === 0 ? (
+                <p className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                  Aucune fonctionnalité ne correspond actuellement à cette nature de dérogation.
+                </p>
+              ) : (
+                <select
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  id="override-feature"
+                  onChange={(event) => setFeatureKey(event.target.value)}
+                  value={featureKey}
+                >
+                  {featureCandidates.map((key) => (
+                    <option key={key} value={key}>
+                      {getFeatureLabel(key, featureDefinitionsByKey)}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {createFeatureEnabled
+                  ? 'Seules les fonctionnalités actuellement inactives sont proposées.'
+                  : 'Seules les fonctionnalités actuellement actives sont proposées.'}
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -250,10 +303,9 @@ function PlatformEntitlementOverrideForm({
         </section>
       )}
 
-      <section className="space-y-4">
-        <h3 className="font-semibold">Valeur appliquée</h3>
-
-        {effectiveTargetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE ? (
+      {(mode === 'edit' && effectiveTargetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE) && (
+        <section className="space-y-4">
+          <h3 className="font-semibold">Valeur appliquée</h3>
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="override-feature-enabled">État</label>
             <select
@@ -266,7 +318,12 @@ function PlatformEntitlementOverrideForm({
               <option value="false">Désactivée</option>
             </select>
           </div>
-        ) : (
+        </section>
+      )}
+
+      {effectiveTargetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT && (
+        <section className="space-y-4">
+          <h3 className="font-semibold">Valeur appliquée</h3>
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="override-limit-mode">Mode</label>
@@ -298,8 +355,8 @@ function PlatformEntitlementOverrideForm({
               </div>
             )}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       <section className="space-y-4">
         <h3 className="font-semibold">Cadre commercial</h3>
@@ -338,7 +395,9 @@ function PlatformEntitlementOverrideForm({
               onChange={setEndsAt}
               value={endsAt}
             />
-            <p className="text-xs text-muted-foreground">Vide : dérogation permanente jusqu’à révocation.</p>
+            <p className="text-xs text-muted-foreground">
+              Vide : dérogation permanente jusqu’à révocation. À l’échéance, le workspace revient automatiquement à l’état courant de son plan.
+            </p>
           </div>
         </div>
 
@@ -366,12 +425,23 @@ function PlatformEntitlementOverrideForm({
         <Button disabled={pending} onClick={onCancel} type="button" variant="outline">
           Annuler
         </Button>
-        <Button disabled={pending} type="submit">
-          {pending ? 'Enregistrement…' : mode === 'create' ? 'Créer la dérogation' : 'Enregistrer'}
+        <Button
+          disabled={pending || (
+            mode === 'create'
+            && effectiveTargetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
+            && !featureKey
+          )}
+          type="submit"
+        >
+          {pending
+            ? 'Enregistrement…'
+            : mode === 'create'
+              ? 'Créer la dérogation exceptionnelle'
+              : 'Enregistrer'}
         </Button>
       </div>
     </form>
   );
 }
 
-export { PlatformEntitlementOverrideForm };
+export { EXCEPTION_KIND, PlatformEntitlementOverrideForm };
