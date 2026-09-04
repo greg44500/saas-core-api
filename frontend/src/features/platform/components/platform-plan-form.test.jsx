@@ -29,7 +29,11 @@ describe('PlatformPlanForm', () => {
 
     await user.type(screen.getByLabelText('Clé technique'), 'premium');
     await user.type(screen.getByLabelText('Nom'), 'Premium');
-    await user.click(screen.getByLabelText('Téléversement de fichiers'));
+    await user.click(
+      screen.getByRole('switch', {
+        name: 'Activer Téléversement de fichiers',
+      }),
+    );
     await user.click(screen.getByRole('button', { name: 'Créer le plan' }));
 
     expect(onSubmit).toHaveBeenCalledWith({
