@@ -266,6 +266,15 @@ function createAppRoutes() {
                   },
                 },
                 {
+                  path: 'entitlement-overrides',
+                  lazy: async () => {
+                    const { PlatformEntitlementOverridesPage } = await import(
+                      '@/features/platform/pages/platform-entitlement-overrides-page'
+                    );
+                    return { Component: PlatformEntitlementOverridesPage };
+                  },
+                },
+                {
                   path: 'audit-logs',
                   lazy: async () => {
                     const { PlatformAuditLogsPage } = await import(
