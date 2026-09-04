@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { FeatureToggle } from '@/components/shared/feature-toggle';
 import { Button } from '@/components/ui/button';
 import {
   buildPlatformFeatureGroups,
@@ -86,11 +87,11 @@ function PlatformPlanForm({
   const [features, setFeatures] = useState(() => new Set(plan?.features ?? []));
   const [limits, setLimits] = useState(() => getInitialLimitState(plan, metrics));
 
-  function toggleFeature(feature) {
+  function setFeatureState(feature, checked) {
     setFeatures((current) => {
       const next = new Set(current);
-      if (next.has(feature)) next.delete(feature);
-      else next.add(feature);
+      if (checked) next.add(feature);
+      else next.delete(feature);
       return next;
     });
   }
@@ -281,33 +282,27 @@ function PlatformPlanForm({
         <div>
           <h3 className="font-semibold">Fonctionnalités incluses par défaut</h3>
           <p className="text-sm text-muted-foreground">
-            Les fonctionnalités cochées seront incluses par défaut pour tous les workspaces utilisant ce plan. Les dérogations individuelles se gèrent séparément.
+            Les fonctionnalités activées sont incluses par défaut pour tous les workspaces utilisant ce plan. Une modification du plan s’applique donc à tous ces workspaces ; les exceptions individuelles se gèrent dans les dérogations.
           </p>
         </div>
 
         {featureGroups.length === 0 ? (
           <p className="text-sm text-muted-foreground">Aucune fonctionnalité déclarée.</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {featureGroups.map((group) => (
               <fieldset className="space-y-2" key={group.key}>
                 <legend className="text-sm font-semibold">{group.label}</legend>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="divide-y divide-border rounded-xl border border-border bg-card px-4">
                   {group.items.map((feature) => (
-                    <label className="flex items-start gap-2 rounded-md border border-border p-3 text-sm" key={feature.key}>
-                      <input
+                    <div className="py-2" key={feature.key}>
+                      <FeatureToggle
                         checked={features.has(feature.key)}
-                        className="mt-0.5"
-                        onChange={() => toggleFeature(feature.key)}
-                        type="checkbox"
+                        helpText={feature.description}
+                        label={feature.label}
+                        onCheckedChange={(checked) => setFeatureState(feature.key, checked)}
                       />
-                      <span>
-                        <span className="block font-medium">{feature.label}</span>
-                        {feature.description && (
-                          <span className="mt-1 block text-xs text-muted-foreground">{feature.description}</span>
-                        )}
-                      </span>
-                    </label>
+                    </div>
                   ))}
                 </div>
               </fieldset>
