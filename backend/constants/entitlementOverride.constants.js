@@ -12,17 +12,7 @@ const ENTITLEMENT_OVERRIDE_SOURCE = Object.freeze({
     ADMINISTRATIVE: 'administrative',
 });
 
-const ENTITLEMENT_OVERRIDE_LIFECYCLE = Object.freeze({
-    ACTIVE: 'active',
-    SCHEDULED: 'scheduled',
-    EXPIRED: 'expired',
-    REVOKED: 'revoked',
-    OPERATIONAL: 'operational',
-    HISTORY: 'history',
-});
-
 export {
-    ENTITLEMENT_OVERRIDE_LIFECYCLE,
     ENTITLEMENT_OVERRIDE_SOURCE,
     ENTITLEMENT_OVERRIDE_TARGET,
 };
