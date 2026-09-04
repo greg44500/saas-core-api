@@ -137,15 +137,20 @@ function PlatformEntitlementOverridesDrilldownContent({
     }
   }
 
+  function closeThenNavigate(target) {
+    onClose();
+    window.setTimeout(() => {
+      navigate(target);
+    }, DRAWER_TRANSITION_MS);
+  }
+
   function viewWorkspace(workspace) {
     if (!workspace?.id) return;
-    onClose();
-    navigate(`/platform/workspaces?workspaceId=${workspace.id}`);
+    closeThenNavigate(`/platform/workspaces?workspaceId=${workspace.id}`);
   }
 
   function viewAll() {
-    onClose();
-    navigate(`/platform/entitlement-overrides?lifecycle=${lifecycle}`);
+    closeThenNavigate(`/platform/entitlement-overrides?lifecycle=${lifecycle}`);
   }
 
   const columns = [
