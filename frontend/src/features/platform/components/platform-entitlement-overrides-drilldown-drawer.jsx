@@ -253,6 +253,7 @@ function PlatformEntitlementOverridesDrilldownContent({
                   columns={columns}
                   data={overrides}
                   getRowKey={(override) => override.id}
+                  rowClassName="transition-colors duration-150 hover:bg-muted/40 focus-within:bg-muted/40 motion-reduce:transition-none"
                   tableClassName="table-fixed"
                 />
               )}
