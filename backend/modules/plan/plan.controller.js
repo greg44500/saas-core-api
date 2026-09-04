@@ -1,8 +1,5 @@
 import {
-    PLAN_KEY,
-    PLAN_SYSTEM_ROLE,
-} from '../../constants/plan.constants.js';
-import {
+    isBaselinePlan,
     listPublicPlans,
 } from './plan.service.js';
 
@@ -13,11 +10,6 @@ const serializePlanLimits = (limits) => {
 
     return limits ?? {};
 };
-
-const isBaselinePlan = (plan) => (
-    plan?.systemRole === PLAN_SYSTEM_ROLE.BASELINE
-    || plan?.key === PLAN_KEY.FREE
-);
 
 /**
  * Retourne le catalogue actif et public sans exposer l'identifiant technique
