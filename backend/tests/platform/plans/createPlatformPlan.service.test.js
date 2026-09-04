@@ -13,7 +13,6 @@ describe('createPlatformPlan', () => {
     const actorId = '507f1f77bcf86cd799439011';
     const session = { id: 'mongo-session' };
     const planData = {
-        key: 'starter',
         name: 'Starter',
         description: 'Offre de démarrage',
         status: 'active',
@@ -33,6 +32,7 @@ describe('createPlatformPlan', () => {
     };
     const createdPlan = {
         _id: { toString: () => '507f1f77bcf86cd799439012' },
+        key: 'plan_507f1f77bcf86cd799439012',
         ...planData,
         limits: new Map(Object.entries(planData.limits)),
         createdAt: new Date('2026-08-27T12:00:00.000Z'),
@@ -54,7 +54,7 @@ describe('createPlatformPlan', () => {
         expect(createPlan).not.toHaveBeenCalled();
     });
 
-    it('crée et audite le plan dans la même transaction', async () => {
+    it('crée et audite le plan dans la même transaction sans exposer sa clé', async () => {
         await createPlatformPlan({
             planData,
             actorId,
@@ -73,7 +73,6 @@ describe('createPlatformPlan', () => {
                 ipAddress: '127.0.0.1',
                 userAgent: 'Vitest',
                 metadata: {
-                    key: createdPlan.key,
                     name: createdPlan.name,
                     status: createdPlan.status,
                     isPublic: createdPlan.isPublic,
@@ -83,12 +82,12 @@ describe('createPlatformPlan', () => {
         );
     });
 
-    it('retourne le DTO administratif incluant le trial', async () => {
+    it('retourne le DTO administratif sans clé technique', async () => {
         const result = await createPlatformPlan({ planData, actorId });
 
         expect(result).toEqual({
             id: '507f1f77bcf86cd799439012',
-            key: createdPlan.key,
+            isBaseline: false,
             name: createdPlan.name,
             description: createdPlan.description,
             status: createdPlan.status,
@@ -104,6 +103,7 @@ describe('createPlatformPlan', () => {
             createdAt: createdPlan.createdAt,
             updatedAt: createdPlan.updatedAt,
         });
+        expect(result).not.toHaveProperty('key');
     });
 
     it('propage les erreurs de création ou d’audit', async () => {
