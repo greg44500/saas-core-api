@@ -75,7 +75,7 @@ describe('WorkspaceSidebar', () => {
     expect(screen.queryByText('Membres')).not.toBeInTheDocument();
   });
 
-  it('affiche les sous-options autorisées au clic sur leur groupe', async () => {
+  it('n’ouvre qu’un seul groupe à la fois', async () => {
     const user = userEvent.setup();
 
     renderSidebar(
@@ -87,11 +87,56 @@ describe('WorkspaceSidebar', () => {
       { features: [WORKSPACE_FEATURE.TEAM_MANAGEMENT] },
     );
 
-    await user.click(screen.getByRole('button', { name: 'Gestion du workspace' }));
+    const workspaceGroup = screen.getByRole('button', { name: 'Gestion du workspace' });
+    const accountGroup = screen.getByRole('button', { name: 'Compte & offre' });
+
+    await user.click(workspaceGroup);
+    expect(workspaceGroup).toHaveAttribute('aria-expanded', 'true');
+    expect(accountGroup).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('link', { name: 'Membres' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Compte & offre' }));
+    await user.click(accountGroup);
+    expect(workspaceGroup).toHaveAttribute('aria-expanded', 'false');
+    expect(accountGroup).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('link', { name: 'Abonnement' })).toBeInTheDocument();
+  });
+
+  it('permet de refermer le groupe contenant la route active', async () => {
+    const user = userEvent.setup();
+
+    renderSidebar(
+      [
+        WORKSPACE_PERMISSION.WORKSPACE_READ,
+        WORKSPACE_PERMISSION.FILE_READ,
+      ],
+      {
+        initialEntry: '/workspaces/workspace-1/files',
+      },
+    );
+
+    const featuresGroup = screen.getByRole('button', { name: 'Fonctionnalités' });
+    expect(featuresGroup).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(featuresGroup);
+
+    expect(featuresGroup).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('permet de refermer un groupe ouvert au second clic', async () => {
+    const user = userEvent.setup();
+
+    renderSidebar([
+      WORKSPACE_PERMISSION.WORKSPACE_READ,
+      WORKSPACE_PERMISSION.SUBSCRIPTION_READ,
+    ]);
+
+    const accountGroup = screen.getByRole('button', { name: 'Compte & offre' });
+
+    await user.click(accountGroup);
+    expect(accountGroup).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(accountGroup);
+    expect(accountGroup).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('rend Fichiers consultable avec file:read même si file_upload est absent', async () => {
