@@ -27,6 +27,7 @@ const platformEntitlementOverridesApi = baseApi.injectEndpoints({
         workspaceId,
         targetType,
         source,
+        lifecycle,
       } = {}) => ({
         url: '/platform/entitlement-overrides',
         params: compactParams({
@@ -35,6 +36,7 @@ const platformEntitlementOverridesApi = baseApi.injectEndpoints({
           workspaceId,
           targetType,
           source,
+          lifecycle,
         }),
       }),
       transformResponse: (response) => ({
