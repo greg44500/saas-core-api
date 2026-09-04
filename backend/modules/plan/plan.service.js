@@ -5,7 +5,6 @@ import { PLAN_STATUS } from '../../constants/plan.constants.js';
 import { AppError } from '../../utils/appError.js';
 import { Plan } from './plan.model.js';
 
-
 const getLimitKeys = (limits) => {
     if (limits instanceof Map) {
         return [...limits.keys()];
@@ -22,18 +21,6 @@ const getLimitKeys = (limits) => {
     return [];
 };
 
-
-/**
- * Vérifie les capabilities d'un plan contre le registre actif.
- *
- * Lorsqu'un objet `limits` est fourni, il doit décrire toutes les métriques
- * actives. Le moteur de quotas distingue volontairement `null` (illimité),
- * `0` (aucune consommation) et une clé absente (configuration invalide).
- *
- * Le registre reste injectable pour les tests et les services spécialisés,
- * mais le comportement normal de l'application utilise son registre actif
- * composé dans `config/applicationCapability.registry.js`.
- */
 const validatePlanCapabilities = (
     planData,
     registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
@@ -79,14 +66,6 @@ const validatePlanCapabilities = (
     }
 };
 
-
-/**
- * Crée une offre commerciale après validation de ses capabilities.
- *
- * Une création doit toujours définir toutes les limites actives : un plan
- * incomplet ne doit pas pouvoir atteindre le moteur de quotas puis échouer
- * tardivement en production.
- */
 const createPlan = async ({
     planData,
     actorId = null,
@@ -114,11 +93,6 @@ const createPlan = async ({
     return plan.save(saveOptions);
 };
 
-
-/**
- * Retourne uniquement les plans actifs et publics destinés au catalogue
- * commercial. Les données d'administration restent dans le périmètre Platform.
- */
 const listPublicPlans = async () => {
     return Plan.find({
         status: PLAN_STATUS.ACTIVE,
@@ -126,6 +100,7 @@ const listPublicPlans = async () => {
     })
         .select([
             'key',
+            'systemRole',
             'name',
             'description',
             'displayOrder',
@@ -143,7 +118,6 @@ const listPublicPlans = async () => {
         })
         .lean();
 };
-
 
 export {
     createPlan,
