@@ -4,11 +4,15 @@ import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
 import { authorizeRoleDelegation } from '../../middlewares/authorizeRoleDelegation.js';
+import { enforcePlanFeature } from '../../middlewares/enforcePlanFeature.js';
 import {
     enforceWorkspaceAccessMode,
 } from '../../middlewares/enforceWorkspaceAccessMode.js';
 import { loadWorkspaceContext } from '../../middlewares/loadWorkspaceContext.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
+import {
+    CORE_PLAN_FEATURE,
+} from '../plan/planCapability.registry.js';
 import { remove, suspend, updateRole } from './workspaceMember.controller.js';
 import {
     updateWorkspaceMemberRoleBodySchema,
@@ -26,6 +30,7 @@ workspaceMemberRouter.patch(
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_UPDATE),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
     authorizeRoleDelegation,
     updateRole,
@@ -37,14 +42,15 @@ workspaceMemberRouter.post(
     validateRequest({ params: workspaceMemberParamsSchema }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_SUSPEND),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
     suspend,
 );
 
 /*
- * La suppression d'un membre est une action de remédiation valide : elle peut
- * précisément ramener le workspace sous sa limite members. Elle reste donc
- * disponible lorsque l'accès général est en mode remediation.
+ * La suppression d'un membre peut participer à une remédiation de quota, mais
+ * elle reste une action de gestion d'équipe. La feature commerciale doit donc
+ * être disponible même si l'access mode général autorise cette remédiation.
  */
 workspaceMemberRouter.delete(
     '/:memberId',
@@ -52,6 +58,7 @@ workspaceMemberRouter.delete(
     validateRequest({ params: workspaceMemberParamsSchema }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_REMOVE),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode({ allowDuringRemediation: true }),
     remove,
 );
