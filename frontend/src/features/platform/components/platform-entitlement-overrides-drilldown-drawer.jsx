@@ -1,5 +1,5 @@
 import { ArrowLeft, Eye, ExternalLink } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
@@ -7,7 +7,10 @@ import { DataTable, DataTableActions } from '@/components/data-display/data-tabl
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { DrawerViewTransition } from '@/components/shared/drawer-view-transition';
-import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import {
+  DRAWER_TRANSITION_MS,
+  EntityDetailsDrawer,
+} from '@/components/shared/entity-details-drawer';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,6 +43,7 @@ function getApiMessage(error, fallback) {
 function PlatformEntitlementOverridesDrilldownContent({
   lifecycle,
   onClose,
+  open,
   title,
 }) {
   const navigate = useNavigate();
@@ -220,7 +224,7 @@ function PlatformEntitlementOverridesDrilldownContent({
         onClose={() => {
           if (!updateState.isLoading) onClose();
         }}
-        open
+        open={open}
         title={drawerTitle}
       >
         <DrawerViewTransition viewKey={view}>
@@ -352,12 +356,32 @@ function PlatformEntitlementOverridesDrilldownDrawer({
   open,
   title = 'Dérogations actives',
 }) {
-  if (!open) return null;
+  const [isMounted, setIsMounted] = useState(open);
+
+  useEffect(() => {
+    if (open) {
+      setIsMounted(true);
+      return undefined;
+    }
+
+    if (!isMounted) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setIsMounted(false);
+    }, DRAWER_TRANSITION_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isMounted, open]);
+
+  if (!isMounted) return null;
 
   return (
     <PlatformEntitlementOverridesDrilldownContent
       lifecycle={lifecycle}
       onClose={onClose}
+      open={open}
       title={title}
     />
   );
