@@ -124,39 +124,46 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
   });
 
   async function changeFeature(row, desiredState) {
-    if (row.planEnabled || desiredState === row.effectiveEnabled) return;
+    if (desiredState === row.effectiveEnabled) return;
 
     setPendingFeatureKey(row.featureKey);
 
     try {
-      if (desiredState) {
-        await createOverride({
+      /*
+       * Revenir à l'état du Plan signifie supprimer l'exception active, pas
+       * empiler un override inverse. Le Plan redevient ainsi naturellement la
+       * source d'autorité pour cette capability.
+       */
+      if (desiredState === row.planEnabled) {
+        if (!row.appliedOverride) return;
+
+        await revokeOverride({
+          overrideId: row.appliedOverride.id,
           workspaceId,
-          targetType: ENTITLEMENT_OVERRIDE_TARGET.FEATURE,
-          featureKey: row.featureKey,
-          featureEnabled: true,
-          source: ENTITLEMENT_OVERRIDE_SOURCE.ADMINISTRATIVE,
-          endsAt: null,
-          reason: QUICK_OVERRIDE_REASON,
+          reason: QUICK_REVOKE_REASON,
         }).unwrap();
 
         toast({
-          title: 'Fonctionnalité ajoutée au workspace',
+          title: 'Retour à la configuration du plan',
           variant: 'success',
         });
         return;
       }
 
-      if (!row.appliedOverride) return;
-
-      await revokeOverride({
-        overrideId: row.appliedOverride.id,
+      await createOverride({
         workspaceId,
-        reason: QUICK_REVOKE_REASON,
+        targetType: ENTITLEMENT_OVERRIDE_TARGET.FEATURE,
+        featureKey: row.featureKey,
+        featureEnabled: desiredState,
+        source: ENTITLEMENT_OVERRIDE_SOURCE.ADMINISTRATIVE,
+        endsAt: null,
+        reason: QUICK_OVERRIDE_REASON,
       }).unwrap();
 
       toast({
-        title: 'Dérogation retirée',
+        title: desiredState
+          ? 'Fonctionnalité activée pour le workspace'
+          : 'Fonctionnalité désactivée pour le workspace',
         variant: 'success',
       });
     } catch (error) {
@@ -178,7 +185,7 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
         <FeatureToggle
           checked={row.effectiveEnabled}
           description={getFeatureDescription(row, planName)}
-          disabled={row.planEnabled || pendingFeatureKey !== null}
+          disabled={pendingFeatureKey !== null}
           helpText={row.helpText}
           label={row.label}
           onCheckedChange={(checked) => changeFeature(row, checked)}
@@ -192,7 +199,7 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
       <div className="border-b border-border p-5">
         <h2 className="text-lg font-semibold">Offre personnalisée du workspace</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Les fonctionnalités incluses par défaut dans le plan sont verrouillées ici. Le réglage rapide sert uniquement à ajouter ou retirer une dérogation positive propre à ce workspace.
+          Le switch représente l’état effectif de chaque fonctionnalité. Un changement crée une dérogation lorsque l’état souhaité diffère du plan ; revenir à l’état du plan révoque la dérogation active.
         </p>
       </div>
 
