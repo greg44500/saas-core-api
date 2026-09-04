@@ -30,8 +30,8 @@ workspaceMemberRouter.patch(
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_UPDATE),
-    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     authorizeRoleDelegation,
     updateRole,
 );
@@ -42,8 +42,8 @@ workspaceMemberRouter.post(
     validateRequest({ params: workspaceMemberParamsSchema }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_SUSPEND),
-    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode(),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     suspend,
 );
 
@@ -58,8 +58,8 @@ workspaceMemberRouter.delete(
     validateRequest({ params: workspaceMemberParamsSchema }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.MEMBER_REMOVE),
-    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     enforceWorkspaceAccessMode({ allowDuringRemediation: true }),
+    enforcePlanFeature(CORE_PLAN_FEATURE.TEAM_MANAGEMENT),
     remove,
 );
 
