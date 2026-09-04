@@ -6,7 +6,6 @@ import {
 } from '../../../modules/platform/plans/platformPlans.validation.js';
 
 const baseCreatePayload = {
-    key: 'premium',
     name: 'Premium',
     currency: 'EUR',
     priceMonthlyExclTaxMinor: 7900,
