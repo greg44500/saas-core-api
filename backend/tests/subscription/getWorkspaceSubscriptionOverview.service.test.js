@@ -6,6 +6,10 @@ import {
 } from 'vitest';
 
 import {
+    PLAN_SYSTEM_ROLE,
+} from '../../constants/plan.constants.js';
+
+import {
     serializePlan,
     serializeSubscription,
     serializeWorkspaceEffectiveEntitlement,
@@ -13,9 +17,10 @@ import {
 
 const { ObjectId } = mongoose.Types;
 
-const buildPlan = () => ({
+const buildPlan = (overrides = {}) => ({
     _id: new ObjectId(),
     key: 'pro',
+    systemRole: null,
     name: 'Pro',
     features: ['file_upload', 'export_pdf'],
     limits: new Map([
@@ -24,6 +29,7 @@ const buildPlan = () => ({
     ]),
     currency: 'EUR',
     priceMonthlyExclTaxMinor: 2900,
+    ...overrides,
 });
 
 describe('workspace subscription overview projection', () => {
@@ -32,7 +38,7 @@ describe('workspace subscription overview projection', () => {
 
         expect(result).toEqual({
             id: expect.any(String),
-            key: 'pro',
+            isBaseline: false,
             name: 'Pro',
             features: ['file_upload', 'export_pdf'],
             limits: {
@@ -41,9 +47,26 @@ describe('workspace subscription overview projection', () => {
             },
         });
 
+        expect(result).not.toHaveProperty('key');
+        expect(result).not.toHaveProperty('systemRole');
         expect(result).not.toHaveProperty('currency');
         expect(result).not.toHaveProperty('priceMonthlyExclTaxMinor');
         expect(result).not.toHaveProperty('priceYearlyExclTaxMinor');
+    });
+
+    it('identifie la baseline sans exposer son rôle système', () => {
+        const result = serializePlan(buildPlan({
+            key: 'legacy-reference',
+            systemRole: PLAN_SYSTEM_ROLE.BASELINE,
+            name: 'Découverte',
+        }));
+
+        expect(result).toMatchObject({
+            isBaseline: true,
+            name: 'Découverte',
+        });
+        expect(result).not.toHaveProperty('key');
+        expect(result).not.toHaveProperty('systemRole');
     });
 
     it('n’expose aucune donnée de paiement ou de provider depuis Subscription', () => {
@@ -81,9 +104,11 @@ describe('workspace subscription overview projection', () => {
         const result = serializeSubscription(subscription);
 
         expect(result.status).toBe('active');
-        expect(result.plan.key).toBe('pro');
-        expect(result.scheduledChange.targetPlan.key).toBe('pro');
+        expect(result.plan.isBaseline).toBe(false);
+        expect(result.scheduledChange.targetPlan.isBaseline).toBe(false);
         expect(result.scheduledChange.targetBillingInterval).toBe('monthly');
+        expect(result.plan).not.toHaveProperty('key');
+        expect(result.scheduledChange.targetPlan).not.toHaveProperty('key');
 
         expect(result).not.toHaveProperty('currency');
         expect(result).not.toHaveProperty('priceExclTaxMinor');
@@ -136,7 +161,7 @@ describe('workspace subscription overview projection', () => {
         expect(result).toEqual({
             plan: expect.objectContaining({
                 id: expect.any(String),
-                key: 'pro',
+                isBaseline: false,
                 name: 'Pro',
             }),
             features: [
@@ -155,6 +180,7 @@ describe('workspace subscription overview projection', () => {
             nonBlockingLimits: [],
         });
 
+        expect(result.plan).not.toHaveProperty('key');
         expect(result).not.toHaveProperty('appliedOverrides');
         expect(JSON.stringify(result)).not.toContain(
             'commercial_gesture',
