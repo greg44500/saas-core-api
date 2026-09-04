@@ -8,9 +8,6 @@ import {
     PLAN_KEY,
     PLAN_STATUS,
 } from '../constants/plan.constants.js';
-import {
-    CORE_PLAN_FEATURE,
-} from '../modules/plan/planCapability.registry.js';
 
 import { Plan } from '../modules/plan/plan.model.js';
 import { createPlan } from '../modules/plan/plan.service.js';
@@ -19,8 +16,9 @@ import { createPlan } from '../modules/plan/plan.service.js';
 /**
  * Définition initiale du plan gratuit fourni par le socle SaaS.
  *
- * Les plans payants seront ajoutés lorsque leur politique tarifaire,
- * leurs fonctionnalités et leurs limites auront été définies.
+ * Le Core ne choisit aucune fonctionnalité commerciale à la place du produit
+ * dérivé. Les capabilities existent dans le registre applicatif, mais leur
+ * inclusion par défaut relève exclusivement de la configuration du Plan.
  */
 const INITIAL_PLAN_DEFINITIONS = Object.freeze([
     Object.freeze({
@@ -38,9 +36,9 @@ const INITIAL_PLAN_DEFINITIONS = Object.freeze([
         priceMonthlyExclTaxMinor: 0,
         priceYearlyExclTaxMinor: 0,
 
-        features: Object.freeze([
-            CORE_PLAN_FEATURE.FILE_UPLOAD,
-        ]),
+        // Aucune feature n'est imposée par le Core. Platform décide du contenu
+        // commercial de Free, comme de tout autre Plan.
+        features: Object.freeze([]),
 
         limits: Object.freeze({
             members: 1,
