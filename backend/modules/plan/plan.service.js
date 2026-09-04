@@ -2,7 +2,6 @@ import {
     ACTIVE_PLAN_CAPABILITY_REGISTRY,
 } from '../../config/applicationCapability.registry.js';
 import {
-    PLAN_KEY,
     PLAN_STATUS,
     PLAN_SYSTEM_ROLE,
 } from '../../constants/plan.constants.js';
@@ -26,15 +25,12 @@ const getLimitKeys = (limits) => {
 };
 
 /**
- * Le fallback `key=free` n'existe que pour rendre la migration des anciennes
- * bases progressive. Une fois `systemRole` backfillé, il devient l'autorité.
+ * Le rôle système est l'unique autorité métier pour identifier la baseline.
+ * Le nom commercial et la clé technique restent sans influence sur ce rôle.
  */
 const isBaselinePlan = (plan) => Boolean(
     plan
-    && (
-        plan.systemRole === PLAN_SYSTEM_ROLE.BASELINE
-        || plan.key === PLAN_KEY.FREE
-    )
+    && plan.systemRole === PLAN_SYSTEM_ROLE.BASELINE
 );
 
 const validatePlanCapabilities = (
@@ -115,7 +111,6 @@ const listPublicPlans = async () => {
         isPublic: true,
     })
         .select([
-            'key',
             'systemRole',
             'name',
             'description',
