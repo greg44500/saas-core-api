@@ -4,10 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
+import { enforcePlanFeature } from '../../middlewares/enforcePlanFeature.js';
 import { enforceWorkspaceAccessMode } from '../../middlewares/enforceWorkspaceAccessMode.js';
 import { loadWorkspaceContext } from '../../middlewares/loadWorkspaceContext.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
+import { CORE_PLAN_FEATURE } from '../../modules/plan/planCapability.registry.js';
 import {
     create,
     list,
@@ -20,6 +22,7 @@ const {
     validationMiddleware,
     workspaceContextMiddleware,
     permissionMiddleware,
+    featureMiddleware,
     accessModeMiddleware,
 } = vi.hoisted(() => ({
     validationMiddleware: vi.fn((req, res, next) => next()),
@@ -28,6 +31,7 @@ const {
         next();
     }),
     permissionMiddleware: vi.fn((req, res, next) => next()),
+    featureMiddleware: vi.fn((req, res, next) => next()),
     accessModeMiddleware: vi.fn((req, res, next) => next()),
 }));
 
@@ -42,6 +46,9 @@ vi.mock('../../middlewares/loadWorkspaceContext.js', () => ({
 }));
 vi.mock('../../middlewares/authorizePermission.js', () => ({
     authorizePermission: vi.fn(() => permissionMiddleware),
+}));
+vi.mock('../../middlewares/enforcePlanFeature.js', () => ({
+    enforcePlanFeature: vi.fn(() => featureMiddleware),
 }));
 vi.mock('../../middlewares/enforceWorkspaceAccessMode.js', () => ({
     enforceWorkspaceAccessMode: vi.fn(() => accessModeMiddleware),
@@ -67,6 +74,7 @@ describe('role.routes', () => {
         validationMiddleware.mockClear();
         workspaceContextMiddleware.mockClear();
         permissionMiddleware.mockClear();
+        featureMiddleware.mockClear();
         accessModeMiddleware.mockClear();
         create.mockClear();
         list.mockClear();
@@ -74,7 +82,7 @@ describe('role.routes', () => {
         update.mockClear();
     });
 
-    it('protège la lecture des rôles avec role:read', async () => {
+    it('protège la lecture des rôles avec role:read et team_management', async () => {
         const response = await request(makeApp())
             .get('/workspaces/507f1f77bcf86cd799439011/roles');
 
@@ -82,10 +90,14 @@ describe('role.routes', () => {
         expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.ROLE_READ,
         );
+        expect(enforcePlanFeature).toHaveBeenCalledWith(
+            CORE_PLAN_FEATURE.TEAM_MANAGEMENT,
+        );
+        expect(featureMiddleware).toHaveBeenCalledOnce();
         expect(list).toHaveBeenCalledOnce();
     });
 
-    it('protège la création des rôles avec role:create', async () => {
+    it('protège la création des rôles avec role:create et team_management', async () => {
         const response = await request(makeApp())
             .post('/workspaces/507f1f77bcf86cd799439011/roles')
             .send({ name: 'Support', permissions: [] });
@@ -94,11 +106,14 @@ describe('role.routes', () => {
         expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.ROLE_CREATE,
         );
+        expect(enforcePlanFeature).toHaveBeenCalledWith(
+            CORE_PLAN_FEATURE.TEAM_MANAGEMENT,
+        );
         expect(enforceWorkspaceAccessMode).toHaveBeenCalled();
         expect(create).toHaveBeenCalledOnce();
     });
 
-    it('protège la modification des rôles avec role:update', async () => {
+    it('protège la modification des rôles avec role:update et team_management', async () => {
         const response = await request(makeApp())
             .patch('/workspaces/507f1f77bcf86cd799439011/roles/507f1f77bcf86cd799439012')
             .send({ name: 'Support senior' });
@@ -107,16 +122,22 @@ describe('role.routes', () => {
         expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.ROLE_UPDATE,
         );
+        expect(enforcePlanFeature).toHaveBeenCalledWith(
+            CORE_PLAN_FEATURE.TEAM_MANAGEMENT,
+        );
         expect(update).toHaveBeenCalledOnce();
     });
 
-    it('protège la suppression des rôles avec role:delete', async () => {
+    it('protège la suppression des rôles avec role:delete et team_management', async () => {
         const response = await request(makeApp())
             .delete('/workspaces/507f1f77bcf86cd799439011/roles/507f1f77bcf86cd799439012');
 
         expect(response.status).toBe(204);
         expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.ROLE_DELETE,
+        );
+        expect(enforcePlanFeature).toHaveBeenCalledWith(
+            CORE_PLAN_FEATURE.TEAM_MANAGEMENT,
         );
         expect(remove).toHaveBeenCalledOnce();
     });
