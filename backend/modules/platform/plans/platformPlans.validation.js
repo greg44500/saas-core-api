@@ -4,8 +4,6 @@ import {
     PLAN_STATUS,
 } from '../../../constants/plan.constants.js';
 
-
-const PLAN_KEY_PATTERN = /^[a-z][a-z0-9_-]*$/;
 const PLAN_CAPABILITY_KEY_PATTERN = /^[a-z][a-z0-9_]*$/;
 
 const planLimitValueSchema = z.union([
@@ -49,11 +47,6 @@ const trialDurationSchema = z
     .positive('trialDurationDays doit être strictement positif')
     .nullable();
 
-/**
- * Trial et durée forment une configuration atomique lorsqu'ils sont modifiés.
- * Cela évite qu'une mise à jour partielle laisse `trialEnabled=true` avec une
- * durée absente, ou désactive le trial tout en conservant une durée active.
- */
 const validateTrialPair = (data, context, { requirePair }) => {
     const hasEnabled = Object.hasOwn(data, 'trialEnabled');
     const hasDuration = Object.hasOwn(data, 'trialDurationDays');
@@ -89,16 +82,8 @@ const validateTrialPair = (data, context, { requirePair }) => {
     }
 };
 
-
 const createPlatformPlanBodySchema = z
     .strictObject({
-        key: z
-            .string()
-            .trim()
-            .min(2, 'key doit contenir au minimum 2 caractères')
-            .max(64, 'key ne peut pas dépasser 64 caractères')
-            .regex(PLAN_KEY_PATTERN, 'Le format de key est invalide'),
-
         name: z
             .string()
             .trim()
@@ -148,13 +133,11 @@ const createPlatformPlanBodySchema = z
         validateTrialPair(data, context, { requirePair: false });
     });
 
-
 const platformPlanIdParamsSchema = z.strictObject({
     planId: z
         .string()
         .regex(/^[a-f\d]{24}$/i, 'planId invalide'),
 });
-
 
 const updatePlatformPlanBodySchema = z
     .strictObject({
@@ -222,7 +205,6 @@ const updatePlatformPlanBodySchema = z
             message: 'Au moins un champ doit être fourni pour modifier le plan',
         },
     );
-
 
 export {
     createPlatformPlanBodySchema,
