@@ -5,6 +5,7 @@ import {
 } from 'vitest';
 
 import {
+    ENTITLEMENT_OVERRIDE_LIFECYCLE,
     ENTITLEMENT_OVERRIDE_SOURCE,
     ENTITLEMENT_OVERRIDE_TARGET,
 } from '../../../constants/entitlementOverride.constants.js';
@@ -68,13 +69,14 @@ describe('platformEntitlementOverrides.validation', () => {
         })).toThrow('Feature inconnue du registre de capabilities.');
     });
 
-    it('valide pagination, filtres et identifiants', () => {
+    it('valide pagination, filtres, lifecycle et identifiants', () => {
         const query = listPlatformEntitlementOverridesQuerySchema.parse({
             page: '2',
             limit: '25',
             workspaceId: WORKSPACE_ID,
             targetType: ENTITLEMENT_OVERRIDE_TARGET.LIMIT,
             source: ENTITLEMENT_OVERRIDE_SOURCE.CONTRACT,
+            lifecycle: ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE,
         });
 
         expect(query).toEqual({
@@ -83,7 +85,12 @@ describe('platformEntitlementOverrides.validation', () => {
             workspaceId: WORKSPACE_ID,
             targetType: ENTITLEMENT_OVERRIDE_TARGET.LIMIT,
             source: ENTITLEMENT_OVERRIDE_SOURCE.CONTRACT,
+            lifecycle: ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE,
         });
+
+        expect(() => listPlatformEntitlementOverridesQuerySchema.parse({
+            lifecycle: 'unknown',
+        })).toThrow();
 
         expect(platformEntitlementOverrideIdParamsSchema.parse({
             overrideId: OVERRIDE_ID,
