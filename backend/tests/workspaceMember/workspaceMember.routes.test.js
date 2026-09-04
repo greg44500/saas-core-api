@@ -5,9 +5,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
 import { authorizeRoleDelegation } from '../../middlewares/authorizeRoleDelegation.js';
+import { enforcePlanFeature } from '../../middlewares/enforcePlanFeature.js';
 import {
     enforceWorkspaceAccessMode,
 } from '../../middlewares/enforceWorkspaceAccessMode.js';
+import {
+    CORE_PLAN_FEATURE,
+} from '../../modules/plan/planCapability.registry.js';
 import {
     remove,
     suspend,
@@ -20,11 +24,13 @@ import {
 const {
     accessModeMiddleware,
     delegationMiddleware,
+    featureMiddleware,
     permissionMiddleware,
     validationMiddleware,
 } = vi.hoisted(() => ({
     accessModeMiddleware: vi.fn((req, res, next) => next()),
     delegationMiddleware: vi.fn((req, res, next) => next()),
+    featureMiddleware: vi.fn((req, res, next) => next()),
     permissionMiddleware: vi.fn((req, res, next) => next()),
     validationMiddleware: vi.fn((req, res, next) => {
         req.validated = { params: req.params, body: req.body };
@@ -59,6 +65,10 @@ vi.mock('../../middlewares/authorizeRoleDelegation.js', () => ({
     authorizeRoleDelegation: delegationMiddleware,
 }));
 
+vi.mock('../../middlewares/enforcePlanFeature.js', () => ({
+    enforcePlanFeature: vi.fn(() => featureMiddleware),
+}));
+
 vi.mock('../../middlewares/enforceWorkspaceAccessMode.js', () => ({
     enforceWorkspaceAccessMode: vi.fn(() => accessModeMiddleware),
 }));
@@ -79,6 +89,7 @@ const createApp = () => {
 describe('workspaceMember.routes', () => {
     beforeEach(() => {
         permissionMiddleware.mockClear();
+        featureMiddleware.mockClear();
         accessModeMiddleware.mockClear();
         delegationMiddleware.mockClear();
         remove.mockClear();
@@ -86,7 +97,7 @@ describe('workspaceMember.routes', () => {
         updateRole.mockClear();
     });
 
-    it('protège le changement de rôle avec member:update et l’anti-escalade', async () => {
+    it('protège le changement de rôle avec member:update, team_management et l’anti-escalade', async () => {
         const response = await request(createApp())
             .patch('/workspaces/507f1f77bcf86cd799439011/members/507f1f77bcf86cd799439012/role')
             .send({ roleId: '507f1f77bcf86cd799439013' });
@@ -95,11 +106,15 @@ describe('workspaceMember.routes', () => {
         expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.MEMBER_UPDATE,
         );
+        expect(enforcePlanFeature).toHaveBeenCalledWith(
+            CORE_PLAN_FEATURE.TEAM_MANAGEMENT,
+        );
+        expect(featureMiddleware).toHaveBeenCalledOnce();
         expect(authorizeRoleDelegation).toHaveBeenCalledOnce();
         expect(updateRole).toHaveBeenCalledOnce();
     });
 
-    it('protège la suspension avec member:suspend en mode normal', async () => {
+    it('protège la suspension avec member:suspend et team_management', async () => {
         const response = await request(createApp())
             .post('/workspaces/507f1f77bcf86cd799439011/members/507f1f77bcf86cd799439012/suspend');
 
@@ -107,16 +122,22 @@ describe('workspaceMember.routes', () => {
         expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.MEMBER_SUSPEND,
         );
+        expect(enforcePlanFeature).toHaveBeenCalledWith(
+            CORE_PLAN_FEATURE.TEAM_MANAGEMENT,
+        );
         expect(suspend).toHaveBeenCalledOnce();
     });
 
-    it('autorise la suppression pendant la remédiation', async () => {
+    it('autorise la suppression en remédiation seulement si team_management reste disponible', async () => {
         const response = await request(createApp())
             .delete('/workspaces/507f1f77bcf86cd799439011/members/507f1f77bcf86cd799439012');
 
         expect(response.status).toBe(204);
         expect(authorizePermission).toHaveBeenCalledWith(
             CORE_PERMISSION.MEMBER_REMOVE,
+        );
+        expect(enforcePlanFeature).toHaveBeenCalledWith(
+            CORE_PLAN_FEATURE.TEAM_MANAGEMENT,
         );
         expect(enforceWorkspaceAccessMode).toHaveBeenCalledWith({
             allowDuringRemediation: true,
