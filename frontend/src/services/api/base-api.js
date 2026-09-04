@@ -24,6 +24,7 @@ const baseApi = createApi({
     'PlatformPlanCapabilities',
     'PlatformSubscriptions',
     'PlatformEntitlementOverrides',
+    'PlatformEntitlementContext',
     'PlatformAuditLogs',
     'PlatformOverview',
   ],
