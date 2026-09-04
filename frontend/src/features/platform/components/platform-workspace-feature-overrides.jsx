@@ -14,6 +14,7 @@ import {
   ENTITLEMENT_OVERRIDE_TARGET,
 } from '@/features/platform/lib/platform-entitlement-override-formatters';
 import { formatPlatformPlanFeature } from '@/features/platform/lib/platform-plan-formatters';
+import { useEntitlementAutoRefresh } from '@/hooks/use-entitlement-auto-refresh';
 
 const QUICK_OVERRIDE_REASON = 'Ajustement commercial individuel via le réglage rapide Platform.';
 const QUICK_REVOKE_REASON = 'Retour à la configuration du Plan depuis le réglage rapide Platform.';
@@ -25,7 +26,7 @@ function getApiMessage(error, fallback) {
 function getFeatureDescription(row, planName) {
   if (row.planEnabled) {
     if (!row.effectiveEnabled) {
-      return `Incluse par défaut dans le plan ${planName} — désactivée par une dérogation avancée`;
+      return `Incluse par défaut dans le plan ${planName} — désactivée par une dérogation exceptionnelle`;
     }
 
     return `Incluse par défaut dans le plan ${planName}`;
@@ -53,6 +54,25 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
     ),
     [capabilities],
   );
+
+  useEntitlementAutoRefresh({
+    data: contextQuery.data,
+    nextChangeAt: contextQuery.data?.nextEntitlementChangeAt,
+    refetch: contextQuery.refetch,
+    selectSnapshot: (data) => [
+      ...(data?.effective?.features ?? []),
+    ].sort(),
+    onChanged: ({ data, reason }) => {
+      const planName = data?.plan?.name ?? 'courant';
+      toast({
+        title: 'Offre du workspace actualisée',
+        description: reason === 'schedule'
+          ? `Une dérogation a pris effet ou a expiré. Les droits effectifs du plan ${planName} ont été recalculés.`
+          : `Les droits effectifs du plan ${planName} ont été resynchronisés.`,
+        variant: 'info',
+      });
+    },
+  });
 
   if (!workspaceId) return null;
 
@@ -96,6 +116,7 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
     return {
       featureKey,
       label: definition?.label ?? formatPlatformPlanFeature(featureKey),
+      helpText: definition?.description ?? null,
       planEnabled,
       effectiveEnabled,
       appliedOverride,
@@ -141,7 +162,7 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
     } catch (error) {
       toast({
         title: getApiMessage(error, 'La personnalisation n’a pas pu être appliquée.'),
-        variant: 'destructive',
+        variant: 'error',
       });
     } finally {
       setPendingFeatureKey(null);
@@ -158,6 +179,7 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
           checked={row.effectiveEnabled}
           description={getFeatureDescription(row, planName)}
           disabled={row.planEnabled || pendingFeatureKey !== null}
+          helpText={row.helpText}
           label={row.label}
           onCheckedChange={(checked) => changeFeature(row, checked)}
         />
