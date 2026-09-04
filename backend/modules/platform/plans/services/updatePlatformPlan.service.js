@@ -5,27 +5,22 @@ import {
     AUDIT_ENTITY_TYPE,
     AUDIT_STATUS,
 } from '../../../../constants/auditActions.constants.js';
-
 import {
     PLAN_STATUS,
 } from '../../../../constants/plan.constants.js';
-
 import {
     AppError,
 } from '../../../../utils/appError.js';
-
 import {
     createAuditLog,
 } from '../../../auditLog/auditLog.service.js';
-
 import {
     Plan,
 } from '../../../plan/plan.model.js';
-
 import {
+    isBaselinePlan,
     validatePlanCapabilities,
 } from '../../../plan/plan.service.js';
-
 
 const updatePlatformPlan = async ({
     planId,
@@ -36,8 +31,7 @@ const updatePlatformPlan = async ({
 }) => {
     if (!planId || !planData || !actorId) {
         throw new TypeError(
-            'planId, planData and actorId are required '
-            + 'to update a platform plan',
+            'planId, planData and actorId are required to update a platform plan',
         );
     }
 
@@ -53,6 +47,30 @@ const updatePlatformPlan = async ({
     let updatedPlan;
 
     await mongoose.connection.transaction(async (session) => {
+        const currentPlan = await Plan.findById(planId).session(session);
+
+        if (!currentPlan) {
+            throw new AppError('Plan introuvable', 404);
+        }
+
+        if (currentPlan.status === PLAN_STATUS.ARCHIVED) {
+            throw new AppError(
+                'Un plan archivé ne peut plus être modifié',
+                409,
+            );
+        }
+
+        if (
+            isBaselinePlan(currentPlan)
+            && planData.status
+            && planData.status !== PLAN_STATUS.ACTIVE
+        ) {
+            throw new AppError(
+                'Le plan baseline doit rester actif pour garantir la création des workspaces',
+                409,
+            );
+        }
+
         updatedPlan = await Plan.findOneAndUpdate(
             {
                 _id: planId,
@@ -74,18 +92,8 @@ const updatePlatformPlan = async ({
         );
 
         if (!updatedPlan) {
-            const existingPlan = await Plan.findById(planId)
-                .session(session);
-
-            if (!existingPlan) {
-                throw new AppError(
-                    'Plan introuvable',
-                    404,
-                );
-            }
-
             throw new AppError(
-                'Un plan archivé ne peut plus être modifié',
+                'Le plan a été modifié avant l’enregistrement',
                 409,
             );
         }
@@ -109,7 +117,7 @@ const updatePlatformPlan = async ({
 
     return {
         id: updatedPlan._id.toString(),
-        key: updatedPlan.key,
+        isBaseline: isBaselinePlan(updatedPlan),
         name: updatedPlan.name,
         description: updatedPlan.description ?? null,
         status: updatedPlan.status,
@@ -130,7 +138,6 @@ const updatePlatformPlan = async ({
         updatedAt: updatedPlan.updatedAt,
     };
 };
-
 
 export {
     updatePlatformPlan,
