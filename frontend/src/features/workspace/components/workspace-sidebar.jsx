@@ -127,6 +127,7 @@ function WorkspaceNavigationGroup({
     <div className="relative">
       <button
         aria-expanded={collapsed ? flyoutOpen : expanded}
+        aria-label={collapsed ? group.label : undefined}
         className={cn(
           NAV_ITEM_CLASS,
           'justify-start',
