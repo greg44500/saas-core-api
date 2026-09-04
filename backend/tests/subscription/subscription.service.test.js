@@ -18,6 +18,7 @@ import {
 import {
     PLAN_KEY,
     PLAN_STATUS,
+    PLAN_SYSTEM_ROLE,
 } from '../../constants/plan.constants.js';
 
 import { Plan } from '../../modules/plan/plan.model.js';
@@ -36,14 +37,15 @@ describe('createFreeSubscriptionForWorkspace', () => {
         vi.restoreAllMocks();
     });
 
-    it('crée la souscription gratuite dans la transaction reçue', async () => {
+    it('crée la souscription baseline dans la transaction reçue', async () => {
         const workspaceId = new ObjectId();
         const actorId = new ObjectId();
         const planId = new ObjectId();
         const session = { id: 'mongo-session' };
-        const freePlan = {
+        const baselinePlan = {
             _id: planId,
-            key: PLAN_KEY.FREE,
+            key: 'plan_internal',
+            systemRole: PLAN_SYSTEM_ROLE.BASELINE,
             status: PLAN_STATUS.ACTIVE,
             currency: 'EUR',
             priceMonthlyExclTaxMinor: 0,
@@ -53,7 +55,7 @@ describe('createFreeSubscriptionForWorkspace', () => {
             workspace: workspaceId,
             plan: planId,
         };
-        const querySessionMock = vi.fn().mockResolvedValue(freePlan);
+        const querySessionMock = vi.fn().mockResolvedValue(baselinePlan);
         const findOneSpy = vi.spyOn(Plan, 'findOne').mockReturnValue({
             session: querySessionMock,
         });
@@ -68,8 +70,11 @@ describe('createFreeSubscriptionForWorkspace', () => {
         });
 
         expect(findOneSpy).toHaveBeenCalledWith({
-            key: PLAN_KEY.FREE,
             status: PLAN_STATUS.ACTIVE,
+            $or: [
+                { systemRole: PLAN_SYSTEM_ROLE.BASELINE },
+                { key: PLAN_KEY.FREE },
+            ],
         });
         expect(querySessionMock).toHaveBeenCalledWith(session);
         expect(createSpy).toHaveBeenCalledWith(
@@ -106,14 +111,14 @@ describe('createFreeSubscriptionForWorkspace', () => {
                 actorId: new ObjectId(),
             }),
         ).rejects.toThrow(
-            'workspaceId, actorId and session are required to create a free subscription',
+            'workspaceId, actorId and session are required to create a baseline subscription',
         );
 
         expect(findOneSpy).not.toHaveBeenCalled();
         expect(createSpy).not.toHaveBeenCalled();
     });
 
-    it('refuse la création lorsque le plan gratuit actif est introuvable', async () => {
+    it('refuse la création lorsque le plan baseline actif est introuvable', async () => {
         const session = { id: 'mongo-session' };
         const querySessionMock = vi.fn().mockResolvedValue(null);
 
@@ -129,7 +134,7 @@ describe('createFreeSubscriptionForWorkspace', () => {
                 session,
             }),
         ).rejects.toThrow(
-            'Le plan gratuit actif est introuvable. Exécutez le seed des plans.',
+            'Le plan baseline actif est introuvable. Exécutez le seed et la migration des plans.',
         );
 
         expect(createSpy).not.toHaveBeenCalled();
