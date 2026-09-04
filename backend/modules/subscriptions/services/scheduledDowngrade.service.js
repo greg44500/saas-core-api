@@ -12,12 +12,12 @@ import {
     SUBSCRIPTION_STATUS,
 } from '../../../constants/subscription.constants.js';
 import {
-    PLAN_KEY,
     PLAN_STATUS,
 } from '../../../constants/plan.constants.js';
 import { AppError } from '../../../utils/appError.js';
 import { createAuditLog } from '../../auditLog/auditLog.service.js';
 import { Plan } from '../../plan/plan.model.js';
+import { isBaselinePlan } from '../../plan/plan.service.js';
 import { Subscription } from '../subscription.model.js';
 
 const isValidDate = (value) =>
@@ -172,9 +172,9 @@ const scheduleSubscriptionDowngrade = async ({
             );
         }
 
-        if (targetPlan.key === PLAN_KEY.FREE) {
+        if (isBaselinePlan(targetPlan)) {
             throw new AppError(
-                'Le retour au plan Free utilise le cycle de résiliation, pas un downgrade commercial',
+                'Le retour au plan de référence utilise le cycle de résiliation, pas un downgrade commercial',
                 409,
             );
         }
