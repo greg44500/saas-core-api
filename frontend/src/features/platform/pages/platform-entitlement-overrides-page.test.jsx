@@ -61,8 +61,11 @@ const override = {
 };
 
 const capabilities = {
-  features: ['file_upload'],
-  featureDefinitions: [{ key: 'file_upload', label: 'Téléversement de fichiers' }],
+  features: ['file_upload', 'team_management'],
+  featureDefinitions: [
+    { key: 'file_upload', label: 'Téléversement de fichiers' },
+    { key: 'team_management', label: 'Gestion d’équipe' },
+  ],
   metrics: [{ key: 'storage_bytes', presentation: { label: 'Stockage', unit: 'bytes' } }],
 };
 
@@ -100,23 +103,26 @@ describe('PlatformEntitlementOverridesPage', () => {
       isLoading: false,
       refetch: vi.fn(),
     });
-    mocks.useGetPlatformEntitlementContextQuery.mockReturnValue({
-      data: {
-        workspace: { id: 'workspace-id', name: 'Workspace Démo' },
-        plan: {
-          id: 'plan-id',
-          key: 'free',
-          name: 'Free',
-          features: ['file_upload'],
-          limits: {},
-        },
-        effective: { features: ['file_upload'], limits: {} },
-        appliedOverrides: [],
-      },
+    mocks.useGetPlatformEntitlementContextQuery.mockImplementation((workspaceId) => ({
+      data: workspaceId
+        ? {
+            workspace: { id: 'workspace-id', name: 'Workspace Démo' },
+            plan: {
+              id: 'plan-id',
+              key: 'free',
+              name: 'Free',
+              features: ['file_upload'],
+              limits: {},
+            },
+            effective: { features: ['file_upload'], limits: {} },
+            appliedOverrides: [],
+            nextEntitlementChangeAt: null,
+          }
+        : undefined,
       error: undefined,
       isLoading: false,
       refetch: vi.fn(),
-    });
+    }));
     mocks.useListPlatformPlanCapabilitiesQuery.mockReturnValue({
       data: capabilities,
       error: undefined,
@@ -177,6 +183,10 @@ describe('PlatformEntitlementOverridesPage', () => {
     const user = userEvent.setup();
     renderPage();
 
+    expect(
+      screen.getByRole('button', { name: 'Dérogation exceptionnelle' }),
+    ).toBeDisabled();
+
     await user.selectOptions(screen.getByLabelText('Espace de travail'), 'workspace-id');
 
     expect(
@@ -185,28 +195,43 @@ describe('PlatformEntitlementOverridesPage', () => {
     expect(
       screen.getByRole('switch', { name: 'Désactiver Téléversement de fichiers' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Dérogation exceptionnelle' }),
+    ).not.toBeDisabled();
   });
 
-  it('crée une dérogation avancée depuis le Drawer', async () => {
+  it('crée une dérogation exceptionnelle contextualisée depuis le Drawer', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole('button', { name: 'Dérogation avancée' }));
-    const drawer = screen.getByRole('dialog', { name: 'Nouvelle dérogation' });
+    await user.selectOptions(screen.getByLabelText('Espace de travail'), 'workspace-id');
+    await user.click(screen.getByRole('button', { name: 'Dérogation exceptionnelle' }));
+    const drawer = screen.getByRole('dialog', { name: 'Dérogation exceptionnelle' });
 
-    await user.selectOptions(within(drawer).getByLabelText('Espace de travail'), 'workspace-id');
+    expect(within(drawer).getByText('Workspace Démo')).toBeInTheDocument();
+    expect(within(drawer).getByRole('option', { name: 'Gestion d’équipe' })).toBeInTheDocument();
+    expect(
+      within(drawer).queryByRole('option', { name: 'Téléversement de fichiers' }),
+    ).not.toBeInTheDocument();
+
     await user.type(within(drawer).getByLabelText('Motif'), 'Accès support validé');
-    await user.click(within(drawer).getByRole('button', { name: 'Créer la dérogation' }));
+    await user.click(
+      within(drawer).getByRole('button', {
+        name: 'Créer la dérogation exceptionnelle',
+      }),
+    );
 
     await waitFor(() => {
       expect(mocks.createOverride).toHaveBeenCalledWith(expect.objectContaining({
         workspaceId: 'workspace-id',
         targetType: 'feature',
-        featureKey: 'file_upload',
+        featureKey: 'team_management',
         featureEnabled: true,
         reason: 'Accès support validé',
       }));
     });
-    expect(await screen.findByText('Dérogation créée')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Dérogation exceptionnelle créée'),
+    ).toBeInTheDocument();
   });
 });
