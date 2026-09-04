@@ -21,10 +21,13 @@ describe('CollapsibleCard', () => {
     );
 
     expect(screen.getByText('Résumé visible')).toBeInTheDocument();
+
+    const infoButton = screen.getByRole('button', {
+      name: 'À propos de Usage de la plateforme',
+    });
+    await user.hover(infoButton);
+
     expect(screen.getByRole('tooltip')).toHaveTextContent('Consommation actuelle');
-    expect(
-      screen.getByRole('button', { name: 'À propos de Usage de la plateforme' }),
-    ).toBeInTheDocument();
 
     const toggle = screen.getByRole('button', { name: 'Afficher le détail' });
     const content = document.getElementById(toggle.getAttribute('aria-controls'));
