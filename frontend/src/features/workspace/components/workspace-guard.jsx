@@ -1,9 +1,11 @@
 import { Outlet, useParams } from 'react-router';
 
 import { PageLoader } from '@/components/shared/page-loader';
+import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { useGetWorkspaceByIdQuery } from '@/features/workspace/api/workspace-api';
 import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
+import { useEntitlementAutoRefresh } from '@/hooks/use-entitlement-auto-refresh';
 
 function WorkspaceAccessState({ error, onRetry }) {
   const status = error?.status;
@@ -53,6 +55,7 @@ function WorkspaceAccessState({ error, onRetry }) {
 
 function WorkspaceGuard() {
   const { workspaceId } = useParams();
+  const { toast } = useToast();
   const {
     data: workspaceContext,
     error,
@@ -61,6 +64,24 @@ function WorkspaceGuard() {
     refetch,
   } = useGetWorkspaceByIdQuery(workspaceId, {
     skip: !workspaceId,
+  });
+
+  useEntitlementAutoRefresh({
+    data: workspaceContext,
+    nextChangeAt: workspaceContext?.nextEntitlementChangeAt,
+    refetch,
+    selectSnapshot: (data) => [
+      ...(data?.features ?? []),
+    ].sort(),
+    onChanged: ({ reason }) => {
+      toast({
+        title: 'Droits du workspace actualisés',
+        description: reason === 'schedule'
+          ? 'Une dérogation commerciale a pris effet ou a expiré. L’interface a été mise à jour sans reconnexion.'
+          : 'Les fonctionnalités disponibles ont été resynchronisées.',
+        variant: 'info',
+      });
+    },
   });
 
   if (!workspaceId || isLoading || (isFetching && !workspaceContext)) {
