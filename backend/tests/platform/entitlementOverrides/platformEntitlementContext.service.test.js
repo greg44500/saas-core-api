@@ -98,7 +98,7 @@ describe('platformEntitlementContext.service', () => {
         );
     });
 
-    it('sépare le plan catalogue de l’état effectif et expose la prochaine échéance sans données sensibles', async () => {
+    it('sépare le plan catalogue de l’état effectif et masque la clé technique du plan', async () => {
         const at = new Date('2026-09-04T12:00:00.000Z');
         const context = await getPlatformEntitlementContext({
             workspaceId: 'workspace-id',
@@ -112,7 +112,6 @@ describe('platformEntitlementContext.service', () => {
             },
             plan: {
                 id: 'plan-id',
-                key: 'free',
                 name: 'Free',
                 features: ['file_upload'],
                 limits: {
@@ -144,6 +143,7 @@ describe('platformEntitlementContext.service', () => {
                 new Date('2026-09-05T08:00:00.000Z'),
         });
 
+        expect(context.plan).not.toHaveProperty('key');
         expect(
             mocks.getNextEntitlementChangeAt,
         ).toHaveBeenCalledWith({
