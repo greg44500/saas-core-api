@@ -1,5 +1,5 @@
 import { RefreshCw } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { CollapsibleCard } from '@/components/data-display/collapsible-card';
@@ -10,6 +10,7 @@ import { MetricCard } from '@/components/data-display/metric-card';
 import { SignalSummaryCard } from '@/components/data-display/signal-summary-card';
 import { DashboardSection } from '@/components/shared/dashboard-section';
 import { InfoTooltip } from '@/components/shared/info-tooltip';
+import { MetricDrilldownButton } from '@/components/shared/metric-drilldown-button';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -19,7 +20,11 @@ import {
 } from '@/components/ui/card';
 import { useGetPlatformOverviewQuery } from '@/features/platform/api/platform-overview-api';
 import { PlatformAttentionTable } from '@/features/platform/components/platform-attention-table';
+import { PlatformEntitlementOverridesDrilldownDrawer } from '@/features/platform/components/platform-entitlement-overrides-drilldown-drawer';
 import { PlatformOverviewPeriodFilter } from '@/features/platform/components/platform-overview-period-filter';
+import {
+  ENTITLEMENT_OVERRIDE_LIFECYCLE,
+} from '@/features/platform/lib/platform-entitlement-override-formatters';
 import {
   formatPlatformPlanMetric,
   formatPlatformPlanPrice,
@@ -138,6 +143,7 @@ function OverviewPanel({ title, description, children }) {
 
 function PlatformOverviewPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [activeOverridesOpen, setActiveOverridesOpen] = useState(false);
   const period = useMemo(
     () => readOverviewPeriod(searchParams),
     [searchParams],
@@ -167,6 +173,7 @@ function PlatformOverviewPage() {
   const files = overview?.files ?? { totalCount: 0, totalSizeBytes: 0, byType: [] };
   const planDistribution = overview?.planDistribution ?? [];
   const attention = overview?.attention;
+  const activeOverrideCount = overview?.overrides?.active ?? 0;
   const growthItems = [
     {
       key: 'users',
@@ -422,8 +429,13 @@ function PlatformOverviewPage() {
                 </div>
                 <div>
                   <dt className="text-muted-foreground">Dérogations actives</dt>
-                  <dd className="mt-1 font-semibold">
-                    {formatCount(overview?.overrides?.active)}
+                  <dd className="mt-1">
+                    <MetricDrilldownButton
+                      ariaLabel="Voir les dérogations actives"
+                      disabled={activeOverrideCount <= 0}
+                      onClick={() => setActiveOverridesOpen(true)}
+                      value={formatCount(activeOverrideCount)}
+                    />
                   </dd>
                 </div>
               </dl>
@@ -469,6 +481,13 @@ function PlatformOverviewPage() {
           />
         </div>
       </DashboardSection>
+
+      <PlatformEntitlementOverridesDrilldownDrawer
+        lifecycle={ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE}
+        onClose={() => setActiveOverridesOpen(false)}
+        open={activeOverridesOpen}
+        title="Dérogations actives"
+      />
     </div>
   );
 }
