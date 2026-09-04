@@ -14,7 +14,7 @@ const capabilities = {
 };
 
 describe('PlatformPlanForm', () => {
-  it('crée un payload complet avec toutes les limites explicites', async () => {
+  it('crée un payload complet sans demander de clé technique', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
 
@@ -27,7 +27,7 @@ describe('PlatformPlanForm', () => {
       />,
     );
 
-    await user.type(screen.getByLabelText('Clé technique'), 'premium');
+    expect(screen.queryByLabelText('Clé technique')).not.toBeInTheDocument();
     await user.type(screen.getByLabelText('Nom'), 'Premium');
     await user.click(
       screen.getByRole('switch', {
@@ -37,7 +37,6 @@ describe('PlatformPlanForm', () => {
     await user.click(screen.getByRole('button', { name: 'Créer le plan' }));
 
     expect(onSubmit).toHaveBeenCalledWith({
-      key: 'premium',
       name: 'Premium',
       description: null,
       status: 'active',
@@ -55,6 +54,7 @@ describe('PlatformPlanForm', () => {
         file_uploads_monthly: 0,
       },
     });
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('key');
   });
 
   it('convertit le stockage en octets et construit un trial atomique', async () => {
@@ -70,7 +70,6 @@ describe('PlatformPlanForm', () => {
       />,
     );
 
-    await user.type(screen.getByLabelText('Clé technique'), 'premium');
     await user.type(screen.getByLabelText('Nom'), 'Premium');
     await user.click(screen.getByLabelText('Trial disponible'));
     await user.type(screen.getByLabelText('Durée du trial en jours'), '14');
@@ -91,6 +90,47 @@ describe('PlatformPlanForm', () => {
     );
   });
 
+  it('verrouille le statut actif du plan baseline mais laisse son nom modifiable', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <PlatformPlanForm
+        capabilities={capabilities}
+        mode="edit"
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+        plan={{
+          id: 'baseline-plan',
+          isBaseline: true,
+          name: 'Free',
+          status: 'active',
+          currency: 'EUR',
+          priceMonthlyExclTaxMinor: 0,
+          priceYearlyExclTaxMinor: 0,
+          features: [],
+          limits: {
+            members: 0,
+            storage_bytes: 0,
+            file_uploads_monthly: 0,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByLabelText('Statut')).toBeDisabled();
+    await user.clear(screen.getByLabelText('Nom'));
+    await user.type(screen.getByLabelText('Nom'), 'Découverte');
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Découverte',
+        status: 'active',
+      }),
+    );
+  });
+
   it('refuse une durée de trial invalide avant la mutation', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
@@ -104,7 +144,6 @@ describe('PlatformPlanForm', () => {
       />,
     );
 
-    await user.type(screen.getByLabelText('Clé technique'), 'premium');
     await user.type(screen.getByLabelText('Nom'), 'Premium');
     await user.click(screen.getByLabelText('Trial disponible'));
     await user.click(screen.getByRole('button', { name: 'Créer le plan' }));
