@@ -8,6 +8,8 @@ import {
 
 const { Schema, model } = mongoose;
 
+const SHA256_HEX_PATTERN = /^[a-f\d]{64}$/i;
+
 
 const platformInvitationSchema = new Schema(
     {
@@ -56,6 +58,10 @@ const platformInvitationSchema = new Schema(
             required: true,
             minlength: 64,
             maxlength: 64,
+            match: [
+                SHA256_HEX_PATTERN,
+                'Le hash de l’invitation Platform est invalide.',
+            ],
         },
         invitedBy: {
             type: Schema.Types.ObjectId,
