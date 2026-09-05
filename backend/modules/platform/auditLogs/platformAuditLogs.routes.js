@@ -1,11 +1,11 @@
 import { Router } from 'express';
 
 import {
-    PLATFORM_ROLE,
-} from '../../../constants/platformRoles.constants.js';
+    PLATFORM_PERMISSION,
+} from '../../../constants/platformPermissions.constants.js';
 import {
-    authorizePlatformRole,
-} from '../../../middlewares/authorizePlatformRole.js';
+    authorizePlatformPermission,
+} from '../../../middlewares/authorizePlatformPermission.js';
 import {
     validateRequest,
 } from '../../../middlewares/validateRequest.js';
@@ -19,18 +19,11 @@ import {
 
 const platformAuditLogsRouter = Router();
 
-/**
- * La consultation globale des événements d'audit est réservée au super-admin
- * dans la V1. Le routeur Platform racine assure déjà l'authentification.
- */
-platformAuditLogsRouter.use(
-    authorizePlatformRole(
-        PLATFORM_ROLE.SUPER_ADMIN,
-    ),
-);
-
 platformAuditLogsRouter.get(
     '/',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.AUDIT_LOGS_READ,
+    ),
     validateRequest({
         query: platformAuditLogQuerySchema,
     }),
