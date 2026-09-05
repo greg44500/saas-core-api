@@ -10,7 +10,7 @@
 
 Ce document est le registre unique des dettes fonctionnelles, techniques, de conformité, de distribution et de préparation à la production encore actives.
 
-Il ne remplace pas la roadmap fonctionnelle courante. En particulier, la reprise de F10.6 et l'audit final du code après le chantier documentaire pourront encore révéler des lots fonctionnels restant à terminer sans qu'ils soient automatiquement des « dettes ».
+Il ne remplace pas la roadmap fonctionnelle courante. L'audit final du code peut encore révéler des lots fonctionnels restant à terminer sans qu'ils soient automatiquement des « dettes ».
 
 Hiérarchie :
 
@@ -76,13 +76,12 @@ produit dérivé automatiquement production-ready
 
 | ID | Dette | Statut |
 |---|---|---|
-| D-001 | Fermeture de compte et cycle de vie de fermeture Workspace | PLANIFIÉ |
 | D-014 | Points d'extension métier : RBAC et routing backend/frontend | PLANIFIÉ |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
-Cette table contient uniquement les blockers déjà démontrés par les audits documentaires. L'audit fonctionnel après DOC-11 pourra ajouter ou retirer un blocker si le code réel le justifie.
+D-001 a été clôturée pendant CORE-FIN-4 et n'est plus un blocker actif de la finalisation Core.
 
 ### 4.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -110,6 +109,14 @@ D-011 préférences d'affichage avancées
 
 Elles ne doivent pas être ajoutées au Core uniquement pour anticiper un besoin hypothétique.
 
+### 4.4 Dette récemment clôturée, conservée temporairement pour traçabilité
+
+```text
+D-001 fermeture de compte et cycle de vie Workspace → VALIDÉ
+```
+
+La section D-001 ci-dessous reste temporairement présente afin de documenter le critère de clôture. Elle pourra être retirée du registre actif lors d'un nettoyage documentaire ultérieur, l'historique restant disponible dans Git.
+
 ---
 
 ## 5. Règles de maintenance
@@ -130,40 +137,93 @@ Pour chaque dette :
 
 ## D-001 — Fermeture de compte et cycle de vie de fermeture Workspace
 
-**Statut :** PLANIFIÉ  
-**Périmètre :** Core + intégration avec les politiques du produit dérivé  
-**Blocage Core 1.0 :** oui  
-**Blocage production dérivée :** oui pour un cycle de vie de compte complet  
-**Dépendances :** D-003, D-006
+**Statut :** VALIDÉ  
+**Périmètre :** Core + intégration future avec les politiques du produit dérivé  
+**Blocage Core 1.0 :** non — clôturé pendant CORE-FIN-4  
+**Blocage production dérivée :** la politique de conservation réelle reste couverte par D-003 / D-006  
+**Dépendances restantes :** D-003, D-006 uniquement pour la conformité et la purge du produit réel
 
-### État confirmé
+### État validé
 
-La route User courante expose uniquement la modification de `/me` ; aucun workflow public de fermeture autonome du compte n'est exposé.
+Le Core expose désormais :
 
-Le Workspace possède création, consultation, mise à jour du nom et transfert d'ownership, mais aucun contrat de fermeture/archivage autonome complet n'est exposé par les routes Workspace courantes.
+```text
+GET  /api/users/me/closure-impact
+POST /api/users/me/closure
+POST /api/workspaces/:workspaceId/archive
+PATCH /api/platform/workspaces/:workspaceId/close
+```
 
-Le transfert d'ownership déjà implémenté ne doit donc plus être confondu avec une fermeture de Workspace.
+Le cycle de vie est explicitement séparé :
 
-### Cible Core
+```text
+ARCHIVED
+→ retrait volontaire / opérationnel owner
 
-Le Core doit définir un workflow générique et sécurisé capable de coordonner selon le cas :
+CLOSED
+→ fermeture fonctionnelle terminale Platform
+```
 
-- confirmation forte de l'utilisateur ;
-- workspaces dont il est owner ;
-- transfert préalable ou traitement explicite des workspaces ;
-- memberships ;
-- AuthSessions ;
-- Subscription ;
-- Files ;
-- AuditLog ;
-- identité de trial lorsque nécessaire ;
-- idempotence et concurrence ;
-- audit des étapes sensibles ;
-- points d'extension permettant au produit dérivé d'appliquer sa politique de rétention/anonymisation sans coder une durée juridique universelle dans le Core.
+La fermeture Account self-service :
 
-### Critère de clôture
+- exige mot de passe courant, email de confirmation et `confirmAccountClosure = true` ;
+- recalcule les ownerships et memberships depuis MongoDB ;
+- archive automatiquement les Workspaces encore réellement possédés ;
+- laisse actifs les Workspaces transférés avant la demande ;
+- retire les memberships du User fermant ;
+- libère les quotas membres concernés ;
+- révoque les invitations pendantes reçues ;
+- fait évoluer le User `ACTIVE → DELETION_REQUESTED → CLOSED` dans le workflow transactionnel ;
+- révoque les AuthSessions ;
+- audite les transitions sensibles.
 
-Contrat de fermeture figé, backend et frontend implémentés, validations Zod, protections d'autorisation, atomicité/transactions nécessaires, tests unitaires/intégration/E2E et compatibilité explicite avec D-006.
+L'archivage owner :
+
+- est owner-only ;
+- exige mot de passe courant et confirmation exacte du nom ;
+- passe le Workspace `ACTIVE → ARCHIVED` ;
+- neutralise les Subscriptions commerciales closables ;
+- conserve la baseline ;
+- révoque les invitations pendantes ;
+- conserve les données et l'historique pour les traitements ultérieurs de rétention.
+
+La fermeture terminale `CLOSED` reste réservée au workflow Platform.
+
+Le durcissement Auth refuse `deletion_requested` / `closed` sur login, access token, refresh et reset-password. `forgot-password` reste neutre contre l'énumération sans fournir de récupération permettant de réactiver ces états.
+
+Le frontend :
+
+- place « Fermer mon compte » dans la page Sécurité ;
+- récupère l'impact réel avant confirmation ;
+- réutilise les composants partagés de confirmation ;
+- termine la session et purge le cache RTK Query après fermeture ;
+- expose l'archivage Workspace dans les paramètres owner uniquement ;
+- n'invente pas une permission `workspace:archive` ni un impact chiffré non fourni par le backend.
+
+### Validation
+
+CORE-FIN-4 a été validé avec :
+
+```text
+backend : tests complets confirmés verts
+frontend : tests ciblés confirmés verts
+frontend : tests globaux confirmés verts
+frontend : build Vite confirmé OK
+```
+
+La couverture E2E transversale avec Playwright reste le blocker générique D-016. Elle couvrira également les parcours de lifecycle pertinents, mais n'empêche plus D-001 d'être considérée fonctionnellement implémentée et validée.
+
+### Compatibilité D-006
+
+Invariant conservé :
+
+```text
+fermeture fonctionnelle / archivage
+≠
+purge physique immédiate
+```
+
+Le Core ne code aucune durée juridique universelle. Les politiques réelles de rétention, anonymisation et suppression restent à définir dans le SaaS dérivé via D-006.
 
 ---
 
@@ -252,6 +312,15 @@ Le Core gère Plan, Subscription, trial, entitlement, quotas et dérogations. Ce
 - factures/avoirs lorsque nécessaires ;
 - historique et audit financier adapté.
 
+Les décisions de cadrage déjà retenues pendant CORE-FIN-4 restent valides pour la future D-004 :
+
+- un incident de paiement ne désactive pas le User ;
+- Subscription conserve l'état commercial réel ;
+- une future grâce commerciale doit être temporaire, motivée, auditée et distincte d'EntitlementOverride ;
+- un médiateur humain ne modifie jamais MongoDB à la main et ne force pas artificiellement `Subscription.status` ;
+- un paiement externe doit être enregistré/rapproché par une commande métier dédiée ;
+- les données de carte ne doivent pas être saisies ou stockées par le Core.
+
 Invariant :
 
 ```text
@@ -300,7 +369,7 @@ Le `/api/health` actuel est un liveness check, pas une readiness complète.
 **Périmètre :** application dérivée + points d'intégration génériques du Core  
 **Blocage Core 1.0 :** non comme politique juridique universelle  
 **Blocage production dérivée :** oui lorsque des données personnelles, contractuelles ou réglementées sont conservées  
-**Déclencheur :** cadrage pré-production et implémentation D-001
+**Déclencheur :** cadrage pré-production du produit réel ; D-001 fournit désormais le cycle fonctionnel sur lequel brancher cette politique
 
 Le soft delete, l'archivage ou `FILE_RETENTION_DAYS` ne constituent pas une politique réglementaire générale.
 
@@ -570,7 +639,9 @@ Socle minimal attendu :
 
 ```text
 authentification / session / refresh / logout
+fermeture Account / session terminale
 création ou accès Workspace
+archivage owner / perte d'accès Workspace
 isolation tenant
 RBAC
 subscription / entitlement / quota critique
@@ -644,23 +715,30 @@ Aucun Stripe/PayPal/provider financier n'est imposé au Core générique. Le bes
 
 Aucune CMP fictive n'est requise tant qu'aucun traceur soumis au consentement n'est présent. Le besoin reste couvert par D-003 lorsqu'il devient applicable.
 
+### Limite universelle du nombre de Workspaces
+
+Le Core V1 reste techniquement multi-workspace et Workspace-scoped commercialement. Une règle universelle telle que `Free = 1 Workspace` ou `Premium = 5 Workspaces` n'est pas retenue comme dette du Core.
+
+Un SaaS dérivé peut :
+
+- fonctionner en mono-workspace ;
+- ajouter une couche commerciale multi-workspace si son produit le justifie ;
+- conserver un Workspace unique et monétiser une métrique métier interne, par exemple un nombre de dossiers de travail.
+
 ---
 
 ## 7. Ordre de traitement recommandé après le chantier documentaire
 
-DOC-9 ne remplace pas l'audit fonctionnel. Après DOC-11 :
+État après CORE-FIN-4 :
 
 ```text
-1. reprendre F10.6 à son état réel
-2. auditer code + tests + contrats pour établir la roadmap de clôture
-3. intégrer les blockers Core 1.0 de ce registre dans cette roadmap
-4. traiter D-001 et les éventuels blockers fonctionnels révélés par l'audit
-5. traiter D-014 points d'extension
-6. traiter D-015 release/version/provenance/migrations
-7. traiter D-016 Playwright E2E Core
-8. exécuter D-017 dérivation + upgrade pilote
-9. audit final sécurité / tests / documentation
-10. taguer uniquement ensuite la release Core stable
+1. D-001 fermeture Account / Workspace                         ✅ VALIDÉ
+2. D-014 points d'extension métier                             prochain blocker
+3. D-015 release/version/provenance/migrations
+4. D-016 Playwright E2E Core
+5. audit final architecture / sécurité / qualité
+6. D-017 dérivation + upgrade pilote
+7. taguer uniquement ensuite la release Core stable
 ```
 
 L'ordre exact pourra être ajusté par dépendances techniques, mais aucune release `v1.0.0` ne doit être déclarée avant la clôture ou la reclassification explicite de tous les blockers Core 1.0.
