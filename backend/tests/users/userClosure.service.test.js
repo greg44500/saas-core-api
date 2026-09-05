@@ -21,6 +21,9 @@ import {
 } from '../../modules/users/userClosure.service.js';
 import { User } from '../../modules/users/user.model.js';
 import {
+    WorkspaceInvitation,
+} from '../../modules/workspaceInvitation/workspaceInvitation.model.js';
+import {
     WorkspaceMember,
 } from '../../modules/workspaceMember/workspaceMember.model.js';
 import {
@@ -47,6 +50,13 @@ vi.mock('../../modules/users/user.model.js', () => ({
     User: {
         countDocuments: vi.fn(),
         findOne: vi.fn(),
+        findOneAndUpdate: vi.fn(),
+    },
+}));
+
+vi.mock('../../modules/workspaceInvitation/workspaceInvitation.model.js', () => ({
+    WorkspaceInvitation: {
+        find: vi.fn(),
         findOneAndUpdate: vi.fn(),
     },
 }));
@@ -79,6 +89,7 @@ describe('requestCurrentUserClosure', () => {
         createAuditLog.mockResolvedValue(undefined);
         releaseCurrentUsageMetric.mockResolvedValue({});
         revokeAllUserAuthSessions.mockResolvedValue({ modifiedCount: 2 });
+        WorkspaceInvitation.find.mockReturnValue(sessionQuery([]));
         vi.spyOn(mongoose.connection, 'transaction').mockImplementation(
             async (callback) => callback(session),
         );
@@ -146,7 +157,7 @@ describe('requestCurrentUserClosure', () => {
         expect(User.findOneAndUpdate).not.toHaveBeenCalled();
     });
 
-    it('retire les memberships, révoque les sessions et passe le compte en deletion_requested', async () => {
+    it('retire memberships et invitations, révoque les sessions et passe le compte en deletion_requested', async () => {
         User.findOne.mockReturnValue(sessionQuery({
             _id: 'user-id',
             emailCanonical: 'greg@example.com',
@@ -173,6 +184,19 @@ describe('requestCurrentUserClosure', () => {
         WorkspaceMember.find.mockReturnValue(
             membershipQuery([membership]),
         );
+
+        const invitation = {
+            _id: 'invitation-id',
+            workspace: 'workspace-id',
+            status: 'pending',
+        };
+        WorkspaceInvitation.find.mockReturnValue(
+            sessionQuery([invitation]),
+        );
+        WorkspaceInvitation.findOneAndUpdate.mockResolvedValue({
+            ...invitation,
+            status: 'revoked',
+        });
 
         const deletionRequestedAt = new Date('2026-09-05T12:00:00.000Z');
         User.findOneAndUpdate.mockResolvedValue({
@@ -203,6 +227,24 @@ describe('requestCurrentUserClosure', () => {
                 session,
             }),
         );
+        expect(WorkspaceInvitation.findOneAndUpdate).toHaveBeenCalledWith(
+            {
+                _id: 'invitation-id',
+                status: 'pending',
+            },
+            {
+                $set: {
+                    status: 'revoked',
+                    revokedAt: expect.any(Date),
+                    revokedBy: 'user-id',
+                },
+            },
+            {
+                returnDocument: 'after',
+                runValidators: true,
+                session,
+            },
+        );
         expect(revokeAllUserAuthSessions).toHaveBeenCalledWith({
             userId: 'user-id',
             revokedReason:
@@ -215,6 +257,7 @@ describe('requestCurrentUserClosure', () => {
                 entityId: 'user-id',
                 metadata: {
                     removedMembershipCount: 1,
+                    revokedInvitationCount: 1,
                     revokedSessionCount: 2,
                 },
             }),
@@ -225,6 +268,7 @@ describe('requestCurrentUserClosure', () => {
             status: 'deletion_requested',
             deletionRequestedAt,
             removedMembershipCount: 1,
+            revokedInvitationCount: 1,
             revokedSessionCount: 2,
         });
     });
@@ -259,5 +303,6 @@ describe('requestCurrentUserClosure', () => {
         });
 
         expect(User.findOneAndUpdate).not.toHaveBeenCalled();
+        expect(WorkspaceInvitation.find).not.toHaveBeenCalled();
     });
 });
