@@ -11,12 +11,16 @@ import {
 } from '../../constants/file.constants.js';
 
 import {
+    list,
     upload,
 } from '../../modules/file/file.controller.js';
 
 import {
     fileService,
 } from '../../modules/file/file.service.js';
+import {
+    listWorkspaceFiles,
+} from '../../modules/file/fileRead.service.js';
 
 
 vi.mock(
@@ -25,6 +29,15 @@ vi.mock(
         fileService: {
             persistUploadedFile: vi.fn(),
         },
+    }),
+);
+
+vi.mock(
+    '../../modules/file/fileRead.service.js',
+    () => ({
+        listWorkspaceFiles: vi.fn(),
+        getWorkspaceFile: vi.fn(),
+        openWorkspaceFileDownload: vi.fn(),
     }),
 );
 
@@ -145,5 +158,56 @@ describe('File controller', () => {
                     },
                 },
             });
+    });
+
+    it('transmet uniquement les filtres de listing déjà validés au service', async () => {
+        listWorkspaceFiles.mockResolvedValue({
+            files: [],
+            pagination: {
+                page: 2,
+                limit: 20,
+                total: 0,
+                totalPages: 0,
+            },
+        });
+
+        const request = {
+            workspace: {
+                _id: '64b64c0f2f4b1a0012345678',
+            },
+            validated: {
+                query: {
+                    page: 2,
+                    limit: 20,
+                    category: FILE_CATEGORY.DOCUMENT,
+                    search: 'contrat',
+                },
+            },
+        };
+        const response = {
+            status: vi.fn().mockReturnThis(),
+            json: vi.fn(),
+        };
+
+        await list(request, response);
+
+        expect(listWorkspaceFiles).toHaveBeenCalledWith({
+            workspaceId: '64b64c0f2f4b1a0012345678',
+            page: 2,
+            limit: 20,
+            category: FILE_CATEGORY.DOCUMENT,
+            search: 'contrat',
+        });
+        expect(response.status).toHaveBeenCalledWith(200);
+        expect(response.json).toHaveBeenCalledWith({
+            status: 'success',
+            data: { files: [] },
+            meta: {
+                page: 2,
+                limit: 20,
+                total: 0,
+                totalPages: 0,
+            },
+        });
     });
 });
