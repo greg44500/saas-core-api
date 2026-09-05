@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 
@@ -21,6 +22,7 @@ function AccountClosureDialog({
   const {
     register,
     handleSubmit,
+    reset,
     setError,
     formState: { errors },
   } = useForm({
@@ -34,6 +36,12 @@ function AccountClosureDialog({
     },
   });
 
+  useEffect(() => {
+    if (open) {
+      reset();
+    }
+  }, [open, reset]);
+
   const submitClosure = async (values) => {
     try {
       await closeCurrentAccount(values).unwrap();
@@ -46,12 +54,17 @@ function AccountClosureDialog({
     }
   };
 
+  const handleCancel = () => {
+    if (isLoading) return;
+    onCancel?.();
+  };
+
   return (
     <ConfirmationDialog
       confirmLabel="Fermer définitivement mon compte"
       description="Vérifiez les conséquences puis confirmez votre identité et votre intention."
       errorMessage={errors.root?.server?.message}
-      onCancel={onCancel}
+      onCancel={handleCancel}
       onConfirm={handleSubmit(submitClosure)}
       open={open}
       pending={isLoading}
