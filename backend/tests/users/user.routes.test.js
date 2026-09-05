@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { app } from '../../app.js';
 import { authenticate } from '../../middlewares/authenticate.js';
+import {
+    requestCurrentUserClosure,
+} from '../../modules/users/userClosure.service.js';
 import { updateCurrentUserProfile } from '../../modules/users/user.service.js';
 
 vi.mock('../../middlewares/authenticate.js', () => ({
@@ -14,6 +17,10 @@ vi.mock('../../middlewares/authenticate.js', () => ({
 
 vi.mock('../../modules/users/user.service.js', () => ({
     updateCurrentUserProfile: vi.fn(),
+}));
+
+vi.mock('../../modules/users/userClosure.service.js', () => ({
+    requestCurrentUserClosure: vi.fn(),
 }));
 
 describe('PATCH /api/users/me', () => {
@@ -72,5 +79,59 @@ describe('PATCH /api/users/me', () => {
 
         expect(response.status).toBe(400);
         expect(updateCurrentUserProfile).not.toHaveBeenCalled();
+    });
+});
+
+describe('POST /api/users/me/closure', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        requestCurrentUserClosure.mockResolvedValue({
+            id: 'user-id',
+            status: 'deletion_requested',
+            deletionRequestedAt: new Date('2026-09-05T12:00:00.000Z'),
+            removedMembershipCount: 1,
+            revokedSessionCount: 2,
+        });
+    });
+
+    it('protège, valide et déclenche la fermeture du compte courant', async () => {
+        const response = await request(app)
+            .post('/api/users/me/closure')
+            .set('Authorization', 'Bearer test-token')
+            .set('User-Agent', 'Test Browser')
+            .send({
+                currentPassword: 'Correct Horse Battery Staple',
+                confirmationEmail: 'greg@example.com',
+            });
+
+        expect(response.status).toBe(200);
+        expect(authenticate).toHaveBeenCalled();
+        expect(requestCurrentUserClosure).toHaveBeenCalledWith({
+            userId: 'user-id',
+            currentPassword: 'Correct Horse Battery Staple',
+            confirmationEmail: 'greg@example.com',
+            ipAddress: expect.any(String),
+            userAgent: 'Test Browser',
+        });
+        expect(response.body.data.accountClosure).toMatchObject({
+            id: 'user-id',
+            status: 'deletion_requested',
+            removedMembershipCount: 1,
+            revokedSessionCount: 2,
+        });
+    });
+
+    it('refuse les champs supplémentaires', async () => {
+        const response = await request(app)
+            .post('/api/users/me/closure')
+            .set('Authorization', 'Bearer test-token')
+            .send({
+                currentPassword: 'Correct Horse Battery Staple',
+                confirmationEmail: 'greg@example.com',
+                force: true,
+            });
+
+        expect(response.status).toBe(400);
+        expect(requestCurrentUserClosure).not.toHaveBeenCalled();
     });
 });
