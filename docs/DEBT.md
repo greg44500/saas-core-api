@@ -76,12 +76,11 @@ produit dérivé automatiquement production-ready
 
 | ID | Dette | Statut |
 |---|---|---|
-| D-014 | Points d'extension métier : RBAC et routing backend/frontend | PLANIFIÉ |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
-D-001 a été clôturée pendant CORE-FIN-4 et n'est plus un blocker actif de la finalisation Core.
+D-001 a été clôturée pendant CORE-FIN-4 et D-014 pendant CORE-FIN-5. Elles ne sont plus des blockers actifs de la finalisation Core.
 
 ### 4.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -109,13 +108,14 @@ D-011 préférences d'affichage avancées
 
 Elles ne doivent pas être ajoutées au Core uniquement pour anticiper un besoin hypothétique.
 
-### 4.4 Dette récemment clôturée, conservée temporairement pour traçabilité
+### 4.4 Dettes récemment clôturées, conservées temporairement pour traçabilité
 
 ```text
 D-001 fermeture de compte et cycle de vie Workspace → VALIDÉ
+D-014 points d'extension métier RBAC/routing            → VALIDÉ
 ```
 
-La section D-001 ci-dessous reste temporairement présente afin de documenter le critère de clôture. Elle pourra être retirée du registre actif lors d'un nettoyage documentaire ultérieur, l'historique restant disponible dans Git.
+Les sections D-001 et D-014 ci-dessous restent temporairement présentes afin de documenter leurs critères de clôture. Elles pourront être retirées du registre actif lors d'un nettoyage documentaire ultérieur, l'historique restant disponible dans Git.
 
 ---
 
@@ -542,48 +542,58 @@ Référence canonique : `docs/operations/OPERATIONS.md`.
 
 ## D-014 — Points d'extension métier : RBAC et routing backend/frontend
 
-**Statut :** PLANIFIÉ  
+**Statut :** VALIDÉ  
 **Périmètre :** Core  
-**Blocage Core 1.0 :** oui  
-**Blocage production dérivée :** indirect — conditionne surtout la maintenabilité des upgrades  
-**Source :** DOC-6 / `docs/derived-saas/DERIVED-SAAS.md`
+**Blocage Core 1.0 :** non — clôturé pendant CORE-FIN-5  
+**Blocage production dérivée :** non pour les points de composition du Core ; la validation d'une dérivation réelle reste couverte par D-017  
+**Source :** DOC-6 / `docs/derived-saas/DERIVED-SAAS.md` / `docs/derived-saas/EXTENSION-POINTS.md`
 
-### État confirmé
+### État validé
 
-Les capabilities et la navigation Workspace possèdent déjà des points de composition satisfaisants.
-
-En revanche :
-
-- `createSystemRoleDefinitions()` sait recevoir des extensions de permissions, mais il n'existe pas encore de registre applicatif complet des permissions métier équivalent au Capability Registry ;
-- `backend/app.js` monte directement les routers ;
-- `frontend/src/app/router.jsx` déclare directement les routes React.
-
-Un module métier important doit donc encore modifier plusieurs zones centrales du Core, ce qui augmente les conflits lors d'un upgrade.
-
-### Cible
-
-Fournir des points de composition explicites pour :
+Les points de composition explicites suivants sont maintenant disponibles :
 
 ```text
+capabilities / relations feature → métriques
+→ backend/config/applicationCapability.registry.js
+
 permissions métier / extensions des rôles système
+→ backend/config/applicationRolePermission.registry.js
+
 routes backend métier
+→ backend/config/applicationRoutes.registry.js
+
 routes frontend métier
+→ frontend/src/app/application-routes.js
+
+navigation Workspace métier
+→ frontend/src/app/workspace-navigation.js
 ```
 
-sans créer une architecture plugin complexe prématurée.
+Le registre RBAC applicatif permet à un module métier de déclarer ses permissions et ses enrichissements des rôles système sans modifier les constantes centrales du Core.
 
-### Critère de clôture
+Le registre de routes backend permet de monter explicitement les routers métier sans allonger directement la liste centrale de `backend/app.js`. Le module métier reste responsable de sa chaîne de sécurité ordonnée : authentification, validation des paramètres, contexte Workspace, entitlement si nécessaire, RBAC, validation Zod puis controller.
 
-Un petit module métier de référence doit pouvoir :
+Le registre de routes frontend compose les surfaces `publicRoutes`, `authenticatedRoutes`, `workspaceRoutes` et `platformRoutes` dans les guards/layouts Core correspondants.
 
-- enregistrer ses permissions ;
-- enrichir les rôles système selon une configuration explicite ;
-- monter ses routes backend ;
-- ajouter ses routes frontend ;
-- composer sa navigation/capabilities ;
-- exécuter ses tests ;
+La navigation Workspace et les capabilities restent composables au niveau applicatif. La relation feature → métriques est désormais explicite et data-driven ; le frontend n'infère plus une dépendance métier à partir d'une catégorie visuelle.
 
-sans modifier directement les longues listes centrales de routing/permissions du Core, hors point de composition applicatif explicitement prévu.
+Aucun système de plugins, autodécouverte filesystem ou chargement dynamique de code n'a été introduit : la composition reste explicite, minimale et vérifiable.
+
+### Validation
+
+CORE-FIN-5 / D-014 a été validé le 2026-09-05 avec :
+
+```text
+backend : tests ciblés et tests globaux locaux confirmés verts
+frontend : tests ciblés et tests globaux locaux confirmés verts
+frontend : build Vite complet confirmé OK
+```
+
+Le dernier écart observé concernait un fixture frontend encore basé sur l'ancien contrat implicite par catégorie. Le fixture a été aligné sur le contrat actuel `featureDefinitions[].metricKeys` sans réintroduire l'ancienne heuristique.
+
+Le critère de clôture est donc atteint : un module métier peut enregistrer ses permissions, enrichir les rôles système, monter ses routes backend/frontend et composer navigation/capabilities via les points applicatifs prévus, sans réécrire les longues listes centrales du Core.
+
+D-017 reste nécessaire pour éprouver cette architecture sur un dépôt dérivé pilote puis lors d'un upgrade Core réel ; cela ne remet pas en cause la clôture du contrat d'extension lui-même.
 
 ---
 
@@ -629,7 +639,7 @@ Une release candidate du Core doit pouvoir produire un artefact documentaire com
 **Périmètre :** Core  
 **Blocage Core 1.0 :** oui  
 **Blocage production dérivée :** les produits devront ajouter leurs propres E2E via D-012  
-**Dépendances :** D-014 et finalisation fonctionnelle
+**Dépendances :** finalisation fonctionnelle ; D-014 satisfaite
 
 La stratégie de tests du projet impose Playwright, mais Playwright n'est pas encore installé/configuré dans le frontend actuel.
 
@@ -661,7 +671,7 @@ Playwright installé et documenté, environnement E2E reproductible, parcours Co
 **Statut :** PLANIFIÉ  
 **Périmètre :** Core / stratégie de distribution  
 **Blocage Core 1.0 :** oui pour déclarer la stratégie de distribution réellement validée  
-**Dépendances :** D-014, D-015, D-016
+**Dépendances :** D-014 (validée), D-015, D-016
 
 La stratégie `origin` produit + `upstream-core` a été documentée, mais elle n'a pas encore été éprouvée sur un produit pilote après stabilisation des points d'extension.
 
@@ -729,12 +739,12 @@ Un SaaS dérivé peut :
 
 ## 7. Ordre de traitement recommandé après le chantier documentaire
 
-État après CORE-FIN-4 :
+État après CORE-FIN-5 / D-014 :
 
 ```text
 1. D-001 fermeture Account / Workspace                         ✅ VALIDÉ
-2. D-014 points d'extension métier                             prochain blocker
-3. D-015 release/version/provenance/migrations
+2. D-014 points d'extension métier                             ✅ VALIDÉ
+3. D-015 release/version/provenance/migrations                 prochain blocker
 4. D-016 Playwright E2E Core
 5. audit final architecture / sécurité / qualité
 6. D-017 dérivation + upgrade pilote
