@@ -1,9 +1,9 @@
 import {
-    closeWorkspaceByOwner,
+    archiveWorkspaceByOwner,
 } from './workspaceClosure.service.js';
 
-const closeCurrentOwnerWorkspace = async (req, res) => {
-    const closure = await closeWorkspaceByOwner({
+const archiveCurrentOwnerWorkspace = async (req, res) => {
+    const workspace = await archiveWorkspaceByOwner({
         workspaceId: req.validated.params.workspaceId,
         actorId: req.user.id,
         currentPassword: req.validated.body.currentPassword,
@@ -15,9 +15,9 @@ const closeCurrentOwnerWorkspace = async (req, res) => {
     res.status(200).json({
         status: 'success',
         data: {
-            workspace: closure,
+            workspace,
         },
     });
 };
 
-export { closeCurrentOwnerWorkspace };
+export { archiveCurrentOwnerWorkspace };
