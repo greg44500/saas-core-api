@@ -215,6 +215,8 @@ Le frontend ne doit jamais chercher à lire, stocker ou reconstruire le refresh 
 
 Le frontend doit centraliser le mécanisme de réauthentification et coordonner les requêtes concurrentes afin d’éviter plusieurs rotations simultanées du même refresh token.
 
+Un User `deletion_requested`, `closed` ou administrativement `disabled` ne peut pas obtenir une nouvelle session par refresh.
+
 ### 5.4 Logout
 
 `POST /api/auth/logout` utilise le refresh cookie et reste exploitable même lorsque l’access token est expiré.
@@ -226,6 +228,8 @@ Le frontend doit centraliser le mécanisme de réauthentification et coordonner 
 Après changement ou reset réussi du mot de passe, les sessions existantes sont invalidées conformément au backend.
 
 Le frontend doit considérer la session courante comme terminée lorsque le workflow serveur le confirme.
+
+Un compte `deletion_requested` ou `closed` ne peut pas être réactivé indirectement par le reset de mot de passe. Le workflow `forgot-password` conserve sa réponse neutre anti-énumération sans émettre de mécanisme de récupération utilisable pour ces états.
 
 ### 5.6 Anti-énumération
 
@@ -264,9 +268,77 @@ Le changement d’email nécessite un futur workflow dédié avec vérification 
 
 ### 6.3 Fermeture de compte
 
-Le Core n’expose pas encore de route publique complète de fermeture de compte.
+Le Core expose :
 
-Ce sujet reste suivi dans `docs/DEBT.md` et ne doit pas être simulé côté frontend.
+```text
+GET  /api/users/me/closure-impact
+POST /api/users/me/closure
+```
+
+`GET /closure-impact` est une prévisualisation en lecture seule. Elle calcule depuis MongoDB les conséquences actuellement connues : Workspaces possédés, Workspaces qui seraient archivés, autres membres actifs impactés, appartenances qui seraient retirées et Subscriptions commerciales concernées.
+
+Cette prévisualisation n’est jamais une autorité de mutation. `POST /closure` recalcule la situation réelle au moment de la fermeture et n’accepte aucune liste de Workspaces fournie par le frontend comme source de vérité.
+
+Le payload de fermeture exige une confirmation forte :
+
+```text
+currentPassword
+confirmationEmail
+confirmAccountClosure = true
+```
+
+Le schéma Zod est strict.
+
+Workflow nominal :
+
+```text
+User ACTIVE
+↓ confirmation forte
+backend recalcule ownership + memberships
+↓
+Workspaces encore possédés et archivables
+→ ARCHIVED
+↓
+appartenances du User
+→ retirées
+↓
+invitations pendantes reçues
+→ révoquées
+↓
+User
+ACTIVE → DELETION_REQUESTED → CLOSED
+↓
+AuthSessions
+→ révoquées avec motif de fermeture
+↓
+AuditLog
+→ traces de fermeture
+```
+
+Un Workspace transféré avant la demande n’est plus possédé par le User fermant son compte : il reste actif et seule l’appartenance du User fermant est retirée.
+
+Le workflow est transactionnel pour les écritures MongoDB coordonnées. Une fermeture fonctionnelle ne signifie pas une purge physique immédiate des données : les politiques de rétention, anonymisation et suppression restent définies par D-006 selon le produit dérivé.
+
+### 6.4 États User de fermeture et suspension
+
+```text
+disabled
+→ suspension administrative / sécurité
+→ sessions révoquées
+→ authentification refusée
+→ memberships et Workspaces conservés
+→ réactivation possible
+
+deletion_requested
+→ état intermédiaire de fermeture
+→ authentification, access token, refresh et reset refusés
+
+closed
+→ compte fonctionnellement fermé
+→ authentification, access token, refresh et reset refusés
+```
+
+Une suspension administrative ne doit jamais être traitée comme une fermeture volontaire du compte.
 
 ---
 
@@ -293,6 +365,8 @@ Un identifiant MongoDB n’est jamais une preuve d’autorisation.
 
 Les requêtes sensibles qui utilisent un identifiant de ressource doivent vérifier que cette ressource appartient au Workspace courant.
 
+Le Core V1 est techniquement multi-workspace mais n’impose aucune quantité commerciale de Workspaces par User. Une politique telle que « un seul Workspace » ou « N Workspaces par offre » appartient au SaaS dérivé ou à une future couche commerciale supérieure, pas à cet invariant Core.
+
 ---
 
 ## 8. Workspaces
@@ -304,6 +378,13 @@ POST  /api/workspaces
 GET   /api/workspaces
 GET   /api/workspaces/:workspaceId
 PATCH /api/workspaces/:workspaceId
+POST  /api/workspaces/:workspaceId/archive
+```
+
+La fermeture terminale Platform est séparée :
+
+```text
+PATCH /api/platform/workspaces/:workspaceId/close
 ```
 
 ### 8.2 Création
@@ -312,6 +393,8 @@ La création est authentifiée. Le backend reste l’autorité pour l’initiali
 
 Le frontend ne doit jamais créer manuellement les documents internes associés.
 
+Le Core n’impose pas de limite générique de nombre de Workspaces par User. Un SaaS dérivé peut restreindre ce comportement via ses propres règles produit sans modifier la signification du Workspace comme frontière tenant.
+
 ### 8.3 Lecture et modification
 
 La lecture unitaire passe par le contexte Workspace et la permission `workspace:read`.
@@ -319,6 +402,58 @@ La lecture unitaire passe par le contexte Workspace et la permission `workspace:
 La modification passe par `workspace:update` et le contrôle du mode d’accès du Workspace.
 
 Une mutation ordinaire peut être refusée lorsque le Workspace est dans un état nécessitant une remédiation.
+
+### 8.4 Archivage volontaire par l’owner
+
+```text
+POST /api/workspaces/:workspaceId/archive
+```
+
+Ce workflow est owner-only et ne repose pas sur une permission personnalisée délégable.
+
+Le payload strict exige :
+
+```text
+currentPassword
+confirmationName
+```
+
+Le backend revérifie l’ownership courant, le mot de passe et le nom exact du Workspace dans le workflow sécurisé.
+
+L’archivage volontaire :
+
+```text
+ACTIVE → ARCHIVED
+```
+
+Il neutralise les Subscriptions **commerciales** encore concernées, révoque les invitations pendantes du Workspace et produit les AuditLogs associés. La baseline est conservée comme historique/fallback structurel et n’est pas annulée par l’archivage owner.
+
+`ARCHIVED` représente un retrait volontaire/opérationnel sans accès courant ; il ne signifie ni purge physique immédiate ni fermeture terminale.
+
+### 8.5 Fermeture terminale Platform
+
+```text
+PATCH /api/platform/workspaces/:workspaceId/close
+```
+
+La fermeture `CLOSED` reste une décision Platform / administrative. Elle peut partir des états autorisés par le service, notamment `ACTIVE`, `SUSPENDED` ou `ARCHIVED`.
+
+Un owner ne doit jamais pouvoir transformer directement son Workspace en `CLOSED`.
+
+### 8.6 ARCHIVED et CLOSED
+
+```text
+ARCHIVED
+→ retrait volontaire / opérationnel
+→ plus d’accès courant
+→ historique conservé
+→ traitements futurs de rétention encore possibles
+
+CLOSED
+→ fermeture fonctionnelle terminale
+→ aucune réactivation normale
+→ données toujours soumises aux politiques de D-006
+```
 
 ---
 
@@ -463,6 +598,8 @@ Le backend exige les données de confirmation prévues par son schéma, dont le 
 
 Le transfert d’ownership ne doit pas être reconstitué côté frontend comme une simple succession de changements de rôles.
 
+Un transfert réalisé avant une fermeture de compte permet au Workspace concerné de rester `ACTIVE` : le workflow Account recalcule toujours l’ownership réel au moment de la demande.
+
 ---
 
 ## 13. Fichiers
@@ -536,6 +673,8 @@ audit_logs
 `audit_logs` est une capability commerciale de consultation.
 
 La **production** des traces AuditLog nécessaires à la sécurité et à la traçabilité reste un invariant du Core et ne doit pas être désactivée parce qu’un plan n’autorise pas leur consultation.
+
+Les transitions de fermeture Account et de cycle de vie Workspace produisent les événements AuditLog définis par les services concernés ; leur historique n’est pas effacé par l’archivage fonctionnel.
 
 ---
 
@@ -616,6 +755,8 @@ PATCH  /api/platform/users/:userId/role
 
 Politique effective actuelle : `super_admin` uniquement.
 
+La finalisation administrative historique d’un User `deletion_requested` reste un mécanisme de secours ; le parcours nominal self-service ferme désormais le compte de manière automatisée et transactionnelle.
+
 ### 17.3 Workspaces
 
 ```text
@@ -623,9 +764,12 @@ GET    /api/platform/workspaces
 GET    /api/platform/workspaces/:workspaceId
 PATCH  /api/platform/workspaces/:workspaceId/suspend
 PATCH  /api/platform/workspaces/:workspaceId/reactivate
+PATCH  /api/platform/workspaces/:workspaceId/close
 ```
 
 Politique effective actuelle : `super_admin` uniquement.
+
+`close` représente la fermeture terminale Platform et reste distinct de l’archivage volontaire owner.
 
 ### 17.4 Plans
 
@@ -709,7 +853,7 @@ authentification
 
 Tous les maillons ne sont pas présents sur toutes les routes, mais aucune couche frontend ne remplace les contrôles nécessaires côté backend.
 
-Le document `docs/security/SECURITY.md` détaillera ces mécanismes lors du lot documentaire sécurité.
+Le document `docs/security/SECURITY.md` détaille ces mécanismes.
 
 ---
 
@@ -725,7 +869,9 @@ Le frontend doit :
 - invalider/refetch les données serveur après les mutations concernées ;
 - ne jamais utiliser une route cachée, un composant masqué ou une permission calculée localement comme barrière de sécurité.
 
-Les règles de composants réutilisables, DataTable, Drawer, formulaires, toasts et navigation seront consolidées dans `docs/frontend/FRONTEND-GUIDELINES.md`.
+Les opérations de fermeture Account et d’archivage Workspace réutilisent la primitive partagée de confirmation mais restent deux workflows métier distincts. La fermeture Account consomme la prévisualisation serveur ; l’archivage Workspace owner n’invente aucun impact chiffré non exposé par le backend.
+
+Les règles de composants réutilisables, DataTable, Drawer, formulaires, toasts et navigation sont consolidées dans `docs/frontend/FRONTEND-GUIDELINES.md`.
 
 ---
 
@@ -734,7 +880,6 @@ Les règles de composants réutilisables, DataTable, Drawer, formulaires, toasts
 Ne sont pas encore des contrats Core complets :
 
 ```text
-fermeture autonome complète du compte
 changement d’email avec vérification
 corbeille/restauration File
 MFA / passkeys / SSO
