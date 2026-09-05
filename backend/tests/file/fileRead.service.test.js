@@ -89,6 +89,10 @@ describe('fileRead.service', () => {
             workspace: 'workspace-id',
             status: 'active',
         });
+        expect(countDocumentsMock).toHaveBeenCalledWith({
+            workspace: 'workspace-id',
+            status: 'active',
+        });
         expect(result.pagination).toEqual({
             page: 2,
             limit: 10,
@@ -97,6 +101,32 @@ describe('fileRead.service', () => {
         });
         expect(result.files[0]).not.toHaveProperty('storageKey');
         expect(result.files[0]).not.toHaveProperty('storageProvider');
+    });
+
+    it('applique catégorie et recherche au même filtre que la pagination', async () => {
+        findMock.mockReturnValue(makeListQuery([makeFile()]));
+        countDocumentsMock.mockResolvedValue(1);
+
+        await listWorkspaceFiles({
+            workspaceId: 'workspace-id',
+            page: 1,
+            limit: 20,
+            category: 'document',
+            search: 'contrat.*2026',
+        });
+
+        const expectedFilter = {
+            workspace: 'workspace-id',
+            status: 'active',
+            category: 'document',
+            originalName: {
+                $regex: 'contrat\\.\\*2026',
+                $options: 'i',
+            },
+        };
+
+        expect(findMock).toHaveBeenCalledWith(expectedFilter);
+        expect(countDocumentsMock).toHaveBeenCalledWith(expectedFilter);
     });
 
     it('retourne le détail uniquement dans le workspace courant', async () => {
