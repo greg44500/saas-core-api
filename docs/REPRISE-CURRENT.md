@@ -2,63 +2,68 @@
 
 > **Statut : document temporaire de développement**
 >
-> Ce fichier est l'unique synthèse de reprise active du projet. Il est mis à jour en place à chaque checkpoint significatif et sera supprimé lorsque le SAAS-CORE-API sera finalisé et que sa documentation canonique sera complète.
+> Ce fichier est l'unique synthèse de reprise active du projet. Il n'est pas normatif et sera supprimé uniquement lorsque le Core sera finalisé et que sa suppression aura été explicitement validée.
 
-## 1. Rôle du document
+## 1. Hiérarchie d'autorité
 
-`REPRISE-CURRENT.md` sert uniquement à reprendre le travail entre deux conversations ou deux sessions de développement.
-
-Il n'est pas une source normative. En cas de contradiction :
+En cas de contradiction :
 
 1. code actuel et contraintes de base de données ;
 2. tests automatisés validés ;
-3. contrats canoniques actifs ;
-4. architecture, sécurité et conventions actives ;
-5. registre de dette actif ;
-6. présent document.
-
-Git conserve l'historique de ses versions ; aucune synthèse datée supplémentaire n'est nécessaire.
+3. contrats canoniques ;
+4. architecture, sécurité et guidelines canoniques ;
+5. `docs/DEBT.md` ;
+6. documentation opérationnelle ;
+7. documents historiques temporairement conservés ;
+8. présent fichier.
 
 ---
 
-## 2. État de reprise
+## 2. État actuel
 
-Le développement fonctionnel reste temporairement suspendu avant la poursuite de **F10.6** afin de terminer le chantier documentaire du Core.
+Le chantier documentaire **DOC-0 → DOC-11 est terminé**.
 
-DOC-0 à DOC-10 sont terminés.
+La suspension documentaire de F10.6 est levée.
 
-Aucune logique applicative backend/frontend n'a été modifiée pendant ces lots documentaires.
-
-DOC-10 a supprimé uniquement les **50 fichiers historiques/redondants explicitement approuvés par l'utilisateur**. Aucun autre fichier n'a été supprimé ou déplacé.
-
-Le prochain et dernier lot documentaire avant reprise fonctionnelle est :
+La prochaine étape fonctionnelle est désormais :
 
 ```text
-DOC-11 — README racine + audit documentaire final
+reprise F10.6
 ```
 
+Puis :
+
+```text
+audit fonctionnel réel code + tests + contrats
+→ roadmap de clôture du Core
+→ résolution des blockers Core 1.0
+→ audit sécurité / tests / E2E
+→ dérivation + upgrade pilote
+→ release Core stable
+```
+
+Le dépôt reste en version de développement `0.1.0`. Il ne doit pas encore être présenté comme `v1.0.0` ni comme automatiquement production-ready.
+
 ---
 
-## 3. Principes documentaires validés
+## 3. Documentation canonique active
 
-- centraliser la documentation structurante sous `docs/` ;
-- vérifier le code et les tests avant de consolider les anciens documents ;
-- ne supprimer aucun fichier sans validation explicite ;
-- maintenir un registre unique des dettes ;
-- maintenir des contrats canoniques communs frontend/backend ;
-- séparer architecture, sécurité, guidelines frontend, SaaS dérivés, conformité et opérations ;
-- utiliser uniquement `REPRISE-CURRENT.md` pour les futures reprises ;
-- distinguer systématiquement finalisation du Core et préparation production d'un produit dérivé ;
-- conserver Git comme historique des anciennes synthèses, policies, checklists et contrats supprimés.
+Porte d'entrée du dépôt :
 
----
+```text
+README.md
+```
 
-## 4. Documents canoniques actifs
+Index interne :
 
 ```text
 docs/README.md
+```
+
+Références canoniques :
+
+```text
 docs/DEBT.md
-docs/REPRISE-CURRENT.md
 
 docs/contracts/CORE-CONTRACT.md
 docs/contracts/COMMERCIAL.md
@@ -69,167 +74,154 @@ docs/architecture/BACKEND.md
 docs/architecture/FRONTEND.md
 
 docs/security/SECURITY.md
-
 docs/frontend/FRONTEND-GUIDELINES.md
-
 docs/derived-saas/DERIVED-SAAS.md
 
 docs/compliance/COMPLIANCE.md
 docs/compliance/rgpd-data-tracker-inventory.md
 
 docs/operations/OPERATIONS.md
-```
-
-Document canonique encore à produire :
-
-```text
-README.md racine
-```
-
----
-
-## 5. Documents temporaires encore conservés
-
-Les fichiers suivants sont volontairement conservés comme mémoire de progression jusqu'à la reprise F10.6 et l'audit fonctionnel réel :
-
-```text
-docs/backend-implementation-checklist.md
-docs/frontend-implementation-checklist.md
-docs/frontend-platform-admin-contract.md
-docs/platform-overview-dashboard-contract.md
-docs/dashboard-workspace-platform-boundary.md
-```
-
-Ils ne sont pas normatifs.
-
-Le guide suivant reste conservé comme documentation opérationnelle spécialisée :
-
-```text
 docs/development-trial-reset.md
 ```
 
-`frontend/README.md` reste présent jusqu'à DOC-11, mais il est connu comme historiquement daté de F1 et devra être réévalué.
+`frontend/README.md` est également à jour comme guide local du frontend.
 
 ---
 
-## 6. Checkpoints documentaires
+## 4. Résultat du chantier documentaire
 
-### DOC-0 — terminé
+### DOC-0 / DOC-1
 
-- `DEBT.md` créé comme registre canonique ;
-- `REPRISE-CURRENT.md` devient l'unique synthèse de reprise.
+- `DEBT.md` devient le registre unique des dettes ;
+- `REPRISE-CURRENT.md` devient l'unique synthèse de reprise ;
+- `docs/README.md` devient l'index documentaire.
 
-### DOC-1 — terminé
+### DOC-2
 
-- inventaire documentaire ;
-- fragmentation confirmée ;
-- `docs/README.md` créé.
+Contrats canoniques Core / Commercial / Capabilities créés.
 
-### DOC-2 — terminé
-
-Contrats canoniques :
+Décisions structurantes :
 
 ```text
-docs/contracts/CORE-CONTRACT.md
-docs/contracts/COMMERCIAL.md
-docs/contracts/CAPABILITIES.md
+Plan._id = identité MongoDB
+Plan.key = clé interne générée par backend
+Plan.systemRole = baseline = autorité structurelle baseline
+isBaseline = information publique
 ```
 
-Décisions importantes : clé Plan générée par backend, baseline par `systemRole`, entitlement effectif après overrides, capabilities runtime autoritatives, `team_management` pour membres/invitations/rôles, politique commerciale Workspace-scoped.
+Le nom commercial `Free` n'est pas un invariant du Core.
 
-### DOC-3 — terminé
+### DOC-3
 
-Architecture canonique globale/backend/frontend créée.
+Architecture globale/backend/frontend consolidée.
 
-Décisions : Core générique + modules métier dérivés, dépendance métier → Core, contextes Account/Workspace/Platform séparés, backend modulaire, frontend par features, RTK Query pour server state, composants réutilisables obligatoires.
-
-### DOC-4 — terminé
-
-`docs/security/SECURITY.md` créé.
-
-Défense en profondeur, sessions rotatives, validation Zod, isolation Workspace, RBAC, entitlements/quotas, transactions, Files fail-closed, AuditLog et protections HTTP consolidés.
-
-### DOC-5 — terminé
-
-`docs/frontend/FRONTEND-GUIDELINES.md` créé.
-
-`DataTable`, drawers, confirmations, formulaires et primitives partagées deviennent des règles canoniques de réutilisabilité. State management, RTK Query, UX, accessibilité, feedback et tests frontend sont consolidés.
-
-### DOC-6 — terminé
-
-`docs/derived-saas/DERIVED-SAAS.md` créé.
-
-Décisions : historique Git Core conservé, `origin` produit + `upstream-core`, SemVer, upgrades par branche/PR, modules métier par composition, packages Core séparés non retenus en V1.
-
-Limites révélées avant Core 1.0 : point d'extension RBAC incomplet, routing backend/frontend trop centralisé, provenance Core non implémentée, release process non finalisé, validation réelle d'un upgrade dérivé encore à faire.
-
-### DOC-7 — terminé
-
-Documents :
+Principe :
 
 ```text
-docs/compliance/COMPLIANCE.md
-docs/compliance/rgpd-data-tracker-inventory.md
+module métier → Core
 ```
 
-Décisions : conformité transverse, pas de bannière cookies fictive, inventaire technique distinct du registre des traitements, rétention juridique distincte des durées techniques, sous-traitants/transferts/AIPD/violations de données à qualifier par produit.
+Le Core ne dépend jamais d'un domaine métier dérivé.
 
-### DOC-8 — terminé
+### DOC-4
 
-`docs/operations/OPERATIONS.md` créé.
+Sécurité consolidée : Auth/AuthSession, validation, multi-tenant, RBAC, Platform, entitlements, quotas, transactions, Files, audit, HTTP et secrets.
 
-Décisions : environnement fail-fast, MongoDB avant HTTP, `autoIndex=false` en production, seeds/migrations/jobs/opérations dev séparés, jobs autonomes, stockage courant `local`, ClamAV fail-closed, `/api/health` = liveness, rollback code ≠ rollback données, infrastructure production encore spécifique au produit.
+### DOC-5
 
-### DOC-9 — terminé
+Guidelines frontend consolidées.
 
-`docs/DEBT.md` a été reconsolidé contre DOC-2 à DOC-8.
+Règles obligatoires :
 
-Distinction structurante :
+- RTK Query pour le server state ;
+- Redux Toolkit uniquement pour le vrai state global client ;
+- React pour le local ;
+- URL pour la navigation/filtres partageables ;
+- `DataTable` pour les tableaux compatibles ;
+- réutilisation des drawers, confirmations, formulaires et primitives partagées ;
+- backend toujours autorité de sécurité et de règles métier.
+
+### DOC-6
+
+Stratégie SaaS dérivé : historique Git Core conservé, `origin` produit + `upstream-core`, SemVer, upgrades contrôlés, séparation Core/métier.
+
+Limites révélées avant 1.0 : extension routing/RBAC à finaliser, provenance/release process à implémenter, test réel de dérivation/upgrade à effectuer.
+
+### DOC-7
+
+Conformité/RGPD consolidée sans imposer de fausse bannière cookies. Inventaire technique séparé du registre de traitements. Rétention, sous-traitants, transferts, AIPD et violations de données restent à qualifier selon le produit réel.
+
+### DOC-8
+
+Opérations consolidées : `.env`, MongoDB, seeds, migrations, jobs, stockage, ClamAV, health checks, déploiement et rollback.
+
+Le provider File courant reste `local`; `/api/health` reste un liveness HTTP; l'infrastructure de production n'est pas imposée par le Core.
+
+### DOC-9
+
+Dettes reconsolidées avec deux gates distinctes :
 
 ```text
 Core 1.0 finalisé
 ≠
-SaaS dérivé automatiquement production-ready
+SaaS dérivé prêt pour la production
 ```
 
-Blockers Core 1.0 connus :
+### DOC-10
+
+Nettoyage validé :
 
 ```text
-D-001 fermeture de compte et cycle de vie de fermeture Workspace
-D-014 points d'extension métier : RBAC + routing backend/frontend
-D-015 versionnement, provenance, releases et discipline de migration
-D-016 E2E Core avec Playwright
-D-017 exercice réel création + upgrade d'un SaaS dérivé pilote
-```
-
-DOC-9 ne constitue pas la roadmap fonctionnelle finale. Après le chantier documentaire, la reprise F10.6 puis un audit code/tests devront confirmer les lots réellement restants.
-
-### DOC-10 — terminé
-
-Audit du dépôt effectué avant suppression.
-
-Décision validée par l'utilisateur : appliquer les recommandations de nettoyage sans toucher aux documents conservés.
-
-Résultat :
-
-```text
-50 suppressions autorisées et exécutées
+50 fichiers supprimés
 = 24 anciens fichiers sous docs/
-+ 26 fichiers historiques sous frontend/docs/
++ 26 fichiers sous frontend/docs/
 ```
 
-Supprimés notamment :
+Aucun autre fichier n'a été supprimé ou déplacé.
 
-- trois anciennes synthèses de reprise datées ;
-- anciens contrats frontend/backend absorbés par DOC-2 ;
-- anciennes policies frontend absorbées par DOC-3, DOC-4 et DOC-5 ;
-- rapports F1 à F6 et checklists du silo `frontend/docs/` ;
-- anciennes fiches de dette remplacées par `DEBT.md` ;
-- anciens cadrages RGPD et inventaire remplacés par `docs/compliance/`.
+### DOC-11
 
-`frontend/docs/` ne constitue donc plus un second silo documentaire.
+- création du README racine ;
+- mise à jour de `frontend/README.md` ;
+- audit des références documentaires ;
+- correction du vocabulaire baseline dans le guide Trial reset ;
+- `docs/README.md` finalisé ;
+- chantier documentaire déclaré terminé.
 
-Conservés volontairement :
+Aucune logique applicative backend/frontend n'a été modifiée pendant DOC-0 à DOC-11.
+
+---
+
+## 5. Blockers Core 1.0 connus
+
+Le registre canonique reste `docs/DEBT.md`.
+
+Blockers actuellement démontrés :
+
+```text
+D-001
+→ fermeture de compte et cycle de vie de fermeture Workspace
+
+D-014
+→ points d'extension métier : RBAC + routing backend/frontend
+
+D-015
+→ versionnement, provenance, releases et discipline de migration
+
+D-016
+→ E2E Core avec Playwright
+
+D-017
+→ exercice réel création + upgrade d'un SaaS dérivé pilote
+```
+
+Cette liste n'est pas encore la roadmap fonctionnelle finale. L'audit après reprise F10.6 pourra révéler d'autres lots ou reclasser certains éléments.
+
+---
+
+## 6. Documents temporaires conservés pour la reprise fonctionnelle
+
+Les fichiers suivants sont **historiques et non canoniques**, mais restent utiles comme mémoire de progression :
 
 ```text
 docs/backend-implementation-checklist.md
@@ -237,62 +229,74 @@ docs/frontend-implementation-checklist.md
 docs/frontend-platform-admin-contract.md
 docs/platform-overview-dashboard-contract.md
 docs/dashboard-workspace-platform-boundary.md
-docs/development-trial-reset.md
-docs/REPRISE-CURRENT.md
-frontend/README.md
 ```
 
-`docs/README.md` a été mis à jour pour refléter ce nouvel état.
+Ils peuvent contenir des noms de lots ou des références documentaires correspondant à l'état du projet au moment de leur rédaction.
 
----
-
-## 7. Prochain lot documentaire
-
-**DOC-11 — README racine + audit documentaire final**.
-
-Objectifs :
-
-1. créer ou réécrire le `README.md` racine comme porte d'entrée du dépôt ;
-2. réévaluer `frontend/README.md` ;
-3. auditer les liens et références documentaires restants ;
-4. vérifier les contradictions majeures entre documents canoniques ;
-5. figer le checkpoint documentaire final ;
-6. autoriser ensuite la reprise de F10.6.
-
----
-
-## 8. Après DOC-11
-
-Séquence attendue :
+Ils ne doivent jamais être utilisés pour contredire :
 
 ```text
-DOC-11 README racine + audit documentaire final
-↓
-reprise F10.6
-↓
-audit fonctionnel réel
-↓
-roadmap de clôture Core
-↓
-blockers Core 1.0
-↓
-audit sécurité / tests / E2E
-↓
-dérivation + upgrade pilote
-↓
-release Core stable
+code
+→ tests
+→ contrats canoniques
+→ architecture / sécurité / guidelines
+→ DEBT.md
 ```
+
+Après F10.6 et l'audit fonctionnel, leur contenu utile devra être absorbé dans la roadmap/reprise courante puis leur maintien réévalué.
 
 ---
 
-## 9. Distribution et maintenance des futurs SaaS
+## 7. Point de reprise fonctionnelle — F10.6
+
+Avant de modifier le code, repartir du dépôt actuel et auditer le périmètre exact de F10.6 contre :
+
+```text
+backend/modules/entitlementOverride/
+backend/modules/platform/
+backend/modules/subscriptions/
+frontend/src/features/platform/
+frontend/src/services/api/
+docs/contracts/COMMERCIAL.md
+docs/contracts/CAPABILITIES.md
+docs/frontend-platform-admin-contract.md
+docs/platform-overview-dashboard-contract.md
+```
+
+État connu à vérifier, pas à supposer :
+
+- backend EntitlementOverride déjà développé et testé ;
+- entitlement Workspace effectif déjà enrichi par les overrides actifs ;
+- Platform Admin F9 déjà largement implémenté ;
+- F10.6 concerne la poursuite/finalisation de l'administration frontend Platform des overrides et son intégration avec les écrans actuels ;
+- le dernier travail fonctionnel signalé avant le chantier documentaire comportait des tests verts après correction d'un invariant empêchant d'activer la baseline comme cible payante.
+
+La reprise doit commencer par un audit du HEAD et des tests, pas par une nouvelle implémentation supposée.
+
+---
+
+## 8. Après F10.6
+
+Une fois F10.6 réellement clôturé :
+
+1. auditer le code, les tests et les contrats de l'ensemble du Core ;
+2. identifier les fonctionnalités réellement restantes, indépendamment des anciens numéros de lots ;
+3. intégrer les blockers D-001 / D-014 / D-015 / D-016 / D-017 dans une roadmap de clôture ;
+4. pour chaque lot, définir objectif, backend, frontend, sécurité, tests, documentation, dépendances et critère de validation ;
+5. exécuter la gate finale Core ;
+6. tester réellement la création puis l'upgrade d'un SaaS dérivé ;
+7. publier seulement ensuite une release Core stable.
+
+---
+
+## 9. Distribution future des SaaS dérivés
 
 Décision actuelle :
 
 ```text
-Core finalisé et versionné
+Core stable et versionné
 ↓
-création du produit en conservant l'historique Git du Core
+création du produit en conservant l'historique Git
 ↓
 origin = dépôt produit
 upstream-core = dépôt SAAS-CORE-API
@@ -305,20 +309,19 @@ branche d'upgrade
 ↓
 tests + migrations + revue
 ↓
-Pull Request produit
+intégration contrôlée
 ```
 
-Le GitHub Template ne doit pas être confondu avec cette stratégie de maintenance.
+GitHub Template n'est pas la stratégie canonique pour un produit qui doit continuer à recevoir les mises à jour du Core.
 
 ---
 
 ## 10. Critère de suppression de ce fichier
 
-`docs/REPRISE-CURRENT.md` pourra être supprimé lorsque :
+`docs/REPRISE-CURRENT.md` pourra être supprimé uniquement lorsque :
 
-- le Core sera considéré comme finalisé ;
-- la documentation canonique sera complète et auditée ;
-- la politique de distribution/versionnement sera réellement testée et opérationnelle ;
-- aucune reprise de développement Core n'exigera plus de contexte temporaire.
-
-La suppression nécessitera une validation explicite.
+- le Core sera finalisé ;
+- la release stable et la politique de versionnement seront opérationnelles ;
+- la dérivation + upgrade pilote auront été réellement validées ;
+- aucune reprise de développement Core n'exigera plus de contexte temporaire ;
+- la suppression aura été explicitement approuvée.
