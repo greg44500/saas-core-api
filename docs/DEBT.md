@@ -76,11 +76,14 @@ produit dérivé automatiquement production-ready
 
 | ID | Dette | Statut |
 |---|---|---|
+| D-018 | Équipe de la Plateforme, RBAC Platform et invitations internes | EN COURS |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
 D-001 a été clôturée pendant CORE-FIN-4 et D-014 pendant CORE-FIN-5. Elles ne sont plus des blockers actifs de la finalisation Core.
+
+D-018 a été ajoutée après la clôture de D-014 lorsqu'un manque réellement générique a été confirmé : le Core possède déjà une amorce de permissions Platform et des rôles `support` / `admin`, mais ne possède pas encore de véritable modèle d'équipe interne, de rôles Platform exploitables, d'invitation dédiée ni de protection explicite du Fondateur. Ce besoin est traité avant D-015 afin de ne pas préparer une release d'un socle encore fonctionnellement incomplet sur ce point.
 
 ### 4.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -707,6 +710,92 @@ Création et upgrade réellement exécutés et documentés, conflits éventuels 
 
 ---
 
+## D-018 — Équipe de la Plateforme, RBAC Platform et invitations internes
+
+**Statut :** EN COURS  
+**Périmètre :** Core  
+**Blocage Core 1.0 :** oui — fonctionnalité générique d'exploitation identifiée avant la préparation des releases  
+**Blocage production dérivée :** oui lorsque plusieurs collaborateurs doivent administrer la Plateforme sans partager les pouvoirs du Fondateur  
+**Source :** `docs/contracts/PLATFORM-TEAM.md`
+
+### État confirmé
+
+Le Core possède déjà une première fondation :
+
+```text
+User.platformRole
+PLATFORM_ROLE = user / support / admin / super_admin
+PLATFORM_PERMISSION
+DEFAULT_PLATFORM_ROLE_PERMISSIONS
+authorizePlatformPermission()
+authorizePlatformRole()
+```
+
+Cependant, la politique active attribue actuellement toutes les permissions Platform uniquement à `super_admin`. Les rôles `admin` et `support` existent mais ne constituent pas encore une vraie délégation exploitable. Plusieurs routes Platform restent également protégées directement par `SUPER_ADMIN`.
+
+Le Core ne possède pas encore :
+
+- de modèle explicite d'appartenance à l'équipe interne distinct du `User` ;
+- d'autorité Fondateur protégée et distincte du rôle RBAC ;
+- de rôles Platform personnalisables ;
+- de politique explicite de délégation / permissions sensibles / réservées ;
+- d'invitation Platform dédiée ;
+- de cycle Platform `ACTIVE / SUSPENDED / REVOKED` indépendant du statut global du User ;
+- de surface frontend « Équipe de la Plateforme » complète.
+
+### Cible validée A1
+
+```text
+User
+→ identité / authentification
+
+PlatformTeamMember
+→ appartenance à l'équipe interne
+
+PlatformRole
+→ rôle système ou personnalisé
+
+PlatformPermission
+→ autorité réelle des actions Platform
+
+PlatformInvitation
+→ invitation interne sécurisée
+
+Fondateur
+→ autorité historique protégée
+```
+
+Invariants principaux :
+
+- exactement un Fondateur actif à un instant donné ;
+- le Fondateur est toujours Super administrateur ;
+- plusieurs Super administrateurs sont possibles ;
+- le Fondateur ne peut pas être rétrogradé, suspendu, retiré ou fermé via l'administration ordinaire ;
+- le rôle `super_admin` possède toutes les permissions Platform connues ;
+- RBAC Platform et RBAC Workspace restent séparés ;
+- suspension/retrait Platform ne supprime pas le User ni ses memberships Workspace ;
+- les invitations Platform sont distinctes des invitations Workspace ;
+- les changements de droits prennent effet côté serveur sans attendre l'expiration d'un JWT ;
+- les opérations sensibles sont auditées ;
+- l'interface française affiche « Plateforme », « Fondateur » et « Super administrateur », tandis que `Platform` reste le vocabulaire technique du code.
+
+### Découpage
+
+```text
+A1 cadrage fonctionnel                         VALIDÉ
+A2 catalogue RBAC Platform / délégation        À FAIRE
+A3 invitations Platform sécurisées             À FAIRE
+A4 gestion membres / cycle de vie               À FAIRE
+A5 frontend Équipe de la Plateforme             À FAIRE
+A6 audit final + tests sécurité + régression     À FAIRE
+```
+
+### Critère de clôture
+
+D-018 sera `VALIDÉ` lorsque le Fondateur est explicitement protégé, plusieurs Super administrateurs sont supportés, l'équipe interne possède des rôles et permissions granulaires, les invitations Platform sont sécurisées, les cycles de suspension/retrait n'altèrent pas le User global, les opérations critiques sont auditées, l'UI respecte les composants partagés et le vocabulaire retenu, et les suites backend/frontend ainsi que le build de production sont verts.
+
+---
+
 ## 6. Éléments volontairement non intégrés comme dette active
 
 ### Ancien placeholder « petite dette finale annoncée »
@@ -739,16 +828,18 @@ Un SaaS dérivé peut :
 
 ## 7. Ordre de traitement recommandé après le chantier documentaire
 
-État après CORE-FIN-5 / D-014 :
+État après validation de D-014 et cadrage A1 de D-018 :
 
 ```text
 1. D-001 fermeture Account / Workspace                         ✅ VALIDÉ
 2. D-014 points d'extension métier                             ✅ VALIDÉ
-3. D-015 release/version/provenance/migrations                 prochain blocker
-4. D-016 Playwright E2E Core
-5. audit final architecture / sécurité / qualité
-6. D-017 dérivation + upgrade pilote
-7. taguer uniquement ensuite la release Core stable
+3. D-018 Équipe de la Plateforme / RBAC / invitations          EN COURS
+4. réévaluer les derniers besoins génériques réellement démontrés du Core
+5. D-015 release/version/provenance/migrations
+6. D-016 Playwright E2E Core
+7. audit final architecture / sécurité / qualité
+8. D-017 dérivation + upgrade pilote
+9. taguer uniquement ensuite la release Core stable
 ```
 
 L'ordre exact pourra être ajusté par dépendances techniques, mais aucune release `v1.0.0` ne doit être déclarée avant la clôture ou la reclassification explicite de tous les blockers Core 1.0.
