@@ -21,8 +21,10 @@ import {
 
 const {
     permissions,
+    workspaceAccessModeMiddleware,
 } = vi.hoisted(() => ({
     permissions: [],
+    workspaceAccessModeMiddleware: vi.fn((req, res, next) => next()),
 }));
 
 
@@ -55,6 +57,10 @@ vi.mock('../../middlewares/loadWorkspaceContext.js', () => ({
     }),
 }));
 
+vi.mock('../../middlewares/enforceWorkspaceAccessMode.js', () => ({
+    enforceWorkspaceAccessMode: vi.fn(() => workspaceAccessModeMiddleware),
+}));
+
 vi.mock(
     '../../modules/workspace/workspaceOwnership.controller.js',
     () => ({
@@ -82,6 +88,7 @@ app.use((error, req, res, next) => {
 
 beforeEach(() => {
     permissions.splice(0, permissions.length);
+    workspaceAccessModeMiddleware.mockClear();
     transferOwnership.mockClear();
 });
 
@@ -113,6 +120,7 @@ describe('workspace ownership HTTP security', () => {
             status: 'fail',
             message: 'Permission insuffisante',
         });
+        expect(workspaceAccessModeMiddleware).not.toHaveBeenCalled();
         expect(transferOwnership).not.toHaveBeenCalled();
     });
 
@@ -126,6 +134,7 @@ describe('workspace ownership HTTP security', () => {
             .send(body);
 
         expect(response.status).toBe(200);
+        expect(workspaceAccessModeMiddleware).toHaveBeenCalledOnce();
         expect(transferOwnership).toHaveBeenCalledOnce();
     });
 });
