@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    closeWorkspaceBodySchema,
+    archiveWorkspaceBodySchema,
 } from '../../modules/workspace/workspaceClosure.validation.js';
 
-describe('closeWorkspaceBodySchema', () => {
+describe('archiveWorkspaceBodySchema', () => {
     it('accepte le mot de passe courant et le nom exact de confirmation', () => {
-        expect(closeWorkspaceBodySchema.parse({
+        expect(archiveWorkspaceBodySchema.parse({
             currentPassword: 'Correct Horse Battery Staple',
             confirmationName: '  Acme  ',
         })).toEqual({
@@ -16,12 +16,12 @@ describe('closeWorkspaceBodySchema', () => {
     });
 
     it('refuse une confirmation trop courte ou un champ supplémentaire', () => {
-        expect(() => closeWorkspaceBodySchema.parse({
+        expect(() => archiveWorkspaceBodySchema.parse({
             currentPassword: 'Correct Horse Battery Staple',
             confirmationName: 'A',
         })).toThrow();
 
-        expect(() => closeWorkspaceBodySchema.parse({
+        expect(() => archiveWorkspaceBodySchema.parse({
             currentPassword: 'Correct Horse Battery Staple',
             confirmationName: 'Acme',
             force: true,
