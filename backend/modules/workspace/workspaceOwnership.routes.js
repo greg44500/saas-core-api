@@ -8,6 +8,9 @@ import {
     authorizePermission,
 } from '../../middlewares/authorizePermission.js';
 import {
+    enforceWorkspaceAccessMode,
+} from '../../middlewares/enforceWorkspaceAccessMode.js';
+import {
     loadWorkspaceContext,
 } from '../../middlewares/loadWorkspaceContext.js';
 import {
@@ -40,6 +43,15 @@ router.patch(
     authorizePermission(
         CORE_PERMISSION.WORKSPACE_OWNERSHIP_TRANSFER,
     ),
+    /*
+     * Le transfert ne crée aucune consommation supplémentaire et peut rester
+     * nécessaire pour la gouvernance du tenant pendant une remédiation. La
+     * politique est déclarée explicitement plutôt que de contourner le mode
+     * d'accès Workspace.
+     */
+    enforceWorkspaceAccessMode({
+        allowDuringRemediation: true,
+    }),
     transferOwnership,
 );
 
