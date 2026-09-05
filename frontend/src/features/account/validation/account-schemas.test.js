@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  accountClosureFormSchema,
   changePasswordFormSchema,
   profileSchema,
 } from '@/features/account/validation/account-schemas';
@@ -35,5 +36,33 @@ describe('account schemas', () => {
 
     expect(result.success).toBe(false);
     expect(result.error?.issues[0].path).toEqual(['confirmNewPassword']);
+  });
+
+  it('accepte uniquement une confirmation explicite de fermeture', () => {
+    const validResult = accountClosureFormSchema.safeParse({
+      currentPassword: 'mot-de-passe-actuel-long',
+      confirmationEmail: 'greg@example.com',
+      confirmAccountClosure: true,
+    });
+    const invalidResult = accountClosureFormSchema.safeParse({
+      currentPassword: 'mot-de-passe-actuel-long',
+      confirmationEmail: 'greg@example.com',
+      confirmAccountClosure: false,
+    });
+
+    expect(validResult.success).toBe(true);
+    expect(invalidResult.success).toBe(false);
+    expect(invalidResult.error?.issues[0].path).toEqual(['confirmAccountClosure']);
+  });
+
+  it('refuse les champs supplémentaires dans la fermeture de compte', () => {
+    const result = accountClosureFormSchema.safeParse({
+      currentPassword: 'mot-de-passe-actuel-long',
+      confirmationEmail: 'greg@example.com',
+      confirmAccountClosure: true,
+      workspaceIds: ['workspace-id'],
+    });
+
+    expect(result.success).toBe(false);
   });
 });
