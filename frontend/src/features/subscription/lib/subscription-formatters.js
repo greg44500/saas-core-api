@@ -40,6 +40,16 @@ const LIMIT_LABEL = Object.freeze({
   file_uploads_monthly: 'Téléversements mensuels',
 });
 
+/**
+ * Dépendances de présentation des limites Core. Les valeurs serveur restent
+ * intactes : cette table indique seulement qu'une limite n'a pas de sens comme
+ * avantage commercial visible lorsque la fonctionnalité associée est absente.
+ */
+const LIMIT_REQUIRED_FEATURE = Object.freeze({
+  storage_bytes: 'file_upload',
+  file_uploads_monthly: 'file_upload',
+});
+
 function formatSubscriptionStatus(status) {
   return SUBSCRIPTION_STATUS_LABEL[status] ?? status ?? 'Non renseigné';
 }
@@ -115,6 +125,22 @@ function formatPlanLimitValue(limitKey, value) {
 }
 
 /**
+ * Formate une limite dans une vue d'entitlement utilisateur. Une métrique peut
+ * rester connue du backend pour l'historique, la rétention ou la remédiation
+ * alors que la fonctionnalité commerciale correspondante n'est plus accordée.
+ * Dans ce cas l'UI affiche « — » plutôt qu'un quota trompeur.
+ */
+function formatEffectiveLimitValue(limitKey, value, features = []) {
+  const requiredFeature = LIMIT_REQUIRED_FEATURE[limitKey];
+
+  if (requiredFeature && !features.includes(requiredFeature)) {
+    return '—';
+  }
+
+  return formatPlanLimitValue(limitKey, value);
+}
+
+/**
  * Calcule uniquement une information de présentation du trial.
  *
  * Le résultat ne doit jamais servir à décider si le trial fournit encore des
@@ -156,11 +182,13 @@ export {
   BILLING_INTERVAL_LABEL,
   FEATURE_LABEL,
   LIMIT_LABEL,
+  LIMIT_REQUIRED_FEATURE,
   SUBSCRIPTION_KIND_LABEL,
   SUBSCRIPTION_STATUS_LABEL,
   formatAccessMode,
   formatAccessReason,
   formatBillingInterval,
+  formatEffectiveLimitValue,
   formatFeatureLabel,
   formatLimitLabel,
   formatPlanLimitValue,
