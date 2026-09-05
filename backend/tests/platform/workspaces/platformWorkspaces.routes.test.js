@@ -9,14 +9,14 @@ import {
 } from 'vitest';
 
 import {
-    PLATFORM_ROLE,
-} from '../../../constants/platformRoles.constants.js';
+    PLATFORM_PERMISSION,
+} from '../../../constants/platformPermissions.constants.js';
 import {
     authenticate,
 } from '../../../middlewares/authenticate.js';
 import {
-    authorizePlatformRole,
-} from '../../../middlewares/authorizePlatformRole.js';
+    authorizePlatformPermission,
+} from '../../../middlewares/authorizePlatformPermission.js';
 import {
     validateRequest,
 } from '../../../middlewares/validateRequest.js';
@@ -33,11 +33,11 @@ import {
 } from '../../../utils/validations/pagination.validation.js';
 
 const {
-    platformRoleMiddleware,
+    permissionMiddleware,
     validationMiddleware,
     handlers,
 } = vi.hoisted(() => ({
-    platformRoleMiddleware: vi.fn((req, res, next) => next()),
+    permissionMiddleware: vi.fn((req, res, next) => next()),
     validationMiddleware: vi.fn((req, res, next) => next()),
     handlers: {
         closeWorkspace: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
@@ -55,7 +55,6 @@ vi.mock(
             req.user = {
                 _id: 'user-id',
                 id: 'user-id',
-                platformRole: PLATFORM_ROLE.SUPER_ADMIN,
             };
             next();
         }),
@@ -63,9 +62,9 @@ vi.mock(
 );
 
 vi.mock(
-    '../../../middlewares/authorizePlatformRole.js',
+    '../../../middlewares/authorizePlatformPermission.js',
     () => ({
-        authorizePlatformRole: vi.fn(() => platformRoleMiddleware),
+        authorizePlatformPermission: vi.fn(() => permissionMiddleware),
     }),
 );
 
@@ -87,7 +86,7 @@ app.use('/platform', platformRouter);
 
 beforeEach(() => {
     authenticate.mockClear();
-    platformRoleMiddleware.mockClear();
+    permissionMiddleware.mockClear();
     validationMiddleware.mockClear();
 
     Object.values(handlers).forEach((handler) => {
@@ -101,6 +100,7 @@ describe('platformWorkspaces.routes', () => {
             label: 'liste des workspaces',
             method: 'get',
             path: '/platform/workspaces?page=1&limit=20',
+            permission: PLATFORM_PERMISSION.WORKSPACES_READ,
             validation: { query: paginationQuerySchema },
             handler: handlers.listWorkspaces,
         },
@@ -108,6 +108,7 @@ describe('platformWorkspaces.routes', () => {
             label: 'détail workspace',
             method: 'get',
             path: '/platform/workspaces/507f1f77bcf86cd799439011',
+            permission: PLATFORM_PERMISSION.WORKSPACES_READ,
             validation: { params: platformWorkspaceIdParamsSchema },
             handler: handlers.getWorkspaceById,
         },
@@ -115,6 +116,7 @@ describe('platformWorkspaces.routes', () => {
             label: 'suspension workspace',
             method: 'patch',
             path: '/platform/workspaces/507f1f77bcf86cd799439011/suspend',
+            permission: PLATFORM_PERMISSION.WORKSPACES_SUSPEND,
             body: { statusReason: 'administrative_review' },
             validation: {
                 params: platformWorkspaceIdParamsSchema,
@@ -126,6 +128,7 @@ describe('platformWorkspaces.routes', () => {
             label: 'réactivation workspace',
             method: 'patch',
             path: '/platform/workspaces/507f1f77bcf86cd799439011/reactivate',
+            permission: PLATFORM_PERMISSION.WORKSPACES_REACTIVATE,
             validation: { params: platformWorkspaceIdParamsSchema },
             handler: handlers.reactivateWorkspace,
         },
@@ -133,6 +136,7 @@ describe('platformWorkspaces.routes', () => {
             label: 'clôture workspace',
             method: 'patch',
             path: '/platform/workspaces/507f1f77bcf86cd799439011/close',
+            permission: PLATFORM_PERMISSION.WORKSPACES_CLOSE,
             body: { statusReason: 'platform_decision' },
             validation: {
                 params: platformWorkspaceIdParamsSchema,
@@ -144,7 +148,7 @@ describe('platformWorkspaces.routes', () => {
 
     it.each(routeCases)(
         'protège et valide $label avant le controller',
-        async ({ method, path, body, validation, handler }) => {
+        async ({ method, path, body, permission, validation, handler }) => {
             let pendingRequest = request(app)[method](path);
 
             if (body) {
@@ -154,12 +158,12 @@ describe('platformWorkspaces.routes', () => {
             const response = await pendingRequest;
 
             expect(response.status).toBe(200);
-            expect(authorizePlatformRole).toHaveBeenCalledWith(
-                PLATFORM_ROLE.SUPER_ADMIN,
-            );
-            expect(validateRequest).toHaveBeenCalledWith(validation);
+            expect(authorizePlatformPermission.mock.calls).toContainEqual([
+                permission,
+            ]);
+            expect(validateRequest.mock.calls).toContainEqual([validation]);
             expect(authenticate).toHaveBeenCalledOnce();
-            expect(platformRoleMiddleware).toHaveBeenCalledOnce();
+            expect(permissionMiddleware).toHaveBeenCalledOnce();
             expect(validationMiddleware).toHaveBeenCalledOnce();
             expect(handler).toHaveBeenCalledOnce();
         },
