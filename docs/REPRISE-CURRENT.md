@@ -127,3 +127,24 @@ Un GitHub Template pourra servir à **initialiser** une application, mais ne dev
 - aucune reprise de développement Core ne nécessitera plus de contexte temporaire.
 
 La suppression nécessitera une validation explicite avant exécution.
+
+## 9. Checkpoint documentaire — 2026-09-05
+
+### DOC-0 — terminé
+
+- `docs/DEBT.md` est le registre canonique unique des dettes actives ;
+- `docs/REPRISE-CURRENT.md` est l'unique synthèse de reprise temporaire.
+
+### DOC-1 — terminé
+
+- inventaire des documentations racine et frontend réalisé ;
+- fragmentation contrats / frontend / dettes / conformité / rapports confirmée ;
+- `docs/README.md` créé comme index canonique et tableau de migration ;
+- centralisation future dans `docs/` confirmée ;
+- aucun fichier historique supprimé ou déplacé.
+
+### Prochain lot
+
+**DOC-2 — Contrats Core / commercial / capabilities.**
+
+Méthode obligatoire : vérifier d'abord le code et les tests actuels, puis confronter les anciens contrats avant de créer les contrats canoniques. Les anciens fichiers ne deviendront candidats à suppression qu'après migration complète de leurs informations encore valides et validation explicite de leur suppression.
