@@ -39,15 +39,19 @@ const platformAdminAuthorization = {
     ],
 };
 
+const superAdminAuthorization = {
+    roleKey: PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN,
+    permissions: [
+        PLATFORM_PERMISSION.SUPER_ADMINS_MANAGE,
+    ],
+};
+
 
 describe('Platform Team delegation policy', () => {
     it('interdit toute mutation ordinaire du Fondateur', () => {
         expect(() => assertActorCanManageMember({
             actorId: 'actor-id',
-            authorization: {
-                roleKey: PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN,
-                permissions: [],
-            },
+            authorization: superAdminAuthorization,
             targetMember: {
                 user: 'founder-user-id',
                 isFounder: true,
@@ -113,7 +117,7 @@ describe('Platform Team delegation policy', () => {
         );
     });
 
-    it('interdit à un acteur ordinaire d’attribuer Super administrateur', () => {
+    it('interdit à un administrateur d’attribuer Super administrateur', () => {
         expect(() => assertActorCanAssignRole({
             authorization: platformAdminAuthorization,
             role: activeRole({
@@ -125,12 +129,44 @@ describe('Platform Team delegation policy', () => {
         );
     });
 
-    it('autorise un Super administrateur à attribuer un rôle valide', () => {
-        expect(() => assertActorCanAssignRole({
+    it('exige la permission réservée pour administrer un Super administrateur', () => {
+        expect(() => assertActorCanManageMember({
+            actorId: 'super-admin-1',
             authorization: {
                 roleKey: PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN,
                 permissions: [],
             },
+            targetMember: {
+                user: 'super-admin-2',
+                isFounder: false,
+            },
+            targetRole: activeRole({
+                key: PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN,
+                permissions: [],
+            }),
+        })).toThrow(
+            expect.objectContaining({ statusCode: 403 }),
+        );
+    });
+
+    it('autorise un Super administrateur à gérer un autre Super administrateur avec la permission réservée', () => {
+        expect(() => assertActorCanManageMember({
+            actorId: 'super-admin-1',
+            authorization: superAdminAuthorization,
+            targetMember: {
+                user: 'super-admin-2',
+                isFounder: false,
+            },
+            targetRole: activeRole({
+                key: PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN,
+                permissions: [],
+            }),
+        })).not.toThrow();
+    });
+
+    it('autorise un Super administrateur à attribuer un rôle valide', () => {
+        expect(() => assertActorCanAssignRole({
+            authorization: superAdminAuthorization,
             role: activeRole({
                 key: PLATFORM_TEAM_ROLE_KEY.TECHNICAL_SUPPORT,
                 permissions: [PLATFORM_PERMISSION.USERS_READ],
