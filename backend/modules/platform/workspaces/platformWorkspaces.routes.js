@@ -4,12 +4,14 @@ import { authorizePlatformRole } from '../../../middlewares/authorizePlatformRol
 import { validateRequest } from '../../../middlewares/validateRequest.js';
 import { paginationQuerySchema } from '../../../utils/validations/pagination.validation.js';
 import {
+    closeWorkspace,
     getWorkspaceById,
     listWorkspaces,
     reactivateWorkspace,
     suspendWorkspace,
 } from './platformWorkspaces.controller.js';
 import {
+    closePlatformWorkspaceBodySchema,
     platformWorkspaceIdParamsSchema,
     suspendPlatformWorkspaceBodySchema,
 } from './platformWorkspaces.validation.js';
@@ -45,6 +47,16 @@ platformWorkspacesRouter.patch(
     authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
     validateRequest({ params: platformWorkspaceIdParamsSchema }),
     reactivateWorkspace,
+);
+
+platformWorkspacesRouter.patch(
+    '/:workspaceId/close',
+    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
+    validateRequest({
+        params: platformWorkspaceIdParamsSchema,
+        body: closePlatformWorkspaceBodySchema,
+    }),
+    closeWorkspace,
 );
 
 export { platformWorkspacesRouter };
