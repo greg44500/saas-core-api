@@ -87,14 +87,17 @@ describe('POST /api/users/me/closure', () => {
         vi.clearAllMocks();
         requestCurrentUserClosure.mockResolvedValue({
             id: 'user-id',
-            status: 'deletion_requested',
+            status: 'closed',
             deletionRequestedAt: new Date('2026-09-05T12:00:00.000Z'),
-            removedMembershipCount: 1,
+            closedAt: new Date('2026-09-05T12:00:01.000Z'),
+            ownedWorkspaceCount: 1,
+            archivedWorkspaceCount: 1,
+            removedMembershipCount: 2,
             revokedSessionCount: 2,
         });
     });
 
-    it('protège, valide et déclenche la fermeture du compte courant', async () => {
+    it('protège, valide et déclenche la fermeture complète du compte courant', async () => {
         const response = await request(app)
             .post('/api/users/me/closure')
             .set('Authorization', 'Bearer test-token')
@@ -115,8 +118,10 @@ describe('POST /api/users/me/closure', () => {
         });
         expect(response.body.data.accountClosure).toMatchObject({
             id: 'user-id',
-            status: 'deletion_requested',
-            removedMembershipCount: 1,
+            status: 'closed',
+            ownedWorkspaceCount: 1,
+            archivedWorkspaceCount: 1,
+            removedMembershipCount: 2,
             revokedSessionCount: 2,
         });
     });
