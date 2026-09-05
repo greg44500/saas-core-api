@@ -61,12 +61,13 @@ docs/architecture/FRONTEND.md
 docs/security/SECURITY.md
 
 docs/frontend/FRONTEND-GUIDELINES.md
+
+docs/derived-saas/DERIVED-SAAS.md
 ```
 
 Documents encore à produire :
 
 ```text
-docs/derived-saas/DERIVED-SAAS.md
 docs/compliance/COMPLIANCE.md
 docs/compliance/rgpd-data-tracker-inventory.md
 docs/operations/OPERATIONS.md
@@ -181,28 +182,45 @@ Règles pratiques frontend consolidées :
 - `architecture/FRONTEND.md` décrit la structure ; `FRONTEND-GUIDELINES.md` décrit la manière de développer les interfaces ;
 - même intention UI → même famille de composants ; composition préférée à la duplication et au composant universel sur-paramétré ;
 - hiérarchie `components/ui` → `shared` / `forms` / `data-display` → composants de feature ;
-- `DataTable` reste la primitive obligatoire pour les tableaux compatibles ; une feature ne recrée pas la structure HTML d'un tableau ;
-- `DataTableActions` et styles de densité communs restent centralisés ;
-- `EntityDetailsDrawer` est la surface partagée privilégiée lorsque des détails doivent être consultés sans perdre le contexte de liste ;
-- `ConfirmationDialog` porte les confirmations bloquantes compatibles avec son contrat ;
-- composants formulaires partagés existants réutilisés avant création d'une variante ;
-- React Hook Form + Zod frontend + mutations RTK Query pour les formulaires ; backend toujours autorité finale ;
-- server state → RTK Query ; URL → navigation partageable ; form state → React Hook Form ; local → React ; Redux global seulement si justifié ; persistance navigateur interdite par défaut ;
-- appels API centralisés ; pas de `fetch()` dispersé ni de second cache serveur sans décision d'architecture ;
-- navigation Workspace composable : un SaaS dérivé ajoute ses groupes au point de composition `app/` sans modifier la Sidebar générique ;
-- permission et capability peuvent filtrer navigation/actions ; les groupes sans élément visible disparaissent ;
-- une capability complètement absente ne doit pas polluer l'UI avec des blocs permanents `Indisponible` ;
-- nuance conservée : l'absence d'une capability d'écriture ne signifie pas automatiquement que toute surface de lecture disparaît, par exemple `file_upload` et `file_read` portent deux intentions distinctes ;
+- `DataTable` reste la primitive obligatoire pour les tableaux compatibles ;
+- `EntityDetailsDrawer`, `ConfirmationDialog` et composants formulaires partagés doivent être réutilisés lorsque leur contrat convient ;
+- server state → RTK Query ; URL → navigation partageable ; form state → React Hook Form ; local → React ; Redux global seulement si justifié ;
+- permission et capability filtrent navigation/actions lorsque pertinentes ;
+- absence d'une capability d'écriture ≠ disparition automatique de toute surface de lecture ;
 - onboarding minimal, trial volontaire et règles commerciales jamais reconstruites côté frontend ;
-- feedback de proximité : champ inline, erreur locale dans sa surface, toast uniquement lorsqu'il apporte une valeur globale ;
-- accessibilité intégrée aux composants partagés : focus, clavier, labels, alertes accessibles, réduction des animations ;
-- responsive défini par comportement ;
-- performance : lazy loading pour le code, pagination serveur pour les gros datasets, virtualisation seulement si besoin mesuré ;
-- pages légères : assemblage et orchestration, pas de logique métier lourde ;
-- Vitest + React Testing Library + user-event pour les tests unitaires/composants ; intégration cross-feature lorsque nécessaire ; Playwright reste la cible E2E mais n'est pas encore installé dans le package frontend actuel ;
-- les futurs SaaS dérivés doivent composer les primitives du Core et ne pas recréer un design system, DataTable, système de toast, cache serveur ou architecture de navigation parallèle.
+- feedback de proximité, accessibilité, responsive et performance documentés ;
+- Vitest + React Testing Library + user-event actifs ; Playwright reste la cible E2E mais n'est pas encore installé.
 
-Anciennes policies et contrats frontend ayant servi de sources sont désormais considérés comme absorbés sur le fond, mais restent physiquement présents jusqu'au lot de nettoyage et à validation explicite.
+Aucun code ni test n'a été modifié. Aucun fichier historique n'a été supprimé.
+
+### DOC-6 — terminé
+
+Document canonique créé :
+
+```text
+docs/derived-saas/DERIVED-SAAS.md
+```
+
+Décisions structurantes :
+
+- un produit maintenable doit conserver l'historique Git du Core afin de pouvoir intégrer ses futures versions ;
+- GitHub Template est un outil de démarrage possible mais n'est pas la stratégie canonique pour un produit devant recevoir les mises à jour du Core, car les historiques sont indépendants ;
+- stratégie cible de dépôt : `origin` = dépôt du produit, `upstream-core` = dépôt `saas-core-api` ;
+- le Core courant reste `0.1.0` et ne doit pas être considéré comme socle diffusé tant que `v1.0.0` n'est pas stabilisée ;
+- versionnement sémantique PATCH / MINOR / MAJOR retenu ;
+- chaque release Core devra fournir release notes, migrations, changements d'environnement, dépendances et compatibilité ;
+- chaque produit devra tracer séparément sa version applicative et la version Core intégrée ; une convention de type `core-origin.json` est proposée mais reste à implémenter avant diffusion ;
+- les mises à jour Core passent par une branche dédiée puis tests et Pull Request, jamais par injection aveugle dans `main` ;
+- les corrections génériques trouvées dans un produit dérivé doivent idéalement remonter dans le Core afin que tous les produits en bénéficient ;
+- Capability Registry et navigation Workspace possèdent déjà des points de composition dédiés ;
+- les permissions métier possèdent des mécanismes d'extension partiels (`createSystemRoleDefinitions`) mais pas encore de point de composition applicatif complet équivalent au Capability Registry ;
+- `backend/app.js` et `frontend/src/app/router.jsx` restent encore des fichiers centraux à modifier pour ajouter des routes métier ; cette limite doit être traitée avant Core 1.0 pour réduire les conflits d'upgrade ;
+- release process / changelog, traçabilité version Core et CI d'upgrade restent également à formaliser avant 1.0 ;
+- aucune `.github` canonique de CI n'est actuellement présente dans le dépôt ;
+- transformation immédiate du Core en packages séparés non retenue ; à réévaluer après deux ou trois produits réels ;
+- avant de déclarer la stratégie de dérivation finalisée, un exercice réel devra créer un dépôt pilote depuis une release Core puis lui intégrer une nouvelle version Core.
+
+`core-deferred-work-for-derived-saas.md` est désormais absorbé sur le fond par `DERIVED-SAAS.md` et `DEBT.md`, mais reste physiquement présent jusqu'au lot DOC-10 et à validation explicite.
 
 Aucun code ni test n'a été modifié. Aucun fichier historique n'a été supprimé.
 
@@ -210,20 +228,18 @@ Aucun code ni test n'a été modifié. Aucun fichier historique n'a été suppri
 
 ## 6. Prochain lot documentaire
 
-**DOC-6 — SaaS dérivés et maintenance du Core**.
+**DOC-7 — Conformité / RGPD**.
 
 Objectifs :
 
-1. définir le processus de création d'un nouveau SaaS à partir du Core ;
-2. formaliser les frontières à ne pas modifier inutilement dans le Core ;
-3. documenter l'ajout des modules métier backend/frontend et des capabilities ;
-4. définir le versionnement du Core ;
-5. enregistrer la version Core utilisée par chaque SaaS dérivé ;
-6. définir la stratégie de mise à niveau contrôlée des produits existants ;
-7. définir la gestion des migrations, changements de configuration et breaking changes ;
-8. définir les tests de non-régression lors d'une mise à niveau ;
-9. préciser la place de GitHub Template : outil possible de création initiale, mais pas stratégie suffisante de maintenance ;
-10. préparer une stratégie progressive compatible avec un futur passage à des packages Core si le retour d'expérience le justifie.
+1. consolider les anciens cadrages RGPD, cookies, confidentialité et mentions légales ;
+2. distinguer obligation générique du Core et obligations dépendantes du produit dérivé ;
+3. cadrer données personnelles, finalités, bases légales et droits ;
+4. cadrer cookies/traceurs et consentement lorsque requis ;
+5. intégrer l'inventaire vivant des trackers/providers ;
+6. relier conformité, fermeture de compte, rétention, anonymisation et suppression ;
+7. conserver une frontière claire entre documentation technique et validation juridique ;
+8. préparer les anciens documents redondants à devenir candidats à suppression sans rien supprimer dans DOC-7.
 
 ---
 
@@ -236,8 +252,9 @@ reprendre F10.6
 → auditer l'état fonctionnel réel
 → établir les lots restant à finaliser
 → traiter les blockers Core / production
+→ finaliser les points d'extension dérivés identifiés en DOC-6
 → audit sécurité et tests
-→ figer la stratégie de distribution et de mise à jour
+→ tester réellement création + upgrade d'un SaaS dérivé pilote
 → version Core finalisée
 ```
 
@@ -247,20 +264,28 @@ La feuille de route distinguera les obligations génériques du Core des respons
 
 ## 8. Distribution et maintenance des futurs SaaS
 
-Exigence structurante : les SaaS dérivés doivent pouvoir recevoir de façon maîtrisée les correctifs et évolutions compatibles du Core sans écraser leurs modules métier.
+Décision actuelle :
 
-La politique finale devra définir :
+```text
+Core finalisé et versionné
+↓
+création du produit en conservant l'historique Git du Core
+↓
+origin = dépôt produit
+upstream-core = dépôt SAAS-CORE-API
+↓
+modules métier ajoutés par composition
+↓
+future release Core
+↓
+branche d'upgrade
+↓
+tests + migrations + revue
+↓
+Pull Request produit
+```
 
-- versionnement du Core ;
-- version Core utilisée par chaque SaaS ;
-- séparation Core / métier ;
-- procédure de mise à niveau ;
-- migrations et configuration ;
-- tests de non-régression ;
-- résolution des conflits ;
-- compatibilité et breaking changes.
-
-Un GitHub Template pourra faciliter la création initiale d'une application mais ne résout pas, à lui seul, sa maintenance future.
+Le GitHub Template ne doit pas être confondu avec cette stratégie de maintenance.
 
 ---
 
@@ -270,7 +295,7 @@ Un GitHub Template pourra faciliter la création initiale d'une application mais
 
 - le Core sera considéré comme finalisé ;
 - la documentation canonique sera complète et auditée ;
-- la politique de distribution/versionnement sera opérationnelle ;
+- la politique de distribution/versionnement sera réellement testée et opérationnelle ;
 - aucune reprise de développement Core n'exigera plus de contexte temporaire.
 
 La suppression nécessitera une validation explicite.
