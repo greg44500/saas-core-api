@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -103,7 +103,7 @@ describe('WorkspaceFilesPage', () => {
     vi.clearAllMocks();
   });
 
-  it('affiche le listing paginé du workspace', () => {
+  it('affiche un tableau compact sans répéter le MIME ni le type', () => {
     renderPage();
 
     expect(mocks.useListWorkspaceFilesQuery).toHaveBeenCalledWith({
@@ -112,13 +112,54 @@ describe('WorkspaceFilesPage', () => {
       limit: 20,
     });
     expect(screen.getByRole('heading', { name: 'Fichiers' })).toBeInTheDocument();
-    expect(screen.getByText('contrat.pdf')).toBeInTheDocument();
+
+    const fileName = screen.getByText('contrat.pdf');
+    expect(fileName).toBeInTheDocument();
+    expect(fileName).toHaveAttribute('title', 'contrat.pdf');
     expect(screen.getByText('Document')).toBeInTheDocument();
-    expect(screen.getByText('PDF')).toBeInTheDocument();
     expect(screen.getByText('2 Ko')).toBeInTheDocument();
+    expect(screen.queryByText('application/pdf')).not.toBeInTheDocument();
+    expect(screen.queryByText('PDF')).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Type' })).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Télécharger contrat.pdf' }),
     ).toBeInTheDocument();
+  });
+
+  it('filtre les catégories côté serveur et revient à la première page', async () => {
+    const user = userEvent.setup();
+
+    renderPage();
+    await user.selectOptions(
+      screen.getByLabelText('Filtrer par catégorie'),
+      'document',
+    );
+
+    expect(mocks.useListWorkspaceFilesQuery).toHaveBeenLastCalledWith({
+      workspaceId: 'workspace-1',
+      page: 1,
+      limit: 20,
+      category: 'document',
+    });
+  });
+
+  it('recherche le nom côté serveur après temporisation', async () => {
+    const user = userEvent.setup();
+
+    renderPage();
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Rechercher un fichier' }),
+      'contrat',
+    );
+
+    await waitFor(() => {
+      expect(mocks.useListWorkspaceFilesQuery).toHaveBeenLastCalledWith({
+        workspaceId: 'workspace-1',
+        page: 1,
+        limit: 20,
+        search: 'contrat',
+      });
+    });
   });
 
   it('affiche l’action d’upload uniquement avec file:upload et file_upload', () => {
