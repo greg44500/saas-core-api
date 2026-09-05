@@ -93,6 +93,133 @@ const normalizeSystemRolePermissions = ({
 
 
 /**
+ * Compose les déclarations RBAC des modules réellement embarqués.
+ *
+ * Un descriptor reste volontairement petit : il déclare ses permissions,
+ * celles qui sont réservées aux rôles système et les rôles système qui doivent
+ * recevoir ses permissions. Il n'existe aucune découverte automatique de
+ * modules afin que la composition reste explicite et déterministe.
+ */
+const composeRolePermissionExtensions = (modules = []) => {
+    if (!Array.isArray(modules)) {
+        throw new TypeError('modules must be an array');
+    }
+
+    const permissions = [];
+    const reservedPermissions = [];
+    const systemRolePermissions = {};
+    const declaredPermissions = new Set();
+
+    modules.forEach((moduleDefinition, moduleIndex) => {
+        if (
+            moduleDefinition === null
+            || Array.isArray(moduleDefinition)
+            || typeof moduleDefinition !== 'object'
+        ) {
+            throw new TypeError(
+                `RBAC module at index ${moduleIndex} must be an object`,
+            );
+        }
+
+        const modulePermissions = normalizePermissionList(
+            moduleDefinition.permissions ?? [],
+            `modules[${moduleIndex}].permissions`,
+        );
+        const modulePermissionSet = new Set(modulePermissions);
+
+        for (const permission of modulePermissions) {
+            if (declaredPermissions.has(permission)) {
+                throw new TypeError(
+                    `Duplicate application permission declaration: ${permission}`,
+                );
+            }
+
+            declaredPermissions.add(permission);
+            permissions.push(permission);
+        }
+
+        const moduleReservedPermissions = normalizePermissionList(
+            moduleDefinition.reservedPermissions ?? [],
+            `modules[${moduleIndex}].reservedPermissions`,
+        );
+
+        for (const permission of moduleReservedPermissions) {
+            if (!modulePermissionSet.has(permission)) {
+                throw new TypeError(
+                    `Reserved application permission is not declared by its module: ${permission}`,
+                );
+            }
+
+            reservedPermissions.push(permission);
+        }
+
+        const moduleSystemRolePermissions =
+            moduleDefinition.systemRolePermissions ?? {};
+
+        if (
+            moduleSystemRolePermissions === null
+            || Array.isArray(moduleSystemRolePermissions)
+            || typeof moduleSystemRolePermissions !== 'object'
+        ) {
+            throw new TypeError(
+                `modules[${moduleIndex}].systemRolePermissions must be an object`,
+            );
+        }
+
+        for (const [roleKey, rolePermissions] of Object.entries(
+            moduleSystemRolePermissions,
+        )) {
+            if (!Object.values(SYSTEM_ROLE_KEY).includes(roleKey)) {
+                throw new TypeError(
+                    `Unknown system role key: ${roleKey}`,
+                );
+            }
+
+            const normalizedRolePermissions = normalizePermissionList(
+                rolePermissions,
+                `modules[${moduleIndex}].systemRolePermissions.${roleKey}`,
+            );
+
+            const foreignPermission = normalizedRolePermissions.find(
+                (permission) => !modulePermissionSet.has(permission),
+            );
+
+            if (foreignPermission) {
+                throw new TypeError(
+                    `System role permission is not declared by its module: ${foreignPermission}`,
+                );
+            }
+
+            systemRolePermissions[roleKey] = [
+                ...new Set([
+                    ...(systemRolePermissions[roleKey] ?? []),
+                    ...normalizedRolePermissions,
+                ]),
+            ];
+        }
+    });
+
+    return Object.freeze({
+        permissions: Object.freeze(permissions),
+        reservedPermissions: Object.freeze([
+            ...new Set(reservedPermissions),
+        ]),
+        systemRolePermissions: Object.freeze(
+            Object.fromEntries(
+                Object.entries(systemRolePermissions)
+                    .sort(([leftKey], [rightKey]) =>
+                        leftKey.localeCompare(rightKey))
+                    .map(([roleKey, rolePermissions]) => [
+                        roleKey,
+                        Object.freeze(rolePermissions),
+                    ]),
+            ),
+        ),
+    });
+};
+
+
+/**
  * Construit un registre RBAC immuable.
  *
  * Le Core fournit son registre par défaut. Une application consommatrice peut
@@ -192,6 +319,7 @@ export {
     ACTIVE_ROLE_PERMISSIONS,
     RESERVED_CUSTOM_ROLE_PERMISSIONS,
     DEFAULT_ROLE_PERMISSION_REGISTRY,
+    composeRolePermissionExtensions,
     configureRolePermissionRegistry,
     createRolePermissionRegistry,
     getActiveRolePermissionRegistry,
