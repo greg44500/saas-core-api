@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AUDIT_ACTION } from '../../constants/auditActions.constants.js';
 import {
-    closeWorkspaceByOwner,
+    archiveWorkspaceByOwner,
     closeWorkspaceByPlatform,
 } from '../../modules/workspace/workspaceClosure.service.js';
 import { Workspace } from '../../modules/workspace/workspace.model.js';
@@ -82,7 +82,7 @@ describe('workspaceClosure.service', () => {
         );
     });
 
-    it('ferme atomiquement un workspace owner et neutralise subscriptions et invitations courantes', async () => {
+    it('archive atomiquement un workspace owner, neutralise le commercial et préserve la baseline', async () => {
         WorkspaceMember.findOne.mockReturnValue(ownerMembershipQuery({
             _id: 'owner-member-id',
             role: {
@@ -101,7 +101,7 @@ describe('workspaceClosure.service', () => {
         Workspace.findById.mockReturnValue(sessionQuery(workspace));
         Workspace.findOneAndUpdate.mockResolvedValue({
             _id: { toString: () => 'workspace-id' },
-            status: 'closed',
+            status: 'archived',
             statusReason: 'owner_request',
             statusReasonDetails: null,
             statusChangedAt: new Date('2026-09-05T12:00:00.000Z'),
@@ -109,11 +109,13 @@ describe('workspaceClosure.service', () => {
 
         const subscription = {
             _id: 'subscription-id',
+            kind: 'commercial',
             status: 'active',
         };
         Subscription.find.mockReturnValue(sessionQuery([subscription]));
         Subscription.findOneAndUpdate.mockResolvedValue({
             _id: 'subscription-id',
+            kind: 'commercial',
             status: 'canceled',
         });
 
@@ -130,7 +132,7 @@ describe('workspaceClosure.service', () => {
             status: 'revoked',
         });
 
-        const result = await closeWorkspaceByOwner({
+        const result = await archiveWorkspaceByOwner({
             workspaceId: 'workspace-id',
             actorId: 'user-id',
             currentPassword: 'Correct Horse Battery Staple',
@@ -147,7 +149,7 @@ describe('workspaceClosure.service', () => {
             { _id: 'workspace-id', status: 'active' },
             expect.objectContaining({
                 $set: expect.objectContaining({
-                    status: 'closed',
+                    status: 'archived',
                     statusReason: 'owner_request',
                     statusChangedBy: 'user-id',
                 }),
@@ -156,6 +158,14 @@ describe('workspaceClosure.service', () => {
                 returnDocument: 'after',
                 runValidators: true,
                 session,
+            }),
+        );
+        expect(Subscription.find).toHaveBeenCalledWith(
+            expect.objectContaining({
+                workspace: 'workspace-id',
+                kind: expect.objectContaining({
+                    $in: ['commercial'],
+                }),
             }),
         );
         expect(Subscription.findOneAndUpdate).toHaveBeenCalledWith(
@@ -190,9 +200,20 @@ describe('workspaceClosure.service', () => {
         );
         expect(createAuditLog).toHaveBeenCalledWith(
             expect.objectContaining({
-                action: AUDIT_ACTION.WORKSPACE_CLOSED,
+                action: AUDIT_ACTION.SUBSCRIPTION_CANCELED,
+                metadata: expect.objectContaining({
+                    mode: 'workspace_archived',
+                    reason: 'workspace_archived',
+                }),
+            }),
+            { session },
+        );
+        expect(createAuditLog).toHaveBeenCalledWith(
+            expect.objectContaining({
+                action: AUDIT_ACTION.WORKSPACE_ARCHIVED,
                 metadata: expect.objectContaining({
                     previousStatus: 'active',
+                    newStatus: 'archived',
                     statusReason: 'owner_request',
                     canceledSubscriptionCount: 1,
                     revokedInvitationCount: 1,
@@ -202,14 +223,14 @@ describe('workspaceClosure.service', () => {
         );
         expect(result).toMatchObject({
             id: 'workspace-id',
-            status: 'closed',
+            status: 'archived',
             statusReason: 'owner_request',
             canceledSubscriptionCount: 1,
             revokedInvitationCount: 1,
         });
     });
 
-    it('refuse une confirmation de nom incorrecte sans fermer le workspace', async () => {
+    it('refuse une confirmation de nom incorrecte sans archiver le workspace', async () => {
         WorkspaceMember.findOne.mockReturnValue(ownerMembershipQuery({
             _id: 'owner-member-id',
             role: {
@@ -224,7 +245,7 @@ describe('workspaceClosure.service', () => {
         }));
 
         await expect(
-            closeWorkspaceByOwner({
+            archiveWorkspaceByOwner({
                 workspaceId: 'workspace-id',
                 actorId: 'user-id',
                 currentPassword: 'Correct Horse Battery Staple',
@@ -262,6 +283,19 @@ describe('workspaceClosure.service', () => {
             statusReasonDetails: 'Clôture administrative',
         });
 
+        expect(Subscription.find).toHaveBeenCalledWith(
+            expect.not.objectContaining({ kind: expect.anything() }),
+        );
+        expect(createAuditLog).toHaveBeenCalledWith(
+            expect.objectContaining({
+                action: AUDIT_ACTION.WORKSPACE_CLOSED,
+                metadata: expect.objectContaining({
+                    previousStatus: 'suspended',
+                    newStatus: 'closed',
+                }),
+            }),
+            { session },
+        );
         expect(result).toMatchObject({
             id: 'workspace-id',
             status: 'closed',
@@ -269,5 +303,38 @@ describe('workspaceClosure.service', () => {
             canceledSubscriptionCount: 0,
             revokedInvitationCount: 0,
         });
+    });
+
+    it('permet à Platform de fermer terminalement un workspace archivé', async () => {
+        Workspace.findById.mockReturnValue(sessionQuery({
+            _id: 'workspace-id',
+            name: 'Acme',
+            status: 'archived',
+        }));
+        Workspace.findOneAndUpdate.mockResolvedValue({
+            _id: { toString: () => 'workspace-id' },
+            status: 'closed',
+            statusReason: 'platform_decision',
+            statusReasonDetails: null,
+            statusChangedAt: new Date('2026-09-05T12:00:00.000Z'),
+        });
+        Subscription.find.mockReturnValue(sessionQuery([]));
+
+        const result = await closeWorkspaceByPlatform({
+            workspaceId: 'workspace-id',
+            actorId: 'admin-id',
+            statusReason: 'platform_decision',
+        });
+
+        expect(Workspace.findOneAndUpdate).toHaveBeenCalledWith(
+            { _id: 'workspace-id', status: 'archived' },
+            expect.objectContaining({
+                $set: expect.objectContaining({
+                    status: 'closed',
+                }),
+            }),
+            expect.objectContaining({ session }),
+        );
+        expect(result.status).toBe('closed');
     });
 });
