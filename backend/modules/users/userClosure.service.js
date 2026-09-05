@@ -318,18 +318,12 @@ const requestCurrentUserClosure = async ({
     userId,
     currentPassword,
     confirmationEmail,
-    confirmAccountClosure,
     ipAddress = null,
     userAgent = null,
 }) => {
-    if (
-        !userId
-        || !currentPassword
-        || !confirmationEmail
-        || confirmAccountClosure !== true
-    ) {
+    if (!userId || !currentPassword || !confirmationEmail) {
         throw new TypeError(
-            'userId, currentPassword, confirmationEmail and explicit closure confirmation are required to close an account',
+            'userId, currentPassword and confirmationEmail are required to request account closure',
         );
     }
 
