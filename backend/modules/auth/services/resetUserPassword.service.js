@@ -116,10 +116,14 @@ const resetUserPassword = async ({
     }
 
     /*
-     * Un compte clôturé est dans un état terminal. Un reset ne doit
-     * pas restaurer indirectement sa capacité d'authentification.
+     * Une fermeture engagée est déjà bloquante pour les credentials.
+     * Un reset ne doit ni prolonger un compte en cours de fermeture,
+     * ni restaurer indirectement un compte clôturé.
      */
-    if (user.status === USER_STATUS.CLOSED) {
+    if (
+        user.status === USER_STATUS.DELETION_REQUESTED
+        || user.status === USER_STATUS.CLOSED
+    ) {
         throw new AppError(
             INVALID_PASSWORD_RESET_TOKEN_MESSAGE,
             400,
@@ -242,8 +246,9 @@ const resetUserPassword = async ({
 
             /*
              * L'état du compte est revérifié dans la transaction.
-             * CLOSED reste exclu même si le statut a changé depuis
-             * la lecture préliminaire.
+             * Seuls ACTIVE et DISABLED restent compatibles avec un reset.
+             * DELETION_REQUESTED et CLOSED sont exclus même si le statut
+             * a changé depuis la lecture préliminaire.
              */
             const userUpdateResult =
                 await User.updateOne(
@@ -253,7 +258,6 @@ const resetUserPassword = async ({
                             $in: [
                                 USER_STATUS.ACTIVE,
                                 USER_STATUS.DISABLED,
-                                USER_STATUS.DELETION_REQUESTED,
                             ],
                         }),
                     },
@@ -291,9 +295,9 @@ const resetUserPassword = async ({
                 });
 
             /*
-* Le token autorise l'opération sans authentifier personnellement
-* son détenteur. Le User est donc la cible, jamais l'acteur.
-*/
+             * Le token autorise l'opération sans authentifier personnellement
+             * son détenteur. Le User est donc la cible, jamais l'acteur.
+             */
             await createAuditLog(
                 {
                     actor: null,
