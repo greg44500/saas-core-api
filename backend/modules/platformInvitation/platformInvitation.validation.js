@@ -32,13 +32,12 @@ const acceptExistingPlatformInvitationBodySchema = z.strictObject({
 });
 
 /**
- * Pour un nouveau compte, l'email n'est volontairement pas accepté dans le
- * body : l'adresse canonique de l'invitation est l'unique source de vérité.
+ * L'identité et l'email du nouveau User proviennent exclusivement de
+ * l'invitation déjà validée. Le client ne peut donc pas substituer une autre
+ * personne au moment d'accepter le lien.
  */
 const acceptNewPlatformInvitationBodySchema = z.strictObject({
     token: invitationTokenSchema,
-    firstName: z.string().trim().min(1).max(100),
-    lastName: z.string().trim().min(1).max(100),
     password: passwordSchema,
 });
 
