@@ -778,15 +778,15 @@ L’ancien `core-deferred-work-for-derived-saas.md` est désormais absorbé sur 
 | Capability Registry | prêt | point de composition explicite disponible, métadonnées et relations feature → métriques supportées |
 | Navigation Workspace | prêt | composition au niveau `app/workspace-navigation.js` |
 | Composants frontend partagés | prêt | réutilisation par composition |
-| Permissions métier / rôles système | implémenté, validation locale requise | registre applicatif `applicationRolePermission.registry.js` |
-| Routes backend métier | implémenté, validation locale requise | composition dans `applicationRoutes.registry.js` |
-| Routes frontend métier | implémenté, validation locale requise | composition dans `app/application-routes.js` |
+| Permissions métier / rôles système | prêt | registre applicatif `applicationRolePermission.registry.js`, composition et tests locaux validés |
+| Routes backend métier | prêt | composition dans `applicationRoutes.registry.js`, tests locaux validés |
+| Routes frontend métier | prêt | composition dans `app/application-routes.js`, tests locaux et build validés |
 | Traçabilité version Core par produit | à implémenter avant diffusion | convention `core-origin.json` proposée |
 | Releases / changelog Core | à formaliser avant 1.0 | tags + notes de version requis |
 | CI de validation des upgrades | à formaliser | aucune stratégie GitHub Actions canonique n’est encore documentée |
 | Packages Core séparés | non requis en V1 | à réévaluer après retour d’expérience réel |
 
-Les trois lignes D-014 ne doivent passer à l’état `validé` qu’après exécution locale verte des suites concernées.
+La validation locale des points d’extension a été effectuée le 2026-09-05 avec les suites ciblées, les suites globales et le build frontend verts. Le statut canonique de la dette associée reste porté uniquement par `docs/DEBT.md`.
 
 Référence : `docs/derived-saas/EXTENSION-POINTS.md`.
 
