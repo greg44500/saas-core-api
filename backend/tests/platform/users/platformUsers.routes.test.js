@@ -9,14 +9,14 @@ import {
 } from 'vitest';
 
 import {
-    PLATFORM_ROLE,
-} from '../../../constants/platformRoles.constants.js';
+    PLATFORM_PERMISSION,
+} from '../../../constants/platformPermissions.constants.js';
 import {
     authenticate,
 } from '../../../middlewares/authenticate.js';
 import {
-    authorizePlatformRole,
-} from '../../../middlewares/authorizePlatformRole.js';
+    authorizePlatformPermission,
+} from '../../../middlewares/authorizePlatformPermission.js';
 import {
     validateRequest,
 } from '../../../middlewares/validateRequest.js';
@@ -27,18 +27,17 @@ import {
     closePlatformUserBodySchema,
     disablePlatformUserBodySchema,
     platformUserIdParamsSchema,
-    updatePlatformUserRoleBodySchema,
 } from '../../../modules/platform/users/platformUsers.validation.js';
 import {
     paginationQuerySchema,
 } from '../../../utils/validations/pagination.validation.js';
 
 const {
-    platformRoleMiddleware,
+    permissionMiddleware,
     validationMiddleware,
     handlers,
 } = vi.hoisted(() => ({
-    platformRoleMiddleware: vi.fn((req, res, next) => next()),
+    permissionMiddleware: vi.fn((req, res, next) => next()),
     validationMiddleware: vi.fn((req, res, next) => next()),
     handlers: {
         closeUser: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
@@ -47,7 +46,6 @@ const {
         getUserById: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         listUsers: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         revokeUserSessions: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
-        updateUserRole: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     },
 }));
 
@@ -58,7 +56,6 @@ vi.mock(
             req.user = {
                 _id: 'user-id',
                 id: 'user-id',
-                platformRole: PLATFORM_ROLE.SUPER_ADMIN,
             };
             next();
         }),
@@ -66,9 +63,9 @@ vi.mock(
 );
 
 vi.mock(
-    '../../../middlewares/authorizePlatformRole.js',
+    '../../../middlewares/authorizePlatformPermission.js',
     () => ({
-        authorizePlatformRole: vi.fn(() => platformRoleMiddleware),
+        authorizePlatformPermission: vi.fn(() => permissionMiddleware),
     }),
 );
 
@@ -90,7 +87,7 @@ app.use('/platform', platformRouter);
 
 beforeEach(() => {
     authenticate.mockClear();
-    platformRoleMiddleware.mockClear();
+    permissionMiddleware.mockClear();
     validationMiddleware.mockClear();
 
     Object.values(handlers).forEach((handler) => {
@@ -104,6 +101,7 @@ describe('platformUsers.routes', () => {
             label: 'liste des utilisateurs',
             method: 'get',
             path: '/platform/users?page=1&limit=20',
+            permission: PLATFORM_PERMISSION.USERS_READ,
             validation: { query: paginationQuerySchema },
             handler: handlers.listUsers,
         },
@@ -111,6 +109,7 @@ describe('platformUsers.routes', () => {
             label: 'détail utilisateur',
             method: 'get',
             path: '/platform/users/507f1f77bcf86cd799439011',
+            permission: PLATFORM_PERMISSION.USERS_READ,
             validation: { params: platformUserIdParamsSchema },
             handler: handlers.getUserById,
         },
@@ -118,6 +117,7 @@ describe('platformUsers.routes', () => {
             label: 'désactivation utilisateur',
             method: 'patch',
             path: '/platform/users/507f1f77bcf86cd799439011/disable',
+            permission: PLATFORM_PERMISSION.USERS_DISABLE,
             body: { disabledReason: 'Violation des conditions' },
             validation: {
                 params: platformUserIdParamsSchema,
@@ -129,6 +129,7 @@ describe('platformUsers.routes', () => {
             label: 'réactivation utilisateur',
             method: 'patch',
             path: '/platform/users/507f1f77bcf86cd799439011/enable',
+            permission: PLATFORM_PERMISSION.USERS_ENABLE,
             validation: { params: platformUserIdParamsSchema },
             handler: handlers.enableUser,
         },
@@ -136,6 +137,7 @@ describe('platformUsers.routes', () => {
             label: 'clôture utilisateur',
             method: 'patch',
             path: '/platform/users/507f1f77bcf86cd799439011/close',
+            permission: PLATFORM_PERMISSION.USERS_CLOSE,
             body: { reason: 'Demande de fermeture finalisée' },
             validation: {
                 params: platformUserIdParamsSchema,
@@ -147,25 +149,15 @@ describe('platformUsers.routes', () => {
             label: 'révocation des sessions',
             method: 'post',
             path: '/platform/users/507f1f77bcf86cd799439011/revoke-sessions',
+            permission: PLATFORM_PERMISSION.USERS_REVOKE_SESSIONS,
             validation: { params: platformUserIdParamsSchema },
             handler: handlers.revokeUserSessions,
-        },
-        {
-            label: 'changement de rôle plateforme',
-            method: 'patch',
-            path: '/platform/users/507f1f77bcf86cd799439011/role',
-            body: { platformRole: PLATFORM_ROLE.ADMIN },
-            validation: {
-                params: platformUserIdParamsSchema,
-                body: updatePlatformUserRoleBodySchema,
-            },
-            handler: handlers.updateUserRole,
         },
     ];
 
     it.each(routeCases)(
         'protège et valide $label avant le controller',
-        async ({ method, path, body, validation, handler }) => {
+        async ({ method, path, body, permission, validation, handler }) => {
             let pendingRequest = request(app)[method](path);
 
             if (body) {
@@ -175,14 +167,22 @@ describe('platformUsers.routes', () => {
             const response = await pendingRequest;
 
             expect(response.status).toBe(200);
-            expect(authorizePlatformRole).toHaveBeenCalledWith(
-                PLATFORM_ROLE.SUPER_ADMIN,
-            );
-            expect(validateRequest).toHaveBeenCalledWith(validation);
+            expect(authorizePlatformPermission.mock.calls).toContainEqual([
+                permission,
+            ]);
+            expect(validateRequest.mock.calls).toContainEqual([validation]);
             expect(authenticate).toHaveBeenCalledOnce();
-            expect(platformRoleMiddleware).toHaveBeenCalledOnce();
+            expect(permissionMiddleware).toHaveBeenCalledOnce();
             expect(validationMiddleware).toHaveBeenCalledOnce();
             expect(handler).toHaveBeenCalledOnce();
         },
     );
+
+    it('n’expose plus l’ancien endpoint de mutation User.platformRole', async () => {
+        const response = await request(app)
+            .patch('/platform/users/507f1f77bcf86cd799439011/role')
+            .send({ platformRole: 'super_admin' });
+
+        expect(response.status).toBe(404);
+    });
 });
