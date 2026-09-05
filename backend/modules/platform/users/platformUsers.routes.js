@@ -4,6 +4,7 @@ import { authorizePlatformRole } from '../../../middlewares/authorizePlatformRol
 import { validateRequest } from '../../../middlewares/validateRequest.js';
 import { paginationQuerySchema } from '../../../utils/validations/pagination.validation.js';
 import {
+    closeUser,
     disableUser,
     enableUser,
     getUserById,
@@ -12,6 +13,7 @@ import {
     updateUserRole,
 } from './platformUsers.controller.js';
 import {
+    closePlatformUserBodySchema,
     disablePlatformUserBodySchema,
     platformUserIdParamsSchema,
     updatePlatformUserRoleBodySchema,
@@ -48,6 +50,16 @@ platformUsersRouter.patch(
     authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
     validateRequest({ params: platformUserIdParamsSchema }),
     enableUser,
+);
+
+platformUsersRouter.patch(
+    '/:userId/close',
+    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
+    validateRequest({
+        params: platformUserIdParamsSchema,
+        body: closePlatformUserBodySchema,
+    }),
+    closeUser,
 );
 
 platformUsersRouter.post(
