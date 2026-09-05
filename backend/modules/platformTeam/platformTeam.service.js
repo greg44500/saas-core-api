@@ -120,6 +120,20 @@ const loadCurrentMemberWithRole = async ({
     return { member, role };
 };
 
+const assertSuperAdminManagementAuthority = (authorization) => {
+    if (
+        authorization?.roleKey !== PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN
+        || !authorization.permissions?.includes(
+            PLATFORM_PERMISSION.SUPER_ADMINS_MANAGE,
+        )
+    ) {
+        throw new AppError(
+            'Seul un Super administrateur peut gérer un autre Super administrateur.',
+            403,
+        );
+    }
+};
+
 const assertActorCanManageMember = ({
     actorId,
     authorization,
@@ -140,15 +154,13 @@ const assertActorCanManageMember = ({
         );
     }
 
-    if (authorization.roleKey === PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN) {
+    if (targetRole.key === PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN) {
+        assertSuperAdminManagementAuthority(authorization);
         return;
     }
 
-    if (targetRole.key === PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN) {
-        throw new AppError(
-            'Seul un Super administrateur peut gérer un autre Super administrateur.',
-            403,
-        );
+    if (authorization.roleKey === PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN) {
+        return;
     }
 
     const targetPermissions = getPlatformRoleEffectivePermissions(
@@ -179,15 +191,13 @@ const assertActorCanAssignRole = ({
 
     const rolePermissions = getPlatformRoleEffectivePermissions(role);
 
-    if (authorization.roleKey === PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN) {
+    if (role.key === PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN) {
+        assertSuperAdminManagementAuthority(authorization);
         return rolePermissions;
     }
 
-    if (role.key === PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN) {
-        throw new AppError(
-            'Seul un Super administrateur peut attribuer le rôle Super administrateur.',
-            403,
-        );
+    if (authorization.roleKey === PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN) {
+        return rolePermissions;
     }
 
     if (!isStrictPermissionSubset({
@@ -203,11 +213,22 @@ const assertActorCanAssignRole = ({
     return rolePermissions;
 };
 
-const assertSuperAdminCanBeRemoved = async ({
+/**
+ * Vérifie l'invariant uniquement lorsqu'une opération retire réellement un
+ * Super administrateur de l'ensemble ACTIVE.
+ *
+ * Un membre déjà SUSPENDED ne compte plus parmi les administrateurs actifs :
+ * le révoquer ou changer son rôle ne doit donc pas déclencher un faux blocage.
+ */
+const assertActiveSuperAdminCanLoseActiveStatus = async ({
+    targetMember,
     targetRole,
     session,
 }) => {
-    if (targetRole.key !== PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN) {
+    if (
+        targetMember.status !== PLATFORM_TEAM_MEMBER_STATUS.ACTIVE
+        || targetRole.key !== PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN
+    ) {
         return;
     }
 
@@ -342,7 +363,8 @@ const updatePlatformTeamMemberRole = async ({
             currentRole.key === PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN
             && nextRole.key !== PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN
         ) {
-            await assertSuperAdminCanBeRemoved({
+            await assertActiveSuperAdminCanLoseActiveStatus({
+                targetMember: member,
                 targetRole: currentRole,
                 session,
             });
@@ -415,7 +437,8 @@ const suspendPlatformTeamMember = async ({
             throw new AppError('Ce membre n’est pas actif.', 409);
         }
 
-        await assertSuperAdminCanBeRemoved({
+        await assertActiveSuperAdminCanLoseActiveStatus({
+            targetMember: member,
             targetRole: role,
             session,
         });
@@ -546,7 +569,8 @@ const revokePlatformTeamMember = async ({
             targetRole: role,
         });
 
-        await assertSuperAdminCanBeRemoved({
+        await assertActiveSuperAdminCanLoseActiveStatus({
+            targetMember: member,
             targetRole: role,
             session,
         });
