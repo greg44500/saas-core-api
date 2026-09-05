@@ -66,6 +66,15 @@ export const authenticate = async (req, res, next) => {
         );
     }
 
+    if (user.status === USER_STATUS.DELETION_REQUESTED) {
+        return next(
+            new AppError(
+                'Fermeture du compte en cours',
+                403,
+            ),
+        );
+    }
+
     if (user.status === USER_STATUS.CLOSED) {
         return next(
             new AppError(
@@ -74,15 +83,16 @@ export const authenticate = async (req, res, next) => {
             ),
         );
     }
+
     /*
- * La date contenue dans le token doit correspondre exactement
- * à l'état actuel du User.
- *
- * Après un changement de mot de passe :
- * - les anciens tokens ne contiennent pas cette date, ou contiennent
- *   une valeur précédente ;
- * - les nouveaux tokens contiennent la valeur actuellement stockée.
- */
+     * La date contenue dans le token doit correspondre exactement
+     * à l'état actuel du User.
+     *
+     * Après un changement de mot de passe :
+     * - les anciens tokens ne contiennent pas cette date, ou contiennent
+     *   une valeur précédente ;
+     * - les nouveaux tokens contiennent la valeur actuellement stockée.
+     */
     const userPasswordChangedAt =
         user.passwordChangedAt?.getTime() ?? null;
 
