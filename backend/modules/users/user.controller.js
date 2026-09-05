@@ -2,6 +2,7 @@ import {
     refreshCookieName,
     refreshCookieOptions,
 } from '../../config/cookie.config.js';
+import { getCurrentUserClosureImpact } from './userClosureImpact.service.js';
 import { toPublicUser } from './userPublic.dto.js';
 import { requestCurrentUserClosure } from './userClosure.service.js';
 import { updateCurrentUserProfile } from './user.service.js';
@@ -19,6 +20,19 @@ const updateMe = async (req, res) => {
         status: 'success',
         data: {
             user: toPublicUser(user),
+        },
+    });
+};
+
+const getClosureImpact = async (req, res) => {
+    const closureImpact = await getCurrentUserClosureImpact({
+        userId: req.user.id,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            closureImpact,
         },
     });
 };
@@ -46,6 +60,7 @@ const requestClosure = async (req, res) => {
 };
 
 export {
+    getClosureImpact,
     requestClosure,
     updateMe,
 };
