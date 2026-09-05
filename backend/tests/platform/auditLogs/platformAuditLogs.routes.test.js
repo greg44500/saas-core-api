@@ -9,14 +9,14 @@ import {
 } from 'vitest';
 
 import {
-    PLATFORM_ROLE,
-} from '../../../constants/platformRoles.constants.js';
+    PLATFORM_PERMISSION,
+} from '../../../constants/platformPermissions.constants.js';
 import {
     authenticate,
 } from '../../../middlewares/authenticate.js';
 import {
-    authorizePlatformRole,
-} from '../../../middlewares/authorizePlatformRole.js';
+    authorizePlatformPermission,
+} from '../../../middlewares/authorizePlatformPermission.js';
 import {
     validateRequest,
 } from '../../../middlewares/validateRequest.js';
@@ -29,11 +29,11 @@ import {
 
 
 const {
-    platformRoleMiddleware,
+    permissionMiddleware,
     validationMiddleware,
     listAuditLogs,
 } = vi.hoisted(() => ({
-    platformRoleMiddleware: vi.fn((req, res, next) => next()),
+    permissionMiddleware: vi.fn((req, res, next) => next()),
     validationMiddleware: vi.fn((req, res, next) => next()),
     listAuditLogs: vi.fn((req, res) => res.status(200).json({
         status: 'success',
@@ -47,7 +47,6 @@ vi.mock(
             req.user = {
                 _id: 'user-id',
                 id: 'user-id',
-                platformRole: PLATFORM_ROLE.SUPER_ADMIN,
             };
             next();
         }),
@@ -55,9 +54,9 @@ vi.mock(
 );
 
 vi.mock(
-    '../../../middlewares/authorizePlatformRole.js',
+    '../../../middlewares/authorizePlatformPermission.js',
     () => ({
-        authorizePlatformRole: vi.fn(() => platformRoleMiddleware),
+        authorizePlatformPermission: vi.fn(() => permissionMiddleware),
     }),
 );
 
@@ -81,7 +80,7 @@ app.use('/platform', platformRouter);
 
 beforeEach(() => {
     authenticate.mockClear();
-    platformRoleMiddleware.mockClear();
+    permissionMiddleware.mockClear();
     validationMiddleware.mockClear();
     listAuditLogs.mockClear();
 });
@@ -93,14 +92,14 @@ describe('platformAuditLogs.routes', () => {
             .get('/platform/audit-logs?page=1&limit=20');
 
         expect(response.status).toBe(200);
-        expect(authorizePlatformRole).toHaveBeenCalledWith(
-            PLATFORM_ROLE.SUPER_ADMIN,
-        );
-        expect(validateRequest).toHaveBeenCalledWith({
+        expect(authorizePlatformPermission.mock.calls).toContainEqual([
+            PLATFORM_PERMISSION.AUDIT_LOGS_READ,
+        ]);
+        expect(validateRequest.mock.calls).toContainEqual([{
             query: platformAuditLogQuerySchema,
-        });
+        }]);
         expect(authenticate).toHaveBeenCalledOnce();
-        expect(platformRoleMiddleware).toHaveBeenCalledOnce();
+        expect(permissionMiddleware).toHaveBeenCalledOnce();
         expect(validationMiddleware).toHaveBeenCalledOnce();
         expect(listAuditLogs).toHaveBeenCalledOnce();
     });
