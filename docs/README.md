@@ -141,6 +141,31 @@ Décisions désormais canoniques :
 - les permissions métier, le routing backend/frontend, la traçabilité de version Core et le release process doivent encore être finalisés avant 1.0 ;
 - l'extraction du Core en packages séparés n'est pas retenue pour la V1 et sera réévaluée après plusieurs produits réels.
 
+### Conformité / RGPD
+
+```text
+docs/compliance/COMPLIANCE.md
+→ cadre canonique RGPD, cookies/traceurs, information, rétention,
+  droits, sous-traitants, transferts, AIPD, violations et gate pré-production
+
+docs/compliance/rgpd-data-tracker-inventory.md
+→ inventaire technique vivant des données, stockages, traceurs, prestataires et points de collecte
+```
+
+Décisions désormais canoniques :
+
+- conformité technique, documentation juridique et exploitation sont trois responsabilités complémentaires ;
+- le Core prépare des mécanismes génériques mais chaque SaaS dérivé doit qualifier ses traitements réels ;
+- l'inventaire technique ne remplace pas le registre des activités de traitement ;
+- aucun consentement ne doit être demandé pour une finalité fictive ;
+- le Core actuel possède un cookie `refreshToken` d'authentification et une préférence de thème en `localStorage`, mais aucun SDK analytics/publicitaire ni script tiers de tracking identifié ;
+- une bannière cookies générale n'est donc pas imposée aujourd'hui ; un Consent Manager ne devient nécessaire que si des traceurs soumis au consentement sont réellement ajoutés ;
+- les traceurs optionnels devront être techniquement bloqués avant consentement ;
+- les durées techniques ne sont pas automatiquement des durées réglementaires ;
+- responsable de traitement et sous-traitant doivent être qualifiés traitement par traitement ;
+- transferts hors UE/EEE, AIPD et procédure de violation de données font partie de la revue pré-production ;
+- D-003 et D-006 restent actives : DOC-7 consolide le cadre, il n'implémente pas encore ces workflows.
+
 ---
 
 ## 4. Structure documentaire cible
@@ -268,13 +293,21 @@ Les anciens documents `functional-debt-*` restent temporairement des annexes de 
 
 ### E. Conformité
 
-Sources à consolider dans `compliance/COMPLIANCE.md` :
+Le contenu utile des anciens documents suivants est désormais absorbé par DOC-7 :
 
 - `rgpd-cookies-privacy-technical-cadrage.md` ;
 - `functional-debt-privacy-cookies-rgpd.md` ;
-- `functional-debt-rgpd-cookies-privacy-legal.md`.
+- `functional-debt-rgpd-cookies-privacy-legal.md` ;
+- `rgpd-data-tracker-inventory.md`.
 
-`rgpd-data-tracker-inventory.md` reste un inventaire vivant distinct.
+Les références actives sont désormais :
+
+```text
+docs/compliance/COMPLIANCE.md
+docs/compliance/rgpd-data-tracker-inventory.md
+```
+
+L'ancien inventaire et les anciens cadrages restent physiquement présents jusqu'au lot DOC-10 et à autorisation explicite de suppression.
 
 ### F. Opérations
 
@@ -307,8 +340,8 @@ Une documentation strictement locale à un module pourra exceptionnellement rest
 | DOC-4 | Sécurité | terminé |
 | DOC-5 | Guidelines frontend et composants réutilisables | terminé |
 | DOC-6 | SaaS dérivés et maintenance du Core | terminé |
-| DOC-7 | Conformité / RGPD | prochain lot |
-| DOC-8 | Opérations | à faire |
+| DOC-7 | Conformité / RGPD | terminé |
+| DOC-8 | Opérations | prochain lot |
 | DOC-9 | Consolidation finale de la dette | à faire |
 | DOC-10 | Propositions de suppression et nettoyage validé | à faire |
 | DOC-11 | README racine et audit documentaire final | à faire |
@@ -332,6 +365,6 @@ Pour chaque lot de nettoyage :
 
 ## 9. Prochaine étape
 
-Le prochain lot est **DOC-7 — Conformité / RGPD**.
+Le prochain lot est **DOC-8 — Opérations**.
 
-Il consolidera les cadrages actuellement dispersés autour de RGPD, données personnelles, cookies/traceurs, consentement, politiques légales, rétention et inventaire des trackers/providers, tout en distinguant clairement ce qui peut être fourni par le Core de ce qui doit obligatoirement être réévalué dans chaque produit dérivé.
+Il consolidera environnement et configuration, démarrage, MongoDB, seeds, migrations, jobs, opérations de développement, stockage, antivirus, health check, ordre de déploiement, garde-fous de production et procédures de reprise/rollback, sans transformer la documentation d'exploitation en seconde source de vérité fonctionnelle.
