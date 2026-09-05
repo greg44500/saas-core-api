@@ -15,6 +15,10 @@ vi.mock('@/features/workspace/components/workspace-ownership-section', () => ({
   WorkspaceOwnershipSection: () => <div>Transfert ownership</div>,
 }));
 
+vi.mock('@/features/workspace/components/workspace-archive-section', () => ({
+  WorkspaceArchiveSection: () => <div>Archivage workspace</div>,
+}));
+
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 import { WorkspaceSettingsPage } from '@/features/workspace/pages/workspace-settings-page';
 
@@ -23,11 +27,17 @@ const workspace = {
   name: 'Workspace Démo',
 };
 
-function mockPermissions(permissions) {
+function mockContext({ permissions = [], roleKey = 'user' } = {}) {
   const permissionSet = new Set(permissions);
 
   useWorkspaceContextMock.mockReturnValue({
     workspace,
+    membership: {
+      role: {
+        key: roleKey,
+        name: roleKey,
+      },
+    },
     can: (permission) => permissionSet.has(permission),
   });
 }
@@ -41,29 +51,53 @@ describe('WorkspaceSettingsPage', () => {
     cleanup();
   });
 
-  it('permet à un admin autorisé de modifier les paramètres sans exposer ownership', () => {
-    mockPermissions([WORKSPACE_PERMISSION.WORKSPACE_UPDATE]);
+  it('permet à un admin autorisé de modifier les paramètres sans exposer les actions owner-only', () => {
+    mockContext({
+      permissions: [WORKSPACE_PERMISSION.WORKSPACE_UPDATE],
+      roleKey: 'admin',
+    });
 
     render(<WorkspaceSettingsPage />);
 
     expect(screen.getByText('Paramètres généraux')).toBeInTheDocument();
     expect(screen.queryByText('Transfert ownership')).not.toBeInTheDocument();
+    expect(screen.queryByText('Archivage workspace')).not.toBeInTheDocument();
   });
 
-  it('expose le transfert uniquement au propriétaire disposant de la permission dédiée', () => {
-    mockPermissions([
-      WORKSPACE_PERMISSION.WORKSPACE_UPDATE,
-      WORKSPACE_PERMISSION.WORKSPACE_OWNERSHIP_TRANSFER,
-    ]);
+  it('expose le transfert et l’archivage au propriétaire', () => {
+    mockContext({
+      permissions: [
+        WORKSPACE_PERMISSION.WORKSPACE_UPDATE,
+        WORKSPACE_PERMISSION.WORKSPACE_OWNERSHIP_TRANSFER,
+      ],
+      roleKey: 'owner',
+    });
 
     render(<WorkspaceSettingsPage />);
 
     expect(screen.getByText('Paramètres généraux')).toBeInTheDocument();
     expect(screen.getByText('Transfert ownership')).toBeInTheDocument();
+    expect(screen.getByText('Archivage workspace')).toBeInTheDocument();
   });
 
-  it('refuse la surface d’administration sans permission de settings', () => {
-    mockPermissions([WORKSPACE_PERMISSION.WORKSPACE_READ]);
+  it('garde l’archivage owner-only même si une permission de settings est absente', () => {
+    mockContext({
+      permissions: [],
+      roleKey: 'owner',
+    });
+
+    render(<WorkspaceSettingsPage />);
+
+    expect(screen.queryByText('Paramètres généraux')).not.toBeInTheDocument();
+    expect(screen.queryByText('Transfert ownership')).not.toBeInTheDocument();
+    expect(screen.getByText('Archivage workspace')).toBeInTheDocument();
+  });
+
+  it('refuse la surface d’administration sans permission de settings ni ownership', () => {
+    mockContext({
+      permissions: [WORKSPACE_PERMISSION.WORKSPACE_READ],
+      roleKey: 'user',
+    });
 
     render(<WorkspaceSettingsPage />);
 
@@ -72,5 +106,6 @@ describe('WorkspaceSettingsPage', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('Paramètres généraux')).not.toBeInTheDocument();
     expect(screen.queryByText('Transfert ownership')).not.toBeInTheDocument();
+    expect(screen.queryByText('Archivage workspace')).not.toBeInTheDocument();
   });
 });
