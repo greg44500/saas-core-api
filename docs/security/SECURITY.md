@@ -103,6 +103,8 @@ L'AuditLog peut conserver une raison technique structurée, mais ne doit pas y e
 
 Le compte réellement ciblé peut être référencé comme ressource lorsqu'il est connu, mais l'acteur d'une tentative de login échouée reste inconnu.
 
+Un compte `disabled`, `deletion_requested` ou `closed` ne doit pas obtenir une nouvelle authentification utilisable.
+
 ### 3.4 Access token
 
 L'access token est transmis au frontend et reste en mémoire côté client.
@@ -112,7 +114,7 @@ L'access token est transmis au frontend et reste en mémoire côté client.
 1. vérifie la présence du Bearer token ;
 2. vérifie sa signature et sa validité ;
 3. recharge le `User` depuis MongoDB ;
-4. refuse un compte `disabled` ou `closed` ;
+4. refuse un compte `disabled`, `deletion_requested` ou `closed` ;
 5. compare `passwordChangedAt` du token à la valeur actuelle du User.
 
 Le JWT n'est donc jamais l'autorité unique sur l'état actuel du compte.
@@ -195,7 +197,42 @@ Le Core peut révoquer toutes les sessions encore actives d'un User, notamment p
 - changement de mot de passe ;
 - reset de mot de passe ;
 - désactivation administrative ;
+- fermeture volontaire du compte ;
 - autres workflows de sécurité prévus par le domaine.
+
+### 4.7 Fermeture du compte et réauthentification
+
+Le parcours self-service de fermeture combine plusieurs protections :
+
+```text
+GET /api/users/me/closure-impact
+→ lecture seule des conséquences courantes
+
+POST /api/users/me/closure
+→ authentification
+→ Zod strict
+→ mot de passe courant
+→ email de confirmation
+→ confirmAccountClosure = true
+→ recalcul MongoDB des ownership/memberships
+→ transaction de fermeture
+→ révocation AuthSessions
+→ AuditLog
+```
+
+Le frontend n'envoie jamais une liste de Workspaces à fermer comme autorité. Le backend recalcule l'état réel au moment de la mutation.
+
+Le User passe nominalement :
+
+```text
+ACTIVE
+→ DELETION_REQUESTED
+→ CLOSED
+```
+
+`DELETION_REQUESTED` et `CLOSED` sont refusés par login, `authenticate`, refresh et reset-password. `forgot-password` garde une réponse publique neutre mais ne doit pas fournir de mécanisme de récupération utilisable pour réactiver ces comptes.
+
+Le statut `DISABLED` reste distinct : il représente une suspension administrative réversible et ne déclenche pas automatiquement la fermeture des Workspaces.
 
 ---
 
@@ -312,6 +349,39 @@ User
 
 Une référence à un Role d'un autre Workspace ne doit jamais produire une autorisation.
 
+### 7.4 Archivage et fermeture Workspace
+
+Les états `ARCHIVED` et `CLOSED` ont des significations distinctes.
+
+```text
+ARCHIVED
+→ retrait volontaire / opérationnel
+→ plus d'accès courant
+→ données et historique non purgés immédiatement
+
+CLOSED
+→ fermeture fonctionnelle terminale
+→ aucune réactivation normale
+```
+
+L'owner peut appeler :
+
+```text
+POST /api/workspaces/:workspaceId/archive
+```
+
+La route exige l'authentification, une validation Zod stricte, le contexte Workspace, un contrôle owner-only dédié, le mode d'accès autorisé pour cette action, le mot de passe courant et la confirmation exacte du nom.
+
+Le backend neutralise uniquement les Subscriptions commerciales concernées lors de l'archivage owner, conserve la baseline, révoque les invitations pendantes et audite la transition.
+
+La fermeture `CLOSED` reste réservée au workflow Platform :
+
+```text
+PATCH /api/platform/workspaces/:workspaceId/close
+```
+
+Un owner ne peut pas utiliser l'archivage pour obtenir directement un `CLOSED`.
+
 ---
 
 ## 8. RBAC Workspace
@@ -338,6 +408,8 @@ Les règles d'anti-escalade de délégation de rôles et les permissions réserv
 
 Le frontend peut utiliser les mêmes permissions pour adapter l'UX, mais le contrôle backend reste obligatoire.
 
+Les commandes owner-only qui engagent le cycle de vie ou le contrat commercial ne doivent pas être rendues délégables par l'invention d'une permission personnalisée côté frontend.
+
 ---
 
 ## 9. Administration Platform
@@ -353,6 +425,8 @@ Les permissions Platform sont dérivées du `platformRole` du User **rechargé d
 Le rôle inscrit dans un ancien token ne constitue donc pas une autorité persistante.
 
 La politique Core V1 accorde actuellement l'ensemble des permissions Platform au `super_admin`; l'architecture permet néanmoins de faire évoluer la matrice de permissions sans modifier toutes les routes consommatrices.
+
+La fermeture terminale d'un Workspace est une opération Platform distincte de son archivage owner.
 
 ---
 
@@ -419,7 +493,8 @@ Une route corrective doit déclarer explicitement qu'elle est autorisée pendant
 Exemples de corrections possibles selon le domaine :
 
 - suppression d'un fichier pour libérer du stockage ;
-- suppression d'un membre pour revenir sous une limite.
+- suppression d'un membre pour revenir sous une limite ;
+- archivage volontaire d'un Workspace par son owner lorsque le service le permet explicitement.
 
 Cette possibilité ne supprime ni le contrôle de permission ni le contrôle de feature lorsqu'ils restent applicables.
 
@@ -583,7 +658,7 @@ Les opérations critiques doivent choisir explicitement l'une des deux stratégi
 
 Lorsque l'audit fait partie de l'invariant métier, il est écrit dans la même transaction que les données principales.
 
-Exemple : upload File réussi.
+Exemples : upload File réussi, fermeture Account et transitions Workspace lorsqu'elles font partie de leur transaction métier.
 
 ### 15.2 Sécurité prioritaire sur l'audit
 
@@ -722,9 +797,13 @@ Une fin de session vide le cache RTK Query.
 
 Cette règle est importante dans une application multi-tenant : un utilisateur connecté ensuite dans le même onglet ne doit pas voir brièvement des données du compte précédent provenant du cache.
 
+Après fermeture Account réussie, le frontend déclenche également la fin de session locale et la purge du cache tenant.
+
 ### Guards
 
 Les guards Auth, Workspace et Platform améliorent la navigation mais ne remplacent jamais les contrôles backend.
+
+La visibilité owner-only de l'archivage Workspace est une règle UX ; la route backend revérifie toujours l'ownership.
 
 ### Données sensibles
 
@@ -775,7 +854,6 @@ Les protections présentes dans le Core ne signifient pas que toute application 
 
 `docs/DEBT.md` reste l'autorité pour les chantiers non résolus ou conditionnels, notamment :
 
-- fermeture complète de compte et de Workspace ;
 - RGPD, cookies et confidentialité ;
 - observabilité technique ;
 - rétention/anonymisation/suppression réglementaire ;
@@ -783,6 +861,8 @@ Les protections présentes dans le Core ne signifient pas que toute application 
 - API keys / webhooks si utilisés ;
 - MFA/passkeys/SSO lorsqu'ils deviennent nécessaires ;
 - configuration et déploiement propres au produit dérivé.
+
+Le cycle fonctionnel Account / Workspace est désormais couvert par le Core ; cela ne définit pas pour autant la durée légale de conservation ou la politique de purge d'un produit dérivé.
 
 Une dette applicable à un produit doit être traitée avant son go-live selon son niveau de blocage.
 
@@ -798,6 +878,7 @@ Avant validation d'une nouvelle route, vérifier :
 [ ] données brutes évitées après Zod ?
 [ ] Workspace correctement isolé ?
 [ ] permission explicite ?
+[ ] owner-only dédié plutôt qu'une permission délégable si nécessaire ?
 [ ] permission Platform distincte si administration globale ?
 [ ] access mode à contrôler ?
 [ ] feature commerciale à contrôler ?
