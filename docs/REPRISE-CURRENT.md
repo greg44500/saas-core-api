@@ -27,108 +27,48 @@ Objectif immédiat : obtenir une documentation unique, cohérente, maintenable e
 
 Aucune logique applicative backend ou frontend ne doit être modifiée dans ce chantier documentaire, sauf décision explicite séparée si l'audit révèle une incohérence de code.
 
-## 3. Chantier documentaire en cours
+## 3. Principes documentaires validés
 
-### Principes validés
-
-- centraliser la documentation structurante dans le dossier `docs/` à la racine ;
-- conserver une séparation **logique** backend/frontend sans maintenir deux silos documentaires concurrents ;
+- centraliser la documentation structurante dans `docs/` à la racine ;
+- conserver une séparation logique backend/frontend sans deux silos documentaires concurrents ;
 - consolider les documents redondants avant toute suppression ;
 - ne supprimer aucun fichier sans validation explicite préalable ;
 - maintenir un registre unique des dettes ;
 - maintenir un contrat Core canonique à la frontière frontend/backend ;
-- maintenir une documentation dédiée à la création des SaaS dérivés ;
+- maintenir une documentation dédiée à la création et à la maintenance des SaaS dérivés ;
 - créer le `README.md` racine après stabilisation des chemins documentaires ;
 - utiliser uniquement `REPRISE-CURRENT.md` pour les futures reprises de développement.
 
-### Documents canoniques cibles
+## 4. Documents canoniques déjà créés
 
-La structure cible sera consolidée progressivement autour de :
+```text
+docs/README.md
+docs/DEBT.md
+docs/REPRISE-CURRENT.md
 
-- `docs/architecture/ARCHITECTURE.md`
-- `docs/architecture/BACKEND.md`
-- `docs/architecture/FRONTEND.md`
-- `docs/contracts/CORE-CONTRACT.md`
-- `docs/contracts/COMMERCIAL.md`
-- `docs/contracts/CAPABILITIES.md`
-- `docs/frontend/FRONTEND-GUIDELINES.md`
-- `docs/security/SECURITY.md`
-- `docs/derived-saas/DERIVED-SAAS.md`
-- `docs/compliance/COMPLIANCE.md`
-- `docs/compliance/rgpd-data-tracker-inventory.md`
-- `docs/operations/OPERATIONS.md`
-- registre unique de dette (`DEBT.md`, emplacement final à figer lors de la réorganisation)
-- `docs/REPRISE-CURRENT.md`
-- `README.md` à la racine.
+docs/contracts/CORE-CONTRACT.md
+docs/contracts/COMMERCIAL.md
+docs/contracts/CAPABILITIES.md
+```
 
-Cette arborescence pourra être simplifiée si l'audit démontre qu'un document distinct n'apporte pas de valeur suffisante.
+Documents encore à produire :
 
-## 4. Dette documentaire déjà traitée
+```text
+docs/architecture/ARCHITECTURE.md
+docs/architecture/BACKEND.md
+docs/architecture/FRONTEND.md
+docs/security/SECURITY.md
+docs/frontend/FRONTEND-GUIDELINES.md
+docs/derived-saas/DERIVED-SAAS.md
+docs/compliance/COMPLIANCE.md
+docs/compliance/rgpd-data-tracker-inventory.md
+docs/operations/OPERATIONS.md
+README.md racine
+```
 
-Un registre canonique `docs/DEBT.md` a été créé pour centraliser les dettes actives et éviter la multiplication de fichiers représentant plusieurs états concurrents d'une même dette.
+Cette arborescence pourra être simplifiée si un document séparé n'apporte pas de valeur réelle.
 
-Les anciens documents de dette ne doivent pas être supprimés avant extraction et vérification de leurs informations encore valides.
-
-## 5. Prochain ordre de travail documentaire
-
-1. terminer l'inventaire et la classification des documents existants ;
-2. vérifier les documents structurants contre le code et les tests actuels ;
-3. consolider le contrat Core ;
-4. consolider l'architecture backend/frontend ;
-5. consolider la sécurité ;
-6. consolider les règles et composants frontend ;
-7. formaliser la création et l'extension d'un SaaS dérivé ;
-8. consolider conformité/RGPD ;
-9. consolider opérations, seeds, migrations et jobs ;
-10. mettre à jour le registre de dette ;
-11. proposer explicitement les fichiers devenus supprimables ;
-12. supprimer uniquement après accord ;
-13. générer le `README.md` racine final ;
-14. effectuer un audit documentaire global (liens, contradictions, références obsolètes).
-
-## 6. Finalisation fonctionnelle du SAAS-CORE-API
-
-Après validation du chantier documentaire, reprendre à partir de **F10.6** puis établir une feuille de route complète des lots restant réellement nécessaires pour déclarer le Core finalisé.
-
-Cette feuille de route devra distinguer :
-
-- obligations du Core générique ;
-- dettes pouvant rester conditionnelles pour un SaaS dérivé ;
-- exigences bloquantes avant production ;
-- tests et audit de sécurité ;
-- préparation de la distribution du Core.
-
-## 7. Distribution et maintenance des futurs SaaS
-
-Le choix entre clone Git classique, GitHub Template repository, fork ou autre mécanisme ne doit pas être arrêté uniquement sur la facilité de création d'un nouveau dépôt.
-
-Exigence structurante : **les futurs SaaS dérivés doivent pouvoir recevoir de façon maîtrisée les correctifs et évolutions compatibles du Core sans écraser leurs modules métier.**
-
-La politique finale devra donc définir au minimum :
-
-- versionnement du Core ;
-- identification de la version du Core utilisée par chaque SaaS dérivé ;
-- séparation claire entre code Core et code métier ;
-- stratégie de synchronisation des changements Core ;
-- gestion des migrations de schéma et de configuration ;
-- tests de non-régression lors d'une mise à niveau ;
-- procédure de résolution des conflits lorsqu'un SaaS dérivé a personnalisé une zone du Core ;
-- politique de compatibilité et de breaking changes.
-
-Un GitHub Template pourra servir à **initialiser** une application, mais ne devra être retenu comme stratégie complète de maintenance qu'avec un mécanisme supplémentaire de mise à niveau du Core.
-
-## 8. Critère de suppression de ce fichier
-
-`docs/REPRISE-CURRENT.md` pourra être supprimé lorsque :
-
-- le SAAS-CORE-API sera considéré comme finalisé ;
-- la documentation canonique sera complète et auditée ;
-- le plan de distribution/versionnement du Core sera opérationnel ;
-- aucune reprise de développement Core ne nécessitera plus de contexte temporaire.
-
-La suppression nécessitera une validation explicite avant exécution.
-
-## 9. Checkpoint documentaire — 2026-09-05
+## 5. Checkpoints documentaires
 
 ### DOC-0 — terminé
 
@@ -143,8 +83,93 @@ La suppression nécessitera une validation explicite avant exécution.
 - centralisation future dans `docs/` confirmée ;
 - aucun fichier historique supprimé ou déplacé.
 
-### Prochain lot
+### DOC-2 — terminé
 
-**DOC-2 — Contrats Core / commercial / capabilities.**
+Trois contrats canoniques ont été créés après recoupement des anciens contrats avec le code courant :
 
-Méthode obligatoire : vérifier d'abord le code et les tests actuels, puis confronter les anciens contrats avant de créer les contrats canoniques. Les anciens fichiers ne deviendront candidats à suppression qu'après migration complète de leurs informations encore valides et validation explicite de leur suppression.
+```text
+docs/contracts/CORE-CONTRACT.md
+docs/contracts/COMMERCIAL.md
+docs/contracts/CAPABILITIES.md
+```
+
+Corrections importantes figées par rapport à certains anciens documents :
+
+- la clé technique d'un nouveau Plan est générée par le backend à partir de l'ObjectId et n'est plus saisie par le SUPER_ADMIN ;
+- le catalogue public des Plans n'expose plus cette clé technique ;
+- le rôle structurel de la baseline est porté par `systemRole = baseline` / `isBaseline`, indépendamment du nom commercial `Free` ;
+- les valeurs Workspace d'entitlement exposent les features et limites effectives après composition des EntitlementOverride actifs ;
+- les métadonnées internes des overrides restent réservées à Platform ;
+- `team_management` protège désormais les surfaces membres, invitations et rôles ;
+- `audit_logs` protège la consultation des AuditLogs Workspace mais jamais leur production de sécurité ;
+- la politique commerciale V1 reste Workspace-scoped et ne réintroduit pas `CommercialAccount` ;
+- `ACTIVE_PLAN_CAPABILITY_REGISTRY` reste l'autorité runtime pour Plans, quotas et overrides ;
+- aucune capability métier ne peut être créée librement depuis Platform.
+
+Anciens contrats dont le contenu normatif utile est désormais absorbé mais qui restent physiquement présents jusqu'à autorisation de suppression :
+
+```text
+docs/frontend-backend-integration-contract.md
+docs/frontend-backend-account-security-contract.md
+docs/frontend-backend-roles-permissions-contract.md
+docs/frontend-backend-subscription-contract.md
+docs/frontend-platform-admin-contract.md
+docs/commercial-configuration-contract.md
+docs/commercial-plans-entitlements-platform-admin.md
+docs/application-capability-registry-contract.md
+```
+
+Aucune suppression n'a été effectuée.
+
+## 6. Prochain ordre de travail documentaire
+
+Le prochain lot est **DOC-3 — Architecture globale, backend et frontend**.
+
+Objectifs :
+
+1. vérifier l'architecture réellement présente dans le dépôt ;
+2. formaliser la frontière Core / application dérivée ;
+3. formaliser l'architecture modulaire backend et les responsabilités route/controller/service/model/validation/tests ;
+4. formaliser l'architecture frontend par fonctionnalités et la séparation pages/composants/state/API ;
+5. absorber les anciens documents d'architecture encore valides ;
+6. préparer ensuite DOC-4 Sécurité et DOC-5 Guidelines frontend.
+
+## 7. Finalisation fonctionnelle du SAAS-CORE-API
+
+Après validation du chantier documentaire complet, reprendre à partir de **F10.6** puis établir une feuille de route complète des lots restant réellement nécessaires pour déclarer le Core finalisé.
+
+Cette feuille de route devra distinguer :
+
+- obligations du Core générique ;
+- dettes pouvant rester conditionnelles pour un SaaS dérivé ;
+- exigences bloquantes avant production ;
+- tests et audit de sécurité ;
+- préparation de la distribution du Core.
+
+## 8. Distribution et maintenance des futurs SaaS
+
+Exigence structurante : **les futurs SaaS dérivés doivent pouvoir recevoir de façon maîtrisée les correctifs et évolutions compatibles du Core sans écraser leurs modules métier.**
+
+La politique finale devra définir au minimum :
+
+- versionnement du Core ;
+- identification de la version du Core utilisée par chaque SaaS dérivé ;
+- séparation claire entre code Core et code métier ;
+- stratégie de synchronisation des changements Core ;
+- gestion des migrations de schéma et de configuration ;
+- tests de non-régression lors d'une mise à niveau ;
+- procédure de résolution des conflits ;
+- politique de compatibilité et de breaking changes.
+
+Un GitHub Template pourra servir à initialiser une application, mais ne constitue pas à lui seul une stratégie complète de maintenance.
+
+## 9. Critère de suppression de ce fichier
+
+`docs/REPRISE-CURRENT.md` pourra être supprimé lorsque :
+
+- le SAAS-CORE-API sera considéré comme finalisé ;
+- la documentation canonique sera complète et auditée ;
+- le plan de distribution/versionnement du Core sera opérationnel ;
+- aucune reprise de développement Core ne nécessitera plus de contexte temporaire.
+
+La suppression nécessitera une validation explicite avant exécution.
