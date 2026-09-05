@@ -9,6 +9,7 @@ import {
 } from '../../constants/file.constants.js';
 
 import {
+    listWorkspaceFilesQuerySchema,
     uploadFileBodySchema,
 } from '../../modules/file/file.validation.js';
 
@@ -60,5 +61,37 @@ describe('File validation', () => {
                     'workspaces/forged/file.pdf',
             }).success,
         ).toBe(false);
+    });
+
+
+    it('valide les filtres serveur du listing et normalise la pagination', () => {
+        const result = listWorkspaceFilesQuerySchema.parse({
+            page: '2',
+            limit: '50',
+            category: FILE_CATEGORY.DOCUMENT,
+            search: '  contrat  ',
+        });
+
+        expect(result).toEqual({
+            page: 2,
+            limit: 50,
+            category: FILE_CATEGORY.DOCUMENT,
+            search: 'contrat',
+        });
+    });
+
+
+    it('refuse une catégorie de filtre inconnue, une recherche vide ou un champ supplémentaire', () => {
+        expect(listWorkspaceFilesQuerySchema.safeParse({
+            category: 'unknown',
+        }).success).toBe(false);
+
+        expect(listWorkspaceFilesQuerySchema.safeParse({
+            search: '   ',
+        }).success).toBe(false);
+
+        expect(listWorkspaceFilesQuerySchema.safeParse({
+            internal: 'forbidden',
+        }).success).toBe(false);
     });
 });
