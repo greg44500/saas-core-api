@@ -11,6 +11,9 @@ import {
 import {
     revokeAllUserAuthSessions,
 } from '../../../modules/authSessions/authSession.service.js';
+import {
+    assertUserIsNotPlatformFounder,
+} from '../../../modules/platformTeam/platformFounderPolicy.service.js';
 import { User } from '../../../modules/users/user.model.js';
 import {
     WorkspaceMember,
@@ -26,19 +29,19 @@ vi.mock('../../../modules/users/user.model.js', () => ({
         findOneAndUpdate: vi.fn(),
     },
 }));
-
 vi.mock('../../../modules/workspaceMember/workspaceMember.model.js', () => ({
     WorkspaceMember: {
         find: vi.fn(),
     },
 }));
-
 vi.mock('../../../modules/authSessions/authSession.service.js', () => ({
     revokeAllUserAuthSessions: vi.fn(),
 }));
-
 vi.mock('../../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
+}));
+vi.mock('../../../modules/platformTeam/platformFounderPolicy.service.js', () => ({
+    assertUserIsNotPlatformFounder: vi.fn(),
 }));
 
 const sessionQuery = (value) => ({
@@ -59,6 +62,7 @@ describe('finalizePlatformUserClosure', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        assertUserIsNotPlatformFounder.mockResolvedValue(undefined);
         createAuditLog.mockResolvedValue(undefined);
         revokeAllUserAuthSessions.mockResolvedValue({ modifiedCount: 0 });
         vi.spyOn(mongoose.connection, 'transaction').mockImplementation(
@@ -88,6 +92,10 @@ describe('finalizePlatformUserClosure', () => {
             userAgent: 'Test Browser',
         });
 
+        expect(assertUserIsNotPlatformFounder).toHaveBeenCalledWith({
+            userId: 'user-id',
+            session,
+        });
         expect(User.findOneAndUpdate).toHaveBeenCalledWith(
             { _id: 'user-id', status: 'deletion_requested' },
             expect.objectContaining({
@@ -125,6 +133,24 @@ describe('finalizePlatformUserClosure', () => {
             status: 'closed',
             closedAt,
         });
+    });
+
+    it('refuse la clôture terminale du Fondateur', async () => {
+        assertUserIsNotPlatformFounder.mockRejectedValue(
+            Object.assign(new Error('Fondateur protégé'), { statusCode: 403 }),
+        );
+
+        await expect(
+            finalizePlatformUserClosure({
+                userId: 'founder-user-id',
+                actorId: 'other-super-admin-id',
+                reason: 'Interdit',
+            }),
+        ).rejects.toMatchObject({ statusCode: 403 });
+
+        expect(User.findOne).not.toHaveBeenCalled();
+        expect(User.findOneAndUpdate).not.toHaveBeenCalled();
+        expect(createAuditLog).not.toHaveBeenCalled();
     });
 
     it('refuse de finaliser un compte qui possède encore une membership active', async () => {
