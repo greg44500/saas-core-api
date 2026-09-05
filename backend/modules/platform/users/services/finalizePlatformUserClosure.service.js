@@ -19,6 +19,9 @@ import { createAuditLog } from '../../../auditLog/auditLog.service.js';
 import {
     revokeAllUserAuthSessions,
 } from '../../../authSessions/authSession.service.js';
+import {
+    assertUserIsNotPlatformFounder,
+} from '../../../platformTeam/platformFounderPolicy.service.js';
 import { User } from '../../../users/user.model.js';
 import { WorkspaceMember } from '../../../workspaceMember/workspaceMember.model.js';
 
@@ -36,6 +39,11 @@ const finalizePlatformUserClosure = async ({
     }
 
     return mongoose.connection.transaction(async (session) => {
+        await assertUserIsNotPlatformFounder({
+            userId,
+            session,
+        });
+
         const user = await User.findOne({
             _id: userId,
             status: USER_STATUS.DELETION_REQUESTED,
