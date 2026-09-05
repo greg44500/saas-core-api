@@ -37,7 +37,7 @@ Aucune logique applicative backend/frontend ne doit être modifiée dans ce chan
 - ne supprimer aucun fichier sans validation explicite ;
 - maintenir un registre unique des dettes ;
 - maintenir des contrats canoniques communs frontend/backend ;
-- maintenir une documentation dédiée à l'architecture, la sécurité et aux SaaS dérivés ;
+- maintenir une documentation dédiée à l'architecture, la sécurité, aux guidelines frontend et aux SaaS dérivés ;
 - créer le README racine après stabilisation des chemins ;
 - utiliser uniquement `REPRISE-CURRENT.md` pour les futures reprises.
 
@@ -59,12 +59,13 @@ docs/architecture/BACKEND.md
 docs/architecture/FRONTEND.md
 
 docs/security/SECURITY.md
+
+docs/frontend/FRONTEND-GUIDELINES.md
 ```
 
 Documents encore à produire :
 
 ```text
-docs/frontend/FRONTEND-GUIDELINES.md
 docs/derived-saas/DERIVED-SAAS.md
 docs/compliance/COMPLIANCE.md
 docs/compliance/rgpd-data-tracker-inventory.md
@@ -156,44 +157,73 @@ Sécurité consolidée contre le code courant :
 - refresh token brut jamais persisté ni retourné en JSON ; cookie HttpOnly, Secure en production, SameSite Lax actuel ;
 - AuthSession à génération unique avec rotation transactionnelle, `familyId`, reuse detection et compromission de famille ;
 - validation HTTP par Zod puis consommation de `req.validated` ;
-- `mongoose.set('sanitizeFilter', true)` et usage de `mongoose.trusted()` limité aux filtres internes contrôlés ;
 - multi-tenant Workspace vérifié par existence/status du Workspace, membership actif et Role du même tenant ;
-- autorisation RBAC basée sur permissions, pas sur le nom du rôle ;
-- administration Platform séparée du contexte Workspace ;
 - permission, entitlement et quota documentés comme trois barrières distinctes ;
-- quotas bornés réservés atomiquement avec condition MongoDB + `$inc` ;
-- pipeline File : permission/access/feature avant Multer, limites multipart, signature binaire réelle, MIME/extension, SHA-256, antivirus fail-closed, stockage non dérivé du nom utilisateur, revalidation avant persistance ;
-- workflow File : entitlement relu dans transaction, réservation atomique des quotas, File + AuditLog transactionnels, compensation du stockage physique si MongoDB échoue ;
+- quotas bornés réservés atomiquement ;
+- pipeline File fail-closed avec type réel, checksum, antivirus et revalidation ;
+- workflow File relit l'entitlement dans transaction, réserve les quotas et crée File + AuditLog de façon cohérente ;
 - AuditLog distingué de l'observabilité technique ;
-- erreurs inattendues génériques en production et logs volontairement limités ;
-- Helmet, CORS ciblé, rate limit API et rate limits renforcés sur forgot-password ;
-- environnement validé par Zod avec garde-fous spécifiques en production ;
-- access token frontend en mémoire, refresh token inaccessible à JavaScript, reauth RTK Query centralisée avec mutex et cache API vidé à la terminaison de session ;
+- Helmet, CORS, rate limits et environnement de production validés ;
 - guards frontend explicitement non considérés comme barrières de sécurité.
 
-Point documentaire important : le code actuel confirme que les réservations de quotas sensibles sont bien atomiques. Le commentaire historique précédant `incrementUsageMetric` mentionne un futur contrôle de limite, mais le même service implémente ensuite `reserveUsageMetricWithinLimit`; la documentation canonique retient donc l'implémentation complète actuelle et non ce commentaire intermédiaire pris isolément.
-
 Aucun code, test ou fichier historique n'a été supprimé.
+
+### DOC-5 — terminé
+
+Document canonique créé :
+
+```text
+docs/frontend/FRONTEND-GUIDELINES.md
+```
+
+Règles pratiques frontend consolidées :
+
+- `architecture/FRONTEND.md` décrit la structure ; `FRONTEND-GUIDELINES.md` décrit la manière de développer les interfaces ;
+- même intention UI → même famille de composants ; composition préférée à la duplication et au composant universel sur-paramétré ;
+- hiérarchie `components/ui` → `shared` / `forms` / `data-display` → composants de feature ;
+- `DataTable` reste la primitive obligatoire pour les tableaux compatibles ; une feature ne recrée pas la structure HTML d'un tableau ;
+- `DataTableActions` et styles de densité communs restent centralisés ;
+- `EntityDetailsDrawer` est la surface partagée privilégiée lorsque des détails doivent être consultés sans perdre le contexte de liste ;
+- `ConfirmationDialog` porte les confirmations bloquantes compatibles avec son contrat ;
+- composants formulaires partagés existants réutilisés avant création d'une variante ;
+- React Hook Form + Zod frontend + mutations RTK Query pour les formulaires ; backend toujours autorité finale ;
+- server state → RTK Query ; URL → navigation partageable ; form state → React Hook Form ; local → React ; Redux global seulement si justifié ; persistance navigateur interdite par défaut ;
+- appels API centralisés ; pas de `fetch()` dispersé ni de second cache serveur sans décision d'architecture ;
+- navigation Workspace composable : un SaaS dérivé ajoute ses groupes au point de composition `app/` sans modifier la Sidebar générique ;
+- permission et capability peuvent filtrer navigation/actions ; les groupes sans élément visible disparaissent ;
+- une capability complètement absente ne doit pas polluer l'UI avec des blocs permanents `Indisponible` ;
+- nuance conservée : l'absence d'une capability d'écriture ne signifie pas automatiquement que toute surface de lecture disparaît, par exemple `file_upload` et `file_read` portent deux intentions distinctes ;
+- onboarding minimal, trial volontaire et règles commerciales jamais reconstruites côté frontend ;
+- feedback de proximité : champ inline, erreur locale dans sa surface, toast uniquement lorsqu'il apporte une valeur globale ;
+- accessibilité intégrée aux composants partagés : focus, clavier, labels, alertes accessibles, réduction des animations ;
+- responsive défini par comportement ;
+- performance : lazy loading pour le code, pagination serveur pour les gros datasets, virtualisation seulement si besoin mesuré ;
+- pages légères : assemblage et orchestration, pas de logique métier lourde ;
+- Vitest + React Testing Library + user-event pour les tests unitaires/composants ; intégration cross-feature lorsque nécessaire ; Playwright reste la cible E2E mais n'est pas encore installé dans le package frontend actuel ;
+- les futurs SaaS dérivés doivent composer les primitives du Core et ne pas recréer un design system, DataTable, système de toast, cache serveur ou architecture de navigation parallèle.
+
+Anciennes policies et contrats frontend ayant servi de sources sont désormais considérés comme absorbés sur le fond, mais restent physiquement présents jusqu'au lot de nettoyage et à validation explicite.
+
+Aucun code ni test n'a été modifié. Aucun fichier historique n'a été supprimé.
 
 ---
 
 ## 6. Prochain lot documentaire
 
-**DOC-5 — Guidelines frontend et composants réutilisables**.
+**DOC-6 — SaaS dérivés et maintenance du Core**.
 
 Objectifs :
 
-1. consolider les règles du design system ;
-2. formaliser la hiérarchie `components/ui`, `shared`, `forms`, `data-display`, `features` ;
-3. figer la réutilisation obligatoire de DataTable, pagination, drawers, confirmations et composants transverses ;
-4. consolider formulaires, feedbacks, erreurs et toasts ;
-5. consolider routing/navigation et affichage conditionnel permissions/entitlements ;
-6. consolider state management ;
-7. consolider responsive, accessibilité et performance ;
-8. consolider les règles de tests frontend ;
-9. confronter les anciennes policies au code actuel avant de les rendre candidates à suppression.
-
-DOC-5 doit compléter `architecture/FRONTEND.md` sans créer une seconde architecture concurrente : `FRONTEND.md` décrit la structure et les responsabilités, `FRONTEND-GUIDELINES.md` décrira les règles pratiques de développement UI/UX.
+1. définir le processus de création d'un nouveau SaaS à partir du Core ;
+2. formaliser les frontières à ne pas modifier inutilement dans le Core ;
+3. documenter l'ajout des modules métier backend/frontend et des capabilities ;
+4. définir le versionnement du Core ;
+5. enregistrer la version Core utilisée par chaque SaaS dérivé ;
+6. définir la stratégie de mise à niveau contrôlée des produits existants ;
+7. définir la gestion des migrations, changements de configuration et breaking changes ;
+8. définir les tests de non-régression lors d'une mise à niveau ;
+9. préciser la place de GitHub Template : outil possible de création initiale, mais pas stratégie suffisante de maintenance ;
+10. préparer une stratégie progressive compatible avec un futur passage à des packages Core si le retour d'expérience le justifie.
 
 ---
 
