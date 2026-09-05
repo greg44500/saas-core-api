@@ -1,6 +1,11 @@
 import { Router } from 'express';
-import { PLATFORM_ROLE } from '../../../constants/platformRoles.constants.js';
-import { authorizePlatformRole } from '../../../middlewares/authorizePlatformRole.js';
+
+import {
+    PLATFORM_PERMISSION,
+} from '../../../constants/platformPermissions.constants.js';
+import {
+    authorizePlatformPermission,
+} from '../../../middlewares/authorizePlatformPermission.js';
 import { validateRequest } from '../../../middlewares/validateRequest.js';
 import { paginationQuerySchema } from '../../../utils/validations/pagination.validation.js';
 import {
@@ -10,34 +15,32 @@ import {
     getUserById,
     listUsers,
     revokeUserSessions,
-    updateUserRole,
 } from './platformUsers.controller.js';
 import {
     closePlatformUserBodySchema,
     disablePlatformUserBodySchema,
     platformUserIdParamsSchema,
-    updatePlatformUserRoleBodySchema,
 } from './platformUsers.validation.js';
 
 const platformUsersRouter = Router();
 
 platformUsersRouter.get(
     '/',
-    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
+    authorizePlatformPermission(PLATFORM_PERMISSION.USERS_READ),
     validateRequest({ query: paginationQuerySchema }),
     listUsers,
 );
 
 platformUsersRouter.get(
     '/:userId',
-    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
+    authorizePlatformPermission(PLATFORM_PERMISSION.USERS_READ),
     validateRequest({ params: platformUserIdParamsSchema }),
     getUserById,
 );
 
 platformUsersRouter.patch(
     '/:userId/disable',
-    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
+    authorizePlatformPermission(PLATFORM_PERMISSION.USERS_DISABLE),
     validateRequest({
         params: platformUserIdParamsSchema,
         body: disablePlatformUserBodySchema,
@@ -47,14 +50,14 @@ platformUsersRouter.patch(
 
 platformUsersRouter.patch(
     '/:userId/enable',
-    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
+    authorizePlatformPermission(PLATFORM_PERMISSION.USERS_ENABLE),
     validateRequest({ params: platformUserIdParamsSchema }),
     enableUser,
 );
 
 platformUsersRouter.patch(
     '/:userId/close',
-    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
+    authorizePlatformPermission(PLATFORM_PERMISSION.USERS_CLOSE),
     validateRequest({
         params: platformUserIdParamsSchema,
         body: closePlatformUserBodySchema,
@@ -64,19 +67,18 @@ platformUsersRouter.patch(
 
 platformUsersRouter.post(
     '/:userId/revoke-sessions',
-    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.USERS_REVOKE_SESSIONS,
+    ),
     validateRequest({ params: platformUserIdParamsSchema }),
     revokeUserSessions,
 );
 
-platformUsersRouter.patch(
-    '/:userId/role',
-    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
-    validateRequest({
-        params: platformUserIdParamsSchema,
-        body: updatePlatformUserRoleBodySchema,
-    }),
-    updateUserRole,
-);
+/**
+ * L'ancien endpoint /:userId/role est volontairement retiré.
+ * Les rôles d'administration sont désormais gérés uniquement via
+ * PlatformTeamMember + PlatformRole afin d'éviter toute élévation parallèle
+ * par User.platformRole.
+ */
 
 export { platformUsersRouter };
