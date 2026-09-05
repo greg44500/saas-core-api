@@ -383,9 +383,11 @@ Les suites de tests du Core et du module métier restent complémentaires.
 
 ---
 
-## 11. Critère de clôture de D-014
+## 11. Validation de D-014
 
-D-014 est techniquement prêt à être clôturé lorsque les tests démontrent qu’un module métier de référence peut :
+D-014 a été validée le 2026-09-05 après confirmation locale des suites ciblées, des suites globales et du build frontend.
+
+Les tests démontrent que les points de composition permettent à un module métier de référence de :
 
 - enregistrer ses permissions ;
 - enrichir les rôles système selon une configuration explicite ;
@@ -398,7 +400,9 @@ D-014 est techniquement prêt à être clôturé lorsque les tests démontrent q
 
 sans modifier les longues listes centrales de routing ou de permissions du Core, hors points de composition applicatifs explicitement prévus.
 
-La validation finale de D-014 nécessite une suite de tests locale verte. La dette ne doit pas être marquée `VALIDÉ` sur la seule base de la présence du code.
+La validation d’une dérivation et d’un upgrade sur un dépôt pilote réel reste volontairement séparée : elle relève de D-017 et ne remet pas en cause la validation du contrat d’extension D-014.
+
+Le statut canonique de la dette est porté par `docs/DEBT.md`.
 
 ---
 
