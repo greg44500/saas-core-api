@@ -51,10 +51,29 @@ const workspaceApi = baseApi.injectEndpoints({
         { type: 'WorkspaceMembers', id: workspaceId },
       ],
     }),
+    archiveWorkspace: build.mutation({
+      query: ({ workspaceId, currentPassword, confirmationName }) => ({
+        url: `/workspaces/${workspaceId}/archive`,
+        method: 'POST',
+        body: {
+          currentPassword,
+          confirmationName,
+        },
+      }),
+      transformResponse: (response) => response?.data?.workspace ?? null,
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        'WorkspaceList',
+        { type: 'Workspace', id: workspaceId },
+        { type: 'WorkspaceMembers', id: workspaceId },
+        { type: 'WorkspaceInvitations', id: workspaceId },
+        { type: 'WorkspaceSubscription', id: workspaceId },
+      ],
+    }),
   }),
 });
 
 export const {
+  useArchiveWorkspaceMutation,
   useCreateWorkspaceMutation,
   useGetWorkspaceByIdQuery,
   useListWorkspacesQuery,
