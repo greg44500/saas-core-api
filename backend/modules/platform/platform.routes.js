@@ -2,6 +2,9 @@ import { Router } from 'express';
 
 import { authenticate } from '../../middlewares/authenticate.js';
 import {
+    platformTeamInvitationRouter,
+} from '../platformInvitation/platformInvitation.routes.js';
+import {
     platformAuditLogsRouter,
 } from './auditLogs/platformAuditLogs.routes.js';
 import {
@@ -38,6 +41,7 @@ platformRouter.use(
     platformEntitlementOverridesRouter,
 );
 platformRouter.use('/audit-logs', platformAuditLogsRouter);
+platformRouter.use('/team', platformTeamInvitationRouter);
 
 
 export { platformRouter };
