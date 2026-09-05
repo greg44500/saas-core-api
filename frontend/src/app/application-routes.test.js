@@ -43,7 +43,7 @@ describe('application frontend route composition', () => {
     ]);
   });
 
-  it('injecte les routes métier dans l’arbre React Router du Core', () => {
+  it('injecte chaque route métier sous la bonne frontière du Core', () => {
     const applicationRoutes = composeApplicationFrontendRoutes([
       {
         publicRoutes: [{ path: 'catalog-public' }],
@@ -53,16 +53,25 @@ describe('application frontend route composition', () => {
       },
     ]);
 
-    const paths = collectPaths(
-      createAppRoutes(applicationRoutes),
+    const routes = createAppRoutes(applicationRoutes);
+    const publicRoot = routes[0];
+    const authenticatedRoot = routes.find((route) => (
+      collectPaths(route.children).includes('workspaces/:workspaceId')
+    ));
+    const workspaceRoot = authenticatedRoot.children.find(
+      (route) => route.path === 'workspaces/:workspaceId',
+    );
+    const platformRoot = authenticatedRoot.children.find(
+      (route) => route.path === 'platform',
     );
 
-    expect(paths).toEqual(expect.arrayContaining([
-      'catalog-public',
-      'catalog-account',
-      'catalog',
-      'catalog-admin',
-    ]));
+    expect(collectPaths(publicRoot.children)).toContain('catalog-public');
+    expect(collectPaths(authenticatedRoot.children)).toContain('catalog-account');
+    expect(collectPaths(workspaceRoot.children)).toContain('catalog');
+    expect(collectPaths(platformRoot.children)).toContain('catalog-admin');
+
+    expect(collectPaths(publicRoot.children)).not.toContain('catalog');
+    expect(collectPaths(workspaceRoot.children)).not.toContain('catalog-admin');
   });
 
   it('refuse une collection de routes métier non déclarée sous forme de tableau', () => {
