@@ -59,6 +59,7 @@ describe('WorkspaceSidebar', () => {
     renderSidebar([WORKSPACE_PERMISSION.WORKSPACE_READ]);
 
     expect(screen.getByText('Tableau de bord')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ressources' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Fonctionnalités' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Gestion du workspace' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Compte & offre' })).not.toBeInTheDocument();
@@ -114,12 +115,12 @@ describe('WorkspaceSidebar', () => {
       },
     );
 
-    const featuresGroup = screen.getByRole('button', { name: 'Fonctionnalités' });
-    expect(featuresGroup).toHaveAttribute('aria-expanded', 'true');
+    const resourcesGroup = screen.getByRole('button', { name: 'Ressources' });
+    expect(resourcesGroup).toHaveAttribute('aria-expanded', 'true');
 
-    await user.click(featuresGroup);
+    await user.click(resourcesGroup);
 
-    expect(featuresGroup).toHaveAttribute('aria-expanded', 'false');
+    expect(resourcesGroup).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('permet de refermer un groupe ouvert au second clic', async () => {
@@ -147,7 +148,8 @@ describe('WorkspaceSidebar', () => {
       WORKSPACE_PERMISSION.FILE_READ,
     ]);
 
-    await user.click(screen.getByRole('button', { name: 'Fonctionnalités' }));
+    expect(screen.queryByRole('button', { name: 'Fonctionnalités' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ressources' }));
     const filesLink = screen.getByRole('link', { name: 'Fichiers' });
 
     expect(filesLink).toHaveAttribute('href', '/workspaces/workspace-1/files');
