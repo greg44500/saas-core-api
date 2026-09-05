@@ -7,7 +7,6 @@ import {
 import { getPlatformUser } from './services/getPlatformUser.service.js';
 import { listPlatformUsers } from './services/listPlatformUsers.service.js';
 import { revokePlatformUserSessions } from './services/revokePlatformUserSessions.service.js';
-import { updatePlatformUserRole } from './services/updatePlatformUserRole.service.js';
 
 const getUserById = async (req, res) => {
     const user = await getPlatformUser({
@@ -69,18 +68,6 @@ const closeUser = async (req, res) => {
     res.status(200).json({ status: 'success', data: { user } });
 };
 
-const updateUserRole = async (req, res) => {
-    const user = await updatePlatformUserRole({
-        userId: req.validated.params.userId,
-        actorId: req.user._id,
-        platformRole: req.validated.body.platformRole,
-        ipAddress: req.ip ?? null,
-        userAgent: req.get('user-agent') ?? null,
-    });
-
-    res.status(200).json({ status: 'success', data: { user } });
-};
-
 const revokeUserSessions = async (req, res) => {
     const result = await revokePlatformUserSessions({
         userId: req.validated.params.userId,
@@ -99,5 +86,4 @@ export {
     getUserById,
     listUsers,
     revokeUserSessions,
-    updateUserRole,
 };
