@@ -5,7 +5,7 @@ const platformWorkspaceIdParamsSchema = z.strictObject({
     workspaceId: z.string().regex(/^[a-f\d]{24}$/i, 'workspaceId invalide'),
 });
 
-const suspendPlatformWorkspaceBodySchema = z
+const createWorkspaceStatusReasonSchema = () => z
     .strictObject({
         statusReason: z.enum(Object.values(WORKSPACE_STATUS_REASON)),
         statusReasonDetails: z.string().trim().min(3).max(500).optional(),
@@ -24,7 +24,14 @@ const suspendPlatformWorkspaceBodySchema = z
         }
     });
 
+const suspendPlatformWorkspaceBodySchema =
+    createWorkspaceStatusReasonSchema();
+
+const closePlatformWorkspaceBodySchema =
+    createWorkspaceStatusReasonSchema();
+
 export {
+    closePlatformWorkspaceBodySchema,
     platformWorkspaceIdParamsSchema,
     suspendPlatformWorkspaceBodySchema,
 };
