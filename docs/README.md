@@ -32,19 +32,36 @@ Une synthèse de reprise, une checklist ou un rapport d'implémentation ne peut 
 
 ---
 
-## 3. Documents déjà canoniques
+## 3. Documents canoniques actifs
 
 ### `DEBT.md`
 
 Registre unique des dettes fonctionnelles, techniques, de conformité et de préparation à la production encore actives.
 
-Les anciens fichiers de dette servent uniquement de sources de cadrage tant que leur contenu n'a pas été consolidé.
-
 ### `REPRISE-CURRENT.md`
 
-Document temporaire unique de reprise entre deux sessions ou conversations.
+Document temporaire unique de reprise entre deux sessions ou conversations. Il sera supprimé lorsque le Core sera finalisé et que la documentation canonique sera complète.
 
-Il est mis à jour en place et sera supprimé lorsque le Core sera finalisé et que la documentation canonique sera complète.
+### `contracts/CORE-CONTRACT.md`
+
+Contrat transversal du Core : conventions HTTP, Auth, compte, Workspaces, memberships, invitations, rôles, ownership, Files, AuditLog, frontières multi-tenant et routes Platform.
+
+### `contracts/COMMERCIAL.md`
+
+Contrat du moteur commercial : Plan, baseline, Subscription, TrialEligibility, entitlement effectif, UsageMetric, quotas, EntitlementOverride et administration commerciale Platform.
+
+Décisions corrigées contre le code courant :
+
+- la clé technique d'un nouveau Plan est générée par le backend et n'est pas saisie par le SUPER_ADMIN ;
+- elle n'est pas exposée dans le catalogue public ;
+- la baseline est identifiée par `systemRole = baseline` / `isBaseline`, pas par le nom `Free` ;
+- les features et limites de la vue Workspace sont les valeurs effectives après application des overrides actifs.
+
+### `contracts/CAPABILITIES.md`
+
+Contrat du Capability Registry actif et de son extension par les futurs SaaS dérivés.
+
+Le registre runtime est `ACTIVE_PLAN_CAPABILITY_REGISTRY` et les capabilities métier doivent être déclarées par le logiciel, jamais créées librement depuis Platform.
 
 ### `README.md` du présent dossier
 
@@ -53,8 +70,6 @@ Index documentaire et tableau de migration vers la structure cible.
 ---
 
 ## 4. Structure documentaire cible
-
-La structure cible est la suivante :
 
 ```text
 docs/
@@ -111,9 +126,9 @@ Documents destinés à devenir supprimables après vérification de leur contenu
 
 Git conserve l'historique ; ces fichiers n'ont pas vocation à devenir une archive permanente du projet.
 
-### B. Contrats à consolider
+### B. Anciens contrats désormais absorbés par DOC-2
 
-Sources à vérifier contre le code et les tests puis à intégrer dans `contracts/CORE-CONTRACT.md`, `contracts/COMMERCIAL.md` ou `contracts/CAPABILITIES.md` :
+Le contenu encore valide de ces documents a été consolidé dans les contrats canoniques de `docs/contracts/` :
 
 - `frontend-backend-integration-contract.md` ;
 - `frontend-backend-account-security-contract.md` ;
@@ -122,14 +137,17 @@ Sources à vérifier contre le code et les tests puis à intégrer dans `contrac
 - `frontend-platform-admin-contract.md` ;
 - `commercial-configuration-contract.md` ;
 - `commercial-plans-entitlements-platform-admin.md` ;
-- `application-capability-registry-contract.md` ;
+- `application-capability-registry-contract.md`.
+
+Ils restent présents pendant le chantier documentaire et ne seront supprimés qu'après validation explicite.
+
+Les documents principalement UI/UX suivants seront absorbés lors des lots architecture/frontend :
+
 - `frontend-data-table-contract.md` ;
 - `frontend-toast-feedback-contract.md` ;
 - `platform-overview-dashboard-contract.md` ;
 - `dashboard-workspace-platform-boundary.md` ;
 - `core-plan-navigation-ui-conventions.md`.
-
-Pendant la migration, ces fichiers restent des sources de travail mais ne doivent pas être considérés comme automatiquement plus fiables que le code actuel.
 
 ### C. Architecture, sécurité et frontend à consolider
 
@@ -141,7 +159,7 @@ Le contenu actuellement réparti entre `docs/` et `frontend/docs/` sera vérifi�
 - `security/SECURITY.md` ;
 - `frontend/FRONTEND-GUIDELINES.md`.
 
-Cela concerne notamment les documents historiques :
+Cela concerne notamment :
 
 - `frontend-architecture-security-principles.md` ;
 - `frontend-decisions-consolidation.md` ;
@@ -159,11 +177,11 @@ Cela concerne notamment les documents historiques :
 - `frontend-final-foundations-policy.md` ;
 - les checklists associées.
 
-Règle structurante à préserver : les composants réutilisables sont obligatoires lorsqu'ils sont pertinents ; les tables utilisent le composant partagé de DataTable ; les drawers, confirmations, formulaires et patterns transverses doivent réutiliser les composants communs existants plutôt que créer des variantes dupliquées.
+Règle structurante à préserver : les composants réutilisables sont obligatoires lorsqu'ils sont pertinents ; les tables utilisent le DataTable partagé ; les drawers, confirmations, formulaires et patterns transverses réutilisent les composants communs existants plutôt que créer des variantes dupliquées.
 
 ### D. Dette à consolider
 
-`DEBT.md` est déjà l'unique source de statut des dettes.
+`DEBT.md` est l'unique source de statut des dettes.
 
 Les anciens documents suivants restent temporairement des annexes de cadrage :
 
@@ -174,8 +192,6 @@ Les anciens documents suivants restent temporairement des annexes de cadrage :
 - `functional-debt-rgpd-cookies-privacy-legal.md` ;
 - `functional-debt-ui-display-preferences.md`.
 
-Ils ne doivent plus introduire un second statut concurrent d'une dette déjà enregistrée dans `DEBT.md`.
-
 ### E. Conformité à consolider
 
 Sources à intégrer dans `compliance/COMPLIANCE.md` :
@@ -184,11 +200,11 @@ Sources à intégrer dans `compliance/COMPLIANCE.md` :
 - `functional-debt-privacy-cookies-rgpd.md` ;
 - `functional-debt-rgpd-cookies-privacy-legal.md`.
 
-`rgpd-data-tracker-inventory.md` reste un inventaire vivant distinct et devra être déplacé vers `docs/compliance/` uniquement après validation de la réorganisation.
+`rgpd-data-tracker-inventory.md` reste un inventaire vivant distinct et ne sera déplacé qu'après validation de la réorganisation.
 
 ### F. SaaS dérivés et opérations à consolider
 
-Les règles encore réparties dans les anciens documents, checklists, scripts et contrats devront être regroupées dans :
+Les règles restantes seront regroupées dans :
 
 - `derived-saas/DERIVED-SAAS.md` pour la création, l'extension, le versionnement et la mise à niveau d'un SaaS dérivé ;
 - `operations/OPERATIONS.md` pour configuration, seeds, migrations, jobs, stockage, antivirus et opérations de développement/production.
@@ -213,8 +229,8 @@ Une documentation strictement locale à un module pourra exceptionnellement rest
 |---|---|---|
 | DOC-0 | Gouvernance des dettes et reprise unique | terminé |
 | DOC-1 | Inventaire, classification et index documentaire | terminé |
-| DOC-2 | Contrats Core / commercial / capabilities | à lancer |
-| DOC-3 | Architecture globale, backend et frontend | à faire |
+| DOC-2 | Contrats Core / commercial / capabilities | terminé |
+| DOC-3 | Architecture globale, backend et frontend | à lancer |
 | DOC-4 | Sécurité | à faire |
 | DOC-5 | Guidelines frontend et composants réutilisables | à faire |
 | DOC-6 | SaaS dérivés et maintenance du Core | à faire |
@@ -243,6 +259,6 @@ Pour chaque lot de nettoyage :
 
 ## 9. Prochaine étape
 
-Le prochain lot est **DOC-2 — consolidation des contrats**.
+Le prochain lot est **DOC-3 — architecture globale, backend et frontend**.
 
-Il devra commencer par le code et les tests actuels, puis utiliser les anciens contrats comme sources secondaires afin d'éviter de réintroduire des comportements dépassés dans la documentation canonique.
+Il devra formaliser la séparation Core / application dérivée, l'architecture modulaire backend, l'architecture frontend par fonctionnalités et les frontières de responsabilité, à partir du code courant avant d'absorber les anciens documents d'architecture.
