@@ -48,9 +48,7 @@ const updateCurrentUserProfile = async ({
         const user = await User.findOneAndUpdate(
             {
                 _id: userId,
-                status: mongoose.trusted({
-                    $nin: [USER_STATUS.DISABLED, USER_STATUS.CLOSED],
-                }),
+                status: USER_STATUS.ACTIVE,
             },
             {
                 $set: {
@@ -69,11 +67,6 @@ const updateCurrentUserProfile = async ({
             throw new AppError('Compte indisponible', 403);
         }
 
-        /*
-         * Les anciennes et nouvelles valeurs ne sont pas journalisées afin de
-         * ne pas dupliquer des données personnelles dans AuditLog. Les noms des
-         * champs modifiés suffisent pour la traçabilité opérationnelle.
-         */
         await createAuditLog(
             {
                 actor: userId,
