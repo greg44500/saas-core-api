@@ -1,16 +1,14 @@
 import { z } from 'zod';
+
+import { passwordSchema } from '../../shared/validation/password.validation.js';
 import { userIdentityInputSchema } from '../users/user.validation.js';
+
 /**
- * Valide uniquement la structure HTTP d'un mot de passe.
- *
- * Le mot de passe n'est volontairement pas trimé :
- * les espaces peuvent faire partie du secret choisi par l'utilisateur.
- *
- * Les règles de composition artificielles comme l'obligation d'une
- * majuscule, d'un chiffre ou d'un symbole ne font pas partie
- * de la politique de sécurité retenue pour le projet.
+ * Réexporte la primitive partagée afin de conserver l'API existante du
+ * module Auth sans dupliquer la politique de mot de passe.
  */
-export const passwordSchema = z.string().min(15).max(128);
+export { passwordSchema };
+
 /**
  * Contrat HTTP utilisé lors de l'inscription locale.
  *
@@ -23,6 +21,7 @@ export const passwordSchema = z.string().min(15).max(128);
 export const registerSchema = userIdentityInputSchema.extend({
     password: passwordSchema,
 });
+
 /**
  * Contrat HTTP utilisé lors d'une authentification locale.
  *
