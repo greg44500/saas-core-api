@@ -16,14 +16,27 @@ const serializeFile = (file) => ({
     updatedAt: file.updatedAt,
 });
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const listWorkspaceFiles = async ({
     workspaceId,
     page = 1,
     limit = 20,
+    category,
+    search,
 }) => {
     const filter = {
         workspace: workspaceId,
         status: FILE_STATUS.ACTIVE,
+        ...(category ? { category } : {}),
+        ...(search
+            ? {
+                originalName: {
+                    $regex: escapeRegex(search),
+                    $options: 'i',
+                },
+            }
+            : {}),
     };
 
     const [files, total] = await Promise.all([
