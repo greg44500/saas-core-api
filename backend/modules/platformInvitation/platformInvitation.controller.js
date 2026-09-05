@@ -13,25 +13,29 @@ import {
 } from './platformInvitation.service.js';
 
 
-const toInvitationDto = (invitation) => ({
-    id: invitation._id.toString(),
-    firstName: invitation.firstName,
-    lastName: invitation.lastName,
-    email: invitation.emailCanonical,
-    status: invitation.status,
-    deliveryStatus: invitation.deliveryStatus,
-    lastDeliveryAttemptAt: invitation.lastDeliveryAttemptAt,
-    deliveredAt: invitation.deliveredAt,
-    expiresAt: invitation.expiresAt,
-    createdAt: invitation.createdAt,
-    role: invitation.role && typeof invitation.role === 'object'
+const toInvitationDto = (invitation) => {
+    const populatedRole = invitation.role?.name
         ? {
             id: invitation.role._id.toString(),
             key: invitation.role.key,
             name: invitation.role.name,
         }
-        : undefined,
-});
+        : undefined;
+
+    return {
+        id: invitation._id.toString(),
+        firstName: invitation.firstName,
+        lastName: invitation.lastName,
+        email: invitation.emailCanonical,
+        status: invitation.status,
+        deliveryStatus: invitation.deliveryStatus,
+        lastDeliveryAttemptAt: invitation.lastDeliveryAttemptAt,
+        deliveredAt: invitation.deliveredAt,
+        expiresAt: invitation.expiresAt,
+        createdAt: invitation.createdAt,
+        role: populatedRole,
+    };
+};
 
 
 const create = async (req, res) => {
