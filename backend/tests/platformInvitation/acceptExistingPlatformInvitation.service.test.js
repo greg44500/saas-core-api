@@ -43,6 +43,16 @@ vi.mock('../../modules/users/user.model.js', () => ({
     User: { findById: vi.fn() },
 }));
 
+/**
+ * acceptPlatformInvitation.service.js contient aussi le parcours de création
+ * d'un nouveau User et importe donc AuthIdentity. Ce test couvre uniquement le
+ * parcours d'un User existant : on isole ce modèle pour ne pas devoir simuler
+ * tout mongoose.Schema dans un test de service qui ne l'utilise jamais.
+ */
+vi.mock('../../modules/authIdentities/authIdentity.model.js', () => ({
+    AuthIdentity: { create: vi.fn() },
+}));
+
 vi.mock('../../modules/platformRole/platformRole.model.js', () => ({
     PlatformRole: { findById: vi.fn() },
 }));
