@@ -166,6 +166,28 @@ Décisions désormais canoniques :
 - transferts hors UE/EEE, AIPD et procédure de violation de données font partie de la revue pré-production ;
 - D-003 et D-006 restent actives : DOC-7 consolide le cadre, il n'implémente pas encore ces workflows.
 
+### Opérations
+
+```text
+docs/operations/OPERATIONS.md
+→ installation, environnement, MongoDB, démarrage, seeds, migrations,
+  jobs, stockage, antivirus, health checks, déploiement et rollback
+```
+
+Décisions opérationnelles désormais canoniques :
+
+- l'environnement est validé en fail-fast et applique des garde-fous supplémentaires en production ;
+- MongoDB est une dépendance indispensable au démarrage et doit supporter les transactions utilisées par le Core ;
+- `autoIndex` est désactivé en production : les indexes doivent être gérés par migrations ;
+- seeds, migrations, jobs et opérations destructives de développement sont quatre mécanismes distincts ;
+- les jobs sont des processus autonomes ; leur fréquence et leur supervision appartiennent au déploiement réel ;
+- le provider File courant est uniquement `local`, malgré une abstraction préparée pour de futurs providers ;
+- ClamAV applique une politique fail-closed, mais sa disponibilité n'est pas encore contrôlée par une readiness de démarrage ;
+- `/api/health` est actuellement un liveness HTTP et non une readiness complète ;
+- le rollback du code ne constitue jamais un rollback automatique des données ;
+- stockage production, backups/restauration, readiness, observabilité, scheduling réel, CI/CD et configuration proxy restent à finaliser par produit ;
+- D-005, D-007 et D-013 restent donc actives : DOC-8 documente l'exploitation mais ne déploie pas une infrastructure de production.
+
 ---
 
 ## 4. Structure documentaire cible
@@ -311,9 +333,15 @@ L'ancien inventaire et les anciens cadrages restent physiquement présents jusqu
 
 ### F. Opérations
 
-Les règles opérationnelles restantes seront regroupées dans :
+La référence active est désormais :
 
-- `operations/OPERATIONS.md` pour environnement, seeds, migrations, jobs, stockage, antivirus et opérations de développement/production.
+```text
+docs/operations/OPERATIONS.md
+```
+
+Elle consolide les règles d'exploitation déduites du code courant : `.env.example`, validation d'environnement, scripts npm, démarrage, MongoDB, seeds, migrations, jobs, opérations de développement, stockage, antivirus et health check.
+
+Les fragments opérationnels encore présents dans d'anciennes checklists ou synthèses ne deviennent pas des sources concurrentes.
 
 ---
 
@@ -341,8 +369,8 @@ Une documentation strictement locale à un module pourra exceptionnellement rest
 | DOC-5 | Guidelines frontend et composants réutilisables | terminé |
 | DOC-6 | SaaS dérivés et maintenance du Core | terminé |
 | DOC-7 | Conformité / RGPD | terminé |
-| DOC-8 | Opérations | prochain lot |
-| DOC-9 | Consolidation finale de la dette | à faire |
+| DOC-8 | Opérations | terminé |
+| DOC-9 | Consolidation finale de la dette | prochain lot |
 | DOC-10 | Propositions de suppression et nettoyage validé | à faire |
 | DOC-11 | README racine et audit documentaire final | à faire |
 
@@ -365,6 +393,6 @@ Pour chaque lot de nettoyage :
 
 ## 9. Prochaine étape
 
-Le prochain lot est **DOC-8 — Opérations**.
+Le prochain lot est **DOC-9 — Consolidation finale de la dette**.
 
-Il consolidera environnement et configuration, démarrage, MongoDB, seeds, migrations, jobs, opérations de développement, stockage, antivirus, health check, ordre de déploiement, garde-fous de production et procédures de reprise/rollback, sans transformer la documentation d'exploitation en seconde source de vérité fonctionnelle.
+Il auditera `docs/DEBT.md` contre les documents canoniques désormais créés, supprimera les références devenues obsolètes à l'intérieur du registre sans supprimer les anciens fichiers, clarifiera les dépendances entre dettes et préparera la future feuille de route fonctionnelle post-documentation.
