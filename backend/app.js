@@ -1,5 +1,9 @@
 import express from 'express';
 import { env } from './config/env.js';
+import './config/applicationRolePermission.registry.js';
+import {
+    mountApplicationRoutes,
+} from './config/applicationRoutes.registry.js';
 import { requestContext } from './middlewares/requestContext.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
@@ -56,6 +60,13 @@ app.use(
     workspaceInvitationRouter,
 );
 app.use('/api/invitations', invitationAcceptanceRouter);
+
+/*
+ * Les routes métier sont composées avant le router Workspace générique afin
+ * qu'une application dérivée puisse monter ses domaines sans modifier ce
+ * fichier central du Core.
+ */
+mountApplicationRoutes(app);
 app.use('/api/workspaces', workspaceRouter);
 
 app.use('/api/health', healthRouter);// Route pour vérifier l'état de santé de l'API
