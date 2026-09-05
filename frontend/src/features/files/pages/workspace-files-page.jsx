@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Upload } from 'lucide-react';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
@@ -10,6 +10,7 @@ import {
   useListWorkspaceFilesQuery,
 } from '@/features/files/api/files-api';
 import { FileDeleteDialog } from '@/features/files/components/file-delete-dialog';
+import { FileListFilters } from '@/features/files/components/file-list-filters';
 import { FileUploadDialog } from '@/features/files/components/file-upload-dialog';
 import { FilesTable } from '@/features/files/components/files-table';
 import { downloadBlob } from '@/features/files/lib/download-blob';
@@ -18,6 +19,7 @@ import { WORKSPACE_FEATURE } from '@/features/workspace/constants/workspace-feat
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
 const PAGE_SIZE = 20;
+const SEARCH_DEBOUNCE_MS = 300;
 
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
@@ -27,15 +29,29 @@ function WorkspaceFilesPage() {
   const { workspace, can, hasFeature } = useWorkspaceContext();
   const { toast } = useToast();
   const [page, setPage] = useState(1);
+  const [category, setCategory] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
   const [downloadingFileId, setDownloadingFileId] = useState(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [filePendingDeletion, setFilePendingDeletion] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput]);
+
   const filesQuery = useListWorkspaceFilesQuery({
     workspaceId: workspace.id,
     page,
     limit: PAGE_SIZE,
+    ...(category ? { category } : {}),
+    ...(search ? { search } : {}),
   });
   const [downloadWorkspaceFile] = useDownloadWorkspaceFileMutation();
   const [deleteWorkspaceFile, deleteState] = useDeleteWorkspaceFileMutation();
@@ -102,6 +118,18 @@ function WorkspaceFilesPage() {
     }
   }
 
+  function handleCategoryChange(value) {
+    setCategory(value);
+    setPage(1);
+  }
+
+  function clearFilters() {
+    setCategory('');
+    setSearchInput('');
+    setSearch('');
+    setPage(1);
+  }
+
   if (filesQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Chargement des fichiers…</p>;
   }
@@ -123,6 +151,7 @@ function WorkspaceFilesPage() {
   const files = filesQuery.data?.files ?? [];
   const pagination = filesQuery.data?.pagination;
   const totalFiles = pagination?.total ?? files.length;
+  const hasFilters = Boolean(category || searchInput.trim());
   const canUpload = can(WORKSPACE_PERMISSION.FILE_UPLOAD)
     && hasFeature(WORKSPACE_FEATURE.FILE_UPLOAD);
   const canDelete = can(WORKSPACE_PERMISSION.FILE_DELETE);
@@ -158,11 +187,23 @@ function WorkspaceFilesPage() {
           </div>
         </div>
 
+        <FileListFilters
+          category={category}
+          onCategoryChange={handleCategoryChange}
+          onClear={clearFilters}
+          onSearchChange={setSearchInput}
+          search={searchInput}
+        />
+
         {files.length === 0 ? (
           <div className="p-5">
-            <p className="text-sm font-medium">Aucun fichier actif</p>
+            <p className="text-sm font-medium">
+              {hasFilters ? 'Aucun fichier ne correspond aux filtres' : 'Aucun fichier actif'}
+            </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Aucun fichier n’est actuellement disponible dans ce workspace.
+              {hasFilters
+                ? 'Modifiez ou effacez les filtres pour élargir la recherche.'
+                : 'Aucun fichier n’est actuellement disponible dans ce workspace.'}
             </p>
           </div>
         ) : (
@@ -215,4 +256,9 @@ function WorkspaceFilesPage() {
   );
 }
 
-export { PAGE_SIZE, WorkspaceFilesPage, getApiMessage };
+export {
+  PAGE_SIZE,
+  SEARCH_DEBOUNCE_MS,
+  WorkspaceFilesPage,
+  getApiMessage,
+};
