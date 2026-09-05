@@ -8,6 +8,7 @@ import {
 import {
     AUTH_SESSION_REVOKED_REASON,
 } from '../../constants/authSession.constants.js';
+import { PLATFORM_ROLE } from '../../constants/platformRoles.constants.js';
 import { SYSTEM_ROLE_KEY } from '../../constants/role.constants.js';
 import { USER_STATUS } from '../../constants/userStatus.constants.js';
 import {
@@ -72,6 +73,20 @@ const requestCurrentUserClosure = async ({
                 'L’adresse email de confirmation est incorrecte',
                 409,
             );
+        }
+
+        if (user.platformRole === PLATFORM_ROLE.SUPER_ADMIN) {
+            const activeSuperAdminCount = await User.countDocuments({
+                platformRole: PLATFORM_ROLE.SUPER_ADMIN,
+                status: USER_STATUS.ACTIVE,
+            }).session(session);
+
+            if (activeSuperAdminCount <= 1) {
+                throw new AppError(
+                    'Le dernier super-admin actif ne peut pas fermer son compte',
+                    409,
+                );
+            }
         }
 
         const memberships = await WorkspaceMember.find({
