@@ -41,10 +41,6 @@ import {
 } from '../../middlewares/validateRequest.js';
 
 import {
-    paginationQuerySchema,
-} from '../../utils/validations/pagination.validation.js';
-
-import {
     workspaceIdParamsSchema,
 } from '../workspace/workspace.validation.js';
 
@@ -57,6 +53,7 @@ import {
 } from './file.controller.js';
 
 import {
+    listWorkspaceFilesQuerySchema,
     uploadFileBodySchema,
     workspaceFileParamsSchema,
 } from './file.validation.js';
@@ -76,7 +73,7 @@ router.get(
     authenticate,
     validateRequest({
         params: workspaceIdParamsSchema,
-        query: paginationQuerySchema,
+        query: listWorkspaceFilesQuerySchema,
     }),
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.FILE_READ),
