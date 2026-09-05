@@ -6,6 +6,23 @@ import { PlatformPlanForm } from '@/features/platform/components/platform-plan-f
 
 const capabilities = {
   features: ['file_upload', 'team_management', 'audit_logs'],
+  featureDefinitions: [
+    {
+      key: 'file_upload',
+      label: 'Téléversement de fichiers',
+      metricKeys: ['storage_bytes', 'file_uploads_monthly'],
+    },
+    {
+      key: 'team_management',
+      label: 'Gestion d’équipe',
+      metricKeys: ['members'],
+    },
+    {
+      key: 'audit_logs',
+      label: 'Historique d’activité',
+      metricKeys: [],
+    },
+  ],
   metrics: [
     { key: 'members', definition: {} },
     { key: 'storage_bytes', definition: {} },
@@ -73,6 +90,11 @@ describe('PlatformPlanForm', () => {
     await user.type(screen.getByLabelText('Nom'), 'Premium');
     await user.click(screen.getByLabelText('Trial disponible'));
     await user.type(screen.getByLabelText('Durée du trial en jours'), '14');
+    await user.click(
+      screen.getByRole('switch', {
+        name: 'Activer Téléversement de fichiers',
+      }),
+    );
     await user.selectOptions(screen.getByLabelText('Mode', { selector: '#platform-plan-limit-mode-storage_bytes' }), 'limited');
     await user.type(screen.getByLabelText('Valeur (Mo)'), '100');
     await user.click(screen.getByRole('button', { name: 'Créer le plan' }));
