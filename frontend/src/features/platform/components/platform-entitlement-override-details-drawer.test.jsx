@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PlatformEntitlementOverrideDetails } from '@/features/platform/components/platform-entitlement-override-details-drawer';
@@ -18,7 +19,7 @@ const baseOverride = {
   revokedAt: null,
 };
 
-function renderDetails(override) {
+function renderDetails(override, { onViewWorkspace = vi.fn() } = {}) {
   render(
     <PlatformEntitlementOverrideDetails
       error={null}
@@ -26,17 +27,20 @@ function renderDetails(override) {
       onEdit={vi.fn()}
       onRetry={vi.fn()}
       onRevoke={vi.fn()}
-      onViewWorkspace={vi.fn()}
+      onViewWorkspace={onViewWorkspace}
       override={override}
     />,
   );
+
+  return { onViewWorkspace };
 }
 
 describe('PlatformEntitlementOverrideDetails', () => {
   afterEach(() => cleanup());
 
-  it('présente une dérogation de fonctionnalité sans vocabulaire technique Capability', () => {
-    renderDetails({
+  it('présente une dérogation de fonctionnalité sans vocabulaire technique Capability', async () => {
+    const user = userEvent.setup();
+    const { onViewWorkspace } = renderDetails({
       ...baseOverride,
       targetType: 'feature',
       featureKey: 'file_upload',
@@ -53,6 +57,13 @@ describe('PlatformEntitlementOverrideDetails', () => {
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.queryByText('Capability')).not.toBeInTheDocument();
     expect(screen.queryByText('État')).not.toBeInTheDocument();
+
+    const workspaceLink = screen.getByRole('button', { name: 'Voir le workspace' });
+    expect(workspaceLink).toHaveClass('size-6');
+    expect(workspaceLink).toHaveTextContent('');
+
+    await user.click(workspaceLink);
+    expect(onViewWorkspace).toHaveBeenCalledWith(baseOverride.workspace);
   });
 
   it('présente une dérogation de limite avec une valeur explicite', () => {
