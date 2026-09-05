@@ -17,58 +17,48 @@ En cas de contradiction :
 7. documents historiques temporairement conservés ;
 8. présent fichier.
 
-Important : le `main` contient actuellement une implémentation **intermédiaire** de CORE-FIN-4 / D-001 qui doit encore être recadrée selon les décisions métier de cette synthèse. Le code intermédiaire ne doit donc pas être considéré comme le contrat final de fermeture de compte.
+Le présent fichier décrit uniquement l'état de reprise. Il ne doit jamais conserver une règle métier plus récente qu'un contrat canonique.
 
 ---
 
 ## 2. État général du projet
 
-Le chantier documentaire **DOC-0 → DOC-11 est terminé**.
+Le chantier documentaire **DOC-0 → DOC-11** est terminé.
 
-Les lots de finalisation suivants sont également clôturés :
-
-```text
-CORE-FIN-1
-→ reprise / audit F10.6
-→ F10.6 déjà implémenté et considéré terminé
-
-CORE-FIN-2
-→ audit fonctionnel réel du HEAD
-→ terminé
-
-CORE-FIN-3
-→ corrections ciblées révélées par l'audit
-→ terminé et validé
-```
-
-Corrections CORE-FIN-3 validées :
-
-- suppression du double montage du `subscriptionRouter` ;
-- politique de transfert d'ownership en remédiation rendue explicite ;
-- tests associés corrigés et validés.
-
-Dernier baseline validé avant le chantier CORE-FIN-4 :
-
-```text
-backend : tous les tests verts
-frontend : tous les tests verts
-frontend build : OK
-```
-
-Le dépôt reste en version de développement `0.1.0`. Il ne doit pas encore être présenté comme `v1.0.0` ni comme automatiquement production-ready.
-
----
-
-## 3. Roadmap de finalisation Core
-
-Roadmap retenue :
+Les lots de finalisation suivants sont clôturés :
 
 ```text
 CORE-FIN-1  reprise et clôture F10.6                    ✅
 CORE-FIN-2  audit fonctionnel complet                  ✅
 CORE-FIN-3  corrections révélées par l'audit           ✅
-CORE-FIN-4  D-001 fermeture Account / Workspace        EN COURS
-CORE-FIN-5  D-014 points d'extension métier
+CORE-FIN-4  D-001 fermeture Account / Workspace        ✅
+```
+
+Le dépôt reste en version de développement `0.1.0`. Il ne doit pas encore être présenté comme `v1.0.0` ni comme automatiquement production-ready.
+
+Validation CORE-FIN-4 confirmée par l'utilisateur :
+
+```text
+backend : tests complets verts
+frontend : tests ciblés verts
+frontend : tests globaux verts
+frontend : build Vite OK
+```
+
+La couverture E2E Playwright reste une dette distincte D-016.
+
+---
+
+## 3. Roadmap de finalisation Core
+
+Roadmap active :
+
+```text
+CORE-FIN-1  reprise et clôture F10.6                    ✅
+CORE-FIN-2  audit fonctionnel complet                  ✅
+CORE-FIN-3  corrections révélées par l'audit           ✅
+CORE-FIN-4  D-001 fermeture Account / Workspace        ✅
+CORE-FIN-5  D-014 points d'extension métier            PROCHAIN
 CORE-FIN-6  D-015 versionnement / migrations / release
 CORE-FIN-7  D-016 Playwright / E2E Core
 CORE-FIN-8  audit final architecture / sécurité / qualité
@@ -76,25 +66,25 @@ CORE-FIN-9  D-017 dérivation pilote + upgrade Core
 CORE-FIN-10 release v1.0.0
 ```
 
-Après CORE-FIN-4, ne pas inventer un nouveau lot depuis une ancienne checklist : reprendre cette roadmap et vérifier le HEAD réel avant chaque bloc.
+Avant chaque bloc, vérifier le HEAD réel et les contrats canoniques ; ne pas repartir d'une ancienne checklist historique.
 
 ---
 
 ## 4. Documentation canonique active
 
-Porte d'entrée du dépôt :
+Porte d'entrée :
 
 ```text
 README.md
 ```
 
-Index interne :
+Index :
 
 ```text
 docs/README.md
 ```
 
-Références canoniques :
+Références principales :
 
 ```text
 docs/DEBT.md
@@ -118,508 +108,24 @@ docs/operations/OPERATIONS.md
 docs/development-trial-reset.md
 ```
 
-`frontend/README.md` est à jour comme guide local du frontend.
+`frontend/README.md` reste le guide local du frontend.
+
+Aucun ancien document historique ne doit être utilisé pour contredire ces sources canoniques.
 
 ---
 
-## 5. Règles permanentes de développement
+## 5. CORE-FIN-4 / D-001 — état final validé
 
-### 5.1 Sécurité
+### 5.1 Fermeture Account
 
-Principe :
-
-```text
-ne jamais faire dépendre la cohérence du système
-uniquement de la coopération de l'utilisateur
-```
-
-Le frontend n'est jamais l'autorité sur :
-
-- les Workspaces réellement possédés ;
-- les memberships ;
-- les droits ;
-- les conséquences d'une fermeture ;
-- la Subscription ;
-- les quotas ;
-- les transitions de statut.
-
-Le backend recalcule toujours la situation réelle depuis MongoDB avant une mutation sensible.
-
-### 5.2 Architecture frontend
-
-Réutilisabilité obligatoire :
-
-- `DataTable` pour les tableaux compatibles ;
-- drawers partagés ;
-- confirmations partagées ;
-- formulaires réutilisables ;
-- pages légères ;
-- RTK Query pour le server state ;
-- Redux Toolkit pour le vrai state global client ;
-- `useState` pour le state local.
-
-Aucun composant dupliqué sans justification.
-
-### 5.3 Suppression de fichiers
-
-Règle utilisateur impérative :
+Endpoints :
 
 ```text
-ne supprimer aucun fichier sans approbation explicite préalable
+GET  /api/users/me/closure-impact
+POST /api/users/me/closure
 ```
 
-Cette règle vaut aussi pour un déplacement qui supprimerait l'ancien chemin.
-
----
-
-# 6. CORE-FIN-4 / D-001 — état actuel
-
-## 6.1 Objectif
-
-D-001 doit fournir un cycle de vie complet et sécurisé pour :
-
-- fermeture volontaire du compte User ;
-- archivage volontaire des Workspaces ;
-- fermeture terminale Platform des Workspaces ;
-- AuthSessions ;
-- memberships ;
-- invitations ;
-- Subscription ;
-- AuditLog ;
-- compatibilité avec la future rétention/anonymisation D-006.
-
-Invariant :
-
-```text
-fermeture fonctionnelle
-≠
-suppression physique des données
-```
-
-D-006 reste responsable de la politique réelle de rétention, anonymisation et purge.
-
----
-
-# 7. Décisions métier finales à respecter pour D-001
-
-## 7.1 Fermeture volontaire d'un simple membre
-
-Si le User n'est pas owner d'un Workspace :
-
-```text
-User demande la fermeture
-↓
-sa membership est retirée
-↓
-le quota membre est libéré
-↓
-le Workspace reste actif
-↓
-les autres membres ne sont pas impactés
-```
-
-Le compte du User est ensuite fermé selon le workflow Account.
-
----
-
-## 7.2 Fermeture volontaire d'un owner
-
-Décision retenue :
-
-> La fermeture volontaire d'un compte entraîne automatiquement l'archivage des Workspaces dont ce compte est encore owner au moment de la demande.
-
-Le transfert d'ownership reste possible **avant** la demande de fermeture mais n'est plus une obligation technique.
-
-Workflow :
-
-```text
-Owner transfère éventuellement certains Workspaces
-↓
-Owner demande la fermeture du compte
-↓
-backend recalcule les ownership réels
-↓
-Workspaces encore possédés
-→ ARCHIVED automatiquement
-↓
-les autres membres perdent l'accès à ces Workspaces
-mais leurs comptes restent actifs
-↓
-Workspaces transférés auparavant
-→ restent ACTIVE avec le nouvel owner
-```
-
-Cette conséquence devra être présentée clairement dans l'UI et devra être cohérente avec les futures CGU/conditions contractuelles du SaaS dérivé.
-
-Le backend ne doit jamais accepter du frontend une liste `workspacesToClose` comme source de vérité.
-
----
-
-## 7.3 ARCHIVED et CLOSED sont distincts
-
-Le modèle existant possède déjà :
-
-```text
-ACTIVE
-SUSPENDED
-ARCHIVED
-CLOSED
-```
-
-Sens à conserver :
-
-### ARCHIVED
-
-```text
-retrait volontaire / opérationnel du Workspace
-↓
-plus d'accès courant
-↓
-données conservées
-↓
-Files conservés
-AuditLogs conservés
-memberships conservées historiquement lorsque pertinent
-↓
-traitements de fermeture/rétention encore possibles
-```
-
-Un owner peut provoquer l'archivage.
-
-### CLOSED
-
-```text
-fermeture fonctionnelle terminale
-↓
-aucune réactivation normale
-↓
-données toujours conservées selon D-006
-```
-
-`CLOSED` reste une décision Platform / administrative.
-
-Ne pas permettre à un owner de passer directement son Workspace à `CLOSED`.
-
----
-
-## 7.4 Suspension administrative d'un User
-
-`User.status = disabled` est différent d'une fermeture volontaire.
-
-```text
-User DISABLED
-→ sessions révoquées
-→ authentification impossible
-→ memberships conservées
-→ Workspaces conservés
-→ possibilité de réactivation du User
-```
-
-Une suspension de sécurité ne doit pas fermer automatiquement les Workspaces du User.
-
----
-
-## 7.5 Incident de paiement
-
-Un incident de paiement est encore un autre workflow.
-
-Règle :
-
-```text
-incident paiement
-→ User reste ACTIVE
-→ Subscription porte l'état commercial réel
-→ Workspace peut passer en grâce / remediation
-→ owner conserve l'accès nécessaire à la régularisation
-```
-
-Ne jamais faire :
-
-```text
-paiement échoué
-→ User DISABLED
-```
-
-car un User peut appartenir à plusieurs Workspaces et doit pouvoir se connecter pour régulariser.
-
-Le traitement détaillé appartient à D-004 Billing / Payment, pas à D-001.
-
----
-
-# 8. Décisions Billing à conserver pour D-004 — NE PAS CODER DANS CORE-FIN-4
-
-Les discussions CORE-FIN-4 ont fait émerger des règles importantes pour D-004.
-
-## 8.1 Alerte Platform
-
-Un incident de paiement doit pouvoir :
-
-- notifier le propriétaire ;
-- remonter une alerte dans la Platform ;
-- permettre à un opérateur autorisé d'analyser l'incident.
-
-## 8.2 Médiateur humain
-
-Le workflow nominal doit rester automatisé, mais un humain autorisé doit pouvoir intervenir comme voie de secours.
-
-Rôle du médiateur humain :
-
-```text
-observer
-analyser
-diagnostiquer
-communiquer
-accorder une exception temporaire
-rapprocher un paiement externe
-déclencher une action métier sécurisée
-```
-
-Il ne doit jamais :
-
-```text
-modifier MongoDB à la main
-falsifier Subscription.status
-contourner l'authentification
-stocker une CB dans le Core
-saisir ou journaliser PAN / CVV
-```
-
-## 8.3 Grâce commerciale
-
-Concept futur à prévoir :
-
-```text
-Subscription = PAST_DUE
-+
-grâce commerciale temporaire
-↓
-Workspace accessMode = NORMAL temporairement
-```
-
-La Subscription conserve la vérité commerciale réelle.
-
-Une grâce doit être :
-
-- limitée dans le temps ;
-- motivée ;
-- accordée par une permission Platform ;
-- auditée ;
-- automatiquement expirée.
-
-Ne pas détourner `EntitlementOverride` pour représenter cette grâce : EntitlementOverride reste lié aux features/limits, pas au statut commercial du Workspace.
-
-## 8.4 Paiement externe / hors plateforme
-
-Un paiement peut être régularisé hors de l'application :
-
-- virement ;
-- terminal du provider ;
-- paiement manuel ;
-- lien de paiement sécurisé ;
-- autre moyen accepté par le produit dérivé.
-
-Le Core futur devra permettre une action métier du type :
-
-```text
-enregistrer / rapprocher un paiement externe
-```
-
-puis laisser le service Billing décider de la conséquence sur la Subscription.
-
-Ne pas exposer un bouton générique « forcer Subscription ACTIVE ».
-
-## 8.5 Paiement par téléphone
-
-Le support humain peut accompagner un paiement, mais le SaaS Core ne doit pas manipuler les données de carte.
-
-Préférence :
-
-```text
-support
-→ envoie un lien de paiement sécurisé
-→ client saisit sa CB chez le provider
-→ provider confirme
-→ Billing rapproche le paiement
-```
-
-Le SaaS ne conserve que les références non sensibles nécessaires au rapprochement.
-
-## 8.6 Permissions Platform futures
-
-Exemples conceptuels à cadrer dans D-004 :
-
-```text
-billing_incident:read
-billing_grace:grant
-billing_grace:revoke
-external_payment:record
-```
-
-Ne pas les créer dans CORE-FIN-4.
-
----
-
-# 9. Code CORE-FIN-4 déjà poussé — IMPORTANT : INTERMÉDIAIRE
-
-Plusieurs fichiers backend ont déjà été ajoutés/modifiés pendant le premier cadrage de D-001.
-
-Leur présence est utile, mais certains comportements reflètent encore l'ancienne règle et doivent être corrigés avant validation.
-
-Éléments déjà présents :
-
-- route self-service `/api/users/me/closure` ;
-- service `userClosure.service.js` ;
-- service `workspaceClosure.service.js` ;
-- fermeture Platform Workspace ;
-- finalisation Platform User ;
-- nouveaux AuditLog liés aux fermetures ;
-- nouvelles raisons de révocation AuthSession ;
-- blocage partiel de `deletion_requested` dans Auth ;
-- révocation d'invitations ;
-- tests de routes/services/validation ajoutés ou renforcés.
-
-### Incohérences connues à corriger
-
-#### A. Ancienne règle owner encore dans `userClosure.service.js`
-
-Le code refuse encore actuellement la fermeture du compte si le User possède un Workspace ouvert :
-
-```text
-« Transférez ou fermez tous les workspaces... »
-```
-
-Cette règle est abandonnée.
-
-La nouvelle règle est :
-
-```text
-Workspace encore possédé
-→ archivage automatique dans la transaction de fermeture Account
-```
-
-#### B. Owner ferme actuellement un Workspace vers CLOSED
-
-`workspaceClosure.service.js` pousse actuellement un owner vers :
-
-```text
-ACTIVE → CLOSED
-```
-
-C'est incohérent avec le contrat existant.
-
-À corriger en :
-
-```text
-owner
-→ ACTIVE → ARCHIVED
-
-Platform
-→ ACTIVE / SUSPENDED / ARCHIVED → CLOSED
-```
-
-#### C. Auth encore partiellement incohérent
-
-Le durcissement Auth doit être uniformisé sur :
-
-```text
-login
-access token
-refresh token
-forgot-password
-reset-password
-```
-
-Aucun workflow de récupération/authentification ne doit pouvoir réactiver un compte fermé ou en cours de fermeture.
-
-Le code actuel comporte encore au moins une ancienne tolérance de `DELETION_REQUESTED` dans le reset/refresh à vérifier et corriger.
-
-### Tests du code intermédiaire
-
-Ne pas considérer les nouveaux tests CORE-FIN-4 comme validés globalement tant que le recadrage ci-dessus n'est pas terminé.
-
-Le dernier baseline entièrement validé reste celui d'avant CORE-FIN-4.
-
----
-
-# 10. Ordre exact de reprise dans la prochaine conversation
-
-## CORE-FIN-4A.1 — Corriger ARCHIVED / CLOSED
-
-Objectif :
-
-```text
-Owner
-→ ARCHIVE uniquement
-
-Platform
-→ CLOSE terminal
-```
-
-Travail :
-
-- refactorer `workspaceClosure.service.js` ;
-- séparer clairement archive owner et close Platform ;
-- conserver transaction, révocation invitations, neutralisation Subscription et AuditLog adaptés ;
-- ajuster routes/controllers/validations si nécessaire ;
-- mettre à jour les tests ciblés.
-
-Ne pas commencer le frontend avant validation backend.
-
----
-
-## CORE-FIN-4A.2 — Orchestration automatique de fermeture User
-
-Supprimer l'obligation de transfert préalable.
-
-Le serveur doit :
-
-1. authentifier et confirmer fortement l'utilisateur ;
-2. charger ses memberships réelles ;
-3. identifier les Workspaces dont il est owner ;
-4. archiver automatiquement ceux encore possédés ;
-5. retirer ses memberships sur les Workspaces dont il n'est pas owner ;
-6. révoquer ses invitations pending ;
-7. révoquer ses AuthSessions ;
-8. fermer le compte selon le workflow final retenu ;
-9. écrire les AuditLogs ;
-10. effectuer le tout dans une transaction MongoDB cohérente.
-
-Le comportement doit être `all-or-nothing`.
-
-Échec sur un Workspace N :
-
-```text
-rollback de toute la fermeture
-```
-
----
-
-## CORE-FIN-4A.3 — Endpoint closure-impact
-
-Créer un endpoint informatif avant confirmation finale, conceptuellement :
-
-```text
-GET /api/users/me/closure-impact
-```
-
-Il doit retourner depuis le backend :
-
-- Workspaces possédés ;
-- Workspaces qui seront archivés ;
-- nombre d'autres membres impactés ;
-- Workspaces où le User est simple membre ;
-- memberships qui seront retirées ;
-- subscriptions concernées si pertinent pour l'information.
-
-Le résultat est un aperçu UX uniquement.
-
-Au moment du POST de fermeture, tout doit être recalculé depuis la base.
-
----
-
-## CORE-FIN-4A.4 — Confirmation forte et Auth hardening
-
-Payload de fermeture à finaliser autour de :
+Confirmation forte :
 
 ```text
 currentPassword
@@ -627,324 +133,231 @@ confirmationEmail
 confirmAccountClosure = true
 ```
 
-Validation Zod stricte, idéalement `z.literal(true)` pour la confirmation explicite.
+Le backend recalcule toujours la situation réelle depuis MongoDB.
 
-Uniformiser ensuite :
+Workflow :
+
+```text
+simple membre
+→ memberships retirées
+→ quota membre libéré
+→ Workspaces tiers restent actifs
+
+owner
+→ Workspaces encore possédés archivés automatiquement
+→ Workspaces transférés auparavant restent actifs
+→ memberships du User retirées
+→ AuthSessions révoquées
+→ User ACTIVE → DELETION_REQUESTED → CLOSED
+```
+
+Le frontend place « Fermer mon compte » dans la page Sécurité et affiche l'impact réel fourni par le backend avant confirmation.
+
+Après succès, la session frontend est terminée et le cache RTK Query est purgé.
+
+### 5.2 Archivage Workspace owner
+
+Endpoint :
+
+```text
+POST /api/workspaces/:workspaceId/archive
+```
+
+Protection :
+
+```text
+owner-only backend
++ mot de passe courant
++ confirmation exacte du nom
+```
+
+Transition :
+
+```text
+ACTIVE → ARCHIVED
+```
+
+Effets :
+
+- Subscriptions commerciales closables neutralisées ;
+- baseline conservée ;
+- invitations pendantes révoquées ;
+- AuditLog ;
+- données non supprimées physiquement par ce workflow.
+
+Le frontend expose cette action dans les paramètres du Workspace uniquement lorsque le contexte indique le rôle système owner. Cette visibilité reste une règle UX ; le backend revérifie l'ownership.
+
+### 5.3 Fermeture terminale Workspace
+
+```text
+PATCH /api/platform/workspaces/:workspaceId/close
+```
+
+`CLOSED` reste une décision Platform / administrative et ne doit pas être exposé comme commande owner.
+
+### 5.4 Auth après fermeture
+
+`deletion_requested` et `closed` sont refusés sur :
 
 ```text
 login
-access token
-refresh
-forgot-password
+access token / authenticate
+refresh token
 reset-password
 ```
 
-Aucun chemin ne doit interpréter `DELETION_REQUESTED` ou `CLOSED` de façon contradictoire.
+`forgot-password` garde une réponse neutre anti-énumération sans permettre une récupération réactivant ces états.
+
+`disabled` reste une suspension administrative distincte : memberships et Workspaces sont conservés et la réactivation reste possible.
 
 ---
 
-## CORE-FIN-4A.5 — Tests backend ciblés puis régression complète
+## 6. Rétention et conformité : ce qui reste ouvert
 
-Scénarios minimum :
+Invariant :
 
 ```text
-simple membre ferme son compte
-→ sa membership supprimée
-→ Workspace reste actif
-
-owner seul ferme son compte
-→ Workspace archivé
-
-owner avec d'autres membres ferme son compte
-→ Workspace archivé
-→ comptes des autres membres inchangés
-
-owner a transféré avant fermeture
-→ Workspace transféré reste actif
-
-User possède plusieurs Workspaces
-→ tous les Workspaces encore possédés sont archivés
-
-User possède certains Workspaces et est membre ailleurs
-→ owned archivés
-→ memberships ailleurs retirées
-
-Subscription active d'un Workspace archivé
-→ neutralisée selon contrat
-
-invitations Workspace pending
-→ revoked
-
-invitations reçues par le User
-→ revoked
-
-dernier super-admin
-→ fermeture refusée
-
-confirmation incorrecte
-→ aucune mutation
-
-échec concurrent sur un Workspace
-→ transaction rollback
-
-ancien access token
-→ refus
-
-ancien refresh token
-→ refus
-
-forgot/reset après fermeture
-→ refus
+fermeture fonctionnelle / archivage
+≠
+purge physique immédiate
 ```
 
-Puis :
+D-001 est clôturée, mais D-006 reste ouverte pour chaque produit réel :
 
-```bash
-npm test
-```
+- durée de conservation ;
+- anonymisation / pseudonymisation ;
+- purge définitive ;
+- sauvegardes ;
+- exceptions légales ;
+- articulation avec données contractuelles et financières.
 
-Ne passer au frontend qu'avec backend vert.
+Le Core ne doit pas coder une durée juridique universelle.
 
 ---
 
-# 11. CORE-FIN-4B — Frontend
+## 7. Multi-workspace et vocabulaire métier — décision clarifiée
 
-Une fois CORE-FIN-4A entièrement vert.
-
-## 11.1 Account
-
-Ajouter une zone sensible dans l'espace Account :
+Le Core V1 reste techniquement multi-workspace :
 
 ```text
-Fermer mon compte
+User → 0..N Workspaces
 ```
 
-Flow recommandé :
+Il n'impose pas une limite commerciale universelle du nombre de Workspaces par User.
+
+Le modèle commercial V1 reste Workspace-scoped :
 
 ```text
-clic
-↓
-RTK Query → closure-impact
-↓
-Drawer / ConfirmationDialog partagé
-↓
-affichage des conséquences réelles
-↓
-mot de passe
-email de confirmation
-confirmation explicite
-↓
-POST fermeture
-↓
-reset cache RTK Query
-fin session Redux
-redirection login
+Workspace
+├── Subscription
+├── UsageMetric
+└── EntitlementOverride
 ```
 
-L'UI doit clairement distinguer :
+Une application dérivée peut néanmoins :
 
-- Workspaces possédés qui seront archivés ;
-- nombre d'autres membres qui perdront leur accès à ces Workspaces ;
-- Workspaces dont le User est seulement membre et qui resteront actifs.
+- fonctionner avec un seul Workspace logique ;
+- masquer le mot « Workspace » derrière un vocabulaire métier comme organisation, établissement, cabinet ou espace client ;
+- ajouter une ressource métier interne comme `Dossier` ;
+- monétiser une métrique métier, par exemple 5 / 10 / illimité dossiers, via le Capability Registry et les limites de Plan ;
+- ajouter plus tard une couche commerciale multi-workspace si son modèle produit le justifie.
 
-Ne pas créer un composant de confirmation isolé si un composant partagé existant peut être composé.
-
-## 11.2 Workspace Settings
-
-Pour un owner :
-
-```text
-Archiver ce Workspace
-```
-
-Pas :
-
-```text
-Fermer définitivement
-```
-
-La fermeture terminale `CLOSED` reste Platform.
-
-## 11.3 Platform
-
-D-001 ne doit pas introduire une file humaine obligatoire de fermeture.
-
-Cas nominal : automatisé.
-
-Platform doit pouvoir observer :
-
-- comptes fermés ;
-- Workspaces archivés ;
-- Workspaces closed ;
-- AuditLogs associés.
-
-Un système générique de `ClosureCase` n'est pas retenu pour Core 1.0 à ce stade.
+Ne pas utiliser le nombre de Workspaces pour représenter artificiellement une ressource métier interne au tenant.
 
 ---
 
-# 12. CORE-FIN-4C — Documentation de clôture D-001
+## 8. D-004 Billing — décisions déjà figées mais non codées
 
-Après backend + frontend + tests + build :
-
-mettre à jour au minimum :
+Ces décisions restent à conserver pour D-004 :
 
 ```text
-docs/contracts/CORE-CONTRACT.md
-docs/contracts/COMMERCIAL.md
-docs/security/SECURITY.md
-docs/DEBT.md
-docs/REPRISE-CURRENT.md
+incident paiement
+→ User reste ACTIVE
+→ Subscription porte l'état commercial réel
+→ Workspace peut entrer en remediation / future grâce
 ```
 
-D-001 ne passe à `VALIDÉ` qu'après :
+Une future grâce commerciale doit être :
 
-- backend complet ;
-- frontend complet ;
-- validations Zod ;
-- transactions ;
-- sécurité ;
-- tests ciblés ;
-- régression backend ;
-- tests frontend ;
-- build frontend ;
-- documentation canonique alignée ;
-- compatibilité D-006 explicitée.
+- temporaire ;
+- motivée ;
+- auditée ;
+- permissionnée côté Platform ;
+- automatiquement expirante ;
+- distincte d'EntitlementOverride.
+
+Un médiateur humain ne doit jamais modifier MongoDB manuellement, forcer artificiellement `Subscription.status` ni manipuler PAN/CVV.
+
+Un paiement externe doit être rapproché par une commande métier dédiée, puis le domaine Billing décide de la conséquence sur Subscription.
 
 ---
 
-# 13. Blockers Core 1.0 après D-001
+## 9. Règles permanentes de développement
 
-Le registre canonique reste `docs/DEBT.md`.
-
-Blockers connus :
+### Sécurité
 
 ```text
-D-014
-→ points d'extension métier : RBAC + routing backend/frontend
-
-D-015
-→ versionnement, provenance, releases et discipline de migration
-
-D-016
-→ E2E Core avec Playwright
-
-D-017
-→ exercice réel création + upgrade d'un SaaS dérivé pilote
+ne jamais faire dépendre la cohérence
+uniquement de la coopération du frontend ou de l'utilisateur
 ```
 
-D-001 est actuellement EN COURS dans le travail réel, même si `DEBT.md` pourra rester temporairement à `PLANIFIÉ` jusqu'au prochain alignement documentaire de CORE-FIN-4C.
+Le backend reste l'autorité sur :
+
+- ownership ;
+- memberships ;
+- permissions ;
+- entitlement ;
+- quotas ;
+- lifecycle ;
+- conséquences des mutations sensibles.
+
+### Frontend
+
+Réutilisabilité obligatoire :
+
+- `DataTable` pour les tableaux compatibles ;
+- confirmations partagées ;
+- drawers partagés ;
+- formulaires réutilisables ;
+- pages légères ;
+- RTK Query pour le server state ;
+- Redux Toolkit pour le vrai state global client ;
+- `useState` pour le state local.
+
+### Fichiers du dépôt
+
+```text
+ne supprimer ou déplacer aucun fichier
+sans approbation explicite préalable de l'utilisateur
+```
 
 ---
 
-# 14. Documents historiques encore conservés
+## 10. Prochaine reprise exacte
 
-Les fichiers suivants restent **historiques et non canoniques** :
-
-```text
-docs/backend-implementation-checklist.md
-docs/frontend-implementation-checklist.md
-docs/frontend-platform-admin-contract.md
-docs/platform-overview-dashboard-contract.md
-docs/dashboard-workspace-platform-boundary.md
-```
-
-Ils peuvent contenir d'anciens noms de lots et des références désormais supprimées.
-
-Ne jamais les utiliser pour contredire :
+Prochain bloc :
 
 ```text
-code
-→ tests
-→ contrats canoniques
-→ architecture / sécurité / guidelines
-→ DEBT.md
-→ REPRISE-CURRENT.md pour l'état temporaire courant
+CORE-FIN-5 / D-014
+Points d'extension métier : RBAC et routing backend/frontend
 ```
 
-Toute suppression future de ces fichiers nécessite une nouvelle approbation explicite.
-
----
-
-# 15. Distribution future des SaaS dérivés
-
-Décision actuelle :
+Objectif : permettre à un petit module métier de référence d'enregistrer proprement :
 
 ```text
-Core stable et versionné
-↓
-création du produit en conservant l'historique Git
-↓
-origin = dépôt produit
-upstream-core = dépôt SAAS-CORE-API
-↓
-modules métier ajoutés par composition
-↓
-future release Core
-↓
-branche d'upgrade
-↓
-tests + migrations + revue
-↓
-intégration contrôlée
+permissions métier
+extensions des rôles système
+routes backend
+routes frontend
+navigation / capabilities
 ```
 
-GitHub Template n'est pas la stratégie canonique pour un produit qui doit continuer à recevoir les mises à jour du Core.
+sans modifier directement de longues listes centrales du Core et sans introduire une architecture plugin complexe prématurée.
 
----
+Avant de coder :
 
-# 16. Premier réflexe dans la prochaine conversation
-
-La prochaine conversation doit commencer par :
-
-```text
-CORE-FIN-4A.1
-→ auditer le HEAD actuel
-→ corriger l'implémentation intermédiaire
-→ ARCHIVED owner / CLOSED Platform
-```
-
-Puis poursuivre strictement :
-
-```text
-4A.1
-→ 4A.2
-→ 4A.3
-→ 4A.4
-→ tests backend ciblés
-→ npm test
-→ 4B frontend
-→ tests frontend
-→ build
-→ 4C documentation
-→ D-001 VALIDÉ
-```
-
-Ne pas coder D-004 Billing pendant CORE-FIN-4.
-
-Ne pas demander à l'utilisateur de répéter les décisions ci-dessus : cette synthèse les porte.
-
----
-
-# 17. Git / état local utilisateur
-
-L'utilisateur n'avait volontairement **pas encore fait de `git pull`** pendant le recadrage métier de CORE-FIN-4.
-
-Le `main` contient donc une implémentation backend intermédiaire de D-001, mais elle doit encore être corrigée selon cette synthèse avant d'être considérée comme un checkpoint propre.
-
-Dans la prochaine conversation :
-
-1. modifier d'abord le `main` pour aligner CORE-FIN-4A.1+ ;
-2. faire valider le checkpoint ;
-3. seulement ensuite demander à l'utilisateur de `git pull` et de lancer les tests lorsque le lot est cohérent.
-
----
-
-# 18. Critère de suppression de ce fichier
-
-`docs/REPRISE-CURRENT.md` pourra être supprimé uniquement lorsque :
-
-- le Core sera finalisé ;
-- la release stable et la politique de versionnement seront opérationnelles ;
-- la dérivation + upgrade pilote auront été réellement validées ;
-- aucune reprise de développement Core n'exigera plus de contexte temporaire ;
-- la suppression aura été explicitement approuvée.
+1. auditer les points d'extension existants du HEAD ;
+2. vérifier `docs/derived-saas/DERIVED-SAAS.md`, `CAPABILITIES.md` et D-014 ;
+3. proposer le contrat minimal de composition ;
+4. coder backend et frontend en mini-lots testables ;
+5. valider les tests avant de poursuivre.
