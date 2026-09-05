@@ -14,6 +14,9 @@ import {
     WORKSPACE_STATUS_REASON,
 } from '../../constants/workspace.constants.js';
 import {
+    WORKSPACE_INVITATION_STATUS,
+} from '../../constants/workspaceInvitation.constants.js';
+import {
     WORKSPACE_MEMBER_STATUS,
 } from '../../constants/workspaceMember.constants.js';
 import { AppError } from '../../utils/appError.js';
@@ -22,6 +25,9 @@ import {
     confirmCurrentUserPassword,
 } from '../auth/services/confirmCurrentUserPassword.service.js';
 import { Subscription } from '../subscriptions/subscription.model.js';
+import {
+    WorkspaceInvitation,
+} from '../workspaceInvitation/workspaceInvitation.model.js';
 import { WorkspaceMember } from '../workspaceMember/workspaceMember.model.js';
 import { Workspace } from './workspace.model.js';
 
@@ -31,13 +37,18 @@ const CLOSABLE_SUBSCRIPTION_STATUSES = Object.freeze([
     SUBSCRIPTION_STATUS.PAST_DUE,
 ]);
 
-const buildWorkspaceClosureDto = ({ workspace, canceledSubscriptionCount }) => ({
+const buildWorkspaceClosureDto = ({
+    workspace,
+    canceledSubscriptionCount,
+    revokedInvitationCount,
+}) => ({
     id: workspace._id.toString(),
     status: workspace.status,
     statusReason: workspace.statusReason,
     statusReasonDetails: workspace.statusReasonDetails ?? null,
     statusChangedAt: workspace.statusChangedAt,
     canceledSubscriptionCount,
+    revokedInvitationCount,
 });
 
 const assertValidAllowedStatuses = (allowedStatuses) => {
@@ -127,6 +138,71 @@ const cancelWorkspaceSubscriptionsInSession = async ({
     return canceledSubscriptionCount;
 };
 
+const revokeWorkspaceInvitationsInSession = async ({
+    workspaceId,
+    actorId,
+    now,
+    session,
+    ipAddress,
+    userAgent,
+}) => {
+    const pendingInvitations = await WorkspaceInvitation.find({
+        workspace: workspaceId,
+        status: WORKSPACE_INVITATION_STATUS.PENDING,
+    }).session(session);
+
+    let revokedInvitationCount = 0;
+
+    for (const invitation of pendingInvitations) {
+        const revokedInvitation = await WorkspaceInvitation.findOneAndUpdate(
+            {
+                _id: invitation._id,
+                status: WORKSPACE_INVITATION_STATUS.PENDING,
+            },
+            {
+                $set: {
+                    status: WORKSPACE_INVITATION_STATUS.REVOKED,
+                    revokedAt: now,
+                    revokedBy: actorId,
+                },
+            },
+            {
+                returnDocument: 'after',
+                runValidators: true,
+                session,
+            },
+        );
+
+        if (!revokedInvitation) {
+            throw new AppError(
+                'Une invitation du workspace a été modifiée concurremment',
+                409,
+            );
+        }
+
+        await createAuditLog(
+            {
+                actor: actorId,
+                workspace: workspaceId,
+                action: AUDIT_ACTION.MEMBER_INVITATION_REVOKED,
+                entityType: AUDIT_ENTITY_TYPE.WORKSPACE_INVITATION,
+                entityId: invitation._id,
+                status: AUDIT_STATUS.SUCCESS,
+                ipAddress,
+                userAgent,
+                metadata: {
+                    reason: 'workspace_closed',
+                },
+            },
+            { session },
+        );
+
+        revokedInvitationCount += 1;
+    }
+
+    return revokedInvitationCount;
+};
+
 const closeWorkspaceInSession = async ({
     workspaceId,
     actorId,
@@ -150,6 +226,7 @@ const closeWorkspaceInSession = async ({
         return buildWorkspaceClosureDto({
             workspace,
             canceledSubscriptionCount: 0,
+            revokedInvitationCount: 0,
         });
     }
 
@@ -211,6 +288,16 @@ const closeWorkspaceInSession = async ({
             userAgent,
         });
 
+    const revokedInvitationCount =
+        await revokeWorkspaceInvitationsInSession({
+            workspaceId: workspace._id,
+            actorId,
+            now,
+            session,
+            ipAddress,
+            userAgent,
+        });
+
     await createAuditLog(
         {
             actor: actorId,
@@ -226,6 +313,7 @@ const closeWorkspaceInSession = async ({
                 statusReason,
                 statusReasonDetails,
                 canceledSubscriptionCount,
+                revokedInvitationCount,
             },
         },
         { session },
@@ -234,6 +322,7 @@ const closeWorkspaceInSession = async ({
     return buildWorkspaceClosureDto({
         workspace: closedWorkspace,
         canceledSubscriptionCount,
+        revokedInvitationCount,
     });
 };
 
@@ -328,4 +417,5 @@ export {
     closeWorkspaceByOwner,
     closeWorkspaceByPlatform,
     closeWorkspaceInSession,
+    revokeWorkspaceInvitationsInSession,
 };
