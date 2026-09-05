@@ -1,11 +1,9 @@
 import { useState } from 'react';
 
-import { FeatureToggle } from '@/components/shared/feature-toggle';
 import { Button } from '@/components/ui/button';
-import {
-  buildPlatformFeatureGroups,
-  buildPlatformMetricGroups,
-} from '@/features/platform/lib/platform-capability-groups';
+import { PlatformPlanCapabilitiesEditor } from '@/features/platform/components/platform-plan-capabilities-editor';
+import { buildPlatformCapabilityGroups } from '@/features/platform/lib/platform-capability-groups';
+import { isByteMetric } from '@/features/platform/lib/platform-plan-limit-utils';
 import {
   PLATFORM_PLAN_STATUS,
   formatPlatformPlanMetric,
@@ -16,12 +14,6 @@ const PRICE_PATTERN = /^\d+(?:[.,]\d{1,2})?$/;
 function minorToMajor(value) {
   if (!Number.isInteger(value)) return '0';
   return String(value / 100);
-}
-
-function isByteMetric(metric) {
-  return metric?.presentation?.unit === 'bytes'
-    || metric?.unit === 'bytes'
-    || metric?.key === 'storage_bytes';
 }
 
 function getInitialLimitState(plan, metrics) {
@@ -61,8 +53,7 @@ function PlatformPlanForm({
   submitError = null,
 }) {
   const metrics = capabilities?.metrics ?? [];
-  const featureGroups = buildPlatformFeatureGroups(capabilities);
-  const metricGroups = buildPlatformMetricGroups(capabilities);
+  const capabilityGroups = buildPlatformCapabilityGroups(capabilities);
   const metricsByKey = new Map(metrics.map((metric) => [metric.key, metric]));
   const isBaseline = plan?.isBaseline === true;
 
@@ -268,83 +259,20 @@ function PlatformPlanForm({
 
       <section className="space-y-4">
         <div>
-          <h3 className="font-semibold">Fonctionnalités incluses par défaut</h3>
+          <h3 className="font-semibold">Fonctionnalités et limites incluses par défaut</h3>
           <p className="text-sm text-muted-foreground">
-            Les fonctionnalités activées sont incluses par défaut pour tous les workspaces utilisant ce plan. Une modification du plan s’applique donc à tous ces workspaces ; les exceptions individuelles se gèrent dans les dérogations.
+            Configurez chaque domaine commercial dans un même bloc : fonctionnalités, limites et quotas. Une modification du plan s’applique à tous les workspaces qui l’utilisent ; les exceptions individuelles restent gérées dans les dérogations.
           </p>
         </div>
 
-        {featureGroups.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Aucune fonctionnalité déclarée.</p>
-        ) : (
-          <div className="space-y-5">
-            {featureGroups.map((group) => (
-              <fieldset className="space-y-2" key={group.key}>
-                <legend className="text-sm font-semibold">{group.label}</legend>
-                <div className="divide-y divide-border rounded-xl border border-border bg-card px-4">
-                  {group.items.map((feature) => (
-                    <div className="py-2" key={feature.key}>
-                      <FeatureToggle
-                        checked={features.has(feature.key)}
-                        helpText={feature.description}
-                        label={feature.label}
-                        onCheckedChange={(checked) => setFeatureState(feature.key, checked)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </fieldset>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="space-y-4">
-        <div>
-          <h3 className="font-semibold">Limites</h3>
-          <p className="text-sm text-muted-foreground">Chaque métrique déclarée par l’application doit être configurée explicitement.</p>
-        </div>
-
-        <div className="space-y-4">
-          {metricGroups.map((group) => (
-            <fieldset className="space-y-3" key={group.key}>
-              <legend className="text-sm font-semibold">{group.label}</legend>
-
-              {group.items.map((metric) => {
-                const metricKey = metric.key;
-                const config = limits[metricKey] ?? { mode: 'none', value: '' };
-                const sourceMetric = metricsByKey.get(metricKey) ?? metric;
-
-                return (
-                  <div className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-[1fr_170px_170px] sm:items-end" key={metricKey}>
-                    <div>
-                      <div className="text-sm font-medium">{metric.label}</div>
-                      {metric.description && (
-                        <p className="mt-1 text-xs text-muted-foreground">{metric.description}</p>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground" htmlFor={`platform-plan-limit-mode-${metricKey}`}>Mode</label>
-                      <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id={`platform-plan-limit-mode-${metricKey}`} onChange={(event) => updateLimit(metricKey, { mode: event.target.value })} value={config.mode}>
-                        <option value="none">Aucune</option>
-                        <option value="limited">Plafond</option>
-                        <option value="unlimited">Illimité</option>
-                      </select>
-                    </div>
-                    {config.mode === 'limited' && (
-                      <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground" htmlFor={`platform-plan-limit-value-${metricKey}`}>
-                          {isByteMetric(sourceMetric) ? 'Valeur (Mo)' : 'Valeur'}
-                        </label>
-                        <input className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id={`platform-plan-limit-value-${metricKey}`} min="0" onChange={(event) => updateLimit(metricKey, { value: event.target.value })} type="number" value={config.value} />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </fieldset>
-          ))}
-        </div>
+        <PlatformPlanCapabilitiesEditor
+          features={features}
+          groups={capabilityGroups}
+          limits={limits}
+          metricsByKey={metricsByKey}
+          onFeatureChange={setFeatureState}
+          onLimitChange={updateLimit}
+        />
       </section>
 
       {(formError || submitError) && (
