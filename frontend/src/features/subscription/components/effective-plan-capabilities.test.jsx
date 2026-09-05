@@ -33,6 +33,26 @@ describe('EffectivePlanCapabilities', () => {
     expect(screen.getByText('Illimité')).toBeInTheDocument();
   });
 
+  it('présente les limites fichiers comme non applicables sans file_upload', () => {
+    render(
+      <EffectivePlanCapabilities
+        entitlement={{
+          features: ['team_management'],
+          limits: {
+            members: 5,
+            storage_bytes: 104857600,
+            file_uploads_monthly: 10,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getAllByText('—')).toHaveLength(2);
+    expect(screen.queryByText('100 Mo')).not.toBeInTheDocument();
+    expect(screen.queryByText('10')).not.toBeInTheDocument();
+  });
+
   it('reste stable lorsque le backend ne fournit aucune capability', () => {
     render(
       <EffectivePlanCapabilities
