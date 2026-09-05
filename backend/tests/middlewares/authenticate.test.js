@@ -63,6 +63,7 @@ describe('authenticate', () => {
         expect(req.user).toBe(user);
         expect(next).toHaveBeenCalledWith();
     });
+
     it('refuse un access token antérieur au changement de mot de passe', async () => {
         const req = {
             get: vi.fn(
@@ -172,6 +173,32 @@ describe('authenticate', () => {
             }),
         );
 
+        expect(req.user).toBeUndefined();
+    });
+
+    it('refuse un User dont la fermeture est en cours', async () => {
+        const req = {
+            get: vi.fn(() => 'Bearer valid-access-token'),
+        };
+        const res = {};
+        const next = vi.fn();
+
+        verifyAccessToken.mockReturnValue({
+            sub: 'user-id',
+        });
+        User.findById.mockResolvedValue({
+            _id: 'user-id',
+            status: 'deletion_requested',
+        });
+
+        await authenticate(req, res, next);
+
+        expect(next).toHaveBeenCalledWith(
+            expect.objectContaining({
+                statusCode: 403,
+                message: 'Fermeture du compte en cours',
+            }),
+        );
         expect(req.user).toBeUndefined();
     });
 });
