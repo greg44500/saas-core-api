@@ -17,7 +17,6 @@ import {
     releaseCurrentUsageMetric,
 } from '../../modules/usageMetric/releaseUsageMetric.service.js';
 import {
-    SELF_SERVICE_CLOSURE_REASON,
     requestCurrentUserClosure,
 } from '../../modules/users/userClosure.service.js';
 import { User } from '../../modules/users/user.model.js';
@@ -258,7 +257,7 @@ describe('requestCurrentUserClosure', () => {
             expect.objectContaining({
                 action: AUDIT_ACTION.USER_CLOSED,
                 metadata: expect.objectContaining({
-                    reason: SELF_SERVICE_CLOSURE_REASON,
+                    reason: 'self_service_account_closure',
                     archivedWorkspaceCount: 1,
                 }),
             }),
