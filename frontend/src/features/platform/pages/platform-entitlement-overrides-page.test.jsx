@@ -205,7 +205,7 @@ describe('PlatformEntitlementOverridesPage', () => {
     await user.selectOptions(screen.getByLabelText('Espace de travail'), 'workspace-id');
 
     expect(
-      await screen.findByRole('heading', { name: 'Offre personnalisée du workspace' }),
+      await screen.findByRole('heading', { name: 'Droits et limites du workspace' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('switch', { name: 'Désactiver Téléversement de fichiers' }),
