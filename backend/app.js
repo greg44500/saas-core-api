@@ -22,9 +22,6 @@ import {
     workspaceInvitationRouter,
 } from './modules/workspaceInvitation/workspaceInvitation.routes.js';
 import { planRouter } from './modules/plan/plan.routes.js';
-import {
-    subscriptionRouter,
-} from './modules/subscriptions/subscription.routes.js';
 import { userRouter } from './modules/users/user.routes.js';
 import { workspaceRouter } from './modules/workspace/workspace.routes.js';
 
@@ -53,10 +50,6 @@ app.use('/api/plans', planRouter);
 app.use(
     '/api/workspaces/:workspaceId/files',
     fileRouter,
-);
-app.use(
-    '/api/workspaces/:workspaceId/subscription',
-    subscriptionRouter,
 );
 app.use(
     '/api/workspaces/:workspaceId/invitations',
