@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../app.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import {
+    getCurrentUserClosureImpact,
+} from '../../modules/users/userClosureImpact.service.js';
+import {
     requestCurrentUserClosure,
 } from '../../modules/users/userClosure.service.js';
 import { updateCurrentUserProfile } from '../../modules/users/user.service.js';
@@ -17,6 +20,10 @@ vi.mock('../../middlewares/authenticate.js', () => ({
 
 vi.mock('../../modules/users/user.service.js', () => ({
     updateCurrentUserProfile: vi.fn(),
+}));
+
+vi.mock('../../modules/users/userClosureImpact.service.js', () => ({
+    getCurrentUserClosureImpact: vi.fn(),
 }));
 
 vi.mock('../../modules/users/userClosure.service.js', () => ({
@@ -79,6 +86,62 @@ describe('PATCH /api/users/me', () => {
 
         expect(response.status).toBe(400);
         expect(updateCurrentUserProfile).not.toHaveBeenCalled();
+    });
+});
+
+describe('GET /api/users/me/closure-impact', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        getCurrentUserClosureImpact.mockResolvedValue({
+            ownedWorkspaces: [
+                {
+                    id: 'workspace-id',
+                    name: 'Restaurant ACME',
+                    currentStatus: 'active',
+                    willBeArchived: true,
+                    otherActiveMemberCount: 7,
+                },
+            ],
+            workspacesToArchive: [
+                {
+                    id: 'workspace-id',
+                    name: 'Restaurant ACME',
+                    currentStatus: 'active',
+                    willBeArchived: true,
+                    otherActiveMemberCount: 7,
+                },
+            ],
+            memberOnlyWorkspaces: [],
+            affectedSubscriptions: [],
+            summary: {
+                ownedWorkspaceCount: 1,
+                workspaceArchiveCount: 1,
+                otherActiveMemberCount: 7,
+                membershipRemovalCount: 1,
+                affectedSubscriptionCount: 0,
+            },
+        });
+    });
+
+    it('protège et retourne l’aperçu calculé par le backend', async () => {
+        const response = await request(app)
+            .get('/api/users/me/closure-impact')
+            .set('Authorization', 'Bearer test-token');
+
+        expect(response.status).toBe(200);
+        expect(authenticate).toHaveBeenCalled();
+        expect(getCurrentUserClosureImpact).toHaveBeenCalledWith({
+            userId: 'user-id',
+        });
+        expect(response.body.data.closureImpact).toMatchObject({
+            summary: {
+                ownedWorkspaceCount: 1,
+                workspaceArchiveCount: 1,
+                otherActiveMemberCount: 7,
+                membershipRemovalCount: 1,
+                affectedSubscriptionCount: 0,
+            },
+        });
     });
 });
 
