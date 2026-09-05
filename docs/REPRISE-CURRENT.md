@@ -45,6 +45,8 @@ frontend : tests globaux verts
 frontend : build Vite OK
 ```
 
+Une consolidation UX / Platform / Files a ensuite été réalisée avant CORE-FIN-5. L'utilisateur a confirmé le lot vert, le build frontend OK et la validation visuelle frontend OK.
+
 La couverture E2E Playwright reste une dette distincte D-016.
 
 ---
@@ -212,7 +214,182 @@ reset-password
 
 ---
 
-## 6. Rétention et conformité : ce qui reste ouvert
+## 6. Consolidation post-CORE-FIN-4 validée
+
+Cette consolidation a été réalisée avant CORE-FIN-5 afin de ne pas démarrer les points d'extension métier avec des incohérences UX ou Platform connues.
+
+### 6.1 Confirmations / modales
+
+`ConfirmationDialog` reste la primitive partagée des confirmations sensibles.
+
+Son overlay applique désormais un léger flou d'arrière-plan (`backdrop-blur-sm`) afin de renforcer la présence de la modale sans dupliquer ce comportement dans chaque feature.
+
+### 6.2 Navigation Workspace et fichier
+
+Le groupe de navigation contenant `Fichiers` est présenté comme **Ressources**, et non comme « Fonctionnalités ».
+
+Distinction à conserver :
+
+```text
+file:read
+→ consultation des fichiers existants
+
+file_upload
+→ possibilité de nouveaux téléversements
+```
+
+Une absence de `file_upload` ne doit donc pas masquer automatiquement la ressource Fichiers si `file:read` reste accordé.
+
+Côté affichage commercial utilisateur, lorsque `file_upload` n'est pas effectif :
+
+```text
+Stockage                   —
+Téléversements mensuels    —
+```
+
+Cette neutralisation est uniquement une règle de présentation. Les valeurs backend ne sont ni supprimées ni falsifiées.
+
+### 6.3 Listing Files scalable
+
+Le listing Files supporte désormais des filtres serveur pour :
+
+```text
+category
+search
+```
+
+La validation est faite côté backend et pagination / total sont calculés sur le résultat filtré. Ne jamais remplacer ce comportement par un filtrage uniquement frontend sur la page courante.
+
+Le tableau Files a été simplifié :
+
+```text
+Fichier | Catégorie | Taille | Ajouté le | Actions
+```
+
+Décisions UX :
+
+- suppression du MIME visible `application/pdf` dans la liste ;
+- suppression de la colonne Type redondante ;
+- nom de fichier tronqué lorsque nécessaire, nom complet disponible au survol ;
+- largeur des colonnes maîtrisée afin d'éviter une scrollbar horizontale dans le layout desktop normal ;
+- catégorie filtrable ;
+- recherche par nom serveur-side.
+
+Le MIME reste une donnée de sécurité backend et n'a pas été retiré du modèle ni du contrôle de type réel.
+
+### 6.4 Dérogations Platform
+
+Le backend conserve la séparation :
+
+```text
+FEATURE override
+≠
+LIMIT override
+```
+
+L'administration Platform présente désormais plus clairement :
+
+```text
+Plan
+Dérogation
+Effectif
+```
+
+pour les limites d'un Workspace et permet d'ajuster une limite sans modifier le Plan catalogue des autres clients.
+
+Les libellés techniques / ambigus ont été corrigés :
+
+```text
+Capability
+→ Fonctionnalité ou Limite selon le type
+
+Valeur
+→ Action appliquée / Valeur appliquée
+
+État
+→ Statut de la dérogation
+```
+
+Le statut de dérogation reste utile côté Platform car il distingue notamment :
+
+```text
+Active
+Planifiée
+Expirée
+Révoquée
+```
+
+### 6.5 Liens secondaires compacts
+
+Un composant partagé `InlineIconLink` est disponible pour les actions de navigation secondaires placées à côté d'une entité.
+
+Usage actuel : dans le détail d'une dérogation, le Workspace est affiché ainsi :
+
+```text
+Workspace Laetitia BALLAT  ↗
+```
+
+avec tooltip « Voir le workspace », au lieu d'un gros bouton sous le nom.
+
+### 6.6 Drawer Workspace Platform
+
+Le détail administratif d'un Workspace n'affiche plus son ObjectId technique.
+
+L'identifiant reste bien entendu disponible et utilisé par le backend, RTK Query et les routes ; il n'est simplement plus exposé dans ce drawer sans besoin UX.
+
+### 6.7 Création / modification des Plans : fonctionnalités + quotas
+
+Création et modification utilisent le même `PlatformPlanForm`.
+
+Fonctionnalités et métriques sont regroupées par les métadonnées de présentation du Capability Registry :
+
+```text
+category
+categoryLabel
+displayOrder
+```
+
+Pour une catégorie contenant exactement une fonctionnalité et une ou plusieurs métriques, le switch de la fonctionnalité pilote un dépliage UX des quotas :
+
+```text
+OFF
+→ quotas repliés
+
+ON
+→ quotas dépliés
+```
+
+Le dépliage utilise le composant partagé `SmoothCollapse` avec une transition courte et compatible `prefers-reduced-motion`.
+
+Le passage OFF n'efface pas les valeurs déjà configurées. Un OFF → ON restitue donc les paramètres précédents.
+
+Important : ce mécanisme reste une association de présentation, pas une dépendance métier implicite.
+
+Si une catégorie contient plusieurs fonctionnalités, le Core ne doit pas deviner arbitrairement quel switch contrôle quelle métrique. Dans ce cas les métriques restent visibles tant qu'un lien explicite n'est pas déclaré par le futur contrat d'extension D-014.
+
+Ne jamais hardcoder dans React une relation du type :
+
+```text
+file_upload → storage_bytes / file_uploads_monthly
+```
+
+Le futur mécanisme métier pourra, si nécessaire, déclarer explicitement les métriques associées à une feature.
+
+### 6.8 Validation du lot
+
+L'utilisateur a confirmé après cette consolidation :
+
+```text
+tests : verts
+frontend build : OK
+validation visuelle frontend : OK
+```
+
+Aucune dette UX connue de ce lot ne doit bloquer le démarrage de CORE-FIN-5.
+
+---
+
+## 7. Rétention et conformité : ce qui reste ouvert
 
 Invariant :
 
@@ -235,7 +412,7 @@ Le Core ne doit pas coder une durée juridique universelle.
 
 ---
 
-## 7. Multi-workspace et vocabulaire métier — décision clarifiée
+## 8. Multi-workspace et vocabulaire métier — décision clarifiée
 
 Le Core V1 reste techniquement multi-workspace :
 
@@ -266,7 +443,7 @@ Ne pas utiliser le nombre de Workspaces pour représenter artificiellement une r
 
 ---
 
-## 8. D-004 Billing — décisions déjà figées mais non codées
+## 9. D-004 Billing — décisions déjà figées mais non codées
 
 Ces décisions restent à conserver pour D-004 :
 
@@ -292,7 +469,7 @@ Un paiement externe doit être rapproché par une commande métier dédiée, pui
 
 ---
 
-## 9. Règles permanentes de développement
+## 10. Règles permanentes de développement
 
 ### Sécurité
 
@@ -319,6 +496,8 @@ Réutilisabilité obligatoire :
 - confirmations partagées ;
 - drawers partagés ;
 - formulaires réutilisables ;
+- `InlineIconLink` pour les liens secondaires compacts lorsque ce pattern est pertinent ;
+- `SmoothCollapse` pour les dévoilements progressifs réutilisables ;
 - pages légères ;
 - RTK Query pour le server state ;
 - Redux Toolkit pour le vrai state global client ;
@@ -333,7 +512,7 @@ sans approbation explicite préalable de l'utilisateur
 
 ---
 
-## 10. Prochaine reprise exacte
+## 11. Prochaine reprise exacte
 
 Prochain bloc :
 
@@ -354,10 +533,13 @@ navigation / capabilities
 
 sans modifier directement de longues listes centrales du Core et sans introduire une architecture plugin complexe prématurée.
 
+Point d'attention issu de la consolidation précédente : le futur contrat d'extension doit également permettre de déclarer proprement les métadonnées UX d'une capability et, lorsque nécessaire, la relation explicite entre une feature et les métriques qui lui sont associées. Le frontend ne doit pas inférer cette relation à partir de clés techniques ou de hardcodes métier.
+
 Avant de coder :
 
 1. auditer les points d'extension existants du HEAD ;
 2. vérifier `docs/derived-saas/DERIVED-SAAS.md`, `CAPABILITIES.md` et D-014 ;
 3. proposer le contrat minimal de composition ;
-4. coder backend et frontend en mini-lots testables ;
-5. valider les tests avant de poursuivre.
+4. inclure dans ce contrat les besoins de présentation / association feature-metrics sans transformer le Core en framework de plugins complexe ;
+5. coder backend et frontend en mini-lots testables ;
+6. valider les tests avant de poursuivre.
