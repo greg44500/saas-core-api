@@ -1,21 +1,17 @@
 import { Router } from 'express';
 
 import {
-    PLATFORM_ROLE,
-} from '../../../constants/platformRoles.constants.js';
-
+    PLATFORM_PERMISSION,
+} from '../../../constants/platformPermissions.constants.js';
 import {
-    authorizePlatformRole,
-} from '../../../middlewares/authorizePlatformRole.js';
-
+    authorizePlatformPermission,
+} from '../../../middlewares/authorizePlatformPermission.js';
 import {
     validateRequest,
 } from '../../../middlewares/validateRequest.js';
-
 import {
     paginationQuerySchema,
 } from '../../../utils/validations/pagination.validation.js';
-
 import {
     listSubscriptions,
     grantSubscriptionTrial,
@@ -24,7 +20,6 @@ import {
     cancelSubscription,
     resumeSubscription,
 } from './platformSubscriptions.controller.js';
-
 import {
     cancelPlatformSubscriptionBodySchema,
     grantTrialBodySchema,
@@ -35,62 +30,44 @@ import {
 
 const platformSubscriptionsRouter = Router();
 
-
-/**
- * Toutes les routes d'administration des souscriptions sont réservées
- * au super-admin dans la V1.
- */
-platformSubscriptionsRouter.use(
-    authorizePlatformRole(
-        PLATFORM_ROLE.SUPER_ADMIN,
-    ),
-);
-
-
-/**
- * Retourne la liste administrative paginée des souscriptions.
- */
 platformSubscriptionsRouter.get(
     '/',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.SUBSCRIPTIONS_READ,
+    ),
     validateRequest({
         query: paginationQuerySchema,
     }),
     listSubscriptions,
 );
 
-
-/**
- * Accorde un trial commercial ou change le plan d'un trial déjà actif.
- *
- * Cette route est déclarée avant `/:subscriptionId` afin que `grant-trial`
- * ne puisse jamais être interprété comme un identifiant de souscription.
- */
 platformSubscriptionsRouter.post(
     '/grant-trial',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.SUBSCRIPTIONS_GRANT_TRIAL,
+    ),
     validateRequest({
         body: grantTrialBodySchema,
     }),
     grantSubscriptionTrial,
 );
 
-
-/**
- * Retourne le détail administratif d'une souscription.
- */
 platformSubscriptionsRouter.get(
     '/:subscriptionId',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.SUBSCRIPTIONS_READ,
+    ),
     validateRequest({
         params: platformSubscriptionIdParamsSchema,
     }),
     getSubscriptionById,
 );
 
-
-/**
- * Met à jour les propriétés administratives autorisées d'une souscription.
- */
 platformSubscriptionsRouter.patch(
     '/:subscriptionId',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.SUBSCRIPTIONS_UPDATE,
+    ),
     validateRequest({
         params:
             platformSubscriptionIdParamsSchema,
@@ -100,12 +77,11 @@ platformSubscriptionsRouter.patch(
     updateSubscription,
 );
 
-
-/**
- * Annule une souscription immédiatement ou à la fin de sa période courante.
- */
 platformSubscriptionsRouter.patch(
     '/:subscriptionId/cancel',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.SUBSCRIPTIONS_CANCEL,
+    ),
     validateRequest({
         params:
             platformSubscriptionIdParamsSchema,
@@ -115,12 +91,11 @@ platformSubscriptionsRouter.patch(
     cancelSubscription,
 );
 
-
-/**
- * Retire une annulation programmée en fin de période.
- */
 platformSubscriptionsRouter.patch(
     '/:subscriptionId/resume',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.SUBSCRIPTIONS_RESUME,
+    ),
     validateRequest({
         params:
             platformSubscriptionIdParamsSchema,
