@@ -69,7 +69,6 @@ function PlatformWorkspaceDetailsDrawer({
             </h3>
             <dl className="mt-2">
               <DetailRow label="Nom" value={workspace.name} />
-              <DetailRow label="Identifiant" value={workspace.id} />
               <DetailRow label="Statut" value={formatPlatformWorkspaceStatus(workspace.status)} />
               <DetailRow label="Motif" value={formatPlatformWorkspaceStatusReason(workspace.statusReason)} />
               <DetailRow label="Détails du motif" value={workspace.statusReasonDetails ?? '—'} />
