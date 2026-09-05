@@ -1,6 +1,5 @@
-import { ExternalLink } from 'lucide-react';
-
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import { InlineIconLink } from '@/components/shared/inline-icon-link';
 import { Button } from '@/components/ui/button';
 import {
   ENTITLEMENT_OVERRIDE_TARGET,
@@ -77,18 +76,15 @@ function PlatformEntitlementOverrideDetails({
           <DetailRow
             label="Workspace"
             value={(
-              <div className="flex flex-wrap items-center gap-2">
-                <span>{override.workspace?.name ?? override.workspace?.id ?? '—'}</span>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="min-w-0 break-words">
+                  {override.workspace?.name ?? override.workspace?.id ?? '—'}
+                </span>
                 {onViewWorkspace && override.workspace?.id && (
-                  <Button
-                    className="h-auto px-2 py-1 text-xs"
+                  <InlineIconLink
+                    label="Voir le workspace"
                     onClick={() => onViewWorkspace(override.workspace)}
-                    type="button"
-                    variant="ghost"
-                  >
-                    Voir le workspace
-                    <ExternalLink aria-hidden="true" className="size-3.5" />
-                  </Button>
+                  />
                 )}
               </div>
             )}
