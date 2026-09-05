@@ -177,7 +177,6 @@ describe('POST /api/users/me/closure', () => {
             userId: 'user-id',
             currentPassword: 'Correct Horse Battery Staple',
             confirmationEmail: 'greg@example.com',
-            confirmAccountClosure: true,
             ipAddress: expect.any(String),
             userAgent: 'Test Browser',
         });
