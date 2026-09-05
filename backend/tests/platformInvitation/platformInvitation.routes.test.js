@@ -106,9 +106,14 @@ acceptanceApp.use('/platform-invitations', platformInvitationAcceptanceRouter);
 
 
 beforeEach(() => {
+    /**
+     * authorizePlatformPermission() et validateRequest() sont des factories
+     * exécutées une seule fois au chargement du routeur. On conserve donc leur
+     * historique afin de tester le wiring statique des routes. Les middlewares
+     * retournés, eux, sont exécutés par chaque requête et peuvent être remis à
+     * zéro entre les scénarios.
+     */
     authenticate.mockClear();
-    authorizePlatformPermission.mockClear();
-    validateRequest.mockClear();
     platformInvitationAcceptRateLimiter.mockClear();
     authMiddleware.mockClear();
     permissionMiddleware.mockClear();
