@@ -36,6 +36,9 @@ import {
     releaseCurrentUsageMetric,
 } from '../usageMetric/releaseUsageMetric.service.js';
 import {
+    archiveWorkspaceInSession,
+} from '../workspace/workspaceClosure.service.js';
+import {
     WorkspaceInvitation,
 } from '../workspaceInvitation/workspaceInvitation.model.js';
 import { WorkspaceMember } from '../workspaceMember/workspaceMember.model.js';
@@ -45,6 +48,13 @@ const ACTIVE_MEMBERSHIP_STATUSES = Object.freeze([
     WORKSPACE_MEMBER_STATUS.ACTIVE,
     WORKSPACE_MEMBER_STATUS.SUSPENDED,
 ]);
+
+const SELF_SERVICE_CLOSURE_REASON = 'self_service_account_closure';
+
+const isOwnerMembership = (membership) => (
+    membership.role?.isSystem
+    && membership.role?.key === SYSTEM_ROLE_KEY.OWNER
+);
 
 const revokePendingInvitationsForClosingUser = async ({
     emailCanonical,
@@ -109,6 +119,190 @@ const revokePendingInvitationsForClosingUser = async ({
     }
 
     return revokedInvitationCount;
+};
+
+const assertConsistentMemberships = (memberships) => {
+    const inconsistentMembership = memberships.find((membership) => (
+        !membership.role
+        || !membership.workspace
+        || membership.role.workspace?.toString()
+            !== membership.workspace._id.toString()
+    ));
+
+    if (inconsistentMembership) {
+        throw new AppError(
+            'Une appartenance workspace du compte est incohérente et doit être corrigée avant la fermeture',
+            409,
+        );
+    }
+};
+
+const archiveOwnedWorkspacesInSession = async ({
+    memberships,
+    userId,
+    session,
+    ipAddress,
+    userAgent,
+}) => {
+    let ownedWorkspaceCount = 0;
+    let archivedWorkspaceCount = 0;
+    let canceledSubscriptionCount = 0;
+    let revokedWorkspaceInvitationCount = 0;
+
+    for (const membership of memberships) {
+        if (!isOwnerMembership(membership)) {
+            continue;
+        }
+
+        ownedWorkspaceCount += 1;
+
+        if (membership.workspace.status === WORKSPACE_STATUS.CLOSED) {
+            continue;
+        }
+
+        const wasAlreadyArchived =
+            membership.workspace.status === WORKSPACE_STATUS.ARCHIVED;
+
+        const archiveResult = await archiveWorkspaceInSession({
+            workspaceId: membership.workspace._id,
+            actorId: userId,
+            session,
+            ipAddress,
+            userAgent,
+        });
+
+        if (!wasAlreadyArchived) {
+            archivedWorkspaceCount += 1;
+        }
+
+        canceledSubscriptionCount +=
+            archiveResult.canceledSubscriptionCount;
+        revokedWorkspaceInvitationCount +=
+            archiveResult.revokedInvitationCount;
+    }
+
+    return {
+        ownedWorkspaceCount,
+        archivedWorkspaceCount,
+        canceledSubscriptionCount,
+        revokedWorkspaceInvitationCount,
+    };
+};
+
+const removeClosingUserMembershipsInSession = async ({
+    memberships,
+    userId,
+    session,
+    ipAddress,
+    userAgent,
+}) => {
+    let removedMembershipCount = 0;
+
+    for (const membership of memberships) {
+        membership.status = WORKSPACE_MEMBER_STATUS.REMOVED;
+        membership.updatedBy = userId;
+        await membership.save({ session });
+
+        await releaseCurrentUsageMetric({
+            workspaceId: membership.workspace._id,
+            metricKey: CORE_PLAN_METRIC.MEMBERS,
+            amount: 1,
+            actorId: userId,
+            session,
+        });
+
+        await createAuditLog(
+            {
+                actor: userId,
+                workspace: membership.workspace._id,
+                action: AUDIT_ACTION.MEMBER_REMOVED,
+                entityType: AUDIT_ENTITY_TYPE.WORKSPACE_MEMBER,
+                entityId: membership._id,
+                status: AUDIT_STATUS.SUCCESS,
+                ipAddress,
+                userAgent,
+                metadata: {
+                    reason: 'account_closure_requested',
+                },
+            },
+            { session },
+        );
+
+        removedMembershipCount += 1;
+    }
+
+    return removedMembershipCount;
+};
+
+const markUserDeletionRequestedInSession = async ({
+    userId,
+    now,
+    session,
+}) => {
+    const deletionRequestedUser = await User.findOneAndUpdate(
+        {
+            _id: userId,
+            status: USER_STATUS.ACTIVE,
+        },
+        {
+            $set: {
+                status: USER_STATUS.DELETION_REQUESTED,
+                deletionRequestedAt: now,
+                deletionRequestedBy: userId,
+                updatedBy: userId,
+            },
+        },
+        {
+            returnDocument: 'after',
+            runValidators: true,
+            session,
+        },
+    );
+
+    if (!deletionRequestedUser) {
+        throw new AppError(
+            'Le compte a été modifié concurremment',
+            409,
+        );
+    }
+
+    return deletionRequestedUser;
+};
+
+const closeSelfServiceUserInSession = async ({
+    userId,
+    now,
+    session,
+}) => {
+    const closedUser = await User.findOneAndUpdate(
+        {
+            _id: userId,
+            status: USER_STATUS.DELETION_REQUESTED,
+        },
+        {
+            $set: {
+                status: USER_STATUS.CLOSED,
+                closedAt: now,
+                closedBy: userId,
+                closureReason: SELF_SERVICE_CLOSURE_REASON,
+                updatedBy: userId,
+            },
+        },
+        {
+            returnDocument: 'after',
+            runValidators: true,
+            session,
+        },
+    );
+
+    if (!closedUser) {
+        throw new AppError(
+            'La fermeture du compte a été modifiée concurremment',
+            409,
+        );
+    }
+
+    return closedUser;
 };
 
 const requestCurrentUserClosure = async ({
@@ -176,67 +370,24 @@ const requestCurrentUserClosure = async ({
             })
             .session(session);
 
-        const inconsistentMembership = memberships.find((membership) => (
-            !membership.role
-            || !membership.workspace
-            || membership.role.workspace?.toString()
-                !== membership.workspace._id.toString()
-        ));
+        assertConsistentMemberships(memberships);
 
-        if (inconsistentMembership) {
-            throw new AppError(
-                'Une appartenance workspace du compte est incohérente et doit être corrigée avant la fermeture',
-                409,
-            );
-        }
+        const workspaceImpact = await archiveOwnedWorkspacesInSession({
+            memberships,
+            userId,
+            session,
+            ipAddress,
+            userAgent,
+        });
 
-        const ownedOpenWorkspace = memberships.find((membership) => (
-            membership.role.isSystem
-            && membership.role.key === SYSTEM_ROLE_KEY.OWNER
-            && membership.workspace.status !== WORKSPACE_STATUS.CLOSED
-        ));
-
-        if (ownedOpenWorkspace) {
-            throw new AppError(
-                'Transférez ou fermez tous les workspaces dont vous êtes propriétaire avant de fermer votre compte',
-                409,
-            );
-        }
-
-        let removedMembershipCount = 0;
-
-        for (const membership of memberships) {
-            membership.status = WORKSPACE_MEMBER_STATUS.REMOVED;
-            membership.updatedBy = userId;
-            await membership.save({ session });
-
-            await releaseCurrentUsageMetric({
-                workspaceId: membership.workspace._id,
-                metricKey: CORE_PLAN_METRIC.MEMBERS,
-                amount: 1,
-                actorId: userId,
+        const removedMembershipCount =
+            await removeClosingUserMembershipsInSession({
+                memberships,
+                userId,
                 session,
+                ipAddress,
+                userAgent,
             });
-
-            await createAuditLog(
-                {
-                    actor: userId,
-                    workspace: membership.workspace._id,
-                    action: AUDIT_ACTION.MEMBER_REMOVED,
-                    entityType: AUDIT_ENTITY_TYPE.WORKSPACE_MEMBER,
-                    entityId: membership._id,
-                    status: AUDIT_STATUS.SUCCESS,
-                    ipAddress,
-                    userAgent,
-                    metadata: {
-                        reason: 'account_closure_requested',
-                    },
-                },
-                { session },
-            );
-
-            removedMembershipCount += 1;
-        }
 
         const now = new Date();
         const revokedInvitationCount =
@@ -249,39 +400,12 @@ const requestCurrentUserClosure = async ({
                 userAgent,
             });
 
-        const updatedUser = await User.findOneAndUpdate(
-            {
-                _id: userId,
-                status: USER_STATUS.ACTIVE,
-            },
-            {
-                $set: {
-                    status: USER_STATUS.DELETION_REQUESTED,
-                    deletionRequestedAt: now,
-                    deletionRequestedBy: userId,
-                    updatedBy: userId,
-                },
-            },
-            {
-                returnDocument: 'after',
-                runValidators: true,
+        const deletionRequestedUser =
+            await markUserDeletionRequestedInSession({
+                userId,
+                now,
                 session,
-            },
-        );
-
-        if (!updatedUser) {
-            throw new AppError(
-                'Le compte a été modifié concurremment',
-                409,
-            );
-        }
-
-        const revokedSessions = await revokeAllUserAuthSessions({
-            userId,
-            revokedReason:
-                AUTH_SESSION_REVOKED_REASON.USER_DELETION_REQUESTED,
-            session,
-        });
+            });
 
         await createAuditLog(
             {
@@ -293,6 +417,53 @@ const requestCurrentUserClosure = async ({
                 ipAddress,
                 userAgent,
                 metadata: {
+                    ownedWorkspaceCount:
+                        workspaceImpact.ownedWorkspaceCount,
+                    archivedWorkspaceCount:
+                        workspaceImpact.archivedWorkspaceCount,
+                    canceledSubscriptionCount:
+                        workspaceImpact.canceledSubscriptionCount,
+                    revokedWorkspaceInvitationCount:
+                        workspaceImpact.revokedWorkspaceInvitationCount,
+                    removedMembershipCount,
+                    revokedInvitationCount,
+                },
+            },
+            { session },
+        );
+
+        const closedAt = new Date();
+        const closedUser = await closeSelfServiceUserInSession({
+            userId,
+            now: closedAt,
+            session,
+        });
+
+        const revokedSessions = await revokeAllUserAuthSessions({
+            userId,
+            revokedReason: AUTH_SESSION_REVOKED_REASON.USER_CLOSED,
+            session,
+        });
+
+        await createAuditLog(
+            {
+                actor: userId,
+                action: AUDIT_ACTION.USER_CLOSED,
+                entityType: AUDIT_ENTITY_TYPE.USER,
+                entityId: userId,
+                status: AUDIT_STATUS.SUCCESS,
+                ipAddress,
+                userAgent,
+                metadata: {
+                    reason: SELF_SERVICE_CLOSURE_REASON,
+                    ownedWorkspaceCount:
+                        workspaceImpact.ownedWorkspaceCount,
+                    archivedWorkspaceCount:
+                        workspaceImpact.archivedWorkspaceCount,
+                    canceledSubscriptionCount:
+                        workspaceImpact.canceledSubscriptionCount,
+                    revokedWorkspaceInvitationCount:
+                        workspaceImpact.revokedWorkspaceInvitationCount,
                     removedMembershipCount,
                     revokedInvitationCount,
                     revokedSessionCount: revokedSessions.modifiedCount,
@@ -302,9 +473,19 @@ const requestCurrentUserClosure = async ({
         );
 
         return {
-            id: updatedUser._id.toString(),
-            status: updatedUser.status,
-            deletionRequestedAt: updatedUser.deletionRequestedAt,
+            id: closedUser._id.toString(),
+            status: closedUser.status,
+            deletionRequestedAt:
+                deletionRequestedUser.deletionRequestedAt,
+            closedAt: closedUser.closedAt,
+            ownedWorkspaceCount:
+                workspaceImpact.ownedWorkspaceCount,
+            archivedWorkspaceCount:
+                workspaceImpact.archivedWorkspaceCount,
+            canceledSubscriptionCount:
+                workspaceImpact.canceledSubscriptionCount,
+            revokedWorkspaceInvitationCount:
+                workspaceImpact.revokedWorkspaceInvitationCount,
             removedMembershipCount,
             revokedInvitationCount,
             revokedSessionCount: revokedSessions.modifiedCount,
@@ -314,6 +495,11 @@ const requestCurrentUserClosure = async ({
 
 export {
     ACTIVE_MEMBERSHIP_STATUSES,
+    SELF_SERVICE_CLOSURE_REASON,
+    archiveOwnedWorkspacesInSession,
+    closeSelfServiceUserInSession,
+    markUserDeletionRequestedInSession,
+    removeClosingUserMembershipsInSession,
     requestCurrentUserClosure,
     revokePendingInvitationsForClosingUser,
 };
