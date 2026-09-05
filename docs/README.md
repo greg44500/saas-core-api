@@ -41,7 +41,7 @@ docs/README.md
 → index documentaire et tableau de migration
 
 docs/DEBT.md
-→ registre unique des dettes actives
+→ registre unique des dettes actives et distinction Core 1.0 / production dérivée
 
 docs/REPRISE-CURRENT.md
 → reprise temporaire unique pendant le développement
@@ -135,7 +135,7 @@ Décisions désormais canoniques :
 - GitHub Template reste éventuellement utile pour un démarrage indépendant, mais n'est pas la stratégie canonique de maintenance ;
 - le futur produit possède son propre dépôt `origin` et conserve le dépôt Core comme `upstream-core` ;
 - le Core doit être versionné à partir d'une vraie release `v1.0.0` avant diffusion comme socle finalisé ;
-- chaque produit doit tracer séparément sa propre version et la version Core intégrée ; une convention machine-readable de type `core-origin.json` est proposée mais n'est pas encore implémentée ;
+- chaque produit doit tracer séparément sa propre version et la version Core intégrée ;
 - une mise à niveau Core passe par une branche dédiée, revue des release notes/migrations/configuration, tests puis Pull Request ;
 - les capabilities et la navigation Workspace possèdent déjà des points de composition ;
 - les permissions métier, le routing backend/frontend, la traçabilité de version Core et le release process doivent encore être finalisés avant 1.0 ;
@@ -160,11 +160,9 @@ Décisions désormais canoniques :
 - aucun consentement ne doit être demandé pour une finalité fictive ;
 - le Core actuel possède un cookie `refreshToken` d'authentification et une préférence de thème en `localStorage`, mais aucun SDK analytics/publicitaire ni script tiers de tracking identifié ;
 - une bannière cookies générale n'est donc pas imposée aujourd'hui ; un Consent Manager ne devient nécessaire que si des traceurs soumis au consentement sont réellement ajoutés ;
-- les traceurs optionnels devront être techniquement bloqués avant consentement ;
 - les durées techniques ne sont pas automatiquement des durées réglementaires ;
 - responsable de traitement et sous-traitant doivent être qualifiés traitement par traitement ;
-- transferts hors UE/EEE, AIPD et procédure de violation de données font partie de la revue pré-production ;
-- D-003 et D-006 restent actives : DOC-7 consolide le cadre, il n'implémente pas encore ces workflows.
+- transferts hors UE/EEE, AIPD et procédure de violation de données font partie de la revue pré-production.
 
 ### Opérations
 
@@ -184,9 +182,31 @@ Décisions opérationnelles désormais canoniques :
 - le provider File courant est uniquement `local`, malgré une abstraction préparée pour de futurs providers ;
 - ClamAV applique une politique fail-closed, mais sa disponibilité n'est pas encore contrôlée par une readiness de démarrage ;
 - `/api/health` est actuellement un liveness HTTP et non une readiness complète ;
-- le rollback du code ne constitue jamais un rollback automatique des données ;
-- stockage production, backups/restauration, readiness, observabilité, scheduling réel, CI/CD et configuration proxy restent à finaliser par produit ;
-- D-005, D-007 et D-013 restent donc actives : DOC-8 documente l'exploitation mais ne déploie pas une infrastructure de production.
+- le rollback du code ne constitue jamais un rollback automatique des données.
+
+### Dette consolidée — DOC-9
+
+`docs/DEBT.md` distingue désormais explicitement :
+
+```text
+Core 1.0 finalisé
+≠
+SaaS dérivé prêt pour la production
+```
+
+Blockers Core 1.0 actuellement identifiés :
+
+```text
+D-001 fermeture de compte / cycle de vie Workspace
+D-014 points d'extension RBAC + routing backend/frontend
+D-015 versionnement / provenance / release process / migrations
+D-016 E2E Core Playwright
+D-017 dérivation + upgrade réel d'un SaaS pilote
+```
+
+Les sujets Billing, conformité finale, observabilité, rétention réglementaire, stockage production et infrastructure restent des blockers du produit dérivé lorsqu'ils sont applicables, mais ne sont plus présentés comme des conditions universelles pour stabiliser le socle générique.
+
+DOC-9 ne remplace pas l'audit fonctionnel post-documentation : la reprise F10.6 et l'audit code/tests devront encore confirmer la roadmap complète de clôture.
 
 ---
 
@@ -225,8 +245,6 @@ docs/
     └── OPERATIONS.md
 ```
 
-Cette arborescence pourra être simplifiée si un document distinct n'apporte pas de valeur réelle.
-
 Le `README.md` racine du dépôt sera créé en fin de chantier afin de pointer vers des chemins stabilisés.
 
 ---
@@ -235,7 +253,7 @@ Le `README.md` racine du dépôt sera créé en fin de chantier afin de pointer 
 
 ### A. Reprises et jalons historiques
 
-Documents destinés à devenir candidats à suppression après vérification finale :
+Documents candidats au nettoyage après vérification finale :
 
 - `SAAS-CORE-API-Synthese-de-reprise-2026-09-02-F8-finalisation-avant-F8-AUDIT.md` ;
 - `SAAS-CORE-API-Synthese-de-reprise-2026-09-02-F8-finalise-avant-F9.md` ;
@@ -249,8 +267,6 @@ Git conserve l'historique ; ces documents n'ont pas vocation à constituer une a
 
 ### B. Anciens contrats absorbés par DOC-2
 
-Leur contenu normatif utile est désormais consolidé dans `docs/contracts/` :
-
 - `frontend-backend-integration-contract.md` ;
 - `frontend-backend-account-security-contract.md` ;
 - `frontend-backend-roles-permissions-contract.md` ;
@@ -263,19 +279,6 @@ Leur contenu normatif utile est désormais consolidé dans `docs/contracts/` :
 Ils restent physiquement présents jusqu'à autorisation explicite de suppression.
 
 ### C. Anciennes sources frontend absorbées par DOC-3, DOC-4 et DOC-5
-
-Le contenu encore valide des anciennes policies frontend a maintenant été réparti entre :
-
-```text
-docs/architecture/FRONTEND.md
-→ structure et responsabilités
-
-docs/security/SECURITY.md
-→ règles de sécurité transversales
-
-docs/frontend/FRONTEND-GUIDELINES.md
-→ règles pratiques de développement UI/UX
-```
 
 Sont notamment absorbés comme sources historiques :
 
@@ -297,51 +300,34 @@ Sont notamment absorbés comme sources historiques :
 - `frontend-toast-feedback-contract.md` ;
 - les checklists associées.
 
-Les documents suivants restent à vérifier pendant les lots ultérieurs car ils touchent également la frontière dashboards/commercial/Platform ou la maintenance :
+Les documents suivants restent à vérifier pendant DOC-10 car ils touchent plusieurs frontières :
 
 - `platform-overview-dashboard-contract.md` ;
 - `dashboard-workspace-platform-boundary.md` ;
 - `core-plan-navigation-ui-conventions.md`.
 
-Aucun de ces fichiers n'est supprimé avant le lot DOC-10 et l'autorisation explicite.
-
-### D. Dette
+### D. Dette et conformité
 
 `DEBT.md` est l'unique source du statut des dettes.
 
-Les anciens documents `functional-debt-*` restent temporairement des annexes de cadrage jusqu'aux lots correspondants.
+Les anciens `functional-debt-*`, `core-deferred-work-for-derived-saas.md`, cadrages RGPD et ancien inventaire restent physiquement présents uniquement en attente de DOC-10.
 
-`core-deferred-work-for-derived-saas.md` est désormais absorbé sur le fond par `DERIVED-SAAS.md` et `DEBT.md`, mais reste physiquement présent jusqu'au lot DOC-10 et à autorisation explicite.
-
-### E. Conformité
-
-Le contenu utile des anciens documents suivants est désormais absorbé par DOC-7 :
-
-- `rgpd-cookies-privacy-technical-cadrage.md` ;
-- `functional-debt-privacy-cookies-rgpd.md` ;
-- `functional-debt-rgpd-cookies-privacy-legal.md` ;
-- `rgpd-data-tracker-inventory.md`.
-
-Les références actives sont désormais :
+Références actives de conformité :
 
 ```text
 docs/compliance/COMPLIANCE.md
 docs/compliance/rgpd-data-tracker-inventory.md
 ```
 
-L'ancien inventaire et les anciens cadrages restent physiquement présents jusqu'au lot DOC-10 et à autorisation explicite de suppression.
+### E. Opérations
 
-### F. Opérations
-
-La référence active est désormais :
+Référence active :
 
 ```text
 docs/operations/OPERATIONS.md
 ```
 
-Elle consolide les règles d'exploitation déduites du code courant : `.env.example`, validation d'environnement, scripts npm, démarrage, MongoDB, seeds, migrations, jobs, opérations de développement, stockage, antivirus et health check.
-
-Les fragments opérationnels encore présents dans d'anciennes checklists ou synthèses ne deviennent pas des sources concurrentes.
+Les fragments opérationnels des anciennes checklists ne deviennent pas des sources concurrentes.
 
 ---
 
@@ -370,8 +356,8 @@ Une documentation strictement locale à un module pourra exceptionnellement rest
 | DOC-6 | SaaS dérivés et maintenance du Core | terminé |
 | DOC-7 | Conformité / RGPD | terminé |
 | DOC-8 | Opérations | terminé |
-| DOC-9 | Consolidation finale de la dette | prochain lot |
-| DOC-10 | Propositions de suppression et nettoyage validé | à faire |
+| DOC-9 | Consolidation finale de la dette | terminé |
+| DOC-10 | Propositions de suppression et nettoyage validé | prochain lot |
 | DOC-11 | README racine et audit documentaire final | à faire |
 
 ---
@@ -380,19 +366,18 @@ Une documentation strictement locale à un module pourra exceptionnellement rest
 
 Aucun fichier n'est supprimé automatiquement.
 
-Pour chaque lot de nettoyage :
+Pour DOC-10 :
 
-1. vérifier le contenu utile ;
-2. l'intégrer dans le document canonique concerné ;
-3. vérifier la cohérence avec le code et les tests ;
-4. présenter la liste exacte des fichiers devenus inutiles ;
-5. obtenir une validation explicite ;
-6. seulement ensuite effectuer la suppression.
+1. vérifier que le contenu utile est réellement absorbé ;
+2. vérifier les références internes restantes ;
+3. présenter la liste exacte des fichiers devenus inutiles ;
+4. obtenir une validation explicite ;
+5. seulement ensuite effectuer les suppressions autorisées.
 
 ---
 
 ## 9. Prochaine étape
 
-Le prochain lot est **DOC-9 — Consolidation finale de la dette**.
+Le prochain lot est **DOC-10 — Propositions de suppression et nettoyage validé**.
 
-Il auditera `docs/DEBT.md` contre les documents canoniques désormais créés, supprimera les références devenues obsolètes à l'intérieur du registre sans supprimer les anciens fichiers, clarifiera les dépendances entre dettes et préparera la future feuille de route fonctionnelle post-documentation.
+DOC-10 ne supprimera rien sans autorisation explicite. Il produira d'abord une liste exacte, classée et justifiée des fichiers historiques/redondants devenus candidats à suppression, ainsi que des éventuels chemins à conserver.
