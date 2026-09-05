@@ -7,6 +7,7 @@ import {
 } from '../../constants/auditActions.constants.js';
 import { SYSTEM_ROLE_KEY } from '../../constants/role.constants.js';
 import {
+    SUBSCRIPTION_KIND,
     SUBSCRIPTION_STATUS,
 } from '../../constants/subscription.constants.js';
 import {
@@ -37,7 +38,7 @@ const CLOSABLE_SUBSCRIPTION_STATUSES = Object.freeze([
     SUBSCRIPTION_STATUS.PAST_DUE,
 ]);
 
-const buildWorkspaceClosureDto = ({
+const buildWorkspaceLifecycleDto = ({
     workspace,
     canceledSubscriptionCount,
     revokedInvitationCount,
@@ -62,7 +63,16 @@ const assertValidAllowedStatuses = (allowedStatuses) => {
     );
 
     if (invalidStatus) {
-        throw new TypeError(`Invalid closable workspace status: ${invalidStatus}`);
+        throw new TypeError(`Invalid workspace source status: ${invalidStatus}`);
+    }
+};
+
+const assertValidTargetStatus = (targetStatus) => {
+    if (![
+        WORKSPACE_STATUS.ARCHIVED,
+        WORKSPACE_STATUS.CLOSED,
+    ].includes(targetStatus)) {
+        throw new TypeError(`Invalid workspace target status: ${targetStatus}`);
     }
 };
 
@@ -73,13 +83,23 @@ const cancelWorkspaceSubscriptionsInSession = async ({
     session,
     ipAddress,
     userAgent,
+    lifecycleReason,
+    subscriptionKinds = null,
 }) => {
-    const subscriptions = await Subscription.find({
+    const query = {
         workspace: workspaceId,
         status: mongoose.trusted({
             $in: CLOSABLE_SUBSCRIPTION_STATUSES,
         }),
-    }).session(session);
+    };
+
+    if (subscriptionKinds) {
+        query.kind = mongoose.trusted({
+            $in: subscriptionKinds,
+        });
+    }
+
+    const subscriptions = await Subscription.find(query).session(session);
 
     let canceledSubscriptionCount = 0;
 
@@ -122,8 +142,8 @@ const cancelWorkspaceSubscriptionsInSession = async ({
                 ipAddress,
                 userAgent,
                 metadata: {
-                    mode: 'workspace_closed',
-                    reason: 'workspace_closed',
+                    mode: lifecycleReason,
+                    reason: lifecycleReason,
                     previousStatus: subscription.status,
                     newStatus: SUBSCRIPTION_STATUS.CANCELED,
                     effectiveAt: now,
@@ -145,6 +165,7 @@ const revokeWorkspaceInvitationsInSession = async ({
     session,
     ipAddress,
     userAgent,
+    lifecycleReason = 'workspace_closed',
 }) => {
     const pendingInvitations = await WorkspaceInvitation.find({
         workspace: workspaceId,
@@ -191,7 +212,7 @@ const revokeWorkspaceInvitationsInSession = async ({
                 ipAddress,
                 userAgent,
                 metadata: {
-                    reason: 'workspace_closed',
+                    reason: lifecycleReason,
                 },
             },
             { session },
@@ -203,18 +224,23 @@ const revokeWorkspaceInvitationsInSession = async ({
     return revokedInvitationCount;
 };
 
-const closeWorkspaceInSession = async ({
+const transitionWorkspaceLifecycleInSession = async ({
     workspaceId,
     actorId,
+    targetStatus,
+    auditAction,
+    lifecycleReason,
     statusReason,
     statusReasonDetails = null,
     allowedStatuses,
     expectedName = null,
+    subscriptionKinds = null,
     session,
     ipAddress = null,
     userAgent = null,
 }) => {
     assertValidAllowedStatuses(allowedStatuses);
+    assertValidTargetStatus(targetStatus);
 
     const workspace = await Workspace.findById(workspaceId).session(session);
 
@@ -222,8 +248,8 @@ const closeWorkspaceInSession = async ({
         throw new AppError('Workspace introuvable', 404);
     }
 
-    if (workspace.status === WORKSPACE_STATUS.CLOSED) {
-        return buildWorkspaceClosureDto({
+    if (workspace.status === targetStatus) {
+        return buildWorkspaceLifecycleDto({
             workspace,
             canceledSubscriptionCount: 0,
             revokedInvitationCount: 0,
@@ -232,7 +258,7 @@ const closeWorkspaceInSession = async ({
 
     if (!allowedStatuses.includes(workspace.status)) {
         throw new AppError(
-            'Ce workspace ne peut pas être fermé dans son état actuel',
+            'Ce workspace ne peut pas changer vers cet état dans sa situation actuelle',
             409,
         );
     }
@@ -249,14 +275,14 @@ const closeWorkspaceInSession = async ({
 
     const now = new Date();
 
-    const closedWorkspace = await Workspace.findOneAndUpdate(
+    const updatedWorkspace = await Workspace.findOneAndUpdate(
         {
             _id: workspace._id,
             status: workspace.status,
         },
         {
             $set: {
-                status: WORKSPACE_STATUS.CLOSED,
+                status: targetStatus,
                 statusReason,
                 statusReasonDetails,
                 statusChangedAt: now,
@@ -271,7 +297,7 @@ const closeWorkspaceInSession = async ({
         },
     );
 
-    if (!closedWorkspace) {
+    if (!updatedWorkspace) {
         throw new AppError(
             'Le workspace a été modifié concurremment',
             409,
@@ -286,6 +312,8 @@ const closeWorkspaceInSession = async ({
             session,
             ipAddress,
             userAgent,
+            lifecycleReason,
+            subscriptionKinds,
         });
 
     const revokedInvitationCount =
@@ -296,13 +324,14 @@ const closeWorkspaceInSession = async ({
             session,
             ipAddress,
             userAgent,
+            lifecycleReason,
         });
 
     await createAuditLog(
         {
             actor: actorId,
             workspace: workspace._id,
-            action: AUDIT_ACTION.WORKSPACE_CLOSED,
+            action: auditAction,
             entityType: AUDIT_ENTITY_TYPE.WORKSPACE,
             entityId: workspace._id,
             status: AUDIT_STATUS.SUCCESS,
@@ -310,6 +339,7 @@ const closeWorkspaceInSession = async ({
             userAgent,
             metadata: {
                 previousStatus: workspace.status,
+                newStatus: targetStatus,
                 statusReason,
                 statusReasonDetails,
                 canceledSubscriptionCount,
@@ -319,14 +349,65 @@ const closeWorkspaceInSession = async ({
         { session },
     );
 
-    return buildWorkspaceClosureDto({
-        workspace: closedWorkspace,
+    return buildWorkspaceLifecycleDto({
+        workspace: updatedWorkspace,
         canceledSubscriptionCount,
         revokedInvitationCount,
     });
 };
 
-const closeWorkspaceByOwner = async ({
+const archiveWorkspaceInSession = async ({
+    workspaceId,
+    actorId,
+    statusReason = WORKSPACE_STATUS_REASON.OWNER_REQUEST,
+    statusReasonDetails = null,
+    allowedStatuses = [WORKSPACE_STATUS.ACTIVE],
+    expectedName = null,
+    session,
+    ipAddress = null,
+    userAgent = null,
+}) => transitionWorkspaceLifecycleInSession({
+    workspaceId,
+    actorId,
+    targetStatus: WORKSPACE_STATUS.ARCHIVED,
+    auditAction: AUDIT_ACTION.WORKSPACE_ARCHIVED,
+    lifecycleReason: 'workspace_archived',
+    statusReason,
+    statusReasonDetails,
+    allowedStatuses,
+    expectedName,
+    subscriptionKinds: [SUBSCRIPTION_KIND.COMMERCIAL],
+    session,
+    ipAddress,
+    userAgent,
+});
+
+const closeWorkspaceInSession = async ({
+    workspaceId,
+    actorId,
+    statusReason,
+    statusReasonDetails = null,
+    allowedStatuses,
+    expectedName = null,
+    session,
+    ipAddress = null,
+    userAgent = null,
+}) => transitionWorkspaceLifecycleInSession({
+    workspaceId,
+    actorId,
+    targetStatus: WORKSPACE_STATUS.CLOSED,
+    auditAction: AUDIT_ACTION.WORKSPACE_CLOSED,
+    lifecycleReason: 'workspace_closed',
+    statusReason,
+    statusReasonDetails,
+    allowedStatuses,
+    expectedName,
+    session,
+    ipAddress,
+    userAgent,
+});
+
+const archiveWorkspaceByOwner = async ({
     workspaceId,
     actorId,
     currentPassword,
@@ -336,7 +417,7 @@ const closeWorkspaceByOwner = async ({
 }) => {
     if (!workspaceId || !actorId || !currentPassword || !confirmationName) {
         throw new TypeError(
-            'workspaceId, actorId, currentPassword and confirmationName are required to close a workspace',
+            'workspaceId, actorId, currentPassword and confirmationName are required to archive a workspace',
         );
     }
 
@@ -363,16 +444,14 @@ const closeWorkspaceByOwner = async ({
 
         if (!ownerMembership?.role) {
             throw new AppError(
-                'Seul le propriétaire actuel peut fermer le workspace',
+                'Seul le propriétaire actuel peut archiver le workspace',
                 403,
             );
         }
 
-        return closeWorkspaceInSession({
+        return archiveWorkspaceInSession({
             workspaceId,
             actorId,
-            statusReason: WORKSPACE_STATUS_REASON.OWNER_REQUEST,
-            allowedStatuses: [WORKSPACE_STATUS.ACTIVE],
             expectedName: confirmationName,
             session,
             ipAddress,
@@ -414,8 +493,10 @@ const closeWorkspaceByPlatform = async ({
 
 export {
     CLOSABLE_SUBSCRIPTION_STATUSES,
-    closeWorkspaceByOwner,
+    archiveWorkspaceByOwner,
+    archiveWorkspaceInSession,
     closeWorkspaceByPlatform,
     closeWorkspaceInSession,
     revokeWorkspaceInvitationsInSession,
+    transitionWorkspaceLifecycleInSession,
 };
