@@ -1,7 +1,7 @@
 import {
+  formatEffectiveLimitValue,
   formatFeatureLabel,
   formatLimitLabel,
-  formatPlanLimitValue,
 } from '@/features/subscription/lib/subscription-formatters';
 
 /**
@@ -50,7 +50,9 @@ function EffectivePlanCapabilities({ entitlement }) {
               {limitEntries.map(([limitKey, value]) => (
                 <div className="flex items-center justify-between gap-4 px-3 py-2 text-sm" key={limitKey}>
                   <dt className="text-muted-foreground">{formatLimitLabel(limitKey)}</dt>
-                  <dd className="font-medium">{formatPlanLimitValue(limitKey, value)}</dd>
+                  <dd className="font-medium">
+                    {formatEffectiveLimitValue(limitKey, value, features)}
+                  </dd>
                 </div>
               ))}
             </dl>
