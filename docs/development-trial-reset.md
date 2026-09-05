@@ -33,11 +33,13 @@ Le reset supprime, dans une transaction :
 
 Le reset conserve :
 
-- la Subscription `baseline` Free ;
+- la Subscription `baseline` ;
 - le User ;
 - le Workspace ;
 - les memberships et rôles ;
 - les AuditLogs historiques.
+
+Le nom commercial du Plan baseline n’est pas un invariant du Core : l’outil se fonde sur la sémantique structurelle baseline, pas sur un nom tel que `Free`.
 
 Une Subscription commerciale `active` ou `past_due` provoque un refus. L’outil ne doit pas effacer silencieusement un scénario de paiement ou de cycle commercial actif.
 
