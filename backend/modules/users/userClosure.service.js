@@ -33,6 +33,9 @@ import {
     CORE_PLAN_METRIC,
 } from '../plan/planCapability.registry.js';
 import {
+    assertUserIsNotPlatformFounder,
+} from '../platformTeam/platformFounderPolicy.service.js';
+import {
     releaseCurrentUsageMetric,
 } from '../usageMetric/releaseUsageMetric.service.js';
 import {
@@ -342,6 +345,17 @@ const requestCurrentUserClosure = async ({
             throw new AppError('Compte indisponible', 403);
         }
 
+        /**
+         * Invariant Core : le Fondateur ne peut jamais passer par le workflow
+         * self-service de fermeture. Le contrôle est transactionnel et vit dans
+         * le service métier, afin qu'un appel interne futur ne puisse pas le
+         * contourner en évitant le controller HTTP.
+         */
+        await assertUserIsNotPlatformFounder({
+            userId,
+            session,
+        });
+
         if (canonicalizeEmail(confirmationEmail) !== user.emailCanonical) {
             throw new AppError(
                 'L’adresse email de confirmation est incorrecte',
@@ -349,6 +363,11 @@ const requestCurrentUserClosure = async ({
             );
         }
 
+        /**
+         * Protection de compatibilité avant bootstrap D-018 : tant qu'un ancien
+         * super-admin n'a pas encore été matérialisé comme Fondateur, le Core
+         * conserve l'ancien garde du dernier super-admin actif.
+         */
         if (user.platformRole === PLATFORM_ROLE.SUPER_ADMIN) {
             const activeSuperAdminCount = await User.countDocuments({
                 platformRole: PLATFORM_ROLE.SUPER_ADMIN,
