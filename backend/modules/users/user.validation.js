@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { passwordSchema } from '../auth/auth.validation.js';
+import { passwordSchema } from '../../shared/validation/password.validation.js';
 
 const userNameSchema = z.string().trim().min(1).max(100);
 
