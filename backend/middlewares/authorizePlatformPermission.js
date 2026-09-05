@@ -31,8 +31,8 @@ const createAuthorizePlatformPermission = ({
             rolePermissions
                 ? async ({ user }) => ({
                     permissions:
-                        DEFAULT_PLATFORM_ROLE_PERMISSIONS[user.platformRole]
-                        ?? rolePermissions[user.platformRole]
+                        rolePermissions[user.platformRole]
+                        ?? DEFAULT_PLATFORM_ROLE_PERMISSIONS[user.platformRole]
                         ?? [],
                 })
                 : resolvePlatformAuthorization
