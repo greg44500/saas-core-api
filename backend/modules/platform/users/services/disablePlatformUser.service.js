@@ -4,6 +4,9 @@ import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, AUDIT_STATUS } from '../../../../const
 import { USER_STATUS } from '../../../../constants/userStatus.constants.js';
 import { revokeAllUserAuthSessions } from '../../../authSessions/authSession.service.js';
 import { createAuditLog } from '../../../auditLog/auditLog.service.js';
+import {
+    assertUserIsNotPlatformFounder,
+} from '../../../platformTeam/platformFounderPolicy.service.js';
 import { User } from '../../../users/user.model.js';
 import { AppError } from '../../../../utils/appError.js';
 
@@ -32,6 +35,11 @@ const disablePlatformUser = async ({
     let disabledUser;
 
     await mongoose.connection.transaction(async (session) => {
+        await assertUserIsNotPlatformFounder({
+            userId,
+            session,
+        });
+
         disabledUser = await User.findOneAndUpdate(
             { _id: userId, status: USER_STATUS.ACTIVE },
             {
