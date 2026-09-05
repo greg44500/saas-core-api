@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import { passwordSchema } from '@/features/auth/validation/auth-schemas';
+import {
+  emailSchema,
+  passwordSchema,
+} from '@/features/auth/validation/auth-schemas';
 
 const nameSchema = z.string().trim().min(1, 'Ce champ est requis.').max(100, 'Ce champ est trop long.');
 
@@ -20,4 +23,16 @@ const changePasswordFormSchema = z
     path: ['confirmNewPassword'],
   });
 
-export { changePasswordFormSchema, profileSchema };
+const accountClosureFormSchema = z.strictObject({
+  currentPassword: passwordSchema,
+  confirmationEmail: emailSchema,
+  confirmAccountClosure: z.boolean().refine((value) => value === true, {
+    message: 'Vous devez confirmer explicitement la fermeture du compte.',
+  }),
+});
+
+export {
+  accountClosureFormSchema,
+  changePasswordFormSchema,
+  profileSchema,
+};
