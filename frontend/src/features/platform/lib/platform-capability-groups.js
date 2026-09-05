@@ -58,6 +58,9 @@ function buildPlatformFeatureGroups(capabilities) {
         categoryLabel: definition?.categoryLabel ?? 'Autres',
         displayOrder: definition?.displayOrder ?? 1000,
         tags: definition?.tags ?? [],
+        metricKeys: Array.isArray(definition?.metricKeys)
+          ? [...definition.metricKeys]
+          : [],
       };
     }),
   );
@@ -82,17 +85,22 @@ function buildPlatformMetricGroups(capabilities) {
 }
 
 /**
- * Regroupe pour l'UI les fonctionnalités et métriques qui partagent une même
- * catégorie de présentation. Cette composition n'introduit aucune dépendance
- * métier entre elles : elle évite seulement de séparer artificiellement dans
- * le formulaire de Plan une fonctionnalité de ses quotas voisins.
+ * Regroupe les capabilities pour l'UI à partir des métadonnées du backend.
  *
- * Lorsqu'une catégorie contient exactement une fonctionnalité et au moins une
- * métrique, cette fonctionnalité peut piloter le dépliage visuel des quotas.
- * Une catégorie ambiguë avec plusieurs fonctionnalités reste toujours dépliée.
+ * Une métrique liée à une feature via `metricKeys` est attachée à cette feature
+ * même si plusieurs features partagent la même catégorie. Les métriques sans
+ * relation explicite restent affichées comme limites autonomes de la catégorie.
+ * Le frontend n'infère donc jamais une dépendance fonctionnelle depuis le nom
+ * ou la catégorie d'une capability.
  */
 function buildPlatformCapabilityGroups(capabilities) {
   const groups = new Map();
+  const metricItems = buildPlatformMetricGroups(capabilities)
+    .flatMap((group) => group.items);
+  const metricsByKey = new Map(
+    metricItems.map((metric) => [metric.key, metric]),
+  );
+  const assignedMetricKeys = new Set();
 
   function ensureGroup(group) {
     if (!groups.has(group.key)) {
@@ -108,24 +116,39 @@ function buildPlatformCapabilityGroups(capabilities) {
   }
 
   for (const group of buildPlatformFeatureGroups(capabilities)) {
-    ensureGroup(group).features.push(...group.items);
+    const targetGroup = ensureGroup(group);
+
+    targetGroup.features.push(
+      ...group.items.map((feature) => {
+        const relatedMetrics = feature.metricKeys
+          .map((metricKey) => metricsByKey.get(metricKey))
+          .filter(Boolean);
+
+        relatedMetrics.forEach((metric) => {
+          assignedMetricKeys.add(metric.key);
+        });
+
+        return {
+          ...feature,
+          metrics: relatedMetrics,
+        };
+      }),
+    );
   }
 
   for (const group of buildPlatformMetricGroups(capabilities)) {
-    ensureGroup(group).metrics.push(...group.items);
+    const standaloneMetrics = group.items.filter(
+      (metric) => !assignedMetricKeys.has(metric.key),
+    );
+
+    if (standaloneMetrics.length === 0) continue;
+
+    ensureGroup(group).metrics.push(...standaloneMetrics);
   }
 
-  return [...groups.values()]
-    .map((group) => ({
-      ...group,
-      disclosureFeatureKey:
-        group.features.length === 1 && group.metrics.length > 0
-          ? group.features[0].key
-          : null,
-    }))
-    .sort(
-      (left, right) => left.label.localeCompare(right.label, 'fr'),
-    );
+  return [...groups.values()].sort(
+    (left, right) => left.label.localeCompare(right.label, 'fr'),
+  );
 }
 
 export {
