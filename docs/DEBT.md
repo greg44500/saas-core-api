@@ -548,8 +548,8 @@ Référence canonique : `docs/operations/OPERATIONS.md`.
 **Statut :** VALIDÉ  
 **Périmètre :** Core  
 **Blocage Core 1.0 :** non — clôturé pendant CORE-FIN-5  
-**Blocage production dérivée :** non pour les points de composition du Core ; la validation d'une dérivation réelle reste couverte par D-017  
-**Source :** DOC-6 / `docs/derived-saas/DERIVED-SAAS.md` / `docs/derived-saas/EXTENSION-POINTS.md`
+**Blocage production dérivée :** indirect — conditionne surtout la maintenabilité des upgrades  
+**Source :** DOC-6 / `docs/derived-saas/DERIVED-SAAS.md`
 
 ### État validé
 
@@ -738,12 +738,11 @@ Le Core ne possède pas encore :
 - de modèle explicite d'appartenance à l'équipe interne distinct du `User` ;
 - d'autorité Fondateur protégée et distincte du rôle RBAC ;
 - de rôles Platform personnalisables ;
-- de politique explicite de délégation / permissions sensibles / réservées ;
 - d'invitation Platform dédiée ;
 - de cycle Platform `ACTIVE / SUSPENDED / REVOKED` indépendant du statut global du User ;
 - de surface frontend « Équipe de la Plateforme » complète.
 
-### Cible validée A1
+### Cible validée A1 + A2
 
 ```text
 User
@@ -765,6 +764,17 @@ Fondateur
 → autorité historique protégée
 ```
 
+A2 a également figé :
+
+- trois niveaux de permissions : `DÉLÉGABLE`, `SENSIBLE`, `RÉSERVÉE` ;
+- un catalogue granulaire distinguant lecture, suspension, réactivation, fermeture, trial, annulation, reprise, overrides et gestion d'équipe ;
+- les presets système `Super administrateur`, `Administrateur de la Plateforme`, `Support technique`, `Support commercial`, `Support client` ;
+- des rôles personnalisés sans permission réservée et sans escalade au-delà des droits de leur créateur ;
+- un futur registre applicatif de permissions Platform afin que les SaaS dérivés puissent étendre l'administration sans modifier une constante centrale ;
+- `super_admin` comme bénéficiaire automatique de toutes les permissions du registre actif, présentes et futures ;
+- la fermeture terminale User/Workspace et la gestion des Super administrateurs comme permissions réservées ;
+- l'absence d'élévation automatique des anciens rôles `admin` / `support` pendant la migration.
+
 Invariants principaux :
 
 - exactement un Fondateur actif à un instant donné ;
@@ -783,7 +793,7 @@ Invariants principaux :
 
 ```text
 A1 cadrage fonctionnel                         VALIDÉ
-A2 catalogue RBAC Platform / délégation        À FAIRE
+A2 catalogue RBAC Platform / délégation        VALIDÉ
 A3 invitations Platform sécurisées             À FAIRE
 A4 gestion membres / cycle de vie               À FAIRE
 A5 frontend Équipe de la Plateforme             À FAIRE
@@ -828,7 +838,7 @@ Un SaaS dérivé peut :
 
 ## 7. Ordre de traitement recommandé après le chantier documentaire
 
-État après validation de D-014 et cadrage A1 de D-018 :
+État après validation de D-014 et cadrages A1 + A2 de D-018 :
 
 ```text
 1. D-001 fermeture Account / Workspace                         ✅ VALIDÉ
