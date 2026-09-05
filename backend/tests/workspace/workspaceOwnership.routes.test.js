@@ -16,6 +16,9 @@ import {
     authorizePermission,
 } from '../../middlewares/authorizePermission.js';
 import {
+    enforceWorkspaceAccessMode,
+} from '../../middlewares/enforceWorkspaceAccessMode.js';
+import {
     loadWorkspaceContext,
 } from '../../middlewares/loadWorkspaceContext.js';
 import {
@@ -39,6 +42,7 @@ const {
     validationMiddleware,
     workspaceContextMiddleware,
     permissionMiddleware,
+    workspaceAccessMiddleware,
 } = vi.hoisted(() => ({
     validationMiddleware: vi.fn((req, res, next) => {
         req.validated = {
@@ -54,6 +58,7 @@ const {
         next();
     }),
     permissionMiddleware: vi.fn((req, res, next) => next()),
+    workspaceAccessMiddleware: vi.fn((req, res, next) => next()),
 }));
 
 
@@ -78,6 +83,10 @@ vi.mock('../../middlewares/authorizePermission.js', () => ({
     authorizePermission: vi.fn(() => permissionMiddleware),
 }));
 
+vi.mock('../../middlewares/enforceWorkspaceAccessMode.js', () => ({
+    enforceWorkspaceAccessMode: vi.fn(() => workspaceAccessMiddleware),
+}));
+
 vi.mock(
     '../../modules/workspace/workspaceOwnership.controller.js',
     () => ({
@@ -99,23 +108,22 @@ app.use(
 
 beforeEach(() => {
     /*
-     * validateRequest() et authorizePermission() sont des factories invoquées
-     * une seule fois lors de la construction du routeur. Leurs appels ne sont
-     * donc pas effacés ici : ils décrivent la configuration statique à tester.
-     *
-     * En revanche, les middlewares retournés et le controller s'exécutent à
-     * chaque requête et doivent être remis à zéro entre les scénarios.
+     * Les factories sont invoquées à la construction du routeur. Leurs appels
+     * décrivent donc la configuration statique et ne sont pas effacés ici.
+     * Les middlewares retournés s'exécutent à chaque requête et sont remis à
+     * zéro entre les scénarios.
      */
     authenticate.mockClear();
     validationMiddleware.mockClear();
     workspaceContextMiddleware.mockClear();
     permissionMiddleware.mockClear();
+    workspaceAccessMiddleware.mockClear();
     transferOwnership.mockClear();
 });
 
 
 describe('workspaceOwnership.routes', () => {
-    it('protège et valide le transfert avant le controller', async () => {
+    it('protège, valide et autorise explicitement le transfert en remédiation', async () => {
         const response = await request(app)
             .patch(
                 '/workspaces/507f1f77bcf86cd799439011/ownership',
@@ -140,10 +148,15 @@ describe('workspaceOwnership.routes', () => {
             CORE_PERMISSION.WORKSPACE_OWNERSHIP_TRANSFER,
         );
 
+        expect(enforceWorkspaceAccessMode).toHaveBeenCalledWith({
+            allowDuringRemediation: true,
+        });
+
         expect(authenticate).toHaveBeenCalledOnce();
         expect(validationMiddleware).toHaveBeenCalledOnce();
         expect(workspaceContextMiddleware).toHaveBeenCalledOnce();
         expect(permissionMiddleware).toHaveBeenCalledOnce();
+        expect(workspaceAccessMiddleware).toHaveBeenCalledOnce();
         expect(transferOwnership).toHaveBeenCalledOnce();
 
         expect(
@@ -154,6 +167,12 @@ describe('workspaceOwnership.routes', () => {
 
         expect(
             permissionMiddleware.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            workspaceAccessMiddleware.mock.invocationCallOrder[0],
+        );
+
+        expect(
+            workspaceAccessMiddleware.mock.invocationCallOrder[0],
         ).toBeLessThan(
             transferOwnership.mock.invocationCallOrder[0],
         );
