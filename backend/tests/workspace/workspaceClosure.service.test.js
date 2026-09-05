@@ -8,6 +8,9 @@ import {
 } from '../../modules/workspace/workspaceClosure.service.js';
 import { Workspace } from '../../modules/workspace/workspace.model.js';
 import {
+    WorkspaceInvitation,
+} from '../../modules/workspaceInvitation/workspaceInvitation.model.js';
+import {
     WorkspaceMember,
 } from '../../modules/workspaceMember/workspaceMember.model.js';
 import { Subscription } from '../../modules/subscriptions/subscription.model.js';
@@ -21,6 +24,13 @@ import {
 vi.mock('../../modules/workspace/workspace.model.js', () => ({
     Workspace: {
         findById: vi.fn(),
+        findOneAndUpdate: vi.fn(),
+    },
+}));
+
+vi.mock('../../modules/workspaceInvitation/workspaceInvitation.model.js', () => ({
+    WorkspaceInvitation: {
+        find: vi.fn(),
         findOneAndUpdate: vi.fn(),
     },
 }));
@@ -66,12 +76,13 @@ describe('workspaceClosure.service', () => {
         vi.clearAllMocks();
         confirmCurrentUserPassword.mockResolvedValue(undefined);
         createAuditLog.mockResolvedValue(undefined);
+        WorkspaceInvitation.find.mockReturnValue(sessionQuery([]));
         vi.spyOn(mongoose.connection, 'transaction').mockImplementation(
             async (callback) => callback(session),
         );
     });
 
-    it('ferme atomiquement un workspace owner et annule ses subscriptions courantes', async () => {
+    it('ferme atomiquement un workspace owner et neutralise subscriptions et invitations courantes', async () => {
         WorkspaceMember.findOne.mockReturnValue(ownerMembershipQuery({
             _id: 'owner-member-id',
             role: {
@@ -104,6 +115,19 @@ describe('workspaceClosure.service', () => {
         Subscription.findOneAndUpdate.mockResolvedValue({
             _id: 'subscription-id',
             status: 'canceled',
+        });
+
+        const invitation = {
+            _id: 'invitation-id',
+            workspace: 'workspace-id',
+            status: 'pending',
+        };
+        WorkspaceInvitation.find.mockReturnValue(
+            sessionQuery([invitation]),
+        );
+        WorkspaceInvitation.findOneAndUpdate.mockResolvedValue({
+            ...invitation,
+            status: 'revoked',
         });
 
         const result = await closeWorkspaceByOwner({
@@ -146,6 +170,24 @@ describe('workspaceClosure.service', () => {
             },
             expect.objectContaining({ session }),
         );
+        expect(WorkspaceInvitation.findOneAndUpdate).toHaveBeenCalledWith(
+            {
+                _id: 'invitation-id',
+                status: 'pending',
+            },
+            {
+                $set: {
+                    status: 'revoked',
+                    revokedAt: expect.any(Date),
+                    revokedBy: 'user-id',
+                },
+            },
+            {
+                returnDocument: 'after',
+                runValidators: true,
+                session,
+            },
+        );
         expect(createAuditLog).toHaveBeenCalledWith(
             expect.objectContaining({
                 action: AUDIT_ACTION.WORKSPACE_CLOSED,
@@ -153,6 +195,7 @@ describe('workspaceClosure.service', () => {
                     previousStatus: 'active',
                     statusReason: 'owner_request',
                     canceledSubscriptionCount: 1,
+                    revokedInvitationCount: 1,
                 }),
             }),
             { session },
@@ -162,6 +205,7 @@ describe('workspaceClosure.service', () => {
             status: 'closed',
             statusReason: 'owner_request',
             canceledSubscriptionCount: 1,
+            revokedInvitationCount: 1,
         });
     });
 
@@ -193,6 +237,7 @@ describe('workspaceClosure.service', () => {
 
         expect(Workspace.findOneAndUpdate).not.toHaveBeenCalled();
         expect(Subscription.find).not.toHaveBeenCalled();
+        expect(WorkspaceInvitation.find).not.toHaveBeenCalled();
     });
 
     it('permet à Platform de fermer un workspace suspendu', async () => {
@@ -222,6 +267,7 @@ describe('workspaceClosure.service', () => {
             status: 'closed',
             statusReason: 'platform_decision',
             canceledSubscriptionCount: 0,
+            revokedInvitationCount: 0,
         });
     });
 });
