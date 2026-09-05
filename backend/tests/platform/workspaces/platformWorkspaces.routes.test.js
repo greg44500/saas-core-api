@@ -24,6 +24,7 @@ import {
     platformRouter,
 } from '../../../modules/platform/platform.routes.js';
 import {
+    closePlatformWorkspaceBodySchema,
     platformWorkspaceIdParamsSchema,
     suspendPlatformWorkspaceBodySchema,
 } from '../../../modules/platform/workspaces/platformWorkspaces.validation.js';
@@ -39,6 +40,7 @@ const {
     platformRoleMiddleware: vi.fn((req, res, next) => next()),
     validationMiddleware: vi.fn((req, res, next) => next()),
     handlers: {
+        closeWorkspace: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         getWorkspaceById: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         listWorkspaces: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         reactivateWorkspace: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
@@ -126,6 +128,17 @@ describe('platformWorkspaces.routes', () => {
             path: '/platform/workspaces/507f1f77bcf86cd799439011/reactivate',
             validation: { params: platformWorkspaceIdParamsSchema },
             handler: handlers.reactivateWorkspace,
+        },
+        {
+            label: 'clôture workspace',
+            method: 'patch',
+            path: '/platform/workspaces/507f1f77bcf86cd799439011/close',
+            body: { statusReason: 'platform_decision' },
+            validation: {
+                params: platformWorkspaceIdParamsSchema,
+                body: closePlatformWorkspaceBodySchema,
+            },
+            handler: handlers.closeWorkspace,
         },
     ];
 
