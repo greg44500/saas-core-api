@@ -31,6 +31,9 @@ import {
     update,
 } from './workspace.controller.js';
 import {
+    workspaceClosureRouter,
+} from './workspaceClosure.routes.js';
+import {
     workspaceOwnershipRouter,
 } from './workspaceOwnership.routes.js';
 
@@ -74,6 +77,11 @@ router.use(
 router.use(
     '/:workspaceId/ownership',
     workspaceOwnershipRouter,
+);
+
+router.use(
+    '/:workspaceId/closure',
+    workspaceClosureRouter,
 );
 
 router.use(
