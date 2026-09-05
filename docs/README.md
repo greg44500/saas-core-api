@@ -121,6 +121,26 @@ Règles frontend désormais canoniques :
 - le frontend ne reconstruit pas les règles commerciales ni les données métier non fournies par le backend ;
 - Playwright reste la cible E2E mais n'est pas présenté comme installé tant qu'il n'apparaît pas dans les dépendances du projet.
 
+### SaaS dérivés et maintenance du Core
+
+```text
+docs/derived-saas/DERIVED-SAAS.md
+→ création d'un produit dérivé, frontière Core/métier, versionnement,
+  stratégie Git, upgrades, migrations, tests et points d'extension
+```
+
+Décisions désormais canoniques :
+
+- un produit qui doit recevoir les futures mises à jour du Core conserve l'historique Git du Core ;
+- GitHub Template reste éventuellement utile pour un démarrage indépendant, mais n'est pas la stratégie canonique de maintenance ;
+- le futur produit possède son propre dépôt `origin` et conserve le dépôt Core comme `upstream-core` ;
+- le Core doit être versionné à partir d'une vraie release `v1.0.0` avant diffusion comme socle finalisé ;
+- chaque produit doit tracer séparément sa propre version et la version Core intégrée ; une convention machine-readable de type `core-origin.json` est proposée mais n'est pas encore implémentée ;
+- une mise à niveau Core passe par une branche dédiée, revue des release notes/migrations/configuration, tests puis Pull Request ;
+- les capabilities et la navigation Workspace possèdent déjà des points de composition ;
+- les permissions métier, le routing backend/frontend, la traçabilité de version Core et le release process doivent encore être finalisés avant 1.0 ;
+- l'extraction du Core en packages séparés n'est pas retenue pour la V1 et sera réévaluée après plusieurs produits réels.
+
 ---
 
 ## 4. Structure documentaire cible
@@ -242,7 +262,9 @@ Aucun de ces fichiers n'est supprimé avant le lot DOC-10 et l'autorisation expl
 
 `DEBT.md` est l'unique source du statut des dettes.
 
-Les anciens documents `functional-debt-*` et `core-deferred-work-for-derived-saas.md` restent temporairement des annexes de cadrage jusqu'aux lots correspondants.
+Les anciens documents `functional-debt-*` restent temporairement des annexes de cadrage jusqu'aux lots correspondants.
+
+`core-deferred-work-for-derived-saas.md` est désormais absorbé sur le fond par `DERIVED-SAAS.md` et `DEBT.md`, mais reste physiquement présent jusqu'au lot DOC-10 et à autorisation explicite.
 
 ### E. Conformité
 
@@ -254,11 +276,10 @@ Sources à consolider dans `compliance/COMPLIANCE.md` :
 
 `rgpd-data-tracker-inventory.md` reste un inventaire vivant distinct.
 
-### F. SaaS dérivés et opérations
+### F. Opérations
 
-Les règles restantes seront regroupées dans :
+Les règles opérationnelles restantes seront regroupées dans :
 
-- `derived-saas/DERIVED-SAAS.md` pour création, extension, versionnement et mise à niveau d'un SaaS dérivé ;
 - `operations/OPERATIONS.md` pour environnement, seeds, migrations, jobs, stockage, antivirus et opérations de développement/production.
 
 ---
@@ -285,8 +306,8 @@ Une documentation strictement locale à un module pourra exceptionnellement rest
 | DOC-3 | Architecture globale, backend et frontend | terminé |
 | DOC-4 | Sécurité | terminé |
 | DOC-5 | Guidelines frontend et composants réutilisables | terminé |
-| DOC-6 | SaaS dérivés et maintenance du Core | prochain lot |
-| DOC-7 | Conformité / RGPD | à faire |
+| DOC-6 | SaaS dérivés et maintenance du Core | terminé |
+| DOC-7 | Conformité / RGPD | prochain lot |
 | DOC-8 | Opérations | à faire |
 | DOC-9 | Consolidation finale de la dette | à faire |
 | DOC-10 | Propositions de suppression et nettoyage validé | à faire |
@@ -311,6 +332,6 @@ Pour chaque lot de nettoyage :
 
 ## 9. Prochaine étape
 
-Le prochain lot est **DOC-6 — SaaS dérivés et maintenance du Core**.
+Le prochain lot est **DOC-7 — Conformité / RGPD**.
 
-Il formalisera la création d'une application métier à partir du Core, les frontières à respecter, le versionnement du socle, l'identification de la version utilisée par chaque produit, la stratégie de mise à niveau contrôlée, les migrations, les tests de non-régression et la place éventuelle de GitHub Template dans une stratégie plus large de maintenance.
+Il consolidera les cadrages actuellement dispersés autour de RGPD, données personnelles, cookies/traceurs, consentement, politiques légales, rétention et inventaire des trackers/providers, tout en distinguant clairement ce qui peut être fourni par le Core de ce qui doit obligatoirement être réévalué dans chaque produit dérivé.
