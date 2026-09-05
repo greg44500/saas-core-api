@@ -81,6 +81,8 @@ Le Core V1 ne possède pas de `CommercialAccount` obligatoire et ne considère p
 
 La capacité technique d’un User à appartenir à plusieurs Workspaces ne définit pas une politique commerciale multi-workspace.
 
+Le Core n’impose donc ni `maxWorkspaces` dans ses Plans V1 ni une quantité universelle de Workspaces par User. Un SaaS dérivé peut choisir un produit mono-workspace ou ajouter une couche commerciale supérieure couvrant plusieurs Workspaces sans changer la signification du Workspace comme unité tenant du Core.
+
 ---
 
 ## 4. Plan : identité technique et identité commerciale
@@ -285,6 +287,8 @@ entier positif
 
 Les clés de features et métriques doivent appartenir au registre applicatif actif.
 
+Un SaaS dérivé peut ajouter une métrique métier de capacité, par exemple `work_cases`, `projects` ou une autre ressource réellement portée par son module métier, puis utiliser les limites de Plan pour proposer des offres du type 5 / 10 / illimité. Cette ressource métier ne doit pas être confondue artificiellement avec le nombre de Workspaces si le Workspace représente le tenant de l’organisation.
+
 ---
 
 ## 9. Subscription Workspace
@@ -321,6 +325,30 @@ expired
 ```
 
 `kind` et `status` sont deux dimensions différentes.
+
+### 9.1 Archivage volontaire du Workspace
+
+L’archivage owner :
+
+```text
+POST /api/workspaces/:workspaceId/archive
+```
+
+est un événement de cycle de vie du Workspace, pas un événement de paiement.
+
+Lors d’un archivage volontaire, le service neutralise les Subscriptions **commerciales** encore dans un état closable (`trialing`, `active`, `past_due`) en les passant à `canceled` selon la logique transactionnelle du workflow.
+
+La Subscription baseline est conservée. Elle ne doit pas être présentée comme annulée par l’archivage owner.
+
+L’archivage n’efface pas l’historique contractuel et ne constitue pas une purge de données.
+
+### 9.2 Fermeture Account et fermeture terminale Platform
+
+La fermeture self-service d’un User réutilise le même service d’archivage pour chaque Workspace encore réellement possédé au moment de la demande. Le frontend ne choisit pas les Workspaces à neutraliser.
+
+La fermeture terminale Platform d’un Workspace est distincte de l’archivage owner. Selon la transition autorisée par le service Platform, elle peut neutraliser les Subscriptions encore closables nécessaires au retrait terminal du Workspace, y compris la baseline lorsque le cycle terminal l’exige.
+
+Aucune de ces transitions ne prouve un remboursement, un encaissement ou une écriture comptable : Billing/Payment réel reste un domaine séparé.
 
 ---
 
@@ -439,6 +467,7 @@ Exemples :
 
 - supprimer un fichier peut réduire le stockage ;
 - retirer un membre peut réduire le nombre de sièges ;
+- archiver volontairement le Workspace peut rester autorisé au owner si le workflow dédié le déclare ;
 - ajouter un fichier ne doit pas augmenter la consommation pendant une remédiation bloquante.
 
 ---
@@ -573,7 +602,7 @@ Le frontend peut filtrer les choix impossibles pour l’UX, mais il ne remplace 
 
 La lecture de Subscription peut être ouverte à owner/admin selon la permission `subscription:read`.
 
-En revanche, les commandes qui engagent le contrat commercial du Workspace utilisent un contrôle owner-only dédié et ne sont pas délégables par simple rôle personnalisé.
+En revanche, les commandes qui engagent le contrat commercial ou le cycle de vie propriétaire du Workspace utilisent un contrôle owner-only dédié et ne sont pas délégables par simple rôle personnalisé.
 
 Principe :
 
@@ -582,10 +611,10 @@ admin Workspace
 → administre le tenant selon ses permissions
 
 owner
-→ peut en plus engager les commandes commerciales réservées
+→ peut en plus engager les commandes commerciales et de cycle de vie réservées
 ```
 
-Un admin Workspace ne doit jamais pouvoir s’accorder lui-même une capability payante ni modifier un quota commercial.
+Un admin Workspace ne doit jamais pouvoir s’accorder lui-même une capability payante, modifier un quota commercial ou archiver le Workspace en se donnant une permission personnalisée.
 
 ---
 
@@ -800,6 +829,8 @@ revenu comptable
 
 Un prix de Subscription ou une estimation contractuelle n’est pas une preuve d’encaissement.
 
+Un incident de paiement ne doit pas provoquer la fermeture d’un User. Le User reste une identité globale ; l’état commercial doit être porté par Subscription/Billing et le Workspace concerné.
+
 La dette de Billing/Payment réel est suivie dans `docs/DEBT.md`.
 
 ---
@@ -833,6 +864,8 @@ catalogue final
 ```
 
 sans modifier le moteur générique.
+
+Un produit dérivé peut par exemple utiliser un seul Workspace d’organisation et monétiser une métrique métier comme le nombre de dossiers, projets ou autres ressources internes au tenant. La metric doit alors être déclarée par le module métier dans le registre applicatif et contrôlée comme toute autre limite effective.
 
 ---
 
@@ -875,7 +908,7 @@ Mais un seed :
 - doit rester idempotent selon son contrat ;
 - doit être compatible avec l’administration Platform du catalogue.
 
-Les opérations détaillées de seed seront consolidées dans `docs/operations/OPERATIONS.md`.
+Les opérations détaillées de seed sont consolidées dans `docs/operations/OPERATIONS.md`.
 
 ---
 
@@ -892,9 +925,11 @@ confondre RBAC et entitlement
 laisser le frontend appliquer seul un quota
 inventer une capability depuis Platform
 utiliser un override pour simuler un trial
+utiliser EntitlementOverride pour simuler une grâce de paiement
 réintroduire CommercialAccount sans besoin produit démontré
 considérer un prix historique comme invariant du Core
 présenter une estimation contractuelle comme revenu encaissé
+confondre quantité de Workspaces et quota d'une ressource métier
 ```
 
 Toujours :
@@ -907,6 +942,7 @@ appliquer les overrides sur une vue dérivée
 valider les capabilities contre le registre actif
 maintenir la traçabilité des mutations sensibles
 séparer paiement réel et entitlement
+séparer cycle de vie Workspace et preuve financière
 ```
 
 ---
@@ -938,6 +974,7 @@ TrialEligibility
 UsageMetric
 EntitlementOverride
 resolver d’entitlement
+cycle de vie Workspace ayant un effet Subscription
 contrat public /api/plans
 contrat Workspace subscription
 routes commerciales Platform
