@@ -37,7 +37,7 @@ Aucune logique applicative backend/frontend ne doit être modifiée dans ce chan
 - ne supprimer aucun fichier sans validation explicite ;
 - maintenir un registre unique des dettes ;
 - maintenir des contrats canoniques communs frontend/backend ;
-- maintenir une documentation dédiée à l'architecture, la sécurité, aux guidelines frontend, aux SaaS dérivés et à la conformité ;
+- maintenir une documentation dédiée à l'architecture, la sécurité, aux guidelines frontend, aux SaaS dérivés, à la conformité et aux opérations ;
 - créer le README racine après stabilisation des chemins ;
 - utiliser uniquement `REPRISE-CURRENT.md` pour les futures reprises.
 
@@ -66,14 +66,17 @@ docs/derived-saas/DERIVED-SAAS.md
 
 docs/compliance/COMPLIANCE.md
 docs/compliance/rgpd-data-tracker-inventory.md
+
+docs/operations/OPERATIONS.md
 ```
 
-Documents encore à produire :
+Document encore à produire :
 
 ```text
-docs/operations/OPERATIONS.md
 README.md racine
 ```
+
+Avant ce README final restent également les lots de consolidation de dette et de nettoyage documentaire.
 
 ---
 
@@ -228,23 +231,44 @@ Décisions structurantes :
 - la conformité est transverse : technique + documentation + exploitation + qualification juridique ;
 - le Core fournit un cadre générique, chaque SaaS dérivé doit qualifier ses traitements et prestataires réels ;
 - l'inventaire technique vivant ne remplace pas le registre des activités de traitement ;
-- les anciens documents RGPD/cookies très redondants sont désormais absorbés sur le fond mais conservés physiquement jusqu'à autorisation de suppression ;
 - le Core actuel possède le cookie `refreshToken` HttpOnly et une préférence de thème dans `localStorage` ;
 - aucun SDK analytics/publicitaire ni script de tracking tiers n'est actuellement identifié dans le frontend ;
-- aucune bannière cookies fictive ne doit donc être imposée par défaut ;
-- si des traceurs soumis au consentement sont ajoutés, ils devront être réellement bloqués avant consentement et le refus devra rester aussi accessible que l'acceptation ;
-- `ConsentConfiguration`, `ConsentRecord`, Consent Manager et tracker gating sont des architectures futures conditionnelles, non des fonctionnalités actuellement implémentées ;
+- aucune bannière cookies fictive ne doit être imposée par défaut ;
+- si des traceurs soumis au consentement sont ajoutés, ils devront être réellement bloqués avant consentement ;
 - les durées techniques ne sont pas des durées réglementaires automatiques ;
-- la matrice de conservation doit couvrir base active, archivage intermédiaire, purge/anonymisation et sauvegardes ;
 - les workflows de droits doivent être coordonnés avec D-001, D-003 et D-006 ;
-- responsable de traitement / sous-traitant doivent être qualifiés traitement par traitement ;
-- sous-traitants, contrats article 28 et transferts hors UE/EEE doivent être revus par produit ;
-- une AIPD doit être évaluée lorsqu'un traitement est susceptible d'engendrer un risque élevé ;
-- une procédure de violation de données doit exister en production, avec registre interne et notification CNIL lorsque requise, si possible sous 72 heures pour une violation présentant un risque ;
-- mentions légales, politiques et informations publiques doivent utiliser les données réelles du produit ;
+- responsable de traitement / sous-traitant, sous-traitants, transferts hors UE/EEE, AIPD et violations de données doivent être revus selon le produit ;
 - D-003 et D-006 restent actives : DOC-7 documente le cadre mais ne résout pas leurs implémentations.
 
-Sources officielles CNIL/RGPD ont été revérifiées au 2026-09-05 pendant DOC-7.
+Aucun code ni test n'a été modifié. Aucun fichier historique n'a été supprimé.
+
+### DOC-8 — terminé
+
+Document canonique créé :
+
+```text
+docs/operations/OPERATIONS.md
+```
+
+Décisions structurantes :
+
+- backend et frontend possèdent leurs installations et commandes séparées ;
+- `.env.example` définit la structure de configuration mais jamais les secrets de production ;
+- `env.js` applique une validation Zod fail-fast et des garde-fous spécifiques à la production ;
+- MongoDB est requis avant démarrage HTTP et doit supporter les transactions utilisées par le Core ;
+- `autoIndex` est désactivé en production : les indexes sont gérés explicitement par migrations ;
+- le serveur exécute la maintenance des temporaires avant l'écoute HTTP, sans rendre cette purge ponctuelle bloquante ;
+- seed, migration, job et opération destructive de développement sont quatre responsabilités séparées ;
+- `seed:plans` et `seed:super-admin` sont conçus pour être prudents/idempotents selon leur contrat ;
+- les migrations sont actuellement des runners individuels ; aucune table d'historique automatique globale n'a été trouvée, donc chaque release doit documenter l'ordre de migration ;
+- les jobs Subscription/File sont des processus autonomes pouvant être lancés par cron/scheduler ; leur présence dans le dépôt ne signifie pas qu'ils sont planifiés en production ;
+- le provider File actif est `local`; l'abstraction de stockage prépare de futurs providers mais D-007 reste ouverte ;
+- quarantaine et stockage définitif doivent rester séparés ;
+- ClamAV utilise `clamscan`, timeout contrôlé et politique fail-closed ; sa disponibilité réelle n'est pas vérifiée au startup ;
+- `/api/health` est un liveness HTTP, pas une readiness MongoDB/SMTP/ClamAV/storage ;
+- le rollback de code n'annule jamais automatiquement une migration de données ; aucune down migration universelle n'existe actuellement ;
+- backup/restauration, readiness, observabilité, scheduling production, CI/CD, proxy/trust proxy, stockage production et supervision antivirus restent à finaliser selon le produit ;
+- D-005, D-007 et D-013 restent actives : DOC-8 consolide les règles d'exploitation sans prétendre que l'infrastructure production est implémentée.
 
 Aucun code ni test n'a été modifié. Aucun fichier historique n'a été supprimé.
 
@@ -252,20 +276,17 @@ Aucun code ni test n'a été modifié. Aucun fichier historique n'a été suppri
 
 ## 6. Prochain lot documentaire
 
-**DOC-8 — Opérations**.
+**DOC-9 — Consolidation finale de la dette**.
 
 Objectifs :
 
-1. consolider l'environnement et les variables de configuration ;
-2. documenter démarrage backend/frontend et prérequis ;
-3. documenter MongoDB et les contraintes de transactions ;
-4. distinguer seeds, migrations, jobs et opérations manuelles ;
-5. documenter l'ordre d'exécution et l'idempotence attendue ;
-6. documenter stockage, répertoires temporaires et antivirus ;
-7. documenter health check et dépendances externes ;
-8. cadrer déploiement production, migrations pré/post déploiement et rollback ;
-9. relier observabilité, backups et incident response aux dettes encore ouvertes ;
-10. préparer les anciennes checklists opérationnelles à devenir candidates à suppression sans rien supprimer dans DOC-8.
+1. auditer `docs/DEBT.md` contre tous les documents canoniques créés de DOC-0 à DOC-8 ;
+2. corriger les références devenues obsolètes dans le registre de dette ;
+3. vérifier que chaque dette possède un périmètre, un statut, un caractère bloquant et un critère de clôture cohérents ;
+4. regrouper les dépendances entre dettes sans dupliquer leur contenu ;
+5. distinguer dettes réellement Core, dettes propres aux applications dérivées et dettes conditionnelles ;
+6. préparer la feuille de route fonctionnelle de finalisation après le chantier documentaire ;
+7. ne supprimer aucun ancien fichier pendant DOC-9.
 
 ---
 
