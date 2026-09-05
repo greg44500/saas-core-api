@@ -200,14 +200,24 @@ module métier
 → déclare ses features
 → déclare ses métriques si nécessaire
 → déclare leurs métadonnées
+→ associe explicitement feature → métriques si nécessaire
 → fournit son descriptor
 → descriptor ajouté à APPLICATION_PLAN_CAPABILITY_MODULES
 → registre actif recomposé
 ```
 
+Le descriptor peut désormais exposer `featureMetrics` afin que les surfaces Platform data-driven connaissent les métriques qui paramètrent une feature sans reconstruire cette relation dans React.
+
+Cette relation sert à la composition et à la présentation. Elle n’accorde aucun entitlement et ne remplace pas les contrôles de quotas.
+
 Une capability existe parce que le code sait réellement l’exécuter. Le SUPER_ADMIN ne crée jamais librement une capability technique depuis Platform.
 
-Référence : `docs/contracts/CAPABILITIES.md`.
+Références :
+
+```text
+docs/contracts/CAPABILITIES.md
+docs/derived-saas/EXTENSION-POINTS.md
+```
 
 ---
 
@@ -225,23 +235,46 @@ product:price:read
 → permission : cet utilisateur peut-il consulter les prix ?
 ```
 
-Le Core possède actuellement `CORE_PERMISSION` pour ses propres permissions. `createSystemRoleDefinitions()` accepte déjà des extensions de permissions par rôle afin qu’une application puisse enrichir owner/admin/manager/member/reader sans modifier leur sémantique Core.
+Le Core conserve `CORE_PERMISSION` pour ses propres permissions et `createSystemRoleDefinitions()` accepte les extensions de permissions par rôle.
 
-Cependant, le dépôt ne possède pas encore un point de composition applicatif complet équivalent à `applicationCapability.registry.js` pour les permissions métier.
+Le point de composition applicatif est désormais :
 
-**Conséquence :** la stratégie d’extension RBAC doit être finalisée avant la diffusion officielle du Core 1.0 afin qu’un produit dérivé n’ait pas à modifier plusieurs fichiers Core pour enregistrer ses permissions.
+```text
+backend/config/applicationRolePermission.registry.js
+```
+
+avec :
+
+```text
+APPLICATION_ROLE_PERMISSION_MODULES
+ACTIVE_APPLICATION_ROLE_PERMISSION_REGISTRY
+```
+
+Un module métier déclare explicitement :
+
+```text
+permissions
+reservedPermissions si nécessaire
+systemRolePermissions
+```
+
+L’application dérivée n’ajoute donc plus ses permissions métier dans `backend/constants/permissions.constants.js` et ne modifie pas les définitions Core des rôles système pour une extension ordinaire.
+
+Le registre actif est utilisé par les services RBAC existants ; les rôles système nouvellement créés reçoivent les extensions explicitement configurées.
+
+Référence : `docs/derived-saas/EXTENSION-POINTS.md`.
 
 ---
 
 ## 7. Navigation métier
 
-Le frontend possède déjà un point de composition de la navigation Workspace :
+Le frontend possède un point de composition de la navigation Workspace :
 
 ```text
 frontend/src/app/workspace-navigation.js
 ```
 
-Le Core fournit `coreWorkspaceNavigation` et l’application dérivée peut ajouter ses groupes métier au niveau `app/`.
+Le Core fournit `coreWorkspaceNavigation` et l’application dérivée ajoute ses groupes métier au niveau `app/`.
 
 Le composant Sidebar reste générique.
 
@@ -265,43 +298,54 @@ Le Core ne doit jamais importer un module métier uniquement pour construire sa 
 
 ---
 
-## 8. Routes métier — état actuel et cible
+## 8. Routes métier — points de composition V1
 
-### État actuel
+Les routes métier disposent désormais de points de composition explicites.
 
-Deux zones centrales restent encore directement éditées :
-
-```text
-backend/app.js
-→ monte directement les routers
-
-frontend/src/app/router.jsx
-→ déclare directement les routes React
-```
-
-Ajouter un module métier important oblige donc actuellement à modifier ces fichiers de composition.
-
-Cela fonctionne fonctionnellement, mais augmente le risque de conflit lors d’une future mise à niveau du Core.
-
-### Cible avant Core 1.0
-
-La finalisation devra étudier des points de composition explicites, par exemple conceptuellement :
+### Backend
 
 ```text
-Core backend routes
-+
-application backend routes
-→ app Express
-
-Core frontend routes
-+
-application frontend routes
-→ createAppRoutes()
+backend/config/applicationRoutes.registry.js
 ```
 
-Le détail d’implémentation sera décidé dans un lot fonctionnel dédié. DOC-6 fixe le besoin, pas une solution technique non encore implémentée.
+avec :
 
-**Critère :** ajouter une route métier ordinaire ne devrait pas obliger à modifier un long fichier Core contenant toutes les routes du socle.
+```text
+APPLICATION_BACKEND_ROUTE_MODULES
+mountApplicationRoutes()
+```
+
+Un descriptor déclare une clé, un `mountPath` et un router Express. `backend/app.js` monte cette collection avant le router Workspace générique.
+
+Une route métier ordinaire n’oblige donc plus à ajouter directement un import et un `app.use()` dans la longue liste de `backend/app.js`.
+
+### Frontend
+
+```text
+frontend/src/app/application-routes.js
+```
+
+avec :
+
+```text
+APPLICATION_FRONTEND_ROUTE_MODULES
+APPLICATION_FRONTEND_ROUTES
+```
+
+Quatre surfaces sont prévues :
+
+```text
+publicRoutes
+authenticatedRoutes
+workspaceRoutes
+platformRoutes
+```
+
+`frontend/src/app/router.jsx` compose ces collections dans les guards et layouts Core correspondants.
+
+Le Core ne fait aucune autodécouverte filesystem et n’introduit pas de système de plugins. Le produit dérivé importe explicitement les descriptors des modules qu’il embarque.
+
+Référence détaillée : `docs/derived-saas/EXTENSION-POINTS.md`.
 
 ---
 
@@ -731,18 +775,20 @@ L’ancien `core-deferred-work-for-derived-saas.md` est désormais absorbé sur 
 
 | Zone | État | Commentaire |
 |---|---|---|
-| Capability Registry | prêt | point de composition explicite disponible |
+| Capability Registry | prêt | point de composition explicite disponible, métadonnées et relations feature → métriques supportées |
 | Navigation Workspace | prêt | composition au niveau `app/workspace-navigation.js` |
 | Composants frontend partagés | prêt | réutilisation par composition |
-| Permissions métier / rôles système | partiel | mécanisme d’extension existe au niveau des définitions, point de composition applicatif à finaliser |
-| Routes backend métier | à améliorer avant 1.0 | `backend/app.js` reste directement édité |
-| Routes frontend métier | à améliorer avant 1.0 | `app/router.jsx` reste directement édité |
+| Permissions métier / rôles système | implémenté, validation locale requise | registre applicatif `applicationRolePermission.registry.js` |
+| Routes backend métier | implémenté, validation locale requise | composition dans `applicationRoutes.registry.js` |
+| Routes frontend métier | implémenté, validation locale requise | composition dans `app/application-routes.js` |
 | Traçabilité version Core par produit | à implémenter avant diffusion | convention `core-origin.json` proposée |
 | Releases / changelog Core | à formaliser avant 1.0 | tags + notes de version requis |
 | CI de validation des upgrades | à formaliser | aucune stratégie GitHub Actions canonique n’est encore documentée |
 | Packages Core séparés | non requis en V1 | à réévaluer après retour d’expérience réel |
 
-Cette matrice doit être réévaluée lors du plan final de clôture du Core.
+Les trois lignes D-014 ne doivent passer à l’état `validé` qu’après exécution locale verte des suites concernées.
+
+Référence : `docs/derived-saas/EXTENSION-POINTS.md`.
 
 ---
 
@@ -799,8 +845,10 @@ Avant de commencer le métier :
 - [ ] définir le périmètre métier et la tenancy ;
 - [ ] définir modèles, RBAC, capabilities, métriques et quotas métier ;
 - [ ] créer les modules backend et features frontend sans dupliquer les primitives Core ;
-- [ ] composer les capabilities ;
-- [ ] composer navigation et futurs points de routes ;
+- [ ] composer les capabilities et leurs relations feature → métriques ;
+- [ ] composer les permissions métier et extensions des rôles système ;
+- [ ] composer les routes backend et frontend dans les points applicatifs prévus ;
+- [ ] composer la navigation Workspace ;
 - [ ] configurer le catalogue commercial du produit ;
 - [ ] réévaluer toutes les dettes applicables ;
 - [ ] ajouter les tests métier et E2E critiques ;
@@ -837,9 +885,7 @@ La politique de dérivation ne sera considérée opérationnelle que lorsque le 
 ```text
 version 1.0.0 stabilisée
 contrats canoniques finalisés
-points d’extension métier suffisants
-stratégie RBAC dérivée finalisée
-composition des routes suffisamment découplée
+points d’extension métier validés par les tests
 convention de traçabilité de version Core
 release notes / changelog
 migrations documentées
