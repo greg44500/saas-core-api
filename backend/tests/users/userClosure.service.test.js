@@ -17,9 +17,13 @@ import {
     releaseCurrentUsageMetric,
 } from '../../modules/usageMetric/releaseUsageMetric.service.js';
 import {
+    SELF_SERVICE_CLOSURE_REASON,
     requestCurrentUserClosure,
 } from '../../modules/users/userClosure.service.js';
 import { User } from '../../modules/users/user.model.js';
+import {
+    archiveWorkspaceInSession,
+} from '../../modules/workspace/workspaceClosure.service.js';
 import {
     WorkspaceInvitation,
 } from '../../modules/workspaceInvitation/workspaceInvitation.model.js';
@@ -54,6 +58,10 @@ vi.mock('../../modules/users/user.model.js', () => ({
     },
 }));
 
+vi.mock('../../modules/workspace/workspaceClosure.service.js', () => ({
+    archiveWorkspaceInSession: vi.fn(),
+}));
+
 vi.mock('../../modules/workspaceInvitation/workspaceInvitation.model.js', () => ({
     WorkspaceInvitation: {
         find: vi.fn(),
@@ -80,6 +88,59 @@ const membershipQuery = (memberships) => {
     return query;
 };
 
+const createMembership = ({
+    id,
+    workspaceId,
+    roleKey = 'member',
+    isSystem = true,
+    workspaceStatus = 'active',
+}) => ({
+    _id: id,
+    user: 'user-id',
+    status: 'active',
+    role: {
+        key: roleKey,
+        isSystem,
+        workspace: { toString: () => workspaceId },
+    },
+    workspace: {
+        _id: { toString: () => workspaceId },
+        status: workspaceStatus,
+    },
+    save: vi.fn().mockResolvedValue(undefined),
+});
+
+const mockActiveUser = ({
+    emailCanonical = 'greg@example.com',
+    platformRole = 'user',
+} = {}) => {
+    User.findOne.mockReturnValue(sessionQuery({
+        _id: 'user-id',
+        emailCanonical,
+        status: 'active',
+        platformRole,
+    }));
+};
+
+const mockSuccessfulUserLifecycle = () => {
+    const deletionRequestedAt = new Date('2026-09-05T12:00:00.000Z');
+    const closedAt = new Date('2026-09-05T12:00:01.000Z');
+
+    User.findOneAndUpdate
+        .mockResolvedValueOnce({
+            _id: { toString: () => 'user-id' },
+            status: 'deletion_requested',
+            deletionRequestedAt,
+        })
+        .mockResolvedValueOnce({
+            _id: { toString: () => 'user-id' },
+            status: 'closed',
+            closedAt,
+        });
+
+    return { deletionRequestedAt, closedAt };
+};
+
 describe('requestCurrentUserClosure', () => {
     const session = { id: 'mongo-session' };
 
@@ -90,120 +151,25 @@ describe('requestCurrentUserClosure', () => {
         releaseCurrentUsageMetric.mockResolvedValue({});
         revokeAllUserAuthSessions.mockResolvedValue({ modifiedCount: 2 });
         WorkspaceInvitation.find.mockReturnValue(sessionQuery([]));
+        archiveWorkspaceInSession.mockResolvedValue({
+            status: 'archived',
+            canceledSubscriptionCount: 0,
+            revokedInvitationCount: 0,
+        });
         vi.spyOn(mongoose.connection, 'transaction').mockImplementation(
             async (callback) => callback(session),
         );
     });
 
-    it('refuse la fermeture tant que le User possède un workspace ouvert', async () => {
-        User.findOne.mockReturnValue(sessionQuery({
-            _id: 'user-id',
-            emailCanonical: 'greg@example.com',
-            status: 'active',
-            platformRole: 'user',
-        }));
-
-        WorkspaceMember.find.mockReturnValue(membershipQuery([
-            {
-                _id: 'member-id',
-                role: {
-                    key: 'owner',
-                    isSystem: true,
-                    workspace: { toString: () => 'workspace-id' },
-                },
-                workspace: {
-                    _id: { toString: () => 'workspace-id' },
-                    status: 'active',
-                },
-            },
-        ]));
-
-        await expect(
-            requestCurrentUserClosure({
-                userId: 'user-id',
-                currentPassword: 'Correct Horse Battery Staple',
-                confirmationEmail: 'greg@example.com',
-            }),
-        ).rejects.toMatchObject({
-            statusCode: 409,
-            message: expect.stringContaining('Transférez ou fermez'),
+    it('ferme un simple membre sans modifier le Workspace et libère son quota membre', async () => {
+        mockActiveUser();
+        const membership = createMembership({
+            id: 'member-id',
+            workspaceId: 'workspace-id',
         });
-
-        expect(User.findOneAndUpdate).not.toHaveBeenCalled();
-        expect(revokeAllUserAuthSessions).not.toHaveBeenCalled();
-    });
-
-    it('refuse la fermeture du dernier super-admin actif', async () => {
-        User.findOne.mockReturnValue(sessionQuery({
-            _id: 'user-id',
-            emailCanonical: 'admin@example.com',
-            status: 'active',
-            platformRole: 'super_admin',
-        }));
-        User.countDocuments.mockReturnValue(sessionQuery(1));
-
-        await expect(
-            requestCurrentUserClosure({
-                userId: 'user-id',
-                currentPassword: 'Correct Horse Battery Staple',
-                confirmationEmail: 'admin@example.com',
-            }),
-        ).rejects.toMatchObject({
-            statusCode: 409,
-            message: expect.stringContaining('dernier super-admin actif'),
-        });
-
-        expect(WorkspaceMember.find).not.toHaveBeenCalled();
-        expect(User.findOneAndUpdate).not.toHaveBeenCalled();
-    });
-
-    it('retire memberships et invitations, révoque les sessions et passe le compte en deletion_requested', async () => {
-        User.findOne.mockReturnValue(sessionQuery({
-            _id: 'user-id',
-            emailCanonical: 'greg@example.com',
-            status: 'active',
-            platformRole: 'user',
-        }));
-
-        const membership = {
-            _id: 'member-id',
-            user: 'user-id',
-            status: 'active',
-            role: {
-                key: 'member',
-                isSystem: true,
-                workspace: { toString: () => 'workspace-id' },
-            },
-            workspace: {
-                _id: { toString: () => 'workspace-id' },
-                status: 'active',
-            },
-            save: vi.fn().mockResolvedValue(undefined),
-        };
-
-        WorkspaceMember.find.mockReturnValue(
-            membershipQuery([membership]),
-        );
-
-        const invitation = {
-            _id: 'invitation-id',
-            workspace: 'workspace-id',
-            status: 'pending',
-        };
-        WorkspaceInvitation.find.mockReturnValue(
-            sessionQuery([invitation]),
-        );
-        WorkspaceInvitation.findOneAndUpdate.mockResolvedValue({
-            ...invitation,
-            status: 'revoked',
-        });
-
-        const deletionRequestedAt = new Date('2026-09-05T12:00:00.000Z');
-        User.findOneAndUpdate.mockResolvedValue({
-            _id: { toString: () => 'user-id' },
-            status: 'deletion_requested',
-            deletionRequestedAt,
-        });
+        WorkspaceMember.find.mockReturnValue(membershipQuery([membership]));
+        const { deletionRequestedAt, closedAt } =
+            mockSuccessfulUserLifecycle();
 
         const result = await requestCurrentUserClosure({
             userId: 'user-id',
@@ -217,6 +183,7 @@ describe('requestCurrentUserClosure', () => {
             userId: 'user-id',
             password: 'Correct Horse Battery Staple',
         });
+        expect(archiveWorkspaceInSession).not.toHaveBeenCalled();
         expect(membership.status).toBe('removed');
         expect(membership.save).toHaveBeenCalledWith({ session });
         expect(releaseCurrentUsageMetric).toHaveBeenCalledWith(
@@ -227,6 +194,188 @@ describe('requestCurrentUserClosure', () => {
                 session,
             }),
         );
+        expect(revokeAllUserAuthSessions).toHaveBeenCalledWith({
+            userId: 'user-id',
+            revokedReason: AUTH_SESSION_REVOKED_REASON.USER_CLOSED,
+            session,
+        });
+        expect(result).toEqual({
+            id: 'user-id',
+            status: 'closed',
+            deletionRequestedAt,
+            closedAt,
+            ownedWorkspaceCount: 0,
+            archivedWorkspaceCount: 0,
+            canceledSubscriptionCount: 0,
+            revokedWorkspaceInvitationCount: 0,
+            removedMembershipCount: 1,
+            revokedInvitationCount: 0,
+            revokedSessionCount: 2,
+        });
+    });
+
+    it('archive automatiquement le Workspace encore possédé puis retire la membership owner', async () => {
+        mockActiveUser();
+        const ownerMembership = createMembership({
+            id: 'owner-member-id',
+            workspaceId: 'owned-workspace-id',
+            roleKey: 'owner',
+        });
+        WorkspaceMember.find.mockReturnValue(
+            membershipQuery([ownerMembership]),
+        );
+        archiveWorkspaceInSession.mockResolvedValue({
+            status: 'archived',
+            canceledSubscriptionCount: 1,
+            revokedInvitationCount: 2,
+        });
+        mockSuccessfulUserLifecycle();
+
+        const result = await requestCurrentUserClosure({
+            userId: 'user-id',
+            currentPassword: 'Correct Horse Battery Staple',
+            confirmationEmail: 'greg@example.com',
+        });
+
+        expect(archiveWorkspaceInSession).toHaveBeenCalledWith({
+            workspaceId: ownerMembership.workspace._id,
+            actorId: 'user-id',
+            session,
+            ipAddress: null,
+            userAgent: null,
+        });
+        expect(ownerMembership.status).toBe('removed');
+        expect(ownerMembership.save).toHaveBeenCalledWith({ session });
+        expect(result).toMatchObject({
+            status: 'closed',
+            ownedWorkspaceCount: 1,
+            archivedWorkspaceCount: 1,
+            canceledSubscriptionCount: 1,
+            revokedWorkspaceInvitationCount: 2,
+            removedMembershipCount: 1,
+        });
+        expect(createAuditLog).toHaveBeenCalledWith(
+            expect.objectContaining({
+                action: AUDIT_ACTION.USER_CLOSED,
+                metadata: expect.objectContaining({
+                    reason: SELF_SERVICE_CLOSURE_REASON,
+                    archivedWorkspaceCount: 1,
+                }),
+            }),
+            { session },
+        );
+    });
+
+    it('laisse actif un Workspace transféré avant fermeture car le User n’est plus owner', async () => {
+        mockActiveUser();
+        const formerOwnerMembership = createMembership({
+            id: 'former-owner-member-id',
+            workspaceId: 'transferred-workspace-id',
+            roleKey: 'admin',
+        });
+        WorkspaceMember.find.mockReturnValue(
+            membershipQuery([formerOwnerMembership]),
+        );
+        mockSuccessfulUserLifecycle();
+
+        const result = await requestCurrentUserClosure({
+            userId: 'user-id',
+            currentPassword: 'Correct Horse Battery Staple',
+            confirmationEmail: 'greg@example.com',
+        });
+
+        expect(archiveWorkspaceInSession).not.toHaveBeenCalled();
+        expect(formerOwnerMembership.status).toBe('removed');
+        expect(result).toMatchObject({
+            ownedWorkspaceCount: 0,
+            archivedWorkspaceCount: 0,
+            removedMembershipCount: 1,
+            status: 'closed',
+        });
+    });
+
+    it('archive tous les Workspaces encore possédés et retire aussi les memberships externes', async () => {
+        mockActiveUser();
+        const ownerA = createMembership({
+            id: 'owner-a',
+            workspaceId: 'workspace-a',
+            roleKey: 'owner',
+        });
+        const ownerB = createMembership({
+            id: 'owner-b',
+            workspaceId: 'workspace-b',
+            roleKey: 'owner',
+        });
+        const externalMember = createMembership({
+            id: 'member-c',
+            workspaceId: 'workspace-c',
+            roleKey: 'member',
+        });
+        WorkspaceMember.find.mockReturnValue(
+            membershipQuery([ownerA, ownerB, externalMember]),
+        );
+        archiveWorkspaceInSession
+            .mockResolvedValueOnce({
+                status: 'archived',
+                canceledSubscriptionCount: 1,
+                revokedInvitationCount: 1,
+            })
+            .mockResolvedValueOnce({
+                status: 'archived',
+                canceledSubscriptionCount: 2,
+                revokedInvitationCount: 0,
+            });
+        mockSuccessfulUserLifecycle();
+
+        const result = await requestCurrentUserClosure({
+            userId: 'user-id',
+            currentPassword: 'Correct Horse Battery Staple',
+            confirmationEmail: 'greg@example.com',
+        });
+
+        expect(archiveWorkspaceInSession).toHaveBeenCalledTimes(2);
+        expect(archiveWorkspaceInSession.mock.calls[0][0].workspaceId)
+            .toBe(ownerA.workspace._id);
+        expect(archiveWorkspaceInSession.mock.calls[1][0].workspaceId)
+            .toBe(ownerB.workspace._id);
+        expect(ownerA.save).toHaveBeenCalledWith({ session });
+        expect(ownerB.save).toHaveBeenCalledWith({ session });
+        expect(externalMember.save).toHaveBeenCalledWith({ session });
+        expect(releaseCurrentUsageMetric).toHaveBeenCalledTimes(3);
+        expect(result).toMatchObject({
+            ownedWorkspaceCount: 2,
+            archivedWorkspaceCount: 2,
+            canceledSubscriptionCount: 3,
+            revokedWorkspaceInvitationCount: 1,
+            removedMembershipCount: 3,
+            status: 'closed',
+        });
+    });
+
+    it('révoque les invitations reçues et journalise les deux étapes User', async () => {
+        mockActiveUser();
+        WorkspaceMember.find.mockReturnValue(membershipQuery([]));
+
+        const invitation = {
+            _id: 'invitation-id',
+            workspace: 'workspace-id',
+            status: 'pending',
+        };
+        WorkspaceInvitation.find.mockReturnValue(
+            sessionQuery([invitation]),
+        );
+        WorkspaceInvitation.findOneAndUpdate.mockResolvedValue({
+            ...invitation,
+            status: 'revoked',
+        });
+        mockSuccessfulUserLifecycle();
+
+        await requestCurrentUserClosure({
+            userId: 'user-id',
+            currentPassword: 'Correct Horse Battery Staple',
+            confirmationEmail: 'greg@example.com',
+        });
+
         expect(WorkspaceInvitation.findOneAndUpdate).toHaveBeenCalledWith(
             {
                 _id: 'invitation-id',
@@ -245,41 +394,66 @@ describe('requestCurrentUserClosure', () => {
                 session,
             },
         );
-        expect(revokeAllUserAuthSessions).toHaveBeenCalledWith({
-            userId: 'user-id',
-            revokedReason:
-                AUTH_SESSION_REVOKED_REASON.USER_DELETION_REQUESTED,
-            session,
-        });
         expect(createAuditLog).toHaveBeenCalledWith(
             expect.objectContaining({
                 action: AUDIT_ACTION.USER_DELETION_REQUESTED,
                 entityId: 'user-id',
-                metadata: {
-                    removedMembershipCount: 1,
-                    revokedInvitationCount: 1,
-                    revokedSessionCount: 2,
-                },
             }),
             { session },
         );
-        expect(result).toEqual({
-            id: 'user-id',
-            status: 'deletion_requested',
-            deletionRequestedAt,
-            removedMembershipCount: 1,
-            revokedInvitationCount: 1,
-            revokedSessionCount: 2,
+        expect(createAuditLog).toHaveBeenCalledWith(
+            expect.objectContaining({
+                action: AUDIT_ACTION.USER_CLOSED,
+                entityId: 'user-id',
+            }),
+            { session },
+        );
+    });
+
+    it('refuse la fermeture du dernier super-admin actif', async () => {
+        mockActiveUser({
+            emailCanonical: 'admin@example.com',
+            platformRole: 'super_admin',
         });
+        User.countDocuments.mockReturnValue(sessionQuery(1));
+
+        await expect(
+            requestCurrentUserClosure({
+                userId: 'user-id',
+                currentPassword: 'Correct Horse Battery Staple',
+                confirmationEmail: 'admin@example.com',
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 409,
+            message: expect.stringContaining('dernier super-admin actif'),
+        });
+
+        expect(WorkspaceMember.find).not.toHaveBeenCalled();
+        expect(archiveWorkspaceInSession).not.toHaveBeenCalled();
+        expect(User.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('refuse une confirmation email incorrecte avant toute mutation métier', async () => {
+        mockActiveUser();
+
+        await expect(
+            requestCurrentUserClosure({
+                userId: 'user-id',
+                currentPassword: 'Correct Horse Battery Staple',
+                confirmationEmail: 'other@example.com',
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 409,
+            message: expect.stringContaining('confirmation'),
+        });
+
+        expect(WorkspaceMember.find).not.toHaveBeenCalled();
+        expect(User.findOneAndUpdate).not.toHaveBeenCalled();
+        expect(revokeAllUserAuthSessions).not.toHaveBeenCalled();
     });
 
     it('échoue en sécurité si une membership active référence un contexte incohérent', async () => {
-        User.findOne.mockReturnValue(sessionQuery({
-            _id: 'user-id',
-            emailCanonical: 'greg@example.com',
-            status: 'active',
-            platformRole: 'user',
-        }));
+        mockActiveUser();
         WorkspaceMember.find.mockReturnValue(membershipQuery([
             {
                 _id: 'member-id',
@@ -302,7 +476,48 @@ describe('requestCurrentUserClosure', () => {
             message: expect.stringContaining('incohérente'),
         });
 
+        expect(archiveWorkspaceInSession).not.toHaveBeenCalled();
         expect(User.findOneAndUpdate).not.toHaveBeenCalled();
         expect(WorkspaceInvitation.find).not.toHaveBeenCalled();
+    });
+
+    it('interrompt toute la fermeture si l’archivage d’un Workspace échoue', async () => {
+        mockActiveUser();
+        const ownerA = createMembership({
+            id: 'owner-a',
+            workspaceId: 'workspace-a',
+            roleKey: 'owner',
+        });
+        const ownerB = createMembership({
+            id: 'owner-b',
+            workspaceId: 'workspace-b',
+            roleKey: 'owner',
+        });
+        WorkspaceMember.find.mockReturnValue(
+            membershipQuery([ownerA, ownerB]),
+        );
+        archiveWorkspaceInSession
+            .mockResolvedValueOnce({
+                status: 'archived',
+                canceledSubscriptionCount: 1,
+                revokedInvitationCount: 0,
+            })
+            .mockRejectedValueOnce(
+                new Error('workspace concurrent update'),
+            );
+
+        await expect(
+            requestCurrentUserClosure({
+                userId: 'user-id',
+                currentPassword: 'Correct Horse Battery Staple',
+                confirmationEmail: 'greg@example.com',
+            }),
+        ).rejects.toThrow('workspace concurrent update');
+
+        expect(archiveWorkspaceInSession).toHaveBeenCalledTimes(2);
+        expect(ownerA.save).not.toHaveBeenCalled();
+        expect(ownerB.save).not.toHaveBeenCalled();
+        expect(User.findOneAndUpdate).not.toHaveBeenCalled();
+        expect(revokeAllUserAuthSessions).not.toHaveBeenCalled();
     });
 });
