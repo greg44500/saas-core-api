@@ -21,7 +21,7 @@ describe('ConfirmationDialog', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('centralise le focus, Escape et le verrouillage du scroll', () => {
+  it('centralise le focus, Escape, le verrouillage du scroll et le backdrop', () => {
     const onCancel = vi.fn();
 
     render(
@@ -34,7 +34,10 @@ describe('ConfirmationDialog', () => {
       />,
     );
 
-    expect(screen.getByRole('dialog', { name: 'Supprimer ?' })).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: 'Supprimer ?' });
+
+    expect(dialog).toBeInTheDocument();
+    expect(dialog.parentElement).toHaveClass('backdrop-blur-sm');
     expect(screen.getByRole('button', { name: 'Annuler' })).toHaveFocus();
     expect(document.body.style.overflow).toBe('hidden');
 
