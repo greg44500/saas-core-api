@@ -14,6 +14,9 @@ import {
     revokeAllUserAuthSessions,
 } from '../../modules/authSessions/authSession.service.js';
 import {
+    assertUserIsNotPlatformFounder,
+} from '../../modules/platformTeam/platformFounderPolicy.service.js';
+import {
     releaseCurrentUsageMetric,
 } from '../../modules/usageMetric/releaseUsageMetric.service.js';
 import {
@@ -36,19 +39,18 @@ import {
 vi.mock('../../modules/auth/services/confirmCurrentUserPassword.service.js', () => ({
     confirmCurrentUserPassword: vi.fn(),
 }));
-
 vi.mock('../../modules/authSessions/authSession.service.js', () => ({
     revokeAllUserAuthSessions: vi.fn(),
 }));
-
+vi.mock('../../modules/platformTeam/platformFounderPolicy.service.js', () => ({
+    assertUserIsNotPlatformFounder: vi.fn(),
+}));
 vi.mock('../../modules/usageMetric/releaseUsageMetric.service.js', () => ({
     releaseCurrentUsageMetric: vi.fn(),
 }));
-
 vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
 }));
-
 vi.mock('../../modules/users/user.model.js', () => ({
     User: {
         countDocuments: vi.fn(),
@@ -56,18 +58,15 @@ vi.mock('../../modules/users/user.model.js', () => ({
         findOneAndUpdate: vi.fn(),
     },
 }));
-
 vi.mock('../../modules/workspace/workspaceClosure.service.js', () => ({
     archiveWorkspaceInSession: vi.fn(),
 }));
-
 vi.mock('../../modules/workspaceInvitation/workspaceInvitation.model.js', () => ({
     WorkspaceInvitation: {
         find: vi.fn(),
         findOneAndUpdate: vi.fn(),
     },
 }));
-
 vi.mock('../../modules/workspaceMember/workspaceMember.model.js', () => ({
     WorkspaceMember: {
         find: vi.fn(),
@@ -146,6 +145,7 @@ describe('requestCurrentUserClosure', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         confirmCurrentUserPassword.mockResolvedValue(undefined);
+        assertUserIsNotPlatformFounder.mockResolvedValue(undefined);
         createAuditLog.mockResolvedValue(undefined);
         releaseCurrentUsageMetric.mockResolvedValue({});
         revokeAllUserAuthSessions.mockResolvedValue({ modifiedCount: 2 });
@@ -181,6 +181,10 @@ describe('requestCurrentUserClosure', () => {
         expect(confirmCurrentUserPassword).toHaveBeenCalledWith({
             userId: 'user-id',
             password: 'Correct Horse Battery Staple',
+        });
+        expect(assertUserIsNotPlatformFounder).toHaveBeenCalledWith({
+            userId: 'user-id',
+            session,
         });
         expect(archiveWorkspaceInSession).not.toHaveBeenCalled();
         expect(membership.status).toBe('removed');
@@ -409,7 +413,29 @@ describe('requestCurrentUserClosure', () => {
         );
     });
 
-    it('refuse la fermeture du dernier super-admin actif', async () => {
+    it('refuse la fermeture du Fondateur avant toute mutation métier', async () => {
+        mockActiveUser({
+            emailCanonical: 'founder@example.com',
+            platformRole: 'super_admin',
+        });
+        assertUserIsNotPlatformFounder.mockRejectedValue(
+            Object.assign(new Error('Fondateur protégé'), { statusCode: 403 }),
+        );
+
+        await expect(
+            requestCurrentUserClosure({
+                userId: 'user-id',
+                currentPassword: 'Correct Horse Battery Staple',
+                confirmationEmail: 'founder@example.com',
+            }),
+        ).rejects.toMatchObject({ statusCode: 403 });
+
+        expect(User.countDocuments).not.toHaveBeenCalled();
+        expect(WorkspaceMember.find).not.toHaveBeenCalled();
+        expect(User.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('refuse la fermeture du dernier super-admin actif avant bootstrap Fondateur', async () => {
         mockActiveUser({
             emailCanonical: 'admin@example.com',
             platformRole: 'super_admin',
