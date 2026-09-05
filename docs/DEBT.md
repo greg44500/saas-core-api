@@ -548,8 +548,8 @@ Référence canonique : `docs/operations/OPERATIONS.md`.
 **Statut :** VALIDÉ  
 **Périmètre :** Core  
 **Blocage Core 1.0 :** non — clôturé pendant CORE-FIN-5  
-**Blocage production dérivée :** indirect — conditionne surtout la maintenabilité des upgrades  
-**Source :** DOC-6 / `docs/derived-saas/DERIVED-SAAS.md`
+**Blocage production dérivée :** non pour les points de composition du Core ; la validation d'une dérivation réelle reste couverte par D-017  
+**Source :** DOC-6 / `docs/derived-saas/DERIVED-SAAS.md` / `docs/derived-saas/EXTENSION-POINTS.md`
 
 ### État validé
 
