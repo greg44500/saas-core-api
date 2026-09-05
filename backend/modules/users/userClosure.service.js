@@ -163,17 +163,22 @@ const archiveOwnedWorkspacesInSession = async ({
         const wasAlreadyArchived =
             membership.workspace.status === WORKSPACE_STATUS.ARCHIVED;
 
-        const archiveResult = await archiveWorkspaceInSession({
+        const archiveInput = {
             workspaceId: membership.workspace._id,
             actorId: userId,
-            allowedStatuses: [
-                WORKSPACE_STATUS.ACTIVE,
-                WORKSPACE_STATUS.SUSPENDED,
-            ],
             session,
             ipAddress,
             userAgent,
-        });
+        };
+
+        if (membership.workspace.status === WORKSPACE_STATUS.SUSPENDED) {
+            archiveInput.allowedStatuses = [
+                WORKSPACE_STATUS.ACTIVE,
+                WORKSPACE_STATUS.SUSPENDED,
+            ];
+        }
+
+        const archiveResult = await archiveWorkspaceInSession(archiveInput);
 
         if (!wasAlreadyArchived) {
             archivedWorkspaceCount += 1;
