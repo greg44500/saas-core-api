@@ -81,7 +81,43 @@ function buildPlatformMetricGroups(capabilities) {
   );
 }
 
+/**
+ * Regroupe pour l'UI les fonctionnalités et métriques qui partagent une même
+ * catégorie de présentation. Cette composition n'introduit aucune dépendance
+ * métier entre elles : elle évite seulement de séparer artificiellement dans
+ * le formulaire de Plan une fonctionnalité de ses quotas voisins.
+ */
+function buildPlatformCapabilityGroups(capabilities) {
+  const groups = new Map();
+
+  function ensureGroup(group) {
+    if (!groups.has(group.key)) {
+      groups.set(group.key, {
+        key: group.key,
+        label: group.label,
+        features: [],
+        metrics: [],
+      });
+    }
+
+    return groups.get(group.key);
+  }
+
+  for (const group of buildPlatformFeatureGroups(capabilities)) {
+    ensureGroup(group).features.push(...group.items);
+  }
+
+  for (const group of buildPlatformMetricGroups(capabilities)) {
+    ensureGroup(group).metrics.push(...group.items);
+  }
+
+  return [...groups.values()].sort(
+    (left, right) => left.label.localeCompare(right.label, 'fr'),
+  );
+}
+
 export {
+  buildPlatformCapabilityGroups,
   buildPlatformFeatureGroups,
   buildPlatformMetricGroups,
 };
