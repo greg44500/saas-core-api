@@ -102,6 +102,50 @@ function PlatformPlanMetrics({
   );
 }
 
+function PlatformFeatureCapability({
+  feature,
+  features,
+  limits,
+  metricsByKey,
+  onFeatureChange,
+  onLimitChange,
+}) {
+  const enabled = features.has(feature.key);
+  const relatedMetrics = feature.metrics ?? [];
+
+  return (
+    <div>
+      <div className="px-4 py-2">
+        <FeatureToggle
+          checked={enabled}
+          helpText={feature.description}
+          label={feature.label}
+          onCheckedChange={(checked) => onFeatureChange(feature.key, checked)}
+        />
+      </div>
+
+      {relatedMetrics.length > 0 && (
+        <SmoothCollapse open={enabled}>
+          <div className="border-t border-border">
+            <div className="bg-muted/30 px-4 py-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Limites et quotas
+              </p>
+            </div>
+            <PlatformPlanMetrics
+              disabled={!enabled}
+              limits={limits}
+              metrics={relatedMetrics}
+              metricsByKey={metricsByKey}
+              onLimitChange={onLimitChange}
+            />
+          </div>
+        </SmoothCollapse>
+      )}
+    </div>
+  );
+}
+
 function PlatformPlanCapabilitiesEditor({
   groups,
   features,
@@ -120,70 +164,45 @@ function PlatformPlanCapabilitiesEditor({
 
   return (
     <div className="space-y-5">
-      {groups.map((group) => {
-        const disclosureFeatureKey = group.disclosureFeatureKey;
-        const quotasExpanded = disclosureFeatureKey
-          ? features.has(disclosureFeatureKey)
-          : true;
+      {groups.map((group) => (
+        <fieldset className="space-y-3" key={group.key}>
+          <legend className="text-sm font-semibold">{group.label}</legend>
 
-        return (
-          <fieldset className="space-y-3" key={group.key}>
-            <legend className="text-sm font-semibold">{group.label}</legend>
-
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-              {group.features.length > 0 && (
-                <div className="divide-y divide-border px-4">
-                  {group.features.map((feature) => (
-                    <div className="py-2" key={feature.key}>
-                      <FeatureToggle
-                        checked={features.has(feature.key)}
-                        helpText={feature.description}
-                        label={feature.label}
-                        onCheckedChange={(checked) => onFeatureChange(feature.key, checked)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {group.metrics.length > 0 && disclosureFeatureKey && (
-                <SmoothCollapse open={quotasExpanded}>
-                  <div className="border-t border-border">
-                    <div className="bg-muted/30 px-4 py-2">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Limites et quotas
-                      </p>
-                    </div>
-                    <PlatformPlanMetrics
-                      disabled={!quotasExpanded}
-                      limits={limits}
-                      metrics={group.metrics}
-                      metricsByKey={metricsByKey}
-                      onLimitChange={onLimitChange}
-                    />
-                  </div>
-                </SmoothCollapse>
-              )}
-
-              {group.metrics.length > 0 && !disclosureFeatureKey && (
-                <div className={group.features.length > 0 ? 'border-t border-border' : ''}>
-                  <div className="bg-muted/30 px-4 py-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Limites et quotas
-                    </p>
-                  </div>
-                  <PlatformPlanMetrics
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            {group.features.length > 0 && (
+              <div className="divide-y divide-border">
+                {group.features.map((feature) => (
+                  <PlatformFeatureCapability
+                    feature={feature}
+                    features={features}
+                    key={feature.key}
                     limits={limits}
-                    metrics={group.metrics}
                     metricsByKey={metricsByKey}
+                    onFeatureChange={onFeatureChange}
                     onLimitChange={onLimitChange}
                   />
+                ))}
+              </div>
+            )}
+
+            {group.metrics.length > 0 && (
+              <div className={group.features.length > 0 ? 'border-t border-border' : ''}>
+                <div className="bg-muted/30 px-4 py-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Limites et quotas
+                  </p>
                 </div>
-              )}
-            </div>
-          </fieldset>
-        );
-      })}
+                <PlatformPlanMetrics
+                  limits={limits}
+                  metrics={group.metrics}
+                  metricsByKey={metricsByKey}
+                  onLimitChange={onLimitChange}
+                />
+              </div>
+            )}
+          </div>
+        </fieldset>
+      ))}
     </div>
   );
 }
