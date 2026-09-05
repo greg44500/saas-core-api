@@ -57,12 +57,13 @@ docs/contracts/CAPABILITIES.md
 docs/architecture/ARCHITECTURE.md
 docs/architecture/BACKEND.md
 docs/architecture/FRONTEND.md
+
+docs/security/SECURITY.md
 ```
 
 Documents encore à produire :
 
 ```text
-docs/security/SECURITY.md
 docs/frontend/FRONTEND-GUIDELINES.md
 docs/derived-saas/DERIVED-SAAS.md
 docs/compliance/COMPLIANCE.md
@@ -115,7 +116,7 @@ Aucun ancien contrat n'a été supprimé.
 
 ### DOC-3 — terminé
 
-Trois documents d'architecture canoniques ont été créés :
+Documents créés :
 
 ```text
 docs/architecture/ARCHITECTURE.md
@@ -123,48 +124,76 @@ docs/architecture/BACKEND.md
 docs/architecture/FRONTEND.md
 ```
 
-Décisions structurantes figées :
+Décisions structurantes :
 
 - le Core fournit les fondations SaaS génériques ; les applications dérivées ajoutent leurs modules métier ;
-- la dépendance reste `module métier → Core`, jamais `Core → métier spécifique` ;
+- dépendance `module métier → Core`, jamais `Core → métier spécifique` ;
 - Account, Workspace et Platform sont trois contextes distincts ;
 - Workspace reste la frontière tenant du Core V1 ;
-- le backend est organisé par modules métier sous `backend/modules/` avec responsabilités route/controller/service/model/validation explicites ;
-- les services techniques réellement transverses restent sous `backend/services/` ;
-- jobs, migrations, seeds et operations ont des responsabilités distinctes ;
-- le frontend est organisé par `app`, `components`, `features`, `services/api`, `store`, `hooks`, `lib`, `utils` ;
-- les routes Workspace et Platform restent séparées par guards/layouts ;
-- server state → RTK Query ; global client state → Redux Toolkit seulement si justifié ; local UI state → `useState` / `useReducer` ; navigation partageable → URL ; formulaires → React Hook Form ;
-- le store global actuel porte Auth + `baseApi`, et la terminaison de session vide le cache RTK Query ;
-- `baseQueryWithReauth` centralise le refresh avec mutex ;
-- les composants réutilisables sont une contrainte d'architecture : DataTable, DataPagination, EntityDetailsDrawer, ConfirmationDialog et autres primitives partagées doivent être réutilisés lorsque leur contrat correspond ;
-- les primitives transverses ne doivent pas dépendre des features métier ;
-- une capability absente de l'entitlement ne doit pas polluer inutilement la navigation ou le dashboard ;
-- les versions documentées suivent les packages réellement installés : frontend courant React 19 / React Router 8 / Vite 8 ;
-- Playwright reste dans la stratégie E2E cible mais n'est pas présenté comme installé tant qu'il ne l'est pas réellement.
+- backend organisé par modules avec responsabilités route/controller/service/model/validation explicites ;
+- services techniques transverses séparés ;
+- frontend organisé par app/components/features/services/api/store/hooks/lib/utils ;
+- RTK Query pour le server state ; Redux Toolkit global seulement si justifié ; état local via React ;
+- composants réutilisables obligatoires lorsque pertinents ;
+- versions documentées alignées sur les packages réellement installés.
 
 Aucun code ni test n'a été modifié. Aucun document historique n'a été supprimé.
+
+### DOC-4 — terminé
+
+Document canonique créé :
+
+```text
+docs/security/SECURITY.md
+```
+
+Sécurité consolidée contre le code courant :
+
+- défense en profondeur : Auth → validation → tenant → RBAC → access mode → entitlement → quota → service → DB → transaction → audit selon le risque ;
+- credentials séparés de `User` dans `AuthIdentity` ;
+- mots de passe Argon2id via `node:crypto`, format versionné et comparaison `timingSafeEqual` ;
+- access token non considéré comme autorité unique : `authenticate` recharge le User depuis MongoDB et vérifie son statut et `passwordChangedAt` ;
+- refresh token brut jamais persisté ni retourné en JSON ; cookie HttpOnly, Secure en production, SameSite Lax actuel ;
+- AuthSession à génération unique avec rotation transactionnelle, `familyId`, reuse detection et compromission de famille ;
+- validation HTTP par Zod puis consommation de `req.validated` ;
+- `mongoose.set('sanitizeFilter', true)` et usage de `mongoose.trusted()` limité aux filtres internes contrôlés ;
+- multi-tenant Workspace vérifié par existence/status du Workspace, membership actif et Role du même tenant ;
+- autorisation RBAC basée sur permissions, pas sur le nom du rôle ;
+- administration Platform séparée du contexte Workspace ;
+- permission, entitlement et quota documentés comme trois barrières distinctes ;
+- quotas bornés réservés atomiquement avec condition MongoDB + `$inc` ;
+- pipeline File : permission/access/feature avant Multer, limites multipart, signature binaire réelle, MIME/extension, SHA-256, antivirus fail-closed, stockage non dérivé du nom utilisateur, revalidation avant persistance ;
+- workflow File : entitlement relu dans transaction, réservation atomique des quotas, File + AuditLog transactionnels, compensation du stockage physique si MongoDB échoue ;
+- AuditLog distingué de l'observabilité technique ;
+- erreurs inattendues génériques en production et logs volontairement limités ;
+- Helmet, CORS ciblé, rate limit API et rate limits renforcés sur forgot-password ;
+- environnement validé par Zod avec garde-fous spécifiques en production ;
+- access token frontend en mémoire, refresh token inaccessible à JavaScript, reauth RTK Query centralisée avec mutex et cache API vidé à la terminaison de session ;
+- guards frontend explicitement non considérés comme barrières de sécurité.
+
+Point documentaire important : le code actuel confirme que les réservations de quotas sensibles sont bien atomiques. Le commentaire historique précédant `incrementUsageMetric` mentionne un futur contrôle de limite, mais le même service implémente ensuite `reserveUsageMetricWithinLimit`; la documentation canonique retient donc l'implémentation complète actuelle et non ce commentaire intermédiaire pris isolément.
+
+Aucun code, test ou fichier historique n'a été supprimé.
 
 ---
 
 ## 6. Prochain lot documentaire
 
-**DOC-4 — Sécurité**.
+**DOC-5 — Guidelines frontend et composants réutilisables**.
 
 Objectifs :
 
-1. consolider l'authentification et le lifecycle de session ;
-2. formaliser la validation stricte et la séparation validation / autorisation / métier ;
-3. formaliser l'isolation multi-tenant ;
-4. formaliser RBAC Workspace et permissions Platform ;
-5. formaliser entitlement, quotas et remédiation ;
-6. documenter transactions, concurrence et invariants atomiques ;
-7. documenter AuditLog et traçabilité ;
-8. documenter sécurité Files : upload temporaire, type réel, antivirus, checksum, stockage et purge ;
-9. documenter erreurs, logs et non-exposition des secrets ;
-10. formaliser les responsabilités de sécurité frontend vs backend.
+1. consolider les règles du design system ;
+2. formaliser la hiérarchie `components/ui`, `shared`, `forms`, `data-display`, `features` ;
+3. figer la réutilisation obligatoire de DataTable, pagination, drawers, confirmations et composants transverses ;
+4. consolider formulaires, feedbacks, erreurs et toasts ;
+5. consolider routing/navigation et affichage conditionnel permissions/entitlements ;
+6. consolider state management ;
+7. consolider responsive, accessibilité et performance ;
+8. consolider les règles de tests frontend ;
+9. confronter les anciennes policies au code actuel avant de les rendre candidates à suppression.
 
-DOC-4 doit compléter les contrats et l'architecture sans recopier leurs endpoints.
+DOC-5 doit compléter `architecture/FRONTEND.md` sans créer une seconde architecture concurrente : `FRONTEND.md` décrit la structure et les responsabilités, `FRONTEND-GUIDELINES.md` décrira les règles pratiques de développement UI/UX.
 
 ---
 
