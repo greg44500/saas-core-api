@@ -9,6 +9,7 @@ import {
     AUDIT_ENTITY_TYPE,
     AUDIT_STATUS,
 } from '../../constants/auditActions.constants.js';
+import { USER_STATUS } from '../../constants/userStatus.constants.js';
 
 import {
     createAuditLog,
@@ -469,9 +470,7 @@ const rotateAuthSession = async ({
 
     /*
      * Le User est contrôlé avant la rotation.
-     *
-     * MongoDB reste la source de vérité du statut actuel
-     * du compte.
+     * MongoDB reste la source de vérité du statut actuel du compte.
      */
     const user = await User.findById(
         currentAuthSession.user,
@@ -484,26 +483,26 @@ const rotateAuthSession = async ({
         );
     }
 
-    if (user.status === 'disabled') {
+    if (user.status === USER_STATUS.DISABLED) {
         throw new AppError(
             'Compte désactivé',
             403,
         );
     }
 
-    if (user.status === 'closed') {
+    if (user.status === USER_STATUS.DELETION_REQUESTED) {
+        throw new AppError(
+            'Fermeture du compte en cours',
+            403,
+        );
+    }
+
+    if (user.status === USER_STATUS.CLOSED) {
         throw new AppError(
             'Compte clôturé',
             403,
         );
     }
-
-    /*
-     * deletion_requested reste volontairement authentifiable.
-     *
-     * Le blocage des écritures métier sera traité séparément
-     * par la politique read-only du compte.
-     */
 
     const nextRefreshToken = generateRefreshToken();
     const nextRefreshTokenHash =
