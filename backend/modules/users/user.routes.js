@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
+    getClosureImpact,
     requestClosure,
     updateMe,
 } from './user.controller.js';
@@ -18,6 +19,12 @@ userRouter.patch(
     authenticate,
     validateRequest({ body: updateCurrentUserProfileSchema }),
     updateMe,
+);
+
+userRouter.get(
+    '/me/closure-impact',
+    authenticate,
+    getClosureImpact,
 );
 
 userRouter.post(
