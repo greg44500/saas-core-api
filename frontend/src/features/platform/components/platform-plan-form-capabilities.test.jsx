@@ -64,7 +64,9 @@ describe('PlatformPlanForm dynamic capabilities', () => {
     );
   });
 
-  it('regroupe une fonctionnalité et ses quotas de présentation dans la même catégorie', () => {
+  it('déplie les quotas avec le switch puis conserve leur configuration après repli', async () => {
+    const user = userEvent.setup();
+
     render(
       <PlatformPlanForm
         capabilities={{
@@ -106,16 +108,42 @@ describe('PlatformPlanForm dynamic capabilities', () => {
     );
 
     const filesGroup = screen.getByRole('group', { name: 'Fichiers' });
+    const uploadSwitch = within(filesGroup).getByRole('switch', {
+      name: 'Activer Téléversement de fichiers',
+    });
+    const storageMode = within(filesGroup).getByLabelText('Mode', {
+      selector: '#platform-plan-limit-mode-storage_bytes',
+    });
 
-    expect(
+    expect(storageMode).toBeDisabled();
+
+    await user.click(uploadSwitch);
+
+    expect(storageMode).toBeEnabled();
+    await user.selectOptions(storageMode, 'limited');
+
+    const storageValue = within(filesGroup).getByLabelText('Valeur (Mo)');
+    await user.type(storageValue, '500');
+    expect(storageValue).toHaveValue(500);
+
+    await user.click(
+      within(filesGroup).getByRole('switch', {
+        name: 'Désactiver Téléversement de fichiers',
+      }),
+    );
+
+    expect(storageMode).toBeDisabled();
+    expect(storageValue).toBeDisabled();
+    expect(storageValue).toHaveValue(500);
+
+    await user.click(
       within(filesGroup).getByRole('switch', {
         name: 'Activer Téléversement de fichiers',
       }),
-    ).toBeInTheDocument();
-    expect(within(filesGroup).getByText('Limites et quotas')).toBeInTheDocument();
-    expect(within(filesGroup).getByText('Stockage')).toBeInTheDocument();
-    expect(
-      within(filesGroup).getByText('Téléversements mensuels'),
-    ).toBeInTheDocument();
+    );
+
+    expect(storageMode).toBeEnabled();
+    expect(storageValue).toBeEnabled();
+    expect(storageValue).toHaveValue(500);
   });
 });
