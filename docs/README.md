@@ -10,7 +10,7 @@ Ce fichier est la porte d'entrée de la documentation interne de `saas-core-api`
 
 Le README racine fournit désormais l'orientation générale du dépôt. Le présent index reste la référence pour naviguer dans les contrats, l'architecture, la sécurité, les guidelines, la conformité, les opérations, les SaaS dérivés et les dettes actives.
 
-Le chantier documentaire DOC-0 à DOC-11 est terminé. La prochaine étape du projet redevient la reprise fonctionnelle de **F10.6**, puis l'audit code/tests permettant d'établir la roadmap réelle de clôture du Core.
+Le chantier documentaire DOC-0 à DOC-11 est terminé. La finalisation fonctionnelle du Core peut encore révéler des besoins génériques légitimes avant la préparation de la release 1.0. Le Bloc A « Équipe de la Plateforme & RBAC Platform » est actuellement cadré par `docs/contracts/PLATFORM-TEAM.md` avant implémentation.
 
 ---
 
@@ -28,6 +28,8 @@ En cas de contradiction :
 8. `REPRISE-CURRENT.md`.
 
 Une checklist, un ancien contrat, un rapport d'implémentation ou une synthèse de reprise ne peut jamais redéfinir le comportement réel du Core.
+
+Lorsqu'un contrat canonique décrit explicitement une **cible à implémenter**, le code et les tests courants restent l'autorité sur le comportement actuellement disponible jusqu'à validation de l'implémentation.
 
 ---
 
@@ -75,6 +77,9 @@ docs/contracts/COMMERCIAL.md
 
 docs/contracts/CAPABILITIES.md
 → Capability Registry et extension par les applications dérivées
+
+docs/contracts/PLATFORM-TEAM.md
+→ cible canonique Équipe de la Plateforme, Fondateur, RBAC Platform et invitations internes
 ```
 
 Décisions structurantes :
@@ -83,7 +88,10 @@ Décisions structurantes :
 - la baseline est identifiée structurellement par `systemRole = baseline` / `isBaseline`, pas par son nom commercial ;
 - la vue Workspace expose les features et limites effectives après overrides actifs ;
 - `ACTIVE_PLAN_CAPABILITY_REGISTRY` reste l'autorité runtime des capabilities ;
-- entitlement commercial, permission RBAC et quota sont trois contrôles distincts.
+- entitlement commercial, permission RBAC et quota sont trois contrôles distincts ;
+- RBAC Platform et RBAC Workspace sont distincts ;
+- le Fondateur est une autorité historique protégée, distincte d'un rôle RBAC personnalisable ;
+- plusieurs Super administrateurs sont possibles, mais le Fondateur reste protégé des opérations administratives ordinaires.
 
 ### Architecture
 
@@ -124,6 +132,7 @@ Règles centrales :
 - server state → RTK Query ; navigation partageable → URL ; form state → React Hook Form ; état local → React ; Redux global uniquement si justifié ;
 - les fonctionnalités absentes ne doivent pas polluer inutilement l'interface ;
 - masquer une action reste une règle UX, jamais une sécurité suffisante ;
+- dans l'interface française, le terme utilisateur est « Plateforme » ; `Platform` reste le terme technique du code ;
 - Playwright reste à intégrer pour les E2E Core avant la release 1.0.
 
 ### SaaS dérivés et maintenance du Core
@@ -175,14 +184,15 @@ SaaS dérivé prêt pour la production
 Blockers Core 1.0 actuellement identifiés :
 
 ```text
-D-001 fermeture de compte / cycle de vie Workspace
-D-014 points d'extension RBAC + routing backend/frontend
+D-018 Équipe de la Plateforme / RBAC Platform / invitations internes
 D-015 versionnement / provenance / release process / migrations
 D-016 E2E Core Playwright
 D-017 dérivation + upgrade réel d'un SaaS pilote
 ```
 
-Cette liste est celle démontrée par l'audit documentaire. La reprise F10.6 puis l'audit fonctionnel code/tests pourront encore la compléter ou la reclasser.
+D-001 et D-014 sont déjà validées et ne sont plus des blockers actifs.
+
+La finalisation fonctionnelle peut encore compléter ou reclasser cette liste lorsqu'un manque réellement générique du Core est démontré. Une fonctionnalité hypothétique ou purement métier ne doit pas retarder la release 1.0.
 
 ---
 
@@ -202,7 +212,8 @@ docs/
 ├── contracts/
 │   ├── CORE-CONTRACT.md
 │   ├── COMMERCIAL.md
-│   └── CAPABILITIES.md
+│   ├── CAPABILITIES.md
+│   └── PLATFORM-TEAM.md
 │
 ├── frontend/
 │   └── FRONTEND-GUIDELINES.md
@@ -237,13 +248,13 @@ docs/platform-overview-dashboard-contract.md
 docs/dashboard-workspace-platform-boundary.md
 ```
 
-Ils sont conservés uniquement comme mémoire de progression pour F10.6 et l'audit fonctionnel qui suivra.
+Ils sont conservés uniquement comme mémoire de progression et d'implémentations antérieures.
 
 Important : ces documents sont chronologiques. Ils peuvent donc contenir des intitulés de lots, des formulations ou des références vers d'anciens documents qui décrivent l'état du projet au moment de leur rédaction. Ces références historiques ne sont pas des dépendances documentaires actives.
 
 Pour tout contrat courant, utiliser les documents canoniques de la section 4.
 
-Après reprise F10.6 et audit fonctionnel, ces cinq fichiers devront être réévalués : soit leur information utile sera absorbée dans la reprise/roadmap courante, soit leur suppression pourra être proposée avec validation explicite.
+Ces cinq fichiers devront être réévalués lors d'un futur nettoyage : soit leur information utile sera absorbée dans les contrats/roadmap courants, soit leur suppression pourra être proposée avec validation explicite.
 
 ---
 
@@ -297,22 +308,26 @@ Toute future suppression documentaire suit la même règle : contenu utile véri
 
 ## 11. Prochaine étape
 
-Le chantier documentaire est clos.
-
-Séquence de reprise :
+Séquence courante de finalisation :
 
 ```text
-F10.6
+D-018 / Bloc A — Équipe de la Plateforme
+→ A1 cadrage fonctionnel
+→ A2 RBAC Platform
+→ A3 invitations Platform
+→ A4 cycle de vie des membres
+→ A5 frontend Équipe de la Plateforme
+→ A6 audit + tests + régression
 ↓
-audit fonctionnel réel code + tests + contrats
+réévaluation des derniers besoins génériques démontrés du Core
 ↓
-roadmap de clôture du Core
+D-015 versionnement / provenance / releases / migrations
 ↓
-blockers Core 1.0
+D-016 E2E Core Playwright
 ↓
-audit sécurité / tests / E2E
+audit final architecture / sécurité / qualité
 ↓
-dérivation + upgrade pilote
+D-017 dérivation + upgrade pilote
 ↓
 release Core stable
 ```
