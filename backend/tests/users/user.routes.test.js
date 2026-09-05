@@ -168,6 +168,7 @@ describe('POST /api/users/me/closure', () => {
             .send({
                 currentPassword: 'Correct Horse Battery Staple',
                 confirmationEmail: 'greg@example.com',
+                confirmAccountClosure: true,
             });
 
         expect(response.status).toBe(200);
@@ -176,6 +177,7 @@ describe('POST /api/users/me/closure', () => {
             userId: 'user-id',
             currentPassword: 'Correct Horse Battery Staple',
             confirmationEmail: 'greg@example.com',
+            confirmAccountClosure: true,
             ipAddress: expect.any(String),
             userAgent: 'Test Browser',
         });
@@ -189,14 +191,42 @@ describe('POST /api/users/me/closure', () => {
         });
     });
 
-    it('refuse les champs supplémentaires', async () => {
+    it('refuse une fermeture sans confirmation explicite', async () => {
         const response = await request(app)
             .post('/api/users/me/closure')
             .set('Authorization', 'Bearer test-token')
             .send({
                 currentPassword: 'Correct Horse Battery Staple',
                 confirmationEmail: 'greg@example.com',
-                force: true,
+            });
+
+        expect(response.status).toBe(400);
+        expect(requestCurrentUserClosure).not.toHaveBeenCalled();
+    });
+
+    it('refuse confirmAccountClosure=false', async () => {
+        const response = await request(app)
+            .post('/api/users/me/closure')
+            .set('Authorization', 'Bearer test-token')
+            .send({
+                currentPassword: 'Correct Horse Battery Staple',
+                confirmationEmail: 'greg@example.com',
+                confirmAccountClosure: false,
+            });
+
+        expect(response.status).toBe(400);
+        expect(requestCurrentUserClosure).not.toHaveBeenCalled();
+    });
+
+    it('refuse les champs non prévus', async () => {
+        const response = await request(app)
+            .post('/api/users/me/closure')
+            .set('Authorization', 'Bearer test-token')
+            .send({
+                currentPassword: 'Correct Horse Battery Staple',
+                confirmationEmail: 'greg@example.com',
+                confirmAccountClosure: true,
+                unexpectedField: true,
             });
 
         expect(response.status).toBe(400);
