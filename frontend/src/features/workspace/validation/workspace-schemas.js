@@ -29,7 +29,25 @@ const transferWorkspaceOwnershipSchema = z.object({
   currentPassword: currentPasswordSchema,
 });
 
+function createArchiveWorkspaceSchema(expectedWorkspaceName) {
+  return z
+    .strictObject({
+      currentPassword: currentPasswordSchema,
+      confirmationName: workspaceNameSchema,
+    })
+    .superRefine((values, context) => {
+      if (values.confirmationName !== expectedWorkspaceName) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Saisissez exactement le nom du workspace pour confirmer.',
+          path: ['confirmationName'],
+        });
+      }
+    });
+}
+
 export {
+  createArchiveWorkspaceSchema,
   createWorkspaceSchema,
   transferWorkspaceOwnershipSchema,
   updateWorkspaceSchema,
