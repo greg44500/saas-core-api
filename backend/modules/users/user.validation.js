@@ -28,6 +28,7 @@ const updateCurrentUserProfileSchema = z
 const requestCurrentUserClosureSchema = z.strictObject({
     currentPassword: passwordSchema,
     confirmationEmail: z.email().max(254),
+    confirmAccountClosure: z.literal(true),
 });
 
 export {
