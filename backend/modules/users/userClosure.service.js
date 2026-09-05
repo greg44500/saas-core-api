@@ -15,6 +15,9 @@ import {
     WORKSPACE_STATUS,
 } from '../../constants/workspace.constants.js';
 import {
+    WORKSPACE_INVITATION_STATUS,
+} from '../../constants/workspaceInvitation.constants.js';
+import {
     WORKSPACE_MEMBER_STATUS,
 } from '../../constants/workspaceMember.constants.js';
 import { AppError } from '../../utils/appError.js';
@@ -32,6 +35,9 @@ import {
 import {
     releaseCurrentUsageMetric,
 } from '../usageMetric/releaseUsageMetric.service.js';
+import {
+    WorkspaceInvitation,
+} from '../workspaceInvitation/workspaceInvitation.model.js';
 import { WorkspaceMember } from '../workspaceMember/workspaceMember.model.js';
 import { User } from './user.model.js';
 
@@ -39,6 +45,71 @@ const ACTIVE_MEMBERSHIP_STATUSES = Object.freeze([
     WORKSPACE_MEMBER_STATUS.ACTIVE,
     WORKSPACE_MEMBER_STATUS.SUSPENDED,
 ]);
+
+const revokePendingInvitationsForClosingUser = async ({
+    emailCanonical,
+    userId,
+    now,
+    session,
+    ipAddress,
+    userAgent,
+}) => {
+    const pendingInvitations = await WorkspaceInvitation.find({
+        emailCanonical,
+        status: WORKSPACE_INVITATION_STATUS.PENDING,
+    }).session(session);
+
+    let revokedInvitationCount = 0;
+
+    for (const invitation of pendingInvitations) {
+        const revokedInvitation = await WorkspaceInvitation.findOneAndUpdate(
+            {
+                _id: invitation._id,
+                status: WORKSPACE_INVITATION_STATUS.PENDING,
+            },
+            {
+                $set: {
+                    status: WORKSPACE_INVITATION_STATUS.REVOKED,
+                    revokedAt: now,
+                    revokedBy: userId,
+                },
+            },
+            {
+                returnDocument: 'after',
+                runValidators: true,
+                session,
+            },
+        );
+
+        if (!revokedInvitation) {
+            throw new AppError(
+                'Une invitation du compte a été modifiée concurremment',
+                409,
+            );
+        }
+
+        await createAuditLog(
+            {
+                actor: userId,
+                workspace: invitation.workspace,
+                action: AUDIT_ACTION.MEMBER_INVITATION_REVOKED,
+                entityType: AUDIT_ENTITY_TYPE.WORKSPACE_INVITATION,
+                entityId: invitation._id,
+                status: AUDIT_STATUS.SUCCESS,
+                ipAddress,
+                userAgent,
+                metadata: {
+                    reason: 'account_closure_requested',
+                },
+            },
+            { session },
+        );
+
+        revokedInvitationCount += 1;
+    }
+
+    return revokedInvitationCount;
+};
 
 const requestCurrentUserClosure = async ({
     userId,
@@ -168,6 +239,16 @@ const requestCurrentUserClosure = async ({
         }
 
         const now = new Date();
+        const revokedInvitationCount =
+            await revokePendingInvitationsForClosingUser({
+                emailCanonical: user.emailCanonical,
+                userId,
+                now,
+                session,
+                ipAddress,
+                userAgent,
+            });
+
         const updatedUser = await User.findOneAndUpdate(
             {
                 _id: userId,
@@ -213,6 +294,7 @@ const requestCurrentUserClosure = async ({
                 userAgent,
                 metadata: {
                     removedMembershipCount,
+                    revokedInvitationCount,
                     revokedSessionCount: revokedSessions.modifiedCount,
                 },
             },
@@ -224,6 +306,7 @@ const requestCurrentUserClosure = async ({
             status: updatedUser.status,
             deletionRequestedAt: updatedUser.deletionRequestedAt,
             removedMembershipCount,
+            revokedInvitationCount,
             revokedSessionCount: revokedSessions.modifiedCount,
         };
     });
@@ -232,4 +315,5 @@ const requestCurrentUserClosure = async ({
 export {
     ACTIVE_MEMBERSHIP_STATUSES,
     requestCurrentUserClosure,
+    revokePendingInvitationsForClosingUser,
 };
