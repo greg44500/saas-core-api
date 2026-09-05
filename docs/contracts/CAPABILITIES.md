@@ -55,6 +55,15 @@ composition de l’entitlement effectif
 administration Platform des Plans
 ```
 
+Le même fichier compose également les relations explicites feature → métriques utilisées par les surfaces data-driven :
+
+```text
+ACTIVE_PLAN_FEATURE_METRIC_RELATIONS
+getPlanFeatureMetricKeys()
+```
+
+Ces relations n’accordent aucun droit et ne remplacent jamais le moteur d’entitlement ou de quotas.
+
 Un chemin runtime applicatif ne doit pas retomber implicitement sur un registre limité aux seules capabilities Core lorsque l’application dérivée a enregistré des extensions.
 
 ---
@@ -79,6 +88,8 @@ Module métier A
 Module métier B
         ↓
 ACTIVE_PLAN_CAPABILITY_REGISTRY
+        +
+relations feature → métriques
 ```
 
 Cette composition explicite est volontaire : elle rend le démarrage déterministe, testable et auditable.
@@ -168,6 +179,21 @@ file_uploads_monthly
 ```
 
 Le Core peut exiger simultanément une feature active et une marge de quota suffisante.
+
+Lorsqu’une feature est fonctionnellement paramétrée par une ou plusieurs métriques, cette relation doit être déclarée explicitement avec `featureMetrics`.
+
+Relations Core actuelles :
+
+```text
+file_upload
+→ storage_bytes
+→ file_uploads_monthly
+
+team_management
+→ members
+```
+
+L’absence de relation explicite signifie qu’aucune métrique n’est rattachée à la feature pour la composition et la présentation. Cela ne permet pas au frontend de déduire lui-même une relation à partir des noms de clés.
 
 ---
 
@@ -265,6 +291,7 @@ metrics[]
 featureDefinitions
 metricDefinitions
 metricPresentations
+featureMetrics
 ```
 
 Conceptuellement :
@@ -272,6 +299,7 @@ Conceptuellement :
 ```js
 {
     features: ['price_history'],
+    metrics: ['price_history_entries_monthly'],
     featureDefinitions: {
         price_history: {
             label: 'Historique des prix',
@@ -280,6 +308,25 @@ Conceptuellement :
             categoryLabel: 'Produits',
             displayOrder: 20,
         },
+    },
+    metricDefinitions: {
+        price_history_entries_monthly: {
+            periodType: 'calendar_month',
+            behavior: 'consumption',
+            remediationRequired: false,
+        },
+    },
+    metricPresentations: {
+        price_history_entries_monthly: {
+            label: 'Consultations mensuelles',
+            category: 'products',
+            categoryLabel: 'Produits',
+            displayOrder: 10,
+            unit: 'count',
+        },
+    },
+    featureMetrics: {
+        price_history: ['price_history_entries_monthly'],
     },
 }
 ```
@@ -302,9 +349,12 @@ définition invalide
 collision de feature
 collision de définition de métrique
 collision de présentation de métrique
+relation vers une feature inconnue
+relation vers une métrique inconnue
+collision de relation feature → métriques
 ```
 
-Le système ne doit pas démarrer avec deux modules déclarant silencieusement deux significations différentes pour la même clé.
+Le système ne doit pas démarrer avec deux modules déclarant silencieusement deux significations différentes pour la même clé ou la même relation.
 
 ---
 
@@ -423,7 +473,18 @@ La réponse fournit notamment :
 
 ```text
 features: string[]
-featureDefinitions: CapabilityPresentation[]
+featureDefinitions: [
+  {
+    key,
+    label,
+    description,
+    category,
+    categoryLabel,
+    displayOrder,
+    tags,
+    metricKeys: string[]
+  }
+]
 metrics: [
   {
     key,
@@ -432,6 +493,8 @@ metrics: [
   }
 ]
 ```
+
+`metricKeys` fournit la relation explicite entre une feature et ses métriques configurables. Le frontend ne doit pas reconstruire cette relation avec des conditions basées sur les clés techniques.
 
 Le frontend Platform construit dynamiquement le formulaire des Plans à partir de cette réponse.
 
@@ -447,6 +510,7 @@ Le développeur :
 - choisit une clé technique stable ;
 - déclare les métadonnées de présentation ;
 - déclare les métriques et leur comportement ;
+- associe explicitement la feature à ses métriques lorsque nécessaire ;
 - compose le descriptor dans le registre applicatif ;
 - branche les contrôles d’entitlement dans les opérations métier ;
 - ajoute les tests nécessaires.
@@ -481,12 +545,15 @@ Flux attendu :
 ```text
 modules réellement installés
 → ACTIVE_PLAN_CAPABILITY_REGISTRY
+→ relations feature → métriques
 → API Platform capabilities
 → RTK Query
 → composants de présentation
 ```
 
 Une nouvelle capability métier correctement enregistrée doit apparaître dans Platform sans ajout manuel d’une checkbox dédiée au cœur du formulaire.
+
+Une nouvelle relation feature → métriques correctement déclarée doit également être consommable sans ajouter un `if` React propre à cette clé technique.
 
 Si le frontend exige une modification spécifique uniquement parce qu’une nouvelle clé a été ajoutée, il faut vérifier si l’interface est suffisamment data-driven.
 
@@ -520,17 +587,23 @@ Flux recommandé après clonage :
 2. définir ses features
 3. définir ses métriques si nécessaire
 4. définir les métadonnées
-5. créer son descriptor
-6. l’importer dans applicationCapability.registry.js
-7. lancer les tests de composition
-8. démarrer l’application
-9. vérifier Platform > Plans
-10. configurer les Plans
-11. brancher les contrôles d’entitlement
-12. tester refus et autorisations
+5. définir featureMetrics si la feature utilise des métriques
+6. créer son descriptor
+7. l’importer dans applicationCapability.registry.js
+8. lancer les tests de composition
+9. démarrer l’application
+10. vérifier Platform > Plans
+11. configurer les Plans
+12. brancher les contrôles d’entitlement
+13. tester refus et autorisations
 ```
 
-Le document `docs/derived-saas/DERIVED-SAAS.md` détaillera ce workflow lors du lot dédié.
+Références :
+
+```text
+docs/derived-saas/DERIVED-SAAS.md
+docs/derived-saas/EXTENSION-POINTS.md
+```
 
 ---
 
@@ -582,9 +655,11 @@ Lorsqu’un SaaS dérivé ajoute des capabilities, il doit au minimum tester :
 
 - composition du descriptor ;
 - présence des features/métriques dans le registre actif ;
+- composition des relations feature → métriques ;
 - rejet des clés invalides ;
 - rejet des collisions ;
-- exposition correcte dans Platform ;
+- rejet des relations vers des clés inconnues ;
+- exposition correcte dans Platform, y compris `metricKeys` ;
 - création/modification de Plan avec les nouvelles capabilities ;
 - rejet d’une capability inconnue envoyée par HTTP ;
 - comportement des métriques dans UsageMetric/quotas ;
@@ -604,6 +679,7 @@ déclarer une capability dans .env
 coder une autorisation à partir du nom d’un Plan
 confondre capability et permission RBAC
 confondre capability et catégorie UI
+déduire une relation feature → métriques depuis le nom des clés
 accepter une clé inconnue dans Plan ou EntitlementOverride
 introduire une capability métier hypothétique dans le Core “pour plus tard”
 ```
@@ -615,6 +691,7 @@ déclarer la capability avec le code qui l’implémente
 composer explicitement les modules installés
 valider contre ACTIVE_PLAN_CAPABILITY_REGISTRY
 faire échouer tôt les collisions
+déclarer featureMetrics lorsque la relation existe
 rendre Platform data-driven
 conserver des clés techniques stables
 ```
@@ -642,6 +719,7 @@ Toute modification de :
 ```text
 applicationCapability.registry.js
 planCapability.registry.js
+relations feature → métriques
 validation des Plans
 validation des EntitlementOverride
 moteur de quotas
