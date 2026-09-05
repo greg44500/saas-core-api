@@ -1,5 +1,6 @@
 import {
     ACTIVE_PLAN_CAPABILITY_REGISTRY,
+    getPlanFeatureMetricKeys,
 } from '../../../config/applicationCapability.registry.js';
 
 
@@ -15,6 +16,16 @@ const listPlanCapabilities = async (req, res) => {
     const features = Array.from(
         ACTIVE_PLAN_CAPABILITY_REGISTRY.features,
     ).sort();
+
+    const featureDefinitions =
+        ACTIVE_PLAN_CAPABILITY_REGISTRY
+            .listFeatureDefinitions()
+            .map((definition) => ({
+                ...definition,
+                metricKeys: [
+                    ...getPlanFeatureMetricKeys(definition.key),
+                ],
+            }));
 
     const metrics = Array.from(
         ACTIVE_PLAN_CAPABILITY_REGISTRY.metrics,
@@ -34,9 +45,7 @@ const listPlanCapabilities = async (req, res) => {
         status: 'success',
         data: {
             features,
-            featureDefinitions:
-                ACTIVE_PLAN_CAPABILITY_REGISTRY
-                    .listFeatureDefinitions(),
+            featureDefinitions,
             metrics,
         },
     });
