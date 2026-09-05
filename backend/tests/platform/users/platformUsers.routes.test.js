@@ -24,6 +24,7 @@ import {
     platformRouter,
 } from '../../../modules/platform/platform.routes.js';
 import {
+    closePlatformUserBodySchema,
     disablePlatformUserBodySchema,
     platformUserIdParamsSchema,
     updatePlatformUserRoleBodySchema,
@@ -40,6 +41,7 @@ const {
     platformRoleMiddleware: vi.fn((req, res, next) => next()),
     validationMiddleware: vi.fn((req, res, next) => next()),
     handlers: {
+        closeUser: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         disableUser: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         enableUser: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         getUserById: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
@@ -129,6 +131,17 @@ describe('platformUsers.routes', () => {
             path: '/platform/users/507f1f77bcf86cd799439011/enable',
             validation: { params: platformUserIdParamsSchema },
             handler: handlers.enableUser,
+        },
+        {
+            label: 'clôture utilisateur',
+            method: 'patch',
+            path: '/platform/users/507f1f77bcf86cd799439011/close',
+            body: { reason: 'Demande de fermeture finalisée' },
+            validation: {
+                params: platformUserIdParamsSchema,
+                body: closePlatformUserBodySchema,
+            },
+            handler: handlers.closeUser,
         },
         {
             label: 'révocation des sessions',
