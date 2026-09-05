@@ -120,4 +120,24 @@ describe('authorizePlatformPermission', () => {
 
         expect(next).toHaveBeenCalledWith();
     });
+
+    it('autorise le super-admin pour une permission ajoutée par une application dérivée', () => {
+        const derivedPermission = 'platform:catalog:read';
+        const customAuthorize = createAuthorizePlatformPermission({
+            knownPermissions: [derivedPermission],
+        });
+        const next = vi.fn();
+
+        customAuthorize(derivedPermission)(
+            {
+                user: {
+                    platformRole: PLATFORM_ROLE.SUPER_ADMIN,
+                },
+            },
+            {},
+            next,
+        );
+
+        expect(next).toHaveBeenCalledWith();
+    });
 });
