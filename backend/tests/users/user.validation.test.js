@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  requestCurrentUserClosureSchema,
   updateCurrentUserProfileSchema,
   userIdentityInputSchema,
 } from '../../modules/users/user.validation.js';
@@ -130,6 +131,31 @@ describe('updateCurrentUserProfileSchema', () => {
     expect(() => updateCurrentUserProfileSchema.parse({
       firstName: 'Greg',
       platformRole: 'super_admin',
+    })).toThrow();
+  });
+});
+
+describe('requestCurrentUserClosureSchema', () => {
+  it('accepte le mot de passe courant et l’email de confirmation', () => {
+    expect(requestCurrentUserClosureSchema.parse({
+      currentPassword: 'Correct Horse Battery Staple',
+      confirmationEmail: 'greg@example.com',
+    })).toEqual({
+      currentPassword: 'Correct Horse Battery Staple',
+      confirmationEmail: 'greg@example.com',
+    });
+  });
+
+  it('refuse une adresse email invalide et les propriétés supplémentaires', () => {
+    expect(() => requestCurrentUserClosureSchema.parse({
+      currentPassword: 'Correct Horse Battery Staple',
+      confirmationEmail: 'invalid-email',
+    })).toThrow();
+
+    expect(() => requestCurrentUserClosureSchema.parse({
+      currentPassword: 'Correct Horse Battery Staple',
+      confirmationEmail: 'greg@example.com',
+      force: true,
     })).toThrow();
   });
 });
