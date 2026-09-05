@@ -7,7 +7,9 @@ import {
     vi,
 } from 'vitest';
 
-import { PLATFORM_ROLE } from '../../constants/platformRoles.constants.js';
+import {
+    PLATFORM_TEAM_ROLE_KEY,
+} from '../../constants/platformTeam.constants.js';
 import { USER_STATUS } from '../../constants/userStatus.constants.js';
 import {
     acceptNewPlatformInvitation,
@@ -22,9 +24,14 @@ import { AuthIdentity } from '../../modules/authIdentities/authIdentity.model.js
 import { createAuditLog } from '../../modules/auditLog/auditLog.service.js';
 import { hashPassword } from '../../utils/password.js';
 import {
-    assertAssignablePlatformRole,
     hashPlatformInvitationToken,
 } from '../../modules/platformInvitation/platformInvitation.service.js';
+import {
+    resolvePlatformAuthorization,
+} from '../../modules/platformTeam/platformAuthorization.service.js';
+import {
+    assertActorCanAssignRole,
+} from '../../modules/platformTeam/platformTeam.service.js';
 
 vi.mock('mongoose', () => ({
     default: {
@@ -65,8 +72,13 @@ vi.mock('../../utils/password.js', () => ({
     hashPassword: vi.fn(),
 }));
 vi.mock('../../modules/platformInvitation/platformInvitation.service.js', () => ({
-    assertAssignablePlatformRole: vi.fn(),
     hashPlatformInvitationToken: vi.fn(() => 'digest'),
+}));
+vi.mock('../../modules/platformTeam/platformAuthorization.service.js', () => ({
+    resolvePlatformAuthorization: vi.fn(),
+}));
+vi.mock('../../modules/platformTeam/platformTeam.service.js', () => ({
+    assertActorCanAssignRole: vi.fn(),
 }));
 
 const chainedResult = (value) => ({
@@ -97,7 +109,6 @@ const setup = ({ existingUser = null } = {}) => {
     };
     const inviter = {
         _id: 'inviter-id',
-        platformRole: PLATFORM_ROLE.SUPER_ADMIN,
         status: USER_STATUS.ACTIVE,
     };
     const user = {
@@ -124,6 +135,10 @@ const setup = ({ existingUser = null } = {}) => {
     PlatformTeamMember.create.mockResolvedValue([membership]);
     createAuditLog.mockResolvedValue(undefined);
     hashPassword.mockResolvedValue('password-hash');
+    resolvePlatformAuthorization.mockResolvedValue({
+        roleKey: PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN,
+        permissions: [],
+    });
 
     return { invitation, membership, role, session, user };
 };
@@ -158,9 +173,12 @@ describe('acceptNewPlatformInvitation', () => {
         });
 
         expect(hashPassword).toHaveBeenCalledOnce();
-        expect(assertAssignablePlatformRole).toHaveBeenCalledWith({
+        expect(resolvePlatformAuthorization).toHaveBeenCalledOnce();
+        expect(assertActorCanAssignRole).toHaveBeenCalledWith({
+            authorization: expect.objectContaining({
+                roleKey: PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN,
+            }),
             role,
-            actorPlatformRole: PLATFORM_ROLE.SUPER_ADMIN,
         });
         expect(User.create).toHaveBeenCalledWith(
             [
