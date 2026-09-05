@@ -48,7 +48,9 @@ describe('PlatformWorkspaceDetailsDrawer', () => {
       />,
     );
 
-    expect(screen.getByText('Workspace Laetitia BALLAT')).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Workspace Laetitia BALLAT' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Statut')).toBeInTheDocument();
     expect(screen.getByText('Actif')).toBeInTheDocument();
     expect(screen.queryByText('Identifiant')).not.toBeInTheDocument();
