@@ -75,6 +75,8 @@ const list = async (request, response) => {
         workspaceId: request.workspace._id,
         page: request.validated.query.page,
         limit: request.validated.query.limit,
+        category: request.validated.query.category,
+        search: request.validated.query.search,
     });
 
     response.status(200).json({
