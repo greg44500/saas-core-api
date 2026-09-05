@@ -83,6 +83,28 @@ docs/architecture/FRONTEND.md
 
 Les documents d'architecture utilisent les versions réellement installées comme référence. Au 2026-09-05, le frontend courant est notamment React 19 / React Router 8 / Vite 8 ; les anciens cadrages citant des versions antérieures ne sont plus normatifs.
 
+### Sécurité
+
+```text
+docs/security/SECURITY.md
+→ défense en profondeur, Auth/AuthSession, validation, multi-tenant, RBAC, Platform,
+  entitlements, quotas, transactions, Files, AuditLog, HTTP, secrets et frontend
+```
+
+Décisions de sécurité consolidées contre le code courant :
+
+- le JWT n'est jamais l'unique autorité : le User est rechargé depuis MongoDB ;
+- les mots de passe utilisent Argon2id et les credentials restent hors du modèle User ;
+- le refresh token brut n'est jamais persisté et reste dans un cookie HttpOnly ;
+- les refresh tokens sont à usage unique avec rotation, famille de sessions et détection de réutilisation ;
+- un User authentifié n'acquiert aucun accès automatique à un Workspace ;
+- permission, entitlement et quota restent trois contrôles distincts ;
+- les réservations de quota bornées utilisent une opération MongoDB atomique ;
+- le pipeline File valide type réel, cohérence MIME/extension, checksum et antivirus avant persistance ;
+- les écritures File relisent l'entitlement et réservent les quotas dans une transaction ;
+- l'AuditLog ne remplace pas l'observabilité technique ;
+- le frontend améliore l'UX mais n'est jamais une frontière d'autorisation suffisante.
+
 ---
 
 ## 4. Structure documentaire cible
@@ -157,18 +179,17 @@ Leur contenu normatif utile est désormais consolidé dans `docs/contracts/` :
 
 Ils restent physiquement présents jusqu'à autorisation explicite de suppression.
 
-### C. Anciennes sources d'architecture absorbées ou encore utilisées
+### C. Anciennes sources d'architecture et de sécurité absorbées ou encore utilisées
 
-DOC-3 a consolidé les règles structurelles encore valides issues notamment de :
+DOC-3 et DOC-4 ont consolidé les règles structurelles et de sécurité encore valides issues notamment de :
 
 - `frontend-architecture-security-principles.md` ;
 - `frontend-decisions-consolidation.md` ;
-- état réel de `frontend/src/` ;
-- état réel de `backend/` ;
-- `package.json` backend et frontend ;
-- contrats DOC-2.
+- anciens contrats Account/Security et RBAC ;
+- code réel `backend/` et `frontend/src/` ;
+- configuration HTTP, AuthSession, pipeline File, UsageMetric et contrats DOC-2.
 
-Les anciens documents frontend restent cependant nécessaires comme sources pour DOC-4 Sécurité et DOC-5 Guidelines frontend avant de devenir candidats à suppression.
+Les documents frontend historiques restent encore nécessaires comme sources pour DOC-5 Guidelines frontend avant de devenir candidats à suppression.
 
 Documents principalement UI/UX encore à absorber :
 
@@ -224,8 +245,8 @@ Une documentation strictement locale à un module pourra exceptionnellement rest
 | DOC-1 | Inventaire, classification et index documentaire | terminé |
 | DOC-2 | Contrats Core / commercial / capabilities | terminé |
 | DOC-3 | Architecture globale, backend et frontend | terminé |
-| DOC-4 | Sécurité | prochain lot |
-| DOC-5 | Guidelines frontend et composants réutilisables | à faire |
+| DOC-4 | Sécurité | terminé |
+| DOC-5 | Guidelines frontend et composants réutilisables | prochain lot |
 | DOC-6 | SaaS dérivés et maintenance du Core | à faire |
 | DOC-7 | Conformité / RGPD | à faire |
 | DOC-8 | Opérations | à faire |
@@ -252,8 +273,6 @@ Pour chaque lot de nettoyage :
 
 ## 9. Prochaine étape
 
-Le prochain lot est **DOC-4 — Sécurité**.
+Le prochain lot est **DOC-5 — Guidelines frontend et composants réutilisables**.
 
-Il consolidera notamment : authentification et sessions, isolation tenant, validation stricte, RBAC, Platform permissions, entitlement, quotas, transactions, audit, sécurité des fichiers, erreurs/logging, secrets et garde-fous frontend/backend.
-
-La documentation de sécurité devra compléter l'architecture sans dupliquer les contrats HTTP déjà consolidés.
+Il consolidera les règles de design system, composition, DataTable, drawers, formulaires, feedbacks, navigation, state management, accessibilité, responsive, performance et tests frontend à partir du code courant et des anciennes policies encore valides.
