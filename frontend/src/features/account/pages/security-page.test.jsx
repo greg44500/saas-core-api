@@ -14,6 +14,14 @@ vi.mock('@/features/auth/api/auth-api', () => ({
   useLogoutAllMutation: useLogoutAllMutationMock,
 }));
 
+vi.mock('@/features/account/components/account-closure-section', () => ({
+  AccountClosureSection: ({ currentUserEmail }) => (
+    <section data-testid="account-closure-section">
+      Fermeture du compte pour {currentUserEmail}
+    </section>
+  ),
+}));
+
 import { SecurityPage } from '@/features/account/pages/security-page';
 
 function renderSecurityPage() {
@@ -57,6 +65,14 @@ describe('SecurityPage', () => {
   });
 
   afterEach(() => cleanup());
+
+  it('intègre la zone de fermeture du compte dans le volet sécurité', () => {
+    renderSecurityPage();
+
+    expect(screen.getByTestId('account-closure-section')).toHaveTextContent(
+      'Fermeture du compte pour greg@example.com',
+    );
+  });
 
   it('propose le workflow de récupération si le mot de passe actuel est oublié', async () => {
     const user = userEvent.setup();
