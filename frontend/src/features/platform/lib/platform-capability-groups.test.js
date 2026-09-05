@@ -18,6 +18,7 @@ describe('platform capability groups', () => {
           category: 'products',
           categoryLabel: 'Produits',
           displayOrder: 20,
+          metricKeys: ['price_history_entries_monthly'],
         },
         {
           key: 'ai_analysis',
@@ -25,6 +26,7 @@ describe('platform capability groups', () => {
           category: 'ai',
           categoryLabel: 'Intelligence artificielle',
           displayOrder: 10,
+          metricKeys: [],
         },
       ],
     });
@@ -33,12 +35,18 @@ describe('platform capability groups', () => {
       expect.objectContaining({
         key: 'ai',
         label: 'Intelligence artificielle',
-        items: [expect.objectContaining({ key: 'ai_analysis' })],
+        items: [expect.objectContaining({
+          key: 'ai_analysis',
+          metricKeys: [],
+        })],
       }),
       expect.objectContaining({
         key: 'products',
         label: 'Produits',
-        items: [expect.objectContaining({ key: 'price_history' })],
+        items: [expect.objectContaining({
+          key: 'price_history',
+          metricKeys: ['price_history_entries_monthly'],
+        })],
       }),
     ]);
   });
@@ -72,6 +80,7 @@ describe('platform capability groups', () => {
     expect(groups[0].items[0]).toEqual(expect.objectContaining({
       key: 'supplier_comparison',
       label: 'Supplier comparison',
+      metricKeys: [],
     }));
   });
 
@@ -98,7 +107,7 @@ describe('platform capability groups', () => {
     }));
   });
 
-  it('utilise l’unique feature d’une catégorie comme déclencheur visuel des quotas', () => {
+  it('attache les métriques à leur feature via metricKeys', () => {
     const [group] = buildPlatformCapabilityGroups({
       features: ['file_upload'],
       featureDefinitions: [
@@ -107,6 +116,10 @@ describe('platform capability groups', () => {
           label: 'Téléversement de fichiers',
           category: 'files',
           categoryLabel: 'Fichiers',
+          metricKeys: [
+            'storage_bytes',
+            'file_uploads_monthly',
+          ],
         },
       ],
       metrics: [
@@ -118,13 +131,25 @@ describe('platform capability groups', () => {
             categoryLabel: 'Fichiers',
           },
         },
+        {
+          key: 'file_uploads_monthly',
+          presentation: {
+            label: 'Téléversements mensuels',
+            category: 'files',
+            categoryLabel: 'Fichiers',
+          },
+        },
       ],
     });
 
-    expect(group.disclosureFeatureKey).toBe('file_upload');
+    expect(group.features[0].metrics.map((metric) => metric.key)).toEqual([
+      'storage_bytes',
+      'file_uploads_monthly',
+    ]);
+    expect(group.metrics).toEqual([]);
   });
 
-  it('n’infère aucun déclencheur quand plusieurs features rendent la relation ambiguë', () => {
+  it('distingue correctement deux features d’une même catégorie', () => {
     const [group] = buildPlatformCapabilityGroups({
       features: ['feature_a', 'feature_b'],
       featureDefinitions: [
@@ -133,19 +158,29 @@ describe('platform capability groups', () => {
           label: 'Fonction A',
           category: 'module',
           categoryLabel: 'Module',
+          metricKeys: ['items_a'],
         },
         {
           key: 'feature_b',
           label: 'Fonction B',
           category: 'module',
           categoryLabel: 'Module',
+          metricKeys: ['items_b'],
         },
       ],
       metrics: [
         {
-          key: 'items',
+          key: 'items_a',
           presentation: {
-            label: 'Éléments',
+            label: 'Éléments A',
+            category: 'module',
+            categoryLabel: 'Module',
+          },
+        },
+        {
+          key: 'items_b',
+          presentation: {
+            label: 'Éléments B',
             category: 'module',
             categoryLabel: 'Module',
           },
@@ -153,6 +188,46 @@ describe('platform capability groups', () => {
       ],
     });
 
-    expect(group.disclosureFeatureKey).toBeNull();
+    expect(group.features).toEqual([
+      expect.objectContaining({
+        key: 'feature_a',
+        metrics: [expect.objectContaining({ key: 'items_a' })],
+      }),
+      expect.objectContaining({
+        key: 'feature_b',
+        metrics: [expect.objectContaining({ key: 'items_b' })],
+      }),
+    ]);
+    expect(group.metrics).toEqual([]);
+  });
+
+  it('laisse une métrique non associée comme limite autonome', () => {
+    const [group] = buildPlatformCapabilityGroups({
+      features: ['feature_a'],
+      featureDefinitions: [
+        {
+          key: 'feature_a',
+          label: 'Fonction A',
+          category: 'module',
+          categoryLabel: 'Module',
+          metricKeys: [],
+        },
+      ],
+      metrics: [
+        {
+          key: 'workspace_capacity',
+          presentation: {
+            label: 'Capacité',
+            category: 'module',
+            categoryLabel: 'Module',
+          },
+        },
+      ],
+    });
+
+    expect(group.features[0].metrics).toEqual([]);
+    expect(group.metrics).toEqual([
+      expect.objectContaining({ key: 'workspace_capacity' }),
+    ]);
   });
 });
