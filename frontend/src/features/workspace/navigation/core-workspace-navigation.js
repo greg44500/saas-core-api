@@ -1,11 +1,11 @@
 import {
   CreditCard,
   Files,
+  FolderOpen,
   History,
   LayoutDashboard,
   Settings,
   ShieldCheck,
-  SlidersHorizontal,
   Users,
   WalletCards,
   Wrench,
@@ -30,10 +30,10 @@ const coreWorkspaceNavigation = Object.freeze([
     path: 'dashboard',
   }),
   Object.freeze({
-    id: 'features',
+    id: 'resources',
     type: 'group',
-    label: 'Fonctionnalités',
-    Icon: SlidersHorizontal,
+    label: 'Ressources',
+    Icon: FolderOpen,
     items: Object.freeze([
       Object.freeze({
         id: 'files',
