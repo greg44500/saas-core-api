@@ -10,13 +10,13 @@ import {
 import { loadWorkspaceContext } from '../../middlewares/loadWorkspaceContext.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
-    closeCurrentOwnerWorkspace,
+    archiveCurrentOwnerWorkspace,
 } from '../../modules/workspace/workspaceClosure.controller.js';
 import {
-    workspaceClosureRouter,
+    workspaceArchiveRouter,
 } from '../../modules/workspace/workspaceClosure.routes.js';
 import {
-    closeWorkspaceBodySchema,
+    archiveWorkspaceBodySchema,
 } from '../../modules/workspace/workspaceClosure.validation.js';
 import {
     workspaceIdParamsSchema,
@@ -67,30 +67,30 @@ vi.mock('../../middlewares/enforceWorkspaceAccessMode.js', () => ({
 }));
 
 vi.mock('../../modules/workspace/workspaceClosure.controller.js', () => ({
-    closeCurrentOwnerWorkspace: vi.fn((req, res) =>
+    archiveCurrentOwnerWorkspace: vi.fn((req, res) =>
         res.status(200).json({ status: 'success' })),
 }));
 
 const app = express();
 app.use(express.json());
 app.use(
-    '/workspaces/:workspaceId/closure',
-    workspaceClosureRouter,
+    '/workspaces/:workspaceId/archive',
+    workspaceArchiveRouter,
 );
 
-describe('workspaceClosure.routes', () => {
+describe('workspaceArchive.routes', () => {
     beforeEach(() => {
         authenticate.mockClear();
         validationMiddleware.mockClear();
         workspaceContextMiddleware.mockClear();
         ownerMiddleware.mockClear();
         accessModeMiddleware.mockClear();
-        closeCurrentOwnerWorkspace.mockClear();
+        archiveCurrentOwnerWorkspace.mockClear();
     });
 
-    it('protège la fermeture owner et l’autorise explicitement en remédiation', async () => {
+    it('protège l’archivage owner et l’autorise explicitement en remédiation', async () => {
         const response = await request(app)
-            .post('/workspaces/507f1f77bcf86cd799439011/closure')
+            .post('/workspaces/507f1f77bcf86cd799439011/archive')
             .send({
                 currentPassword: 'Correct Horse Battery Staple',
                 confirmationName: 'Acme',
@@ -99,7 +99,7 @@ describe('workspaceClosure.routes', () => {
         expect(response.status).toBe(200);
         expect(validateRequest).toHaveBeenCalledWith({
             params: workspaceIdParamsSchema,
-            body: closeWorkspaceBodySchema,
+            body: archiveWorkspaceBodySchema,
         });
         expect(enforceWorkspaceAccessMode).toHaveBeenCalledWith({
             allowDuringRemediation: true,
@@ -109,13 +109,15 @@ describe('workspaceClosure.routes', () => {
         expect(authorizeWorkspaceOwner).toBe(ownerMiddleware);
         expect(ownerMiddleware).toHaveBeenCalledOnce();
         expect(accessModeMiddleware).toHaveBeenCalledOnce();
-        expect(closeCurrentOwnerWorkspace).toHaveBeenCalledOnce();
+        expect(archiveCurrentOwnerWorkspace).toHaveBeenCalledOnce();
 
         expect(workspaceContextMiddleware.mock.invocationCallOrder[0])
             .toBeLessThan(ownerMiddleware.mock.invocationCallOrder[0]);
         expect(ownerMiddleware.mock.invocationCallOrder[0])
             .toBeLessThan(accessModeMiddleware.mock.invocationCallOrder[0]);
         expect(accessModeMiddleware.mock.invocationCallOrder[0])
-            .toBeLessThan(closeCurrentOwnerWorkspace.mock.invocationCallOrder[0]);
+            .toBeLessThan(
+                archiveCurrentOwnerWorkspace.mock.invocationCallOrder[0],
+            );
     });
 });
