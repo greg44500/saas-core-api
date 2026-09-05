@@ -25,9 +25,17 @@ Git conserve l'historique de ses versions ; aucune synthèse datée supplémenta
 
 Le développement fonctionnel reste temporairement suspendu avant la poursuite de **F10.6** afin de terminer le chantier documentaire du Core.
 
-Aucune logique applicative backend/frontend n'a été modifiée pendant DOC-0 à DOC-9.
+DOC-0 à DOC-10 sont terminés.
 
-Aucun fichier historique n'a été supprimé pendant ces lots.
+Aucune logique applicative backend/frontend n'a été modifiée pendant ces lots documentaires.
+
+DOC-10 a supprimé uniquement les **50 fichiers historiques/redondants explicitement approuvés par l'utilisateur**. Aucun autre fichier n'a été supprimé ou déplacé.
+
+Le prochain et dernier lot documentaire avant reprise fonctionnelle est :
+
+```text
+DOC-11 — README racine + audit documentaire final
+```
 
 ---
 
@@ -39,9 +47,9 @@ Aucun fichier historique n'a été supprimé pendant ces lots.
 - maintenir un registre unique des dettes ;
 - maintenir des contrats canoniques communs frontend/backend ;
 - séparer architecture, sécurité, guidelines frontend, SaaS dérivés, conformité et opérations ;
-- créer le README racine seulement lorsque les chemins sont stabilisés ;
 - utiliser uniquement `REPRISE-CURRENT.md` pour les futures reprises ;
-- distinguer systématiquement finalisation du Core et préparation production d'un produit dérivé.
+- distinguer systématiquement finalisation du Core et préparation production d'un produit dérivé ;
+- conserver Git comme historique des anciennes synthèses, policies, checklists et contrats supprimés.
 
 ---
 
@@ -78,11 +86,33 @@ Document canonique encore à produire :
 README.md racine
 ```
 
-Avant ce README final restent DOC-10 nettoyage validé puis DOC-11 audit documentaire final.
+---
+
+## 5. Documents temporaires encore conservés
+
+Les fichiers suivants sont volontairement conservés comme mémoire de progression jusqu'à la reprise F10.6 et l'audit fonctionnel réel :
+
+```text
+docs/backend-implementation-checklist.md
+docs/frontend-implementation-checklist.md
+docs/frontend-platform-admin-contract.md
+docs/platform-overview-dashboard-contract.md
+docs/dashboard-workspace-platform-boundary.md
+```
+
+Ils ne sont pas normatifs.
+
+Le guide suivant reste conservé comme documentation opérationnelle spécialisée :
+
+```text
+docs/development-trial-reset.md
+```
+
+`frontend/README.md` reste présent jusqu'à DOC-11, mais il est connu comme historiquement daté de F1 et devra être réévalué.
 
 ---
 
-## 5. Checkpoints documentaires
+## 6. Checkpoints documentaires
 
 ### DOC-0 — terminé
 
@@ -93,8 +123,7 @@ Avant ce README final restent DOC-10 nettoyage validé puis DOC-11 audit documen
 
 - inventaire documentaire ;
 - fragmentation confirmée ;
-- `docs/README.md` créé ;
-- aucune suppression.
+- `docs/README.md` créé.
 
 ### DOC-2 — terminé
 
@@ -153,34 +182,9 @@ Décisions : environnement fail-fast, MongoDB avant HTTP, `autoIndex=false` en p
 
 ### DOC-9 — terminé
 
-`docs/DEBT.md` a été entièrement reconsolidé contre DOC-2 à DOC-8.
+`docs/DEBT.md` a été reconsolidé contre DOC-2 à DOC-8.
 
-#### Statuts normalisés
-
-Les valeurs non officielles telles que `À CADRER PAR PRODUIT` ou `À CADRER APRÈS AJOUT DU MÉTIER` ont été supprimées du champ statut. Le registre n'utilise plus que :
-
-```text
-À CADRER
-PLANIFIÉ
-EN COURS
-DIFFÉRÉ
-CONDITIONNEL
-BLOQUÉ
-VALIDÉ
-NON APPLICABLE
-```
-
-Le contexte est désormais porté par :
-
-```text
-Périmètre
-Blocage Core 1.0
-Blocage production dérivée
-Déclencheur
-Dépendances
-```
-
-#### Distinction structurante
+Distinction structurante :
 
 ```text
 Core 1.0 finalisé
@@ -188,83 +192,81 @@ Core 1.0 finalisé
 SaaS dérivé automatiquement production-ready
 ```
 
-Stripe, hébergeur, conformité juridique finale, stockage cloud ou observabilité d'un déploiement ne sont pas imposés comme responsabilités universelles du Core générique.
-
-#### Blockers Core 1.0 connus
+Blockers Core 1.0 connus :
 
 ```text
-D-001
-→ fermeture de compte et cycle de vie de fermeture Workspace
-
-D-014
-→ points d'extension métier : RBAC + routing backend/frontend
-
-D-015
-→ versionnement, provenance, releases et discipline de migration
-
-D-016
-→ E2E Core avec Playwright
-
-D-017
-→ exercice réel création + upgrade d'un SaaS dérivé pilote
+D-001 fermeture de compte et cycle de vie de fermeture Workspace
+D-014 points d'extension métier : RBAC + routing backend/frontend
+D-015 versionnement, provenance, releases et discipline de migration
+D-016 E2E Core avec Playwright
+D-017 exercice réel création + upgrade d'un SaaS dérivé pilote
 ```
 
-D-014 à D-017 ont été ajoutées à partir des écarts réellement démontrés par DOC-6 et DOC-8.
+DOC-9 ne constitue pas la roadmap fonctionnelle finale. Après le chantier documentaire, la reprise F10.6 puis un audit code/tests devront confirmer les lots réellement restants.
 
-#### Reclassifications importantes
+### DOC-10 — terminé
 
-- D-003 RGPD reste un blocker de production lorsqu'applicable, mais pas un blocker universel Core 1.0 ;
-- D-004 Billing/Payment reste au niveau d'un produit payant ;
-- D-005 observabilité devient `À CADRER` pour chaque production ;
-- D-006 rétention réglementaire reste propre à la politique du produit, même si D-001 doit être compatible avec elle ;
-- D-007 stockage production ne bloque pas le Core 1.0 tant que le provider `local` est correctement qualifié et que le contrat provider reste extensible ;
-- D-012 distingue maintenant clairement les E2E du produit dérivé des E2E Core de D-016 ;
-- D-013 reste une obligation de déploiement du produit dérivé ;
-- D-002 et D-008 à D-011 restent différées/conditionnelles.
+Audit du dépôt effectué avant suppression.
 
-#### Important
+Décision validée par l'utilisateur : appliquer les recommandations de nettoyage sans toucher aux documents conservés.
 
-DOC-9 ne constitue pas la roadmap finale de développement.
-
-Après la fin du chantier documentaire :
+Résultat :
 
 ```text
-reprendre F10.6
-→ auditer code + tests + contrats
-→ établir les lots fonctionnels réellement restants
-→ y intégrer les blockers D-001 / D-014 / D-015 / D-016 / D-017
+50 suppressions autorisées et exécutées
+= 24 anciens fichiers sous docs/
++ 26 fichiers historiques sous frontend/docs/
 ```
 
-L'audit fonctionnel pourra révéler d'autres blockers ou permettre de reclassifier un élément existant.
+Supprimés notamment :
 
-Aucun code ni test n'a été modifié. Aucun ancien fichier n'a été supprimé.
+- trois anciennes synthèses de reprise datées ;
+- anciens contrats frontend/backend absorbés par DOC-2 ;
+- anciennes policies frontend absorbées par DOC-3, DOC-4 et DOC-5 ;
+- rapports F1 à F6 et checklists du silo `frontend/docs/` ;
+- anciennes fiches de dette remplacées par `DEBT.md` ;
+- anciens cadrages RGPD et inventaire remplacés par `docs/compliance/`.
+
+`frontend/docs/` ne constitue donc plus un second silo documentaire.
+
+Conservés volontairement :
+
+```text
+docs/backend-implementation-checklist.md
+docs/frontend-implementation-checklist.md
+docs/frontend-platform-admin-contract.md
+docs/platform-overview-dashboard-contract.md
+docs/dashboard-workspace-platform-boundary.md
+docs/development-trial-reset.md
+docs/REPRISE-CURRENT.md
+frontend/README.md
+```
+
+`docs/README.md` a été mis à jour pour refléter ce nouvel état.
 
 ---
 
-## 6. Prochain lot documentaire
+## 7. Prochain lot documentaire
 
-**DOC-10 — Propositions de suppression et nettoyage validé**.
+**DOC-11 — README racine + audit documentaire final**.
 
 Objectifs :
 
-1. refaire l'inventaire réel des anciens fichiers encore présents ;
-2. vérifier que leur contenu utile est bien absorbé ;
-3. détecter les références internes pointant encore vers eux ;
-4. classer les fichiers en `À CONSERVER`, `À DÉPLACER ÉVENTUELLEMENT` ou `CANDIDAT À SUPPRESSION` ;
-5. présenter la liste exacte des suppressions proposées ;
-6. ne supprimer aucun fichier sans validation explicite de l'utilisateur ;
-7. après validation, effectuer uniquement les suppressions autorisées.
+1. créer ou réécrire le `README.md` racine comme porte d'entrée du dépôt ;
+2. réévaluer `frontend/README.md` ;
+3. auditer les liens et références documentaires restants ;
+4. vérifier les contradictions majeures entre documents canoniques ;
+5. figer le checkpoint documentaire final ;
+6. autoriser ensuite la reprise de F10.6.
 
 ---
 
-## 7. Après DOC-10 et DOC-11
+## 8. Après DOC-11
 
 Séquence attendue :
 
 ```text
-DOC-10 nettoyage validé
-↓
-DOC-11 README racine + audit liens/contradictions
+DOC-11 README racine + audit documentaire final
 ↓
 reprise F10.6
 ↓
@@ -283,7 +285,7 @@ release Core stable
 
 ---
 
-## 8. Distribution et maintenance des futurs SaaS
+## 9. Distribution et maintenance des futurs SaaS
 
 Décision actuelle :
 
@@ -310,7 +312,7 @@ Le GitHub Template ne doit pas être confondu avec cette stratégie de maintenan
 
 ---
 
-## 9. Critère de suppression de ce fichier
+## 10. Critère de suppression de ce fichier
 
 `docs/REPRISE-CURRENT.md` pourra être supprimé lorsque :
 
