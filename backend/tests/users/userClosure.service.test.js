@@ -45,6 +45,7 @@ vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
 
 vi.mock('../../modules/users/user.model.js', () => ({
     User: {
+        countDocuments: vi.fn(),
         findOne: vi.fn(),
         findOneAndUpdate: vi.fn(),
     },
@@ -88,6 +89,7 @@ describe('requestCurrentUserClosure', () => {
             _id: 'user-id',
             emailCanonical: 'greg@example.com',
             status: 'active',
+            platformRole: 'user',
         }));
 
         WorkspaceMember.find.mockReturnValue(membershipQuery([
@@ -120,11 +122,36 @@ describe('requestCurrentUserClosure', () => {
         expect(revokeAllUserAuthSessions).not.toHaveBeenCalled();
     });
 
+    it('refuse la fermeture du dernier super-admin actif', async () => {
+        User.findOne.mockReturnValue(sessionQuery({
+            _id: 'user-id',
+            emailCanonical: 'admin@example.com',
+            status: 'active',
+            platformRole: 'super_admin',
+        }));
+        User.countDocuments.mockReturnValue(sessionQuery(1));
+
+        await expect(
+            requestCurrentUserClosure({
+                userId: 'user-id',
+                currentPassword: 'Correct Horse Battery Staple',
+                confirmationEmail: 'admin@example.com',
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 409,
+            message: expect.stringContaining('dernier super-admin actif'),
+        });
+
+        expect(WorkspaceMember.find).not.toHaveBeenCalled();
+        expect(User.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
     it('retire les memberships, révoque les sessions et passe le compte en deletion_requested', async () => {
         User.findOne.mockReturnValue(sessionQuery({
             _id: 'user-id',
             emailCanonical: 'greg@example.com',
             status: 'active',
+            platformRole: 'user',
         }));
 
         const membership = {
@@ -207,6 +234,7 @@ describe('requestCurrentUserClosure', () => {
             _id: 'user-id',
             emailCanonical: 'greg@example.com',
             status: 'active',
+            platformRole: 'user',
         }));
         WorkspaceMember.find.mockReturnValue(membershipQuery([
             {
