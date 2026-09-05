@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router';
 
+import { APPLICATION_FRONTEND_ROUTES } from '@/app/application-routes';
 import App from '@/App';
 import { AccountLayout } from '@/app/layouts/account-layout';
 import { AuthLayout } from '@/app/layouts/auth-layout';
@@ -12,12 +13,22 @@ import { AuthGuard, GuestGuard } from '@/features/auth/components/auth-guard';
 import { PlatformGuard } from '@/features/platform/components/platform-guard';
 import { WorkspaceGuard } from '@/features/workspace/components/workspace-guard';
 
-function createAppRoutes() {
+function createAppRoutes(applicationRoutes = APPLICATION_FRONTEND_ROUTES) {
+  const {
+    publicRoutes,
+    authenticatedRoutes,
+    workspaceRoutes,
+    platformRoutes,
+  } = applicationRoutes;
+
   return [
     {
       Component: PublicLayout,
       HydrateFallback: PageLoader,
-      children: [{ index: true, Component: App }],
+      children: [
+        { index: true, Component: App },
+        ...publicRoutes,
+      ],
     },
     {
       Component: GuestGuard,
@@ -137,6 +148,7 @@ function createAppRoutes() {
             },
           ],
         },
+        ...authenticatedRoutes,
         {
           path: 'workspaces/:workspaceId',
           Component: WorkspaceGuard,
@@ -208,6 +220,7 @@ function createAppRoutes() {
                     return { Component: WorkspaceSettingsPage };
                   },
                 },
+                ...workspaceRoutes,
               ],
             },
           ],
@@ -283,6 +296,7 @@ function createAppRoutes() {
                     return { Component: PlatformAuditLogsPage };
                   },
                 },
+                ...platformRoutes,
               ],
             },
           ],
