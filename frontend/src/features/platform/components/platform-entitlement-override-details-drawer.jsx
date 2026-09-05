@@ -3,11 +3,11 @@ import { ExternalLink } from 'lucide-react';
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
 import { Button } from '@/components/ui/button';
 import {
+  ENTITLEMENT_OVERRIDE_TARGET,
   formatPlatformEntitlementOverrideCapability,
   formatPlatformEntitlementOverrideDate,
   formatPlatformEntitlementOverrideLifecycle,
   formatPlatformEntitlementOverrideSource,
-  formatPlatformEntitlementOverrideTarget,
   formatPlatformEntitlementOverrideValue,
   isEditablePlatformEntitlementOverride,
 } from '@/features/platform/lib/platform-entitlement-override-formatters';
@@ -25,6 +25,18 @@ function formatActor(actor) {
   if (!actor) return '—';
   const fullName = [actor.firstName, actor.lastName].filter(Boolean).join(' ').trim();
   return fullName || actor.email || actor.id || '—';
+}
+
+function getTargetLabel(targetType) {
+  if (targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE) return 'Fonctionnalité';
+  if (targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT) return 'Limite';
+  return 'Cible';
+}
+
+function getValueLabel(targetType) {
+  return targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
+    ? 'Action appliquée'
+    : 'Valeur appliquée';
 }
 
 function PlatformEntitlementOverrideDetails({
@@ -81,10 +93,18 @@ function PlatformEntitlementOverrideDetails({
               </div>
             )}
           />
-          <DetailRow label="Type" value={formatPlatformEntitlementOverrideTarget(override.targetType)} />
-          <DetailRow label="Capability" value={formatPlatformEntitlementOverrideCapability(override)} />
-          <DetailRow label="Valeur" value={formatPlatformEntitlementOverrideValue(override)} />
-          <DetailRow label="État" value={formatPlatformEntitlementOverrideLifecycle(override.lifecycle)} />
+          <DetailRow
+            label={getTargetLabel(override.targetType)}
+            value={formatPlatformEntitlementOverrideCapability(override)}
+          />
+          <DetailRow
+            label={getValueLabel(override.targetType)}
+            value={formatPlatformEntitlementOverrideValue(override)}
+          />
+          <DetailRow
+            label="Statut de la dérogation"
+            value={formatPlatformEntitlementOverrideLifecycle(override.lifecycle)}
+          />
           <DetailRow label="Origine" value={formatPlatformEntitlementOverrideSource(override.source)} />
           <DetailRow label="Début" value={formatPlatformEntitlementOverrideDate(override.startsAt)} />
           <DetailRow label="Fin" value={override.endsAt ? formatPlatformEntitlementOverrideDate(override.endsAt) : 'Permanente'} />
@@ -172,4 +192,6 @@ function PlatformEntitlementOverrideDetailsDrawer({
 export {
   PlatformEntitlementOverrideDetails,
   PlatformEntitlementOverrideDetailsDrawer,
+  getTargetLabel,
+  getValueLabel,
 };
