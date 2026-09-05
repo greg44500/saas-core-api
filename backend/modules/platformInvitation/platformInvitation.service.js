@@ -10,6 +10,9 @@ import {
     AUDIT_ENTITY_TYPE,
     AUDIT_STATUS,
 } from '../../constants/auditActions.constants.js';
+import {
+    PLATFORM_PERMISSION,
+} from '../../constants/platformPermissions.constants.js';
 import { PLATFORM_ROLE } from '../../constants/platformRoles.constants.js';
 import {
     PLATFORM_INVITATION_DELIVERY_STATUS,
@@ -25,6 +28,12 @@ import { AppError } from '../../utils/appError.js';
 import { createAuditLog } from '../auditLog/auditLog.service.js';
 import { User } from '../users/user.model.js';
 import { PlatformRole } from '../platformRole/platformRole.model.js';
+import {
+    resolvePlatformAuthorization,
+} from '../platformTeam/platformAuthorization.service.js';
+import {
+    assertActorCanAssignRole,
+} from '../platformTeam/platformTeam.service.js';
 import {
     PlatformTeamMember,
 } from '../platformTeam/platformTeamMember.model.js';
@@ -60,9 +69,11 @@ const ACTIVE_PERMISSION_KEYS = new Set(
 
 
 /**
- * Vérifie de nouveau la cohérence du rôle au point d'usage.
- * Le modèle valide la forme, mais l'autorité fonctionnelle appartient au
- * registre de permissions actif et au statut courant du rôle.
+ * Vérifie la cohérence structurelle d'un rôle au point d'usage.
+ *
+ * Cette fonction reste exportée pour les tests unitaires du contrat A3. La
+ * délégation runtime complète utilise désormais assertActorCanAssignRole(), qui
+ * s'appuie sur l'autorité PlatformTeamMember courante.
  */
 const assertAssignablePlatformRole = ({
     role,
@@ -107,6 +118,29 @@ const assertAssignablePlatformRole = ({
             409,
         );
     }
+};
+
+const assertRuntimePermission = ({ authorization, permission }) => {
+    if (!authorization?.permissions?.includes(permission)) {
+        throw new AppError('Accès plateforme non autorisé', 403);
+    }
+};
+
+const loadActorAuthorization = async ({ actorId, session }) => {
+    const actor = await User.findById(actorId)
+        .select('_id platformRole status')
+        .session(session);
+
+    if (!actor) {
+        throw new AppError('Utilisateur acteur introuvable.', 403);
+    }
+
+    const authorization = await resolvePlatformAuthorization({
+        user: actor,
+        session,
+    });
+
+    return { actor, authorization };
 };
 
 
@@ -165,21 +199,16 @@ const createPlatformInvitation = async ({
     const emailCanonical = canonicalizeEmail(email);
 
     return mongoose.connection.transaction(async (session) => {
-        const [actor, role] = await Promise.all([
-            User.findById(actorId)
-                .select('_id platformRole')
-                .session(session),
+        const [{ authorization }, role] = await Promise.all([
+            loadActorAuthorization({ actorId, session }),
             PlatformRole.findById(roleId).session(session),
         ]);
 
-        if (!actor) {
-            throw new AppError('Utilisateur acteur introuvable.', 403);
-        }
-
-        assertAssignablePlatformRole({
-            role,
-            actorPlatformRole: actor.platformRole,
+        assertRuntimePermission({
+            authorization,
+            permission: PLATFORM_PERMISSION.TEAM_INVITE,
         });
+        assertActorCanAssignRole({ authorization, role });
 
         const existingUser = await User.findOne({
             emailCanonical,
@@ -346,6 +375,15 @@ const revokePlatformInvitation = async ({
     }
 
     return mongoose.connection.transaction(async (session) => {
+        const { authorization } = await loadActorAuthorization({
+            actorId,
+            session,
+        });
+        assertRuntimePermission({
+            authorization,
+            permission: PLATFORM_PERMISSION.TEAM_INVITATION_REVOKE,
+        });
+
         const invitation = await PlatformInvitation.findOneAndUpdate(
             {
                 _id: invitationId,
@@ -414,16 +452,15 @@ const resendPlatformInvitation = async ({
     }
 
     return mongoose.connection.transaction(async (session) => {
-        const [actor, invitation] = await Promise.all([
-            User.findById(actorId)
-                .select('_id platformRole')
-                .session(session),
+        const [{ authorization }, invitation] = await Promise.all([
+            loadActorAuthorization({ actorId, session }),
             PlatformInvitation.findById(invitationId).session(session),
         ]);
 
-        if (!actor) {
-            throw new AppError('Utilisateur acteur introuvable.', 403);
-        }
+        assertRuntimePermission({
+            authorization,
+            permission: PLATFORM_PERMISSION.TEAM_INVITATION_RESEND,
+        });
 
         if (!invitation) {
             throw new AppError('Invitation introuvable.', 404);
@@ -433,14 +470,6 @@ const resendPlatformInvitation = async ({
             invitation.status !== PLATFORM_INVITATION_STATUS.PENDING
             || invitation.expiresAt <= now
         ) {
-            if (
-                invitation.status === PLATFORM_INVITATION_STATUS.PENDING
-                && invitation.expiresAt <= now
-            ) {
-                invitation.status = PLATFORM_INVITATION_STATUS.EXPIRED;
-                await invitation.save({ session });
-            }
-
             throw new AppError(
                 'Cette invitation n’est plus active.',
                 409,
@@ -449,11 +478,7 @@ const resendPlatformInvitation = async ({
 
         const role = await PlatformRole.findById(invitation.role)
             .session(session);
-
-        assertAssignablePlatformRole({
-            role,
-            actorPlatformRole: actor.platformRole,
-        });
+        assertActorCanAssignRole({ authorization, role });
 
         const token = generatePlatformInvitationToken();
         const expiresAt = new Date(
