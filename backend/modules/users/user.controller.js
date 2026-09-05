@@ -42,8 +42,6 @@ const requestClosure = async (req, res) => {
         userId: req.user.id,
         currentPassword: req.validated.body.currentPassword,
         confirmationEmail: req.validated.body.confirmationEmail,
-        confirmAccountClosure:
-            req.validated.body.confirmAccountClosure,
         ipAddress: req.context.ipAddress,
         userAgent: req.context.userAgent,
     });
