@@ -37,7 +37,7 @@ Aucune logique applicative backend/frontend ne doit être modifiée dans ce chan
 - ne supprimer aucun fichier sans validation explicite ;
 - maintenir un registre unique des dettes ;
 - maintenir des contrats canoniques communs frontend/backend ;
-- maintenir une documentation dédiée à l'architecture, la sécurité, aux guidelines frontend et aux SaaS dérivés ;
+- maintenir une documentation dédiée à l'architecture, la sécurité, aux guidelines frontend, aux SaaS dérivés et à la conformité ;
 - créer le README racine après stabilisation des chemins ;
 - utiliser uniquement `REPRISE-CURRENT.md` pour les futures reprises.
 
@@ -63,13 +63,14 @@ docs/security/SECURITY.md
 docs/frontend/FRONTEND-GUIDELINES.md
 
 docs/derived-saas/DERIVED-SAAS.md
+
+docs/compliance/COMPLIANCE.md
+docs/compliance/rgpd-data-tracker-inventory.md
 ```
 
 Documents encore à produire :
 
 ```text
-docs/compliance/COMPLIANCE.md
-docs/compliance/rgpd-data-tracker-inventory.md
 docs/operations/OPERATIONS.md
 README.md racine
 ```
@@ -153,16 +154,13 @@ Sécurité consolidée contre le code courant :
 
 - défense en profondeur : Auth → validation → tenant → RBAC → access mode → entitlement → quota → service → DB → transaction → audit selon le risque ;
 - credentials séparés de `User` dans `AuthIdentity` ;
-- mots de passe Argon2id via `node:crypto`, format versionné et comparaison `timingSafeEqual` ;
-- access token non considéré comme autorité unique : `authenticate` recharge le User depuis MongoDB et vérifie son statut et `passwordChangedAt` ;
-- refresh token brut jamais persisté ni retourné en JSON ; cookie HttpOnly, Secure en production, SameSite Lax actuel ;
-- AuthSession à génération unique avec rotation transactionnelle, `familyId`, reuse detection et compromission de famille ;
-- validation HTTP par Zod puis consommation de `req.validated` ;
-- multi-tenant Workspace vérifié par existence/status du Workspace, membership actif et Role du même tenant ;
-- permission, entitlement et quota documentés comme trois barrières distinctes ;
+- access token non considéré comme autorité unique ;
+- refresh token brut jamais persisté ni retourné en JSON ;
+- AuthSession à génération unique avec rotation transactionnelle et reuse detection ;
+- multi-tenant Workspace vérifié par membership/Role du même tenant ;
+- permission, entitlement et quota restent trois barrières distinctes ;
 - quotas bornés réservés atomiquement ;
 - pipeline File fail-closed avec type réel, checksum, antivirus et revalidation ;
-- workflow File relit l'entitlement dans transaction, réserve les quotas et crée File + AuditLog de façon cohérente ;
 - AuditLog distingué de l'observabilité technique ;
 - Helmet, CORS, rate limits et environnement de production validés ;
 - guards frontend explicitement non considérés comme barrières de sécurité.
@@ -177,18 +175,16 @@ Document canonique créé :
 docs/frontend/FRONTEND-GUIDELINES.md
 ```
 
-Règles pratiques frontend consolidées :
+Règles pratiques consolidées :
 
-- `architecture/FRONTEND.md` décrit la structure ; `FRONTEND-GUIDELINES.md` décrit la manière de développer les interfaces ;
-- même intention UI → même famille de composants ; composition préférée à la duplication et au composant universel sur-paramétré ;
-- hiérarchie `components/ui` → `shared` / `forms` / `data-display` → composants de feature ;
-- `DataTable` reste la primitive obligatoire pour les tableaux compatibles ;
-- `EntityDetailsDrawer`, `ConfirmationDialog` et composants formulaires partagés doivent être réutilisés lorsque leur contrat convient ;
+- architecture et guidelines frontend restent deux responsabilités distinctes ;
+- même intention UI → même famille de composants ;
+- `DataTable` obligatoire pour les tableaux compatibles ;
+- `EntityDetailsDrawer`, `ConfirmationDialog` et composants formulaires partagés réutilisés lorsque pertinents ;
 - server state → RTK Query ; URL → navigation partageable ; form state → React Hook Form ; local → React ; Redux global seulement si justifié ;
 - permission et capability filtrent navigation/actions lorsque pertinentes ;
 - absence d'une capability d'écriture ≠ disparition automatique de toute surface de lecture ;
-- onboarding minimal, trial volontaire et règles commerciales jamais reconstruites côté frontend ;
-- feedback de proximité, accessibilité, responsive et performance documentés ;
+- onboarding minimal, feedback contextuel, accessibilité, responsive et performance documentés ;
 - Vitest + React Testing Library + user-event actifs ; Playwright reste la cible E2E mais n'est pas encore installé.
 
 Aucun code ni test n'a été modifié. Aucun fichier historique n'a été supprimé.
@@ -203,24 +199,52 @@ docs/derived-saas/DERIVED-SAAS.md
 
 Décisions structurantes :
 
-- un produit maintenable doit conserver l'historique Git du Core afin de pouvoir intégrer ses futures versions ;
-- GitHub Template est un outil de démarrage possible mais n'est pas la stratégie canonique pour un produit devant recevoir les mises à jour du Core, car les historiques sont indépendants ;
-- stratégie cible de dépôt : `origin` = dépôt du produit, `upstream-core` = dépôt `saas-core-api` ;
-- le Core courant reste `0.1.0` et ne doit pas être considéré comme socle diffusé tant que `v1.0.0` n'est pas stabilisée ;
-- versionnement sémantique PATCH / MINOR / MAJOR retenu ;
-- chaque release Core devra fournir release notes, migrations, changements d'environnement, dépendances et compatibilité ;
-- chaque produit devra tracer séparément sa version applicative et la version Core intégrée ; une convention de type `core-origin.json` est proposée mais reste à implémenter avant diffusion ;
-- les mises à jour Core passent par une branche dédiée puis tests et Pull Request, jamais par injection aveugle dans `main` ;
-- les corrections génériques trouvées dans un produit dérivé doivent idéalement remonter dans le Core afin que tous les produits en bénéficient ;
-- Capability Registry et navigation Workspace possèdent déjà des points de composition dédiés ;
-- les permissions métier possèdent des mécanismes d'extension partiels (`createSystemRoleDefinitions`) mais pas encore de point de composition applicatif complet équivalent au Capability Registry ;
-- `backend/app.js` et `frontend/src/app/router.jsx` restent encore des fichiers centraux à modifier pour ajouter des routes métier ; cette limite doit être traitée avant Core 1.0 pour réduire les conflits d'upgrade ;
-- release process / changelog, traçabilité version Core et CI d'upgrade restent également à formaliser avant 1.0 ;
-- aucune `.github` canonique de CI n'est actuellement présente dans le dépôt ;
-- transformation immédiate du Core en packages séparés non retenue ; à réévaluer après deux ou trois produits réels ;
-- avant de déclarer la stratégie de dérivation finalisée, un exercice réel devra créer un dépôt pilote depuis une release Core puis lui intégrer une nouvelle version Core.
+- un produit maintenable conserve l'historique Git du Core ;
+- GitHub Template n'est pas la stratégie canonique pour un produit devant recevoir les mises à jour du Core ;
+- `origin` = dépôt produit et `upstream-core` = dépôt `saas-core-api` ;
+- le Core courant reste `0.1.0` et devra atteindre une vraie `v1.0.0` avant diffusion ;
+- SemVer PATCH / MINOR / MAJOR retenu ;
+- chaque produit devra tracer sa version propre et la version Core intégrée ;
+- upgrades par branche dédiée + migrations + tests + revue + Pull Request ;
+- corrections génériques découvertes dans un SaaS dérivé doivent remonter dans le Core ;
+- Capability Registry et navigation Workspace possèdent déjà des points de composition ;
+- routing backend/frontend, permissions métier, traçabilité version Core et release process doivent encore être renforcés avant 1.0 ;
+- packages séparés non retenus pour la V1 ;
+- un test réel création + upgrade d'un SaaS pilote sera requis avant de considérer la stratégie validée.
 
-`core-deferred-work-for-derived-saas.md` est désormais absorbé sur le fond par `DERIVED-SAAS.md` et `DEBT.md`, mais reste physiquement présent jusqu'au lot DOC-10 et à validation explicite.
+Aucun code ni test n'a été modifié. Aucun fichier historique n'a été supprimé.
+
+### DOC-7 — terminé
+
+Documents canoniques créés :
+
+```text
+docs/compliance/COMPLIANCE.md
+docs/compliance/rgpd-data-tracker-inventory.md
+```
+
+Décisions structurantes :
+
+- la conformité est transverse : technique + documentation + exploitation + qualification juridique ;
+- le Core fournit un cadre générique, chaque SaaS dérivé doit qualifier ses traitements et prestataires réels ;
+- l'inventaire technique vivant ne remplace pas le registre des activités de traitement ;
+- les anciens documents RGPD/cookies très redondants sont désormais absorbés sur le fond mais conservés physiquement jusqu'à autorisation de suppression ;
+- le Core actuel possède le cookie `refreshToken` HttpOnly et une préférence de thème dans `localStorage` ;
+- aucun SDK analytics/publicitaire ni script de tracking tiers n'est actuellement identifié dans le frontend ;
+- aucune bannière cookies fictive ne doit donc être imposée par défaut ;
+- si des traceurs soumis au consentement sont ajoutés, ils devront être réellement bloqués avant consentement et le refus devra rester aussi accessible que l'acceptation ;
+- `ConsentConfiguration`, `ConsentRecord`, Consent Manager et tracker gating sont des architectures futures conditionnelles, non des fonctionnalités actuellement implémentées ;
+- les durées techniques ne sont pas des durées réglementaires automatiques ;
+- la matrice de conservation doit couvrir base active, archivage intermédiaire, purge/anonymisation et sauvegardes ;
+- les workflows de droits doivent être coordonnés avec D-001, D-003 et D-006 ;
+- responsable de traitement / sous-traitant doivent être qualifiés traitement par traitement ;
+- sous-traitants, contrats article 28 et transferts hors UE/EEE doivent être revus par produit ;
+- une AIPD doit être évaluée lorsqu'un traitement est susceptible d'engendrer un risque élevé ;
+- une procédure de violation de données doit exister en production, avec registre interne et notification CNIL lorsque requise, si possible sous 72 heures pour une violation présentant un risque ;
+- mentions légales, politiques et informations publiques doivent utiliser les données réelles du produit ;
+- D-003 et D-006 restent actives : DOC-7 documente le cadre mais ne résout pas leurs implémentations.
+
+Sources officielles CNIL/RGPD ont été revérifiées au 2026-09-05 pendant DOC-7.
 
 Aucun code ni test n'a été modifié. Aucun fichier historique n'a été supprimé.
 
@@ -228,18 +252,20 @@ Aucun code ni test n'a été modifié. Aucun fichier historique n'a été suppri
 
 ## 6. Prochain lot documentaire
 
-**DOC-7 — Conformité / RGPD**.
+**DOC-8 — Opérations**.
 
 Objectifs :
 
-1. consolider les anciens cadrages RGPD, cookies, confidentialité et mentions légales ;
-2. distinguer obligation générique du Core et obligations dépendantes du produit dérivé ;
-3. cadrer données personnelles, finalités, bases légales et droits ;
-4. cadrer cookies/traceurs et consentement lorsque requis ;
-5. intégrer l'inventaire vivant des trackers/providers ;
-6. relier conformité, fermeture de compte, rétention, anonymisation et suppression ;
-7. conserver une frontière claire entre documentation technique et validation juridique ;
-8. préparer les anciens documents redondants à devenir candidats à suppression sans rien supprimer dans DOC-7.
+1. consolider l'environnement et les variables de configuration ;
+2. documenter démarrage backend/frontend et prérequis ;
+3. documenter MongoDB et les contraintes de transactions ;
+4. distinguer seeds, migrations, jobs et opérations manuelles ;
+5. documenter l'ordre d'exécution et l'idempotence attendue ;
+6. documenter stockage, répertoires temporaires et antivirus ;
+7. documenter health check et dépendances externes ;
+8. cadrer déploiement production, migrations pré/post déploiement et rollback ;
+9. relier observabilité, backups et incident response aux dettes encore ouvertes ;
+10. préparer les anciennes checklists opérationnelles à devenir candidates à suppression sans rien supprimer dans DOC-8.
 
 ---
 
@@ -253,6 +279,7 @@ reprendre F10.6
 → établir les lots restant à finaliser
 → traiter les blockers Core / production
 → finaliser les points d'extension dérivés identifiés en DOC-6
+→ traiter les dettes Core indispensables
 → audit sécurité et tests
 → tester réellement création + upgrade d'un SaaS dérivé pilote
 → version Core finalisée
