@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -113,11 +113,12 @@ describe('WorkspaceFilesPage', () => {
     });
     expect(screen.getByRole('heading', { name: 'Fichiers' })).toBeInTheDocument();
 
-    const fileName = screen.getByText('contrat.pdf');
+    const table = screen.getByRole('table');
+    const fileName = within(table).getByText('contrat.pdf');
     expect(fileName).toBeInTheDocument();
     expect(fileName).toHaveAttribute('title', 'contrat.pdf');
-    expect(screen.getByText('Document')).toBeInTheDocument();
-    expect(screen.getByText('2 Ko')).toBeInTheDocument();
+    expect(within(table).getByText('Document')).toBeInTheDocument();
+    expect(within(table).getByText('2 Ko')).toBeInTheDocument();
     expect(screen.queryByText('application/pdf')).not.toBeInTheDocument();
     expect(screen.queryByText('PDF')).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Type' })).not.toBeInTheDocument();
