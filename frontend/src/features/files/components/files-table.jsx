@@ -6,7 +6,6 @@ import {
   formatFileCategory,
   formatFileDate,
   formatFileSize,
-  formatFileType,
 } from '@/features/files/lib/file-formatters';
 
 /**
@@ -15,6 +14,11 @@ import {
  * Les actions sont pilotées par les permissions déjà résolues dans le contexte
  * Workspace pour guider l'UX ; le backend reste l'autorité et revérifie chaque
  * permission sur les endpoints concernés.
+ *
+ * Le tableau reste volontairement compact : le MIME et le type technique sont
+ * conservés dans les données mais ne sont pas répétés dans la liste utilisateur.
+ * Le nom est la seule cellule compressible et expose sa valeur complète via le
+ * title natif lorsqu'il est tronqué.
  *
  * @param {object} props
  * @param {Array<object>} props.files
@@ -28,43 +32,42 @@ function FilesTable({ canDelete, downloadingFileId, files, onDelete, onDownload 
     {
       id: 'file',
       header: 'Fichier',
-      cellClassName: 'max-w-80',
+      headerClassName: 'w-[46%]',
+      cellClassName: 'min-w-0',
       cell: (file) => (
-        <>
-          <p className="truncate font-medium" title={file.originalName}>
-            {file.originalName}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">{file.mimeType}</p>
-        </>
+        <p className="truncate font-medium" title={file.originalName}>
+          {file.originalName}
+        </p>
       ),
     },
     {
       id: 'category',
       header: 'Catégorie',
+      headerClassName: 'w-[14%]',
+      cellClassName: 'truncate',
       cell: (file) => formatFileCategory(file.category),
-    },
-    {
-      id: 'type',
-      header: 'Type',
-      cell: (file) => formatFileType(file),
     },
     {
       id: 'size',
       header: 'Taille',
+      headerClassName: 'w-[10%]',
       cellClassName: 'whitespace-nowrap',
       cell: (file) => formatFileSize(file.sizeBytes),
     },
     {
       id: 'createdAt',
       header: 'Ajouté le',
+      headerClassName: 'w-[18%]',
       cellClassName: 'whitespace-nowrap',
       cell: (file) => formatFileDate(file.createdAt),
     },
     {
       id: 'actions',
       header: 'Actions',
+      headerClassName: 'w-[12%]',
+      cellClassName: 'whitespace-nowrap',
       cell: (file) => (
-        <DataTableActions className="items-center">
+        <DataTableActions className="items-center justify-end">
           <ActionIconButton
             Icon={Download}
             disabled={downloadingFileId === file.id}
@@ -85,7 +88,14 @@ function FilesTable({ canDelete, downloadingFileId, files, onDelete, onDownload 
     },
   ];
 
-  return <DataTable columns={columns} data={files} getRowKey={(file) => file.id} />;
+  return (
+    <DataTable
+      columns={columns}
+      data={files}
+      getRowKey={(file) => file.id}
+      tableClassName="table-fixed"
+    />
+  );
 }
 
 export { FilesTable };
