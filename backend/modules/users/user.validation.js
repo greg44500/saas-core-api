@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { passwordSchema } from '../auth/auth.validation.js';
+
 const userNameSchema = z.string().trim().min(1).max(100);
 
 const userIdentityInputSchema = z.strictObject({
@@ -23,7 +25,13 @@ const updateCurrentUserProfileSchema = z
         },
     );
 
+const requestCurrentUserClosureSchema = z.strictObject({
+    currentPassword: passwordSchema,
+    confirmationEmail: z.email().max(254),
+});
+
 export {
+    requestCurrentUserClosureSchema,
     updateCurrentUserProfileSchema,
     userIdentityInputSchema,
 };
