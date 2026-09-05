@@ -11,7 +11,7 @@ import {
 
 
 describe('listPlanCapabilities', () => {
-    it('expose les features et métriques du registre actif', async () => {
+    it('expose les features, leurs métriques associées et le registre actif', async () => {
         const json = vi.fn();
         const status = vi.fn(() => ({ json }));
 
@@ -31,6 +31,21 @@ describe('listPlanCapabilities', () => {
                 'audit_logs',
                 'file_upload',
                 'team_management',
+            ]),
+        );
+        expect(payload.data.featureDefinitions).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    key: 'file_upload',
+                    metricKeys: expect.arrayContaining([
+                        'storage_bytes',
+                        'file_uploads_monthly',
+                    ]),
+                }),
+                expect.objectContaining({
+                    key: 'team_management',
+                    metricKeys: ['members'],
+                }),
             ]),
         );
         expect(payload.data.metrics).toEqual(
