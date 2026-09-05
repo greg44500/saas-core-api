@@ -86,6 +86,10 @@ function buildPlatformMetricGroups(capabilities) {
  * catégorie de présentation. Cette composition n'introduit aucune dépendance
  * métier entre elles : elle évite seulement de séparer artificiellement dans
  * le formulaire de Plan une fonctionnalité de ses quotas voisins.
+ *
+ * Lorsqu'une catégorie contient exactement une fonctionnalité et au moins une
+ * métrique, cette fonctionnalité peut piloter le dépliage visuel des quotas.
+ * Une catégorie ambiguë avec plusieurs fonctionnalités reste toujours dépliée.
  */
 function buildPlatformCapabilityGroups(capabilities) {
   const groups = new Map();
@@ -111,9 +115,17 @@ function buildPlatformCapabilityGroups(capabilities) {
     ensureGroup(group).metrics.push(...group.items);
   }
 
-  return [...groups.values()].sort(
-    (left, right) => left.label.localeCompare(right.label, 'fr'),
-  );
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      disclosureFeatureKey:
+        group.features.length === 1 && group.metrics.length > 0
+          ? group.features[0].key
+          : null,
+    }))
+    .sort(
+      (left, right) => left.label.localeCompare(right.label, 'fr'),
+    );
 }
 
 export {
