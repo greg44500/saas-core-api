@@ -10,8 +10,8 @@ import {
 import {
     PLATFORM_INVITATION_STATUS,
     PLATFORM_TEAM_MEMBER_STATUS,
+    PLATFORM_TEAM_ROLE_KEY,
 } from '../../constants/platformTeam.constants.js';
-import { PLATFORM_ROLE } from '../../constants/platformRoles.constants.js';
 import { USER_STATUS } from '../../constants/userStatus.constants.js';
 import {
     acceptExistingPlatformInvitation,
@@ -24,9 +24,14 @@ import {
 import { User } from '../../modules/users/user.model.js';
 import { createAuditLog } from '../../modules/auditLog/auditLog.service.js';
 import {
-    assertAssignablePlatformRole,
     hashPlatformInvitationToken,
 } from '../../modules/platformInvitation/platformInvitation.service.js';
+import {
+    resolvePlatformAuthorization,
+} from '../../modules/platformTeam/platformAuthorization.service.js';
+import {
+    assertActorCanAssignRole,
+} from '../../modules/platformTeam/platformTeam.service.js';
 
 vi.mock('mongoose', () => ({
     default: {
@@ -38,39 +43,32 @@ vi.mock('mongoose', () => ({
 vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
 }));
-
 vi.mock('../../modules/users/user.model.js', () => ({
     User: { findById: vi.fn() },
 }));
-
-/**
- * acceptPlatformInvitation.service.js contient aussi le parcours de création
- * d'un nouveau User et importe donc AuthIdentity. Ce test couvre uniquement le
- * parcours d'un User existant : on isole ce modèle pour ne pas devoir simuler
- * tout mongoose.Schema dans un test de service qui ne l'utilise jamais.
- */
 vi.mock('../../modules/authIdentities/authIdentity.model.js', () => ({
     AuthIdentity: { create: vi.fn() },
 }));
-
 vi.mock('../../modules/platformRole/platformRole.model.js', () => ({
     PlatformRole: { findById: vi.fn() },
 }));
-
 vi.mock('../../modules/platformTeam/platformTeamMember.model.js', () => ({
     PlatformTeamMember: {
         findOne: vi.fn(),
         create: vi.fn(),
     },
 }));
-
 vi.mock('../../modules/platformInvitation/platformInvitation.model.js', () => ({
     PlatformInvitation: { findOne: vi.fn() },
 }));
-
 vi.mock('../../modules/platformInvitation/platformInvitation.service.js', () => ({
-    assertAssignablePlatformRole: vi.fn(),
     hashPlatformInvitationToken: vi.fn(() => 'digest'),
+}));
+vi.mock('../../modules/platformTeam/platformAuthorization.service.js', () => ({
+    resolvePlatformAuthorization: vi.fn(),
+}));
+vi.mock('../../modules/platformTeam/platformTeam.service.js', () => ({
+    assertActorCanAssignRole: vi.fn(),
 }));
 
 const chainedResult = (value) => ({
@@ -119,11 +117,14 @@ const setup = ({ actorEmail = 'member@example.com', existingMember = null } = {}
 
         return chainedResult({
             _id: 'inviter-id',
-            platformRole: PLATFORM_ROLE.SUPER_ADMIN,
             status: USER_STATUS.ACTIVE,
         });
     });
 
+    resolvePlatformAuthorization.mockResolvedValue({
+        roleKey: PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN,
+        permissions: [],
+    });
     PlatformInvitation.findOne.mockReturnValue(
         sessionResult(invitation),
     );
@@ -151,9 +152,12 @@ describe('acceptExistingPlatformInvitation', () => {
             actorId: 'actor-id',
         });
 
-        expect(assertAssignablePlatformRole).toHaveBeenCalledWith({
+        expect(resolvePlatformAuthorization).toHaveBeenCalledOnce();
+        expect(assertActorCanAssignRole).toHaveBeenCalledWith({
+            authorization: expect.objectContaining({
+                roleKey: PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN,
+            }),
             role,
-            actorPlatformRole: PLATFORM_ROLE.SUPER_ADMIN,
         });
         expect(PlatformTeamMember.create).toHaveBeenCalledOnce();
         expect(invitation.status).toBe(
