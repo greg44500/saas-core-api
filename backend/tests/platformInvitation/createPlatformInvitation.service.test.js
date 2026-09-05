@@ -10,7 +10,6 @@ import {
 import {
     PLATFORM_PERMISSION,
 } from '../../constants/platformPermissions.constants.js';
-import { PLATFORM_ROLE } from '../../constants/platformRoles.constants.js';
 import {
     PLATFORM_ROLE_STATUS,
     PLATFORM_TEAM_ROLE_KEY,
@@ -23,6 +22,12 @@ import { PlatformRole } from '../../modules/platformRole/platformRole.model.js';
 import { PlatformTeamMember } from '../../modules/platformTeam/platformTeamMember.model.js';
 import { User } from '../../modules/users/user.model.js';
 import { createAuditLog } from '../../modules/auditLog/auditLog.service.js';
+import {
+    resolvePlatformAuthorization,
+} from '../../modules/platformTeam/platformAuthorization.service.js';
+import {
+    assertActorCanAssignRole,
+} from '../../modules/platformTeam/platformTeam.service.js';
 
 vi.mock('mongoose', () => ({
     default: {
@@ -52,6 +57,12 @@ vi.mock('../../modules/platformInvitation/platformInvitation.model.js', () => ({
         create: vi.fn(),
     },
 }));
+vi.mock('../../modules/platformTeam/platformAuthorization.service.js', () => ({
+    resolvePlatformAuthorization: vi.fn(),
+}));
+vi.mock('../../modules/platformTeam/platformTeam.service.js', () => ({
+    assertActorCanAssignRole: vi.fn(),
+}));
 
 const chainedResult = (value) => ({
     select() { return this; },
@@ -72,8 +83,14 @@ describe('createPlatformInvitation', () => {
 
         User.findById.mockReturnValue(chainedResult({
             _id: 'actor-id',
-            platformRole: PLATFORM_ROLE.SUPER_ADMIN,
+            status: 'active',
         }));
+        resolvePlatformAuthorization.mockResolvedValue({
+            roleKey: PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN,
+            permissions: [
+                PLATFORM_PERMISSION.TEAM_INVITE,
+            ],
+        });
         PlatformRole.findById.mockReturnValue(sessionResult({
             _id: 'role-id',
             key: PLATFORM_TEAM_ROLE_KEY.TECHNICAL_SUPPORT,
@@ -102,6 +119,8 @@ describe('createPlatformInvitation', () => {
         });
 
         expect(result.token).toMatch(/^[a-f\d]{64}$/i);
+        expect(resolvePlatformAuthorization).toHaveBeenCalledOnce();
+        expect(assertActorCanAssignRole).toHaveBeenCalledOnce();
 
         const persisted = PlatformInvitation.create.mock.calls[0][0][0];
 
