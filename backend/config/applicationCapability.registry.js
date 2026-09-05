@@ -68,7 +68,17 @@ const composeFeatureMetricRelations = ({
     );
 
     modules.forEach((moduleDefinition, moduleIndex) => {
-        const featureMetrics = moduleDefinition?.featureMetrics ?? {};
+        if (
+            moduleDefinition === null
+            || Array.isArray(moduleDefinition)
+            || typeof moduleDefinition !== 'object'
+        ) {
+            throw new TypeError(
+                `Capability module at index ${moduleIndex} must be an object`,
+            );
+        }
+
+        const featureMetrics = moduleDefinition.featureMetrics ?? {};
 
         if (
             featureMetrics === null
