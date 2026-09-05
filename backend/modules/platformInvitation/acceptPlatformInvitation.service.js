@@ -17,12 +17,17 @@ import { createAuditLog } from '../auditLog/auditLog.service.js';
 import { AuthIdentity } from '../authIdentities/authIdentity.model.js';
 import { PlatformRole } from '../platformRole/platformRole.model.js';
 import {
+    resolvePlatformAuthorization,
+} from '../platformTeam/platformAuthorization.service.js';
+import {
+    assertActorCanAssignRole,
+} from '../platformTeam/platformTeam.service.js';
+import {
     PlatformTeamMember,
 } from '../platformTeam/platformTeamMember.model.js';
 import { User } from '../users/user.model.js';
 import { PlatformInvitation } from './platformInvitation.model.js';
 import {
-    assertAssignablePlatformRole,
     hashPlatformInvitationToken,
 } from './platformInvitation.service.js';
 
@@ -66,12 +71,17 @@ const loadAcceptableInvitation = async ({
     }
 
     /**
-     * L'autorité de l'invitant est recontrôlée à l'acceptation. C'est
-     * particulièrement important pour une invitation Super administrateur.
+     * L'autorité de l'invitant est recontrôlée depuis PlatformTeamMember au
+     * moment où les privilèges deviennent effectifs. Une ancienne invitation
+     * ne survit donc pas à la suspension ou à la révocation de son créateur.
      */
-    assertAssignablePlatformRole({
+    const inviterAuthorization = await resolvePlatformAuthorization({
+        user: inviter,
+        session,
+    });
+    assertActorCanAssignRole({
+        authorization: inviterAuthorization,
         role,
-        actorPlatformRole: inviter.platformRole,
     });
 
     return {
@@ -175,13 +185,6 @@ const finalizePlatformInvitationAcceptance = async ({
 };
 
 
-/**
- * Accepte une invitation pour un User déjà existant.
- *
- * L'appelant doit être authentifié par la route. Le token ne suffit jamais à
- * rattacher des privilèges Platform à un compte existant : l'email courant du
- * User doit correspondre exactement à l'email canonique de l'invitation.
- */
 const acceptExistingPlatformInvitation = async ({
     token,
     actorId,
@@ -253,13 +256,6 @@ const acceptExistingPlatformInvitation = async ({
 };
 
 
-/**
- * Accepte une invitation en créant un nouveau compte local.
- *
- * Le hash Argon2id est calculé hors transaction. L'identité du nouveau User
- * provient exclusivement de l'invitation ; seul le mot de passe est fourni au
- * moment de l'acceptation.
- */
 const acceptNewPlatformInvitation = async ({
     token,
     password,
@@ -275,10 +271,6 @@ const acceptNewPlatformInvitation = async ({
 
     const tokenHash = hashPlatformInvitationToken(token);
 
-    /**
-     * Prévalidation légère du secret avant le coût Argon2id. La transaction
-     * répète intégralement les contrôles ensuite afin d'empêcher toute course.
-     */
     const invitationExists = await PlatformInvitation.exists({
         tokenHash,
         status: PLATFORM_INVITATION_STATUS.PENDING,
