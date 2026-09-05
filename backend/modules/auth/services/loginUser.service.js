@@ -40,6 +40,7 @@ const INVALID_CREDENTIALS_MESSAGE =
 const LOGIN_FAILURE_REASON = Object.freeze({
     INVALID_CREDENTIALS: 'invalid_credentials',
     ACCOUNT_DISABLED: 'account_disabled',
+    ACCOUNT_DELETION_REQUESTED: 'account_deletion_requested',
     ACCOUNT_CLOSED: 'account_closed',
 });
 
@@ -135,16 +136,6 @@ const rejectLoginAttempt = async ({
  *
  * Chaque résultat est transmis au domaine AuditLog. L'audit d'un échec
  * ne contient jamais l'email ou le mot de passe fourni.
- *
- * @param {object} input Données préalablement validées par loginSchema.
- * @param {string} input.email
- * @param {string} input.password
- * @param {string|null} [input.ipAddress]
- * @param {string|null} [input.userAgent]
- * @returns {Promise<{
- *   user: import('mongoose').Document,
- *   refreshToken: string
- * }>}
  */
 const loginUser = async ({
     email,
@@ -167,10 +158,6 @@ const loginUser = async ({
         });
     }
 
-    /*
-     * passwordHash est select:false dans le modèle. Le login est
-     * l'un des rares workflows autorisés à le récupérer.
-     */
     const authIdentity = await AuthIdentity.findOne({
         user: user._id,
         provider: AUTH_PROVIDER.LOCAL,
@@ -201,16 +188,24 @@ const loginUser = async ({
         });
     }
 
-    /*
-     * L'état du compte est contrôlé seulement après validation du mot
-     * de passe afin de ne pas exposer son existence au client.
-     */
     if (user.status === USER_STATUS.DISABLED) {
         return rejectLoginAttempt({
             targetUserId: user._id,
             reasonCode:
                 LOGIN_FAILURE_REASON.ACCOUNT_DISABLED,
             publicMessage: 'Compte désactivé',
+            statusCode: 403,
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    if (user.status === USER_STATUS.DELETION_REQUESTED) {
+        return rejectLoginAttempt({
+            targetUserId: user._id,
+            reasonCode:
+                LOGIN_FAILURE_REASON.ACCOUNT_DELETION_REQUESTED,
+            publicMessage: 'Fermeture du compte en cours',
             statusCode: 403,
             ipAddress,
             userAgent,
@@ -229,17 +224,6 @@ const loginUser = async ({
         });
     }
 
-    /*
-     * deletion_requested reste volontairement authentifiable.
-     * Le blocage des écritures métier sera géré ultérieurement
-     * par un mécanisme transversal dédié.
-     */
-
-    /*
-     * L'AuthSession est conservée pour relier précisément
-     * LOGIN_SUCCESS à la session créée. Elle ne sera pas exposée
-     * dans la réponse HTTP produite par le controller.
-     */
     const {
         authSession,
         refreshToken,
@@ -249,10 +233,6 @@ const loginUser = async ({
         userAgent,
     });
 
-    /*
-     * lastLoginAt représente le dernier login réussi.
-     * AuthSession reste la source de vérité des sessions actives.
-     */
     user.lastLoginAt = new Date();
 
     await user.save();
