@@ -1,6 +1,9 @@
 import { AppError } from '../../../utils/appError.js';
 import { disablePlatformUser } from './services/disablePlatformUser.service.js';
 import { enablePlatformUser } from './services/enablePlatformUser.service.js';
+import {
+    finalizePlatformUserClosure,
+} from './services/finalizePlatformUserClosure.service.js';
 import { getPlatformUser } from './services/getPlatformUser.service.js';
 import { listPlatformUsers } from './services/listPlatformUsers.service.js';
 import { revokePlatformUserSessions } from './services/revokePlatformUserSessions.service.js';
@@ -54,6 +57,18 @@ const enableUser = async (req, res) => {
     res.status(200).json({ status: 'success', data: { user } });
 };
 
+const closeUser = async (req, res) => {
+    const user = await finalizePlatformUserClosure({
+        userId: req.validated.params.userId,
+        actorId: req.user._id,
+        reason: req.validated.body.reason,
+        ipAddress: req.ip ?? null,
+        userAgent: req.get('user-agent') ?? null,
+    });
+
+    res.status(200).json({ status: 'success', data: { user } });
+};
+
 const updateUserRole = async (req, res) => {
     const user = await updatePlatformUserRole({
         userId: req.validated.params.userId,
@@ -78,6 +93,7 @@ const revokeUserSessions = async (req, res) => {
 };
 
 export {
+    closeUser,
     disableUser,
     enableUser,
     getUserById,
