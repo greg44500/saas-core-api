@@ -1,3 +1,6 @@
+import {
+    closePlatformWorkspace,
+} from './services/closePlatformWorkspace.service.js';
 import { getPlatformWorkspace } from './services/getPlatformWorkspace.service.js';
 import { listPlatformWorkspaces } from './services/listPlatformWorkspaces.service.js';
 import { reactivatePlatformWorkspace } from './services/reactivatePlatformWorkspace.service.js';
@@ -64,7 +67,24 @@ const reactivateWorkspace = async (req, res) => {
     });
 };
 
+const closeWorkspace = async (req, res) => {
+    const workspace = await closePlatformWorkspace({
+        workspaceId: req.validated.params.workspaceId,
+        actorId: req.user.id,
+        statusReason: req.validated.body.statusReason,
+        statusReasonDetails: req.validated.body.statusReasonDetails ?? null,
+        ipAddress: req.context?.ipAddress ?? null,
+        userAgent: req.context?.userAgent ?? null,
+    });
+
+    return res.status(200).json({
+        status: 'success',
+        data: { workspace },
+    });
+};
+
 export {
+    closeWorkspace,
     getWorkspaceById,
     listWorkspaces,
     reactivateWorkspace,
