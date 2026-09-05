@@ -23,6 +23,7 @@ describe('PlatformPlanForm dynamic capabilities', () => {
               categoryLabel: 'Produits',
               displayOrder: 10,
               tags: ['reporting'],
+              metricKeys: [],
             },
           ],
           metrics: [],
@@ -78,6 +79,10 @@ describe('PlatformPlanForm dynamic capabilities', () => {
               category: 'files',
               categoryLabel: 'Fichiers',
               displayOrder: 10,
+              metricKeys: [
+                'storage_bytes',
+                'file_uploads_monthly',
+              ],
             },
           ],
           metrics: [
