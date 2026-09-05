@@ -20,6 +20,9 @@ import { authRouter } from './modules/auth/auth.routes.js';
 import {
     platformRouter,
 } from './modules/platform/platform.routes.js';
+import {
+    platformInvitationAcceptanceRouter,
+} from './modules/platformInvitation/platformInvitation.routes.js';
 import { fileRouter } from './modules/file/file.routes.js';
 import {
     invitationAcceptanceRouter,
@@ -46,6 +49,10 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/users', userRouter);
 app.use('/api/platform', platformRouter);
+app.use(
+    '/api/platform-invitations',
+    platformInvitationAcceptanceRouter,
+);
 app.use('/api/plans', planRouter);
 /*
  * Les routers enfants utilisent mergeParams afin de recevoir workspaceId tout
