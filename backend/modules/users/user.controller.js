@@ -2,6 +2,9 @@ import {
     refreshCookieName,
     refreshCookieOptions,
 } from '../../config/cookie.config.js';
+import {
+    assertUserIsNotPlatformFounder,
+} from '../platformTeam/platformFounderPolicy.service.js';
 import { getCurrentUserClosureImpact } from './userClosureImpact.service.js';
 import { toPublicUser } from './userPublic.dto.js';
 import { requestCurrentUserClosure } from './userClosure.service.js';
@@ -38,6 +41,15 @@ const getClosureImpact = async (req, res) => {
 };
 
 const requestClosure = async (req, res) => {
+    /**
+     * Le Fondateur ne peut jamais fermer son compte via le parcours ordinaire.
+     * Le workflow de transfert exceptionnel sera distinct et explicitement
+     * sécurisé lorsqu'il sera implémenté.
+     */
+    await assertUserIsNotPlatformFounder({
+        userId: req.user.id,
+    });
+
     const closure = await requestCurrentUserClosure({
         userId: req.user.id,
         currentPassword: req.validated.body.currentPassword,
