@@ -166,6 +166,10 @@ const archiveOwnedWorkspacesInSession = async ({
         const archiveResult = await archiveWorkspaceInSession({
             workspaceId: membership.workspace._id,
             actorId: userId,
+            allowedStatuses: [
+                WORKSPACE_STATUS.ACTIVE,
+                WORKSPACE_STATUS.SUSPENDED,
+            ],
             session,
             ipAddress,
             userAgent,
