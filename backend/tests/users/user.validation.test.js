@@ -136,26 +136,43 @@ describe('updateCurrentUserProfileSchema', () => {
 });
 
 describe('requestCurrentUserClosureSchema', () => {
-  it('accepte le mot de passe courant et l’email de confirmation', () => {
+  it('accepte uniquement une confirmation explicite à true', () => {
     expect(requestCurrentUserClosureSchema.parse({
       currentPassword: 'Correct Horse Battery Staple',
       confirmationEmail: 'greg@example.com',
+      confirmAccountClosure: true,
     })).toEqual({
       currentPassword: 'Correct Horse Battery Staple',
       confirmationEmail: 'greg@example.com',
+      confirmAccountClosure: true,
     });
+  });
+
+  it('refuse une confirmation absente ou false', () => {
+    expect(() => requestCurrentUserClosureSchema.parse({
+      currentPassword: 'Correct Horse Battery Staple',
+      confirmationEmail: 'greg@example.com',
+    })).toThrow();
+
+    expect(() => requestCurrentUserClosureSchema.parse({
+      currentPassword: 'Correct Horse Battery Staple',
+      confirmationEmail: 'greg@example.com',
+      confirmAccountClosure: false,
+    })).toThrow();
   });
 
   it('refuse une adresse email invalide et les propriétés supplémentaires', () => {
     expect(() => requestCurrentUserClosureSchema.parse({
       currentPassword: 'Correct Horse Battery Staple',
       confirmationEmail: 'invalid-email',
+      confirmAccountClosure: true,
     })).toThrow();
 
     expect(() => requestCurrentUserClosureSchema.parse({
       currentPassword: 'Correct Horse Battery Staple',
       confirmationEmail: 'greg@example.com',
-      force: true,
+      confirmAccountClosure: true,
+      unexpectedField: true,
     })).toThrow();
   });
 });
