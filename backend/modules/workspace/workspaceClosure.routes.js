@@ -9,25 +9,25 @@ import { loadWorkspaceContext } from '../../middlewares/loadWorkspaceContext.js'
 import { validateRequest } from '../../middlewares/validateRequest.js';
 import { workspaceIdParamsSchema } from './workspace.validation.js';
 import {
-    closeCurrentOwnerWorkspace,
+    archiveCurrentOwnerWorkspace,
 } from './workspaceClosure.controller.js';
-import { closeWorkspaceBodySchema } from './workspaceClosure.validation.js';
+import { archiveWorkspaceBodySchema } from './workspaceClosure.validation.js';
 
-const workspaceClosureRouter = Router({ mergeParams: true });
+const workspaceArchiveRouter = Router({ mergeParams: true });
 
-workspaceClosureRouter.post(
+workspaceArchiveRouter.post(
     '/',
     authenticate,
     validateRequest({
         params: workspaceIdParamsSchema,
-        body: closeWorkspaceBodySchema,
+        body: archiveWorkspaceBodySchema,
     }),
     loadWorkspaceContext,
     authorizeWorkspaceOwner,
     enforceWorkspaceAccessMode({
         allowDuringRemediation: true,
     }),
-    closeCurrentOwnerWorkspace,
+    archiveCurrentOwnerWorkspace,
 );
 
-export { workspaceClosureRouter };
+export { workspaceArchiveRouter };
