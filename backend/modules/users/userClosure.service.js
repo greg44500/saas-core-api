@@ -495,11 +495,6 @@ const requestCurrentUserClosure = async ({
 
 export {
     ACTIVE_MEMBERSHIP_STATUSES,
-    SELF_SERVICE_CLOSURE_REASON,
-    archiveOwnedWorkspacesInSession,
-    closeSelfServiceUserInSession,
-    markUserDeletionRequestedInSession,
-    removeClosingUserMembershipsInSession,
     requestCurrentUserClosure,
     revokePendingInvitationsForClosingUser,
 };
