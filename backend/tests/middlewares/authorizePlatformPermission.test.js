@@ -12,91 +12,83 @@ import {
     PLATFORM_ROLE,
 } from '../../constants/platformRoles.constants.js';
 import {
-    authorizePlatformPermission,
     createAuthorizePlatformPermission,
 } from '../../middlewares/authorizePlatformPermission.js';
 
 
 describe('authorizePlatformPermission', () => {
-    it('autorise le super-admin pour une permission Platform connue', () => {
+    it('autorise lorsque le resolver runtime expose la permission requise', async () => {
+        const authorizationResolver = vi.fn().mockResolvedValue({
+            permissions: [PLATFORM_PERMISSION.PLANS_UPDATE],
+        });
+        const authorize = createAuthorizePlatformPermission({
+            authorizationResolver,
+        });
         const next = vi.fn();
+        const req = {
+            user: { _id: 'user-id' },
+        };
 
-        authorizePlatformPermission(
+        await authorize(
             PLATFORM_PERMISSION.PLANS_UPDATE,
-        )(
-            {
-                user: {
-                    platformRole: PLATFORM_ROLE.SUPER_ADMIN,
-                },
-            },
-            {},
-            next,
-        );
+        )(req, {}, next);
 
+        expect(authorizationResolver).toHaveBeenCalledWith({
+            user: req.user,
+        });
         expect(next).toHaveBeenCalledWith();
+        expect(req.platformAuthorization).toEqual({
+            permissions: [PLATFORM_PERMISSION.PLANS_UPDATE],
+        });
     });
 
-    it('autorise le super-admin à lire le cockpit Platform', () => {
+    it('refuse lorsque la permission courante a été retirée', async () => {
+        const authorize = createAuthorizePlatformPermission({
+            authorizationResolver: vi.fn().mockResolvedValue({
+                permissions: [],
+            }),
+        });
         const next = vi.fn();
 
-        authorizePlatformPermission(
-            PLATFORM_PERMISSION.OVERVIEW_READ,
-        )(
-            {
-                user: {
-                    platformRole: PLATFORM_ROLE.SUPER_ADMIN,
-                },
-            },
-            {},
-            next,
-        );
-
-        expect(next).toHaveBeenCalledWith();
-    });
-
-    it('ne donne aucun droit implicite au rôle admin Core V1', () => {
-        const next = vi.fn();
-
-        authorizePlatformPermission(
+        await authorize(
             PLATFORM_PERMISSION.PLANS_READ,
         )(
-            {
-                user: {
-                    platformRole: PLATFORM_ROLE.ADMIN,
-                },
-            },
+            { user: { _id: 'user-id' } },
             {},
             next,
         );
 
         expect(next).toHaveBeenCalledWith(
-            expect.objectContaining({
-                statusCode: 403,
-            }),
+            expect.objectContaining({ statusCode: 403 }),
         );
     });
 
-    it('refuse par défaut un contexte utilisateur absent', () => {
+    it('refuse par défaut un contexte utilisateur absent', async () => {
+        const authorize = createAuthorizePlatformPermission({
+            authorizationResolver: vi.fn(),
+        });
         const next = vi.fn();
 
-        authorizePlatformPermission(
+        await authorize(
             PLATFORM_PERMISSION.CAPABILITIES_READ,
         )({}, {}, next);
 
         expect(next).toHaveBeenCalledWith(
-            expect.objectContaining({
-                statusCode: 403,
-            }),
+            expect.objectContaining({ statusCode: 403 }),
         );
     });
 
     it('refuse de construire un middleware avec une permission inconnue', () => {
-        expect(() => authorizePlatformPermission(
+        const authorize = createAuthorizePlatformPermission({
+            authorizationResolver: vi.fn(),
+        });
+
+        expect(() => authorize(
             'platform:features:create',
         )).toThrow(TypeError);
     });
 
-    it('permet une politique injectée sans modifier les routes', () => {
+    it('conserve une politique injectée pour les tests et compatibilités ciblées', async () => {
         const customAuthorize = createAuthorizePlatformPermission({
             rolePermissions: {
                 [PLATFORM_ROLE.SUPPORT]: [
@@ -106,7 +98,7 @@ describe('authorizePlatformPermission', () => {
         });
         const next = vi.fn();
 
-        customAuthorize(
+        await customAuthorize(
             PLATFORM_PERMISSION.CAPABILITIES_READ,
         )(
             {
@@ -121,19 +113,18 @@ describe('authorizePlatformPermission', () => {
         expect(next).toHaveBeenCalledWith();
     });
 
-    it('autorise le super-admin pour une permission ajoutée par une application dérivée', () => {
+    it('accepte une permission ajoutée par une application dérivée lorsque le resolver la fournit', async () => {
         const derivedPermission = 'platform:catalog:read';
         const customAuthorize = createAuthorizePlatformPermission({
             knownPermissions: [derivedPermission],
+            authorizationResolver: vi.fn().mockResolvedValue({
+                permissions: [derivedPermission],
+            }),
         });
         const next = vi.fn();
 
-        customAuthorize(derivedPermission)(
-            {
-                user: {
-                    platformRole: PLATFORM_ROLE.SUPER_ADMIN,
-                },
-            },
+        await customAuthorize(derivedPermission)(
+            { user: { _id: 'user-id' } },
             {},
             next,
         );
