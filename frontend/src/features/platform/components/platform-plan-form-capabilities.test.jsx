@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -34,7 +34,7 @@ describe('PlatformPlanForm dynamic capabilities', () => {
     );
 
     expect(
-      screen.getByRole('heading', { name: 'Fonctionnalités incluses par défaut' }),
+      screen.getByText('Fonctionnalités et limites incluses par défaut'),
     ).toBeInTheDocument();
     expect(screen.getByText('Produits')).toBeInTheDocument();
     expect(screen.queryByLabelText('Clé technique')).not.toBeInTheDocument();
@@ -62,5 +62,60 @@ describe('PlatformPlanForm dynamic capabilities', () => {
         limits: {},
       }),
     );
+  });
+
+  it('regroupe une fonctionnalité et ses quotas de présentation dans la même catégorie', () => {
+    render(
+      <PlatformPlanForm
+        capabilities={{
+          features: ['file_upload'],
+          featureDefinitions: [
+            {
+              key: 'file_upload',
+              label: 'Téléversement de fichiers',
+              category: 'files',
+              categoryLabel: 'Fichiers',
+              displayOrder: 10,
+            },
+          ],
+          metrics: [
+            {
+              key: 'storage_bytes',
+              presentation: {
+                label: 'Stockage',
+                category: 'files',
+                categoryLabel: 'Fichiers',
+                unit: 'bytes',
+              },
+            },
+            {
+              key: 'file_uploads_monthly',
+              presentation: {
+                label: 'Téléversements mensuels',
+                category: 'files',
+                categoryLabel: 'Fichiers',
+                unit: 'count',
+              },
+            },
+          ],
+        }}
+        mode="create"
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    const filesGroup = screen.getByRole('group', { name: 'Fichiers' });
+
+    expect(
+      within(filesGroup).getByRole('switch', {
+        name: 'Activer Téléversement de fichiers',
+      }),
+    ).toBeInTheDocument();
+    expect(within(filesGroup).getByText('Limites et quotas')).toBeInTheDocument();
+    expect(within(filesGroup).getByText('Stockage')).toBeInTheDocument();
+    expect(
+      within(filesGroup).getByText('Téléversements mensuels'),
+    ).toBeInTheDocument();
   });
 });
