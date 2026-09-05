@@ -1,6 +1,11 @@
 import { Router } from 'express';
-import { PLATFORM_ROLE } from '../../../constants/platformRoles.constants.js';
-import { authorizePlatformRole } from '../../../middlewares/authorizePlatformRole.js';
+
+import {
+    PLATFORM_PERMISSION,
+} from '../../../constants/platformPermissions.constants.js';
+import {
+    authorizePlatformPermission,
+} from '../../../middlewares/authorizePlatformPermission.js';
 import { validateRequest } from '../../../middlewares/validateRequest.js';
 import { paginationQuerySchema } from '../../../utils/validations/pagination.validation.js';
 import {
@@ -20,21 +25,27 @@ const platformWorkspacesRouter = Router();
 
 platformWorkspacesRouter.get(
     '/',
-    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.WORKSPACES_READ,
+    ),
     validateRequest({ query: paginationQuerySchema }),
     listWorkspaces,
 );
 
 platformWorkspacesRouter.get(
     '/:workspaceId',
-    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.WORKSPACES_READ,
+    ),
     validateRequest({ params: platformWorkspaceIdParamsSchema }),
     getWorkspaceById,
 );
 
 platformWorkspacesRouter.patch(
     '/:workspaceId/suspend',
-    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.WORKSPACES_SUSPEND,
+    ),
     validateRequest({
         params: platformWorkspaceIdParamsSchema,
         body: suspendPlatformWorkspaceBodySchema,
@@ -44,14 +55,18 @@ platformWorkspacesRouter.patch(
 
 platformWorkspacesRouter.patch(
     '/:workspaceId/reactivate',
-    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.WORKSPACES_REACTIVATE,
+    ),
     validateRequest({ params: platformWorkspaceIdParamsSchema }),
     reactivateWorkspace,
 );
 
 platformWorkspacesRouter.patch(
     '/:workspaceId/close',
-    authorizePlatformRole(PLATFORM_ROLE.SUPER_ADMIN),
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.WORKSPACES_CLOSE,
+    ),
     validateRequest({
         params: platformWorkspaceIdParamsSchema,
         body: closePlatformWorkspaceBodySchema,
