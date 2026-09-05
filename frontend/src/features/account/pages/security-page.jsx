@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { FormField } from '@/components/forms/form-field';
 import { PasswordField } from '@/components/forms/password-field';
 import { Button } from '@/components/ui/button';
+import { AccountClosureSection } from '@/features/account/components/account-closure-section';
 import { changePasswordFormSchema } from '@/features/account/validation/account-schemas';
 import {
   useChangePasswordMutation,
@@ -80,7 +81,7 @@ function SecurityPage() {
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Sécurité</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Gérez votre mot de passe et révoquez les sessions actives de votre compte.
+          Gérez votre mot de passe, vos sessions actives et les actions sensibles liées à votre compte.
         </p>
       </header>
 
@@ -195,6 +196,8 @@ function SecurityPage() {
           </div>
         )}
       </section>
+
+      <AccountClosureSection currentUserEmail={currentUser?.email ?? ''} />
     </div>
   );
 }
