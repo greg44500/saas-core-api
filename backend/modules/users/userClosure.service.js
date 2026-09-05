@@ -90,10 +90,23 @@ const requestCurrentUserClosure = async ({
             })
             .session(session);
 
+        const inconsistentMembership = memberships.find((membership) => (
+            !membership.role
+            || !membership.workspace
+            || membership.role.workspace?.toString()
+                !== membership.workspace._id.toString()
+        ));
+
+        if (inconsistentMembership) {
+            throw new AppError(
+                'Une appartenance workspace du compte est incohérente et doit être corrigée avant la fermeture',
+                409,
+            );
+        }
+
         const ownedOpenWorkspace = memberships.find((membership) => (
-            membership.role?.isSystem
-            && membership.role?.key === SYSTEM_ROLE_KEY.OWNER
-            && membership.workspace
+            membership.role.isSystem
+            && membership.role.key === SYSTEM_ROLE_KEY.OWNER
             && membership.workspace.status !== WORKSPACE_STATUS.CLOSED
         ));
 
@@ -107,10 +120,6 @@ const requestCurrentUserClosure = async ({
         let removedMembershipCount = 0;
 
         for (const membership of memberships) {
-            if (!membership.workspace) {
-                continue;
-            }
-
             membership.status = WORKSPACE_MEMBER_STATUS.REMOVED;
             membership.updatedBy = userId;
             await membership.save({ session });
