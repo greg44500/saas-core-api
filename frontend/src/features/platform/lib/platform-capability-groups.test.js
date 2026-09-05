@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildPlatformCapabilityGroups,
   buildPlatformFeatureGroups,
   buildPlatformMetricGroups,
 } from '@/features/platform/lib/platform-capability-groups';
@@ -95,5 +96,63 @@ describe('platform capability groups', () => {
       label: 'Produits',
       unit: 'count',
     }));
+  });
+
+  it('utilise l’unique feature d’une catégorie comme déclencheur visuel des quotas', () => {
+    const [group] = buildPlatformCapabilityGroups({
+      features: ['file_upload'],
+      featureDefinitions: [
+        {
+          key: 'file_upload',
+          label: 'Téléversement de fichiers',
+          category: 'files',
+          categoryLabel: 'Fichiers',
+        },
+      ],
+      metrics: [
+        {
+          key: 'storage_bytes',
+          presentation: {
+            label: 'Stockage',
+            category: 'files',
+            categoryLabel: 'Fichiers',
+          },
+        },
+      ],
+    });
+
+    expect(group.disclosureFeatureKey).toBe('file_upload');
+  });
+
+  it('n’infère aucun déclencheur quand plusieurs features rendent la relation ambiguë', () => {
+    const [group] = buildPlatformCapabilityGroups({
+      features: ['feature_a', 'feature_b'],
+      featureDefinitions: [
+        {
+          key: 'feature_a',
+          label: 'Fonction A',
+          category: 'module',
+          categoryLabel: 'Module',
+        },
+        {
+          key: 'feature_b',
+          label: 'Fonction B',
+          category: 'module',
+          categoryLabel: 'Module',
+        },
+      ],
+      metrics: [
+        {
+          key: 'items',
+          presentation: {
+            label: 'Éléments',
+            category: 'module',
+            categoryLabel: 'Module',
+          },
+        },
+      ],
+    });
+
+    expect(group.disclosureFeatureKey).toBeNull();
   });
 });
