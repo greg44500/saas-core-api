@@ -5,6 +5,7 @@ import {
 } from 'vitest';
 
 import {
+    closePlatformWorkspaceBodySchema,
     suspendPlatformWorkspaceBodySchema,
 } from '../../../modules/platform/workspaces/platformWorkspaces.validation.js';
 
@@ -30,6 +31,22 @@ describe('suspendPlatformWorkspaceBodySchema', () => {
 
     it('refuse le motif other sans justification', () => {
         expect(() => suspendPlatformWorkspaceBodySchema.parse({
+            statusReason: 'other',
+        })).toThrow();
+    });
+});
+
+describe('closePlatformWorkspaceBodySchema', () => {
+    it('accepte un motif de fermeture structuré', () => {
+        expect(closePlatformWorkspaceBodySchema.parse({
+            statusReason: 'platform_decision',
+        })).toEqual({
+            statusReason: 'platform_decision',
+        });
+    });
+
+    it('impose un détail lorsque le motif vaut other', () => {
+        expect(() => closePlatformWorkspaceBodySchema.parse({
             statusReason: 'other',
         })).toThrow();
     });
