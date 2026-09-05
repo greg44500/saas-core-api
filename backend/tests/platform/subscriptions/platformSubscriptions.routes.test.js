@@ -9,29 +9,23 @@ import {
 } from 'vitest';
 
 import {
-    PLATFORM_ROLE,
-} from '../../../constants/platformRoles.constants.js';
-
+    PLATFORM_PERMISSION,
+} from '../../../constants/platformPermissions.constants.js';
 import {
     authenticate,
 } from '../../../middlewares/authenticate.js';
-
 import {
-    authorizePlatformRole,
-} from '../../../middlewares/authorizePlatformRole.js';
-
+    authorizePlatformPermission,
+} from '../../../middlewares/authorizePlatformPermission.js';
 import {
     validateRequest,
 } from '../../../middlewares/validateRequest.js';
-
 import {
     platformRouter,
 } from '../../../modules/platform/platform.routes.js';
-
 import {
     paginationQuerySchema,
 } from '../../../utils/validations/pagination.validation.js';
-
 import {
     cancelPlatformSubscriptionBodySchema,
     grantTrialBodySchema,
@@ -39,414 +33,139 @@ import {
     updatePlatformSubscriptionBodySchema,
 } from '../../../modules/platform/subscriptions/platformSubscriptions.validation.js';
 
-
 const {
-    platformRoleMiddleware,
+    permissionMiddleware,
     validationMiddleware,
     handlers,
 } = vi.hoisted(() => ({
-    platformRoleMiddleware: vi.fn(
-        (req, res, next) => next(),
-    ),
-
-    validationMiddleware: vi.fn(
-        (req, res, next) => next(),
-    ),
-
+    permissionMiddleware: vi.fn((req, res, next) => next()),
+    validationMiddleware: vi.fn((req, res, next) => next()),
     handlers: {
-        listSubscriptions: vi.fn(
-            (req, res) =>
-                res.status(200).json({
-                    status: 'success',
-                }),
-        ),
-        grantSubscriptionTrial: vi.fn(
-            (req, res) =>
-                res.status(200).json({
-                    status: 'success',
-                }),
-        ),
-        getSubscriptionById: vi.fn(
-            (req, res) =>
-                res.status(200).json({
-                    status: 'success',
-                }),
-        ),
-        updateSubscription: vi.fn(
-            (req, res) =>
-                res.status(200).json({
-                    status: 'success',
-                }),
-        ),
-        cancelSubscription: vi.fn(
-            (req, res) =>
-                res.status(200).json({
-                    status: 'success',
-                }),
-        ),
-        resumeSubscription: vi.fn(
-            (req, res) =>
-                res.status(200).json({
-                    status: 'success',
-                }),
-        ),
+        listSubscriptions: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
+        grantSubscriptionTrial: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
+        getSubscriptionById: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
+        updateSubscription: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
+        cancelSubscription: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
+        resumeSubscription: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     },
 }));
 
-
-vi.mock(
-    '../../../middlewares/authenticate.js',
-    () => ({
-        authenticate: vi.fn(
-            (req, res, next) => {
-                req.user = {
-                    _id: 'user-id',
-                    id: 'user-id',
-                    platformRole:
-                        PLATFORM_ROLE.SUPER_ADMIN,
-                };
-
-                next();
-            },
-        ),
+vi.mock('../../../middlewares/authenticate.js', () => ({
+    authenticate: vi.fn((req, res, next) => {
+        req.user = { _id: 'user-id', id: 'user-id' };
+        next();
     }),
-);
-
-vi.mock(
-    '../../../middlewares/authorizePlatformRole.js',
-    () => ({
-        authorizePlatformRole: vi.fn(
-            () => platformRoleMiddleware,
-        ),
-    }),
-);
-
-vi.mock(
-    '../../../middlewares/validateRequest.js',
-    () => ({
-        validateRequest: vi.fn(
-            () => validationMiddleware,
-        ),
-    }),
-);
-
+}));
+vi.mock('../../../middlewares/authorizePlatformPermission.js', () => ({
+    authorizePlatformPermission: vi.fn(() => permissionMiddleware),
+}));
+vi.mock('../../../middlewares/validateRequest.js', () => ({
+    validateRequest: vi.fn(() => validationMiddleware),
+}));
 vi.mock(
     '../../../modules/platform/subscriptions/platformSubscriptions.controller.js',
     () => handlers,
 );
 
-
 const app = express();
-
 app.use(express.json());
-
-app.use(
-    '/platform',
-    platformRouter,
-);
-
+app.use('/platform', platformRouter);
 
 beforeEach(() => {
     authenticate.mockClear();
-
-    platformRoleMiddleware.mockClear();
+    permissionMiddleware.mockClear();
     validationMiddleware.mockClear();
-
-    Object.values(handlers).forEach(
-        (handler) => {
-            handler.mockClear();
-        },
-    );
+    Object.values(handlers).forEach((handler) => handler.mockClear());
 });
 
 
 describe('platformSubscriptions.routes', () => {
-    it('protège et valide la liste des souscriptions avant le controller', async () => {
-        const response = await request(app)
-            .get(
-                '/platform/subscriptions?page=1&limit=20',
-            );
+    const subscriptionId = '507f1f77bcf86cd799439011';
 
-        expect(response.status).toBe(200);
-
-        expect(
-            authorizePlatformRole,
-        ).toHaveBeenCalledWith(
-            PLATFORM_ROLE.SUPER_ADMIN,
-        );
-
-        expect(
-            validateRequest,
-        ).toHaveBeenCalledWith({
-            query: paginationQuerySchema,
-        });
-
-        expect(
-            authenticate,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            platformRoleMiddleware,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            validationMiddleware,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            handlers.listSubscriptions,
-        ).toHaveBeenCalledOnce();
-    });
-
-
-    it('protège et valide l’attribution d’un trial avant le controller', async () => {
-        const response = await request(app)
-            .post(
-                '/platform/subscriptions/grant-trial',
-            )
-            .send({
-                workspaceId:
-                    '507f1f77bcf86cd799439011',
-                planId:
-                    '507f191e810c19729de860ea',
+    const cases = [
+        {
+            label: 'liste',
+            method: 'get',
+            path: '/platform/subscriptions?page=1&limit=20',
+            permission: PLATFORM_PERMISSION.SUBSCRIPTIONS_READ,
+            validation: { query: paginationQuerySchema },
+            handler: handlers.listSubscriptions,
+        },
+        {
+            label: 'trial',
+            method: 'post',
+            path: '/platform/subscriptions/grant-trial',
+            permission: PLATFORM_PERMISSION.SUBSCRIPTIONS_GRANT_TRIAL,
+            body: {
+                workspaceId: '507f1f77bcf86cd799439011',
+                planId: '507f191e810c19729de860ea',
                 billingInterval: 'monthly',
-            });
-
-        expect(response.status).toBe(200);
-
-        expect(
-            authorizePlatformRole,
-        ).toHaveBeenCalledWith(
-            PLATFORM_ROLE.SUPER_ADMIN,
-        );
-
-        expect(
-            validateRequest,
-        ).toHaveBeenCalledWith({
-            body: grantTrialBodySchema,
-        });
-
-        expect(
-            authenticate,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            platformRoleMiddleware,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            validationMiddleware,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            handlers.grantSubscriptionTrial,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            handlers.getSubscriptionById,
-        ).not.toHaveBeenCalled();
-    });
-
-
-    it('protège et valide le détail d’une souscription avant le controller', async () => {
-        const subscriptionId =
-            '507f1f77bcf86cd799439011';
-
-        const response = await request(app)
-            .get(
-                `/platform/subscriptions/${subscriptionId}`,
-            );
-
-        expect(response.status).toBe(200);
-
-        expect(
-            authorizePlatformRole,
-        ).toHaveBeenCalledWith(
-            PLATFORM_ROLE.SUPER_ADMIN,
-        );
-
-        expect(
-            validateRequest,
-        ).toHaveBeenCalledWith({
-            params:
-                platformSubscriptionIdParamsSchema,
-        });
-
-        expect(
-            authenticate,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            platformRoleMiddleware,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            validationMiddleware,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            handlers.getSubscriptionById,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            handlers.listSubscriptions,
-        ).not.toHaveBeenCalled();
-    });
-
-
-    it('protège et valide la mise à jour d’une souscription avant le controller', async () => {
-        const subscriptionId =
-            '507f1f77bcf86cd799439011';
-
-        const response = await request(app)
-            .patch(
-                `/platform/subscriptions/${subscriptionId}`,
-            )
-            .send({
-                cancelAtPeriodEnd: true,
-            });
-
-        expect(response.status).toBe(200);
-
-        expect(
-            authorizePlatformRole,
-        ).toHaveBeenCalledWith(
-            PLATFORM_ROLE.SUPER_ADMIN,
-        );
-
-        expect(
-            validateRequest,
-        ).toHaveBeenCalledWith({
-            params:
-                platformSubscriptionIdParamsSchema,
-            body:
-                updatePlatformSubscriptionBodySchema,
-        });
-
-        expect(
-            authenticate,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            platformRoleMiddleware,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            validationMiddleware,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            handlers.updateSubscription,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            handlers.getSubscriptionById,
-        ).not.toHaveBeenCalled();
-
-        expect(
-            handlers.listSubscriptions,
-        ).not.toHaveBeenCalled();
-    });
-
-
-    it('protège et valide l’annulation d’une souscription avant le controller', async () => {
-        const subscriptionId =
-            '507f1f77bcf86cd799439011';
-
-        const response = await request(app)
-            .patch(
-                `/platform/subscriptions/${subscriptionId}/cancel`,
-            )
-            .send({
+            },
+            validation: { body: grantTrialBodySchema },
+            handler: handlers.grantSubscriptionTrial,
+        },
+        {
+            label: 'détail',
+            method: 'get',
+            path: `/platform/subscriptions/${subscriptionId}`,
+            permission: PLATFORM_PERMISSION.SUBSCRIPTIONS_READ,
+            validation: { params: platformSubscriptionIdParamsSchema },
+            handler: handlers.getSubscriptionById,
+        },
+        {
+            label: 'mise à jour',
+            method: 'patch',
+            path: `/platform/subscriptions/${subscriptionId}`,
+            permission: PLATFORM_PERMISSION.SUBSCRIPTIONS_UPDATE,
+            body: { cancelAtPeriodEnd: true },
+            validation: {
+                params: platformSubscriptionIdParamsSchema,
+                body: updatePlatformSubscriptionBodySchema,
+            },
+            handler: handlers.updateSubscription,
+        },
+        {
+            label: 'annulation',
+            method: 'patch',
+            path: `/platform/subscriptions/${subscriptionId}/cancel`,
+            permission: PLATFORM_PERMISSION.SUBSCRIPTIONS_CANCEL,
+            body: {
                 mode: 'period_end',
                 reason: 'Résiliation à échéance',
-            });
+            },
+            validation: {
+                params: platformSubscriptionIdParamsSchema,
+                body: cancelPlatformSubscriptionBodySchema,
+            },
+            handler: handlers.cancelSubscription,
+        },
+        {
+            label: 'reprise',
+            method: 'patch',
+            path: `/platform/subscriptions/${subscriptionId}/resume`,
+            permission: PLATFORM_PERMISSION.SUBSCRIPTIONS_RESUME,
+            validation: { params: platformSubscriptionIdParamsSchema },
+            handler: handlers.resumeSubscription,
+        },
+    ];
 
-        expect(response.status).toBe(200);
+    it.each(cases)(
+        'protège et valide $label avec la permission exacte',
+        async ({ method, path, body, permission, validation, handler }) => {
+            let pendingRequest = request(app)[method](path);
+            if (body) pendingRequest = pendingRequest.send(body);
 
-        expect(
-            authorizePlatformRole,
-        ).toHaveBeenCalledWith(
-            PLATFORM_ROLE.SUPER_ADMIN,
-        );
+            const response = await pendingRequest;
 
-        expect(
-            validateRequest,
-        ).toHaveBeenCalledWith({
-            params:
-                platformSubscriptionIdParamsSchema,
-            body:
-                cancelPlatformSubscriptionBodySchema,
-        });
-
-        expect(
-            authenticate,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            platformRoleMiddleware,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            validationMiddleware,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            handlers.cancelSubscription,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            handlers.updateSubscription,
-        ).not.toHaveBeenCalled();
-    });
-
-
-    it('protège et valide la reprise d’une souscription avant le controller', async () => {
-        const subscriptionId =
-            '507f1f77bcf86cd799439011';
-
-        const response = await request(app)
-            .patch(
-                `/platform/subscriptions/${subscriptionId}/resume`,
-            );
-
-        expect(response.status).toBe(200);
-
-        expect(
-            authorizePlatformRole,
-        ).toHaveBeenCalledWith(
-            PLATFORM_ROLE.SUPER_ADMIN,
-        );
-
-        expect(
-            validateRequest,
-        ).toHaveBeenCalledWith({
-            params:
-                platformSubscriptionIdParamsSchema,
-        });
-
-        expect(
-            authenticate,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            platformRoleMiddleware,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            validationMiddleware,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            handlers.resumeSubscription,
-        ).toHaveBeenCalledOnce();
-
-        expect(
-            handlers.cancelSubscription,
-        ).not.toHaveBeenCalled();
-
-        expect(
-            handlers.updateSubscription,
-        ).not.toHaveBeenCalled();
-    });
+            expect(response.status).toBe(200);
+            expect(authorizePlatformPermission.mock.calls).toContainEqual([
+                permission,
+            ]);
+            expect(validateRequest.mock.calls).toContainEqual([validation]);
+            expect(authenticate).toHaveBeenCalledOnce();
+            expect(permissionMiddleware).toHaveBeenCalledOnce();
+            expect(validationMiddleware).toHaveBeenCalledOnce();
+            expect(handler).toHaveBeenCalledOnce();
+        },
+    );
 });
