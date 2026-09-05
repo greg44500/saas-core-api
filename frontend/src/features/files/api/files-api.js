@@ -15,9 +15,14 @@ function createFileUploadFormData({ file, category }) {
 const workspaceFilesApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     listWorkspaceFiles: build.query({
-      query: ({ workspaceId, page = 1, limit = 20 }) => ({
+      query: ({ workspaceId, page = 1, limit = 20, category, search }) => ({
         url: `/workspaces/${workspaceId}/files`,
-        params: { page, limit },
+        params: {
+          page,
+          limit,
+          ...(category ? { category } : {}),
+          ...(search ? { search } : {}),
+        },
       }),
       transformResponse: (response) => ({
         files: response?.data?.files ?? [],
