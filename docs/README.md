@@ -91,19 +91,35 @@ docs/security/SECURITY.md
   entitlements, quotas, transactions, Files, AuditLog, HTTP, secrets et frontend
 ```
 
-Décisions de sécurité consolidées contre le code courant :
+Décisions structurantes :
 
 - le JWT n'est jamais l'unique autorité : le User est rechargé depuis MongoDB ;
-- les mots de passe utilisent Argon2id et les credentials restent hors du modèle User ;
 - le refresh token brut n'est jamais persisté et reste dans un cookie HttpOnly ;
-- les refresh tokens sont à usage unique avec rotation, famille de sessions et détection de réutilisation ;
 - un User authentifié n'acquiert aucun accès automatique à un Workspace ;
 - permission, entitlement et quota restent trois contrôles distincts ;
-- les réservations de quota bornées utilisent une opération MongoDB atomique ;
-- le pipeline File valide type réel, cohérence MIME/extension, checksum et antivirus avant persistance ;
-- les écritures File relisent l'entitlement et réservent les quotas dans une transaction ;
-- l'AuditLog ne remplace pas l'observabilité technique ;
+- les quotas sensibles utilisent des réservations atomiques ;
+- le pipeline File valide le contenu avant persistance et relit l'entitlement dans la transaction ;
 - le frontend améliore l'UX mais n'est jamais une frontière d'autorisation suffisante.
+
+### Guidelines frontend
+
+```text
+docs/frontend/FRONTEND-GUIDELINES.md
+→ règles pratiques UI/UX, composants réutilisables, state, RTK Query,
+  navigation, formulaires, feedback, accessibilité, responsive, performance et tests
+```
+
+Règles frontend désormais canoniques :
+
+- même intention UI → même famille de composants ;
+- `DataTable` est obligatoire pour les tableaux compatibles avec sa primitive ;
+- drawers, confirmations, formulaires et composants transverses existants sont réutilisés lorsque leur contrat convient ;
+- server state → RTK Query ; navigation partageable → URL ; form state → React Hook Form ; état local → React ; Redux global uniquement si justifié ;
+- les entrées de navigation et actions sont filtrées par permissions et capabilities lorsque celles-ci sont applicables ;
+- une feature absente ne doit pas polluer inutilement l'interface avec des blocs permanents indisponibles ;
+- l'absence d'une capability d'écriture ne signifie cependant pas automatiquement que toute surface de lecture doit disparaître ;
+- le frontend ne reconstruit pas les règles commerciales ni les données métier non fournies par le backend ;
+- Playwright reste la cible E2E mais n'est pas présenté comme installé tant qu'il n'apparaît pas dans les dépendances du projet.
 
 ---
 
@@ -179,26 +195,48 @@ Leur contenu normatif utile est désormais consolidé dans `docs/contracts/` :
 
 Ils restent physiquement présents jusqu'à autorisation explicite de suppression.
 
-### C. Anciennes sources d'architecture et de sécurité absorbées ou encore utilisées
+### C. Anciennes sources frontend absorbées par DOC-3, DOC-4 et DOC-5
 
-DOC-3 et DOC-4 ont consolidé les règles structurelles et de sécurité encore valides issues notamment de :
+Le contenu encore valide des anciennes policies frontend a maintenant été réparti entre :
+
+```text
+docs/architecture/FRONTEND.md
+→ structure et responsabilités
+
+docs/security/SECURITY.md
+→ règles de sécurité transversales
+
+docs/frontend/FRONTEND-GUIDELINES.md
+→ règles pratiques de développement UI/UX
+```
+
+Sont notamment absorbés comme sources historiques :
 
 - `frontend-architecture-security-principles.md` ;
 - `frontend-decisions-consolidation.md` ;
-- anciens contrats Account/Security et RBAC ;
-- code réel `backend/` et `frontend/src/` ;
-- configuration HTTP, AuthSession, pipeline File, UsageMetric et contrats DOC-2.
-
-Les documents frontend historiques restent encore nécessaires comme sources pour DOC-5 Guidelines frontend avant de devenir candidats à suppression.
-
-Documents principalement UI/UX encore à absorber :
-
+- `frontend-design-system-components-policy.md` ;
+- `frontend-state-management-policy.md` ;
+- `frontend-routing-navigation-policy.md` ;
+- `frontend-auth-session-policy.md` ;
+- `frontend-auth-forms-ux-policy.md` ;
+- `frontend-feedback-errors-policy.md` ;
+- `frontend-onboarding-workspace-policy.md` ;
+- `frontend-performance-loading-policy.md` ;
+- `frontend-ux-experience-policy.md` ;
+- `frontend-dashboard-activity-panel-policy.md` ;
+- `frontend-subscription-navigation-ux-policy.md` ;
+- `frontend-final-foundations-policy.md` ;
 - `frontend-data-table-contract.md` ;
 - `frontend-toast-feedback-contract.md` ;
+- les checklists associées.
+
+Les documents suivants restent à vérifier pendant les lots ultérieurs car ils touchent également la frontière dashboards/commercial/Platform ou la maintenance :
+
 - `platform-overview-dashboard-contract.md` ;
 - `dashboard-workspace-platform-boundary.md` ;
-- `core-plan-navigation-ui-conventions.md` ;
-- policies et checklists de `frontend/docs/`.
+- `core-plan-navigation-ui-conventions.md`.
+
+Aucun de ces fichiers n'est supprimé avant le lot DOC-10 et l'autorisation explicite.
 
 ### D. Dette
 
@@ -246,8 +284,8 @@ Une documentation strictement locale à un module pourra exceptionnellement rest
 | DOC-2 | Contrats Core / commercial / capabilities | terminé |
 | DOC-3 | Architecture globale, backend et frontend | terminé |
 | DOC-4 | Sécurité | terminé |
-| DOC-5 | Guidelines frontend et composants réutilisables | prochain lot |
-| DOC-6 | SaaS dérivés et maintenance du Core | à faire |
+| DOC-5 | Guidelines frontend et composants réutilisables | terminé |
+| DOC-6 | SaaS dérivés et maintenance du Core | prochain lot |
 | DOC-7 | Conformité / RGPD | à faire |
 | DOC-8 | Opérations | à faire |
 | DOC-9 | Consolidation finale de la dette | à faire |
@@ -273,6 +311,6 @@ Pour chaque lot de nettoyage :
 
 ## 9. Prochaine étape
 
-Le prochain lot est **DOC-5 — Guidelines frontend et composants réutilisables**.
+Le prochain lot est **DOC-6 — SaaS dérivés et maintenance du Core**.
 
-Il consolidera les règles de design system, composition, DataTable, drawers, formulaires, feedbacks, navigation, state management, accessibilité, responsive, performance et tests frontend à partir du code courant et des anciennes policies encore valides.
+Il formalisera la création d'une application métier à partir du Core, les frontières à respecter, le versionnement du socle, l'identification de la version utilisée par chaque produit, la stratégie de mise à niveau contrôlée, les migrations, les tests de non-régression et la place éventuelle de GitHub Template dans une stratégie plus large de maintenance.
