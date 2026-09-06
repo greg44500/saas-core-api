@@ -3,13 +3,12 @@ import { useSelector } from 'react-redux';
 import { Navigate, Outlet, useLocation } from 'react-router';
 
 import { PageLoader } from '@/components/shared/page-loader';
-import { useGetCurrentUserQuery } from '@/features/auth/api/auth-api';
 import {
-  PLATFORM_HOME,
+  WORKSPACE_HOME,
   getAuthenticatedHome,
-  isPlatformSuperAdmin,
   isWorkspaceClientPath,
 } from '@/features/auth/lib/authenticated-destination';
+import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
 
 function AuthGuard() {
   const authStatus = useSelector((state) => state.auth.authStatus);
@@ -21,11 +20,11 @@ function AuthGuard() {
     && isWorkspaceClientPath(location.pathname)
   );
   const {
-    data: currentUser,
-    error: currentUserError,
-    isLoading: isCurrentUserLoading,
-    isFetching: isCurrentUserFetching,
-  } = useGetCurrentUserQuery(undefined, {
+    data: platformAccess,
+    error: platformAccessError,
+    isLoading: isPlatformAccessLoading,
+    isFetching: isPlatformAccessFetching,
+  } = useGetCurrentPlatformContextQuery(undefined, {
     skip: !shouldResolveWorkspaceColdStart,
   });
 
@@ -38,18 +37,25 @@ function AuthGuard() {
   }
 
   if (shouldResolveWorkspaceColdStart) {
-    if (isCurrentUserLoading || (isCurrentUserFetching && !currentUser)) {
+    if (
+      isPlatformAccessLoading
+      || (isPlatformAccessFetching && platformAccess === undefined)
+    ) {
       return <PageLoader />;
     }
 
     // Le contrôle est volontairement effectué une seule fois pendant la vie de
-    // l'application. Un super-admin démarre dans Platform après restauration de
-    // session, mais peut ensuite ouvrir explicitement un Workspace sans être
-    // systématiquement renvoyé vers la console.
+    // l'application. Un membre Platform actif démarre dans sa première section
+    // autorisée après restauration de session, mais peut ensuite ouvrir
+    // explicitement un Workspace sans redirection systématique.
     initialContextResolvedRef.current = true;
 
-    if (!currentUserError && isPlatformSuperAdmin(currentUser)) {
-      return <Navigate to={PLATFORM_HOME} replace />;
+    if (!platformAccessError) {
+      const authenticatedHome = getAuthenticatedHome(platformAccess);
+
+      if (authenticatedHome !== WORKSPACE_HOME) {
+        return <Navigate to={authenticatedHome} replace />;
+      }
     }
   } else if (!initialContextResolvedRef.current) {
     initialContextResolvedRef.current = true;
@@ -61,11 +67,11 @@ function AuthGuard() {
 function GuestGuard() {
   const authStatus = useSelector((state) => state.auth.authStatus);
   const {
-    data: currentUser,
-    error: currentUserError,
-    isLoading: isCurrentUserLoading,
-    isFetching: isCurrentUserFetching,
-  } = useGetCurrentUserQuery(undefined, {
+    data: platformAccess,
+    error: platformAccessError,
+    isLoading: isPlatformAccessLoading,
+    isFetching: isPlatformAccessFetching,
+  } = useGetCurrentPlatformContextQuery(undefined, {
     skip: authStatus !== 'authenticated',
   });
 
@@ -74,13 +80,18 @@ function GuestGuard() {
   }
 
   if (authStatus === 'authenticated') {
-    if (isCurrentUserLoading || (isCurrentUserFetching && !currentUser)) {
+    if (
+      isPlatformAccessLoading
+      || (isPlatformAccessFetching && platformAccess === undefined)
+    ) {
       return <PageLoader />;
     }
 
     return (
       <Navigate
-        to={currentUserError ? '/workspaces' : getAuthenticatedHome(currentUser)}
+        to={platformAccessError
+          ? WORKSPACE_HOME
+          : getAuthenticatedHome(platformAccess)}
         replace
       />
     );
