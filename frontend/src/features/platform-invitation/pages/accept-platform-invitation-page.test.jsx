@@ -34,14 +34,6 @@ vi.mock('@/features/platform/api/platform-current-context-api', () => ({
   useLazyGetCurrentPlatformContextQuery: () => [mocks.getPlatformContext],
 }));
 
-vi.mock('@/features/platform/components/platform-sidebar', () => ({
-  getVisiblePlatformNavigationSections: (permissions = []) => (
-    permissions.includes('platform:users:read')
-      ? [{ items: [{ to: '/platform/users' }] }]
-      : []
-  ),
-}));
-
 import { AcceptPlatformInvitationPage } from '@/features/platform-invitation/pages/accept-platform-invitation-page';
 
 const TOKEN = 'a'.repeat(64);
