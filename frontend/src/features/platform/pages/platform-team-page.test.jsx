@@ -14,6 +14,10 @@ vi.mock('@/features/platform/components/platform-team-members-section', () => ({
   PlatformTeamMembersSection: () => <div>Tableau des membres</div>,
 }));
 
+vi.mock('@/features/platform/components/platform-team-invitations-section', () => ({
+  PlatformTeamInvitationsSection: () => <div>Tableau des invitations</div>,
+}));
+
 import { PlatformTeamPage } from '@/features/platform/pages/platform-team-page';
 
 function renderPage(path = '/platform/team/members') {
@@ -62,6 +66,7 @@ describe('PlatformTeamPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Invitations', level: 2 }),
     ).toBeInTheDocument();
+    expect(screen.getByText('Tableau des invitations')).toBeInTheDocument();
   });
 
   it('branche la vue Membres sur son composant métier sans dupliquer le tableau dans la page', () => {
