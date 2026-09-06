@@ -19,8 +19,10 @@ import {
   useSuspendPlatformTeamMemberMutation,
   useUpdatePlatformTeamMemberRoleMutation,
 } from '@/features/platform/api/platform-team-api';
-import { PlatformFounderBadge } from '@/features/platform/components/platform-founder-badge';
-import { PlatformTeamMemberStatusBadge } from '@/features/platform/components/platform-team-member-status-badge';
+import {
+  createPlatformTeamMemberReadColumns,
+  formatPlatformTeamMemberName,
+} from '@/features/platform/components/platform-team-member-read-columns';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 import {
   PLATFORM_TEAM_MEMBER_STATUS,
@@ -38,16 +40,6 @@ const updateMemberRoleSchema = z.strictObject({
     .regex(/^[a-f\d]{24}$/i, 'Choisissez un rôle valide.'),
 });
 
-function formatPlatformTeamMemberName(member) {
-  const user = member?.user;
-  const fullName = [user?.firstName, user?.lastName]
-    .filter(Boolean)
-    .join(' ')
-    .trim();
-
-  return fullName || user?.email || 'Membre';
-}
-
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
 }
@@ -62,15 +54,15 @@ function getMemberActionDescription(action) {
   }
 
   if (action.type === 'suspend') {
-    return `Suspendre l’accès Platform de ${name} ? Cette personne ne pourra plus utiliser ses permissions internes tant que son accès ne sera pas réactivé.`;
+    return `Suspendre l’accès Plateforme de ${name} ? Cette personne ne pourra plus utiliser ses permissions internes tant que son accès ne sera pas réactivé.`;
   }
 
   if (action.type === 'reactivate') {
-    return `Réactiver l’accès Platform de ${name} avec son rôle actuel ?`;
+    return `Réactiver l’accès Plateforme de ${name} avec son rôle actuel ?`;
   }
 
   if (action.type === 'revoke') {
-    return `Retirer ${name} de l’équipe de la Plateforme ? Son appartenance Platform sera révoquée.`;
+    return `Retirer ${name} de l’équipe de la Plateforme ? Son appartenance à la Plateforme sera révoquée.`;
   }
 
   return '';
@@ -290,44 +282,10 @@ function PlatformTeamMembersSection() {
       || capabilities.canRevoke;
   });
 
-  const columns = [
-    {
-      id: 'member',
-      header: 'Membre',
-      cell: (member) => (
-        <div>
-          <p className="font-medium text-foreground">
-            {formatPlatformTeamMemberName(member)}
-            {member.user?.id === currentUser?.id ? ' (vous)' : ''}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {member.user?.email ?? '—'}
-          </p>
-        </div>
-      ),
-    },
-    {
-      id: 'distinction',
-      header: 'Qualité',
-      cell: (member) => (
-        member.isFounder
-          ? <PlatformFounderBadge />
-          : <span className="text-muted-foreground">—</span>
-      ),
-    },
-    {
-      id: 'role',
-      header: 'Rôle',
-      cell: (member) => member.role?.name ?? '—',
-    },
-    {
-      id: 'status',
-      header: 'Statut',
-      cell: (member) => (
-        <PlatformTeamMemberStatusBadge status={member.status} />
-      ),
-    },
-  ];
+  const columns = createPlatformTeamMemberReadColumns({
+    currentUserId: currentUser?.id,
+    markCurrentUser: true,
+  });
 
   if (hasVisibleMemberActions) {
     columns.push({
@@ -445,7 +403,6 @@ function PlatformTeamMembersSection() {
 export {
   PLATFORM_TEAM_MEMBERS_PAGE_SIZE,
   PlatformTeamMembersSection,
-  formatPlatformTeamMemberName,
   getApiMessage,
   getMemberActionDescription,
   getMemberActionTitle,
