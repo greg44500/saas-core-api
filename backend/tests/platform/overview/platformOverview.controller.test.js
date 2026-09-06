@@ -6,6 +6,10 @@ import {
     vi,
 } from 'vitest';
 
+import {
+    PLATFORM_PERMISSION,
+} from '../../../constants/platformPermissions.constants.js';
+
 const getPlatformOverviewDashboardMock = vi.hoisted(() => vi.fn());
 
 vi.mock(
@@ -24,9 +28,13 @@ describe('platformOverview.controller', () => {
         getPlatformOverviewDashboardMock.mockReset();
     });
 
-    it('transmet uniquement la query validée au service de cockpit', async () => {
+    it('transmet la query validée et les permissions runtime au service de cockpit', async () => {
         const from = new Date('2026-08-01T00:00:00.000Z');
         const to = new Date('2026-09-01T00:00:00.000Z');
+        const permissions = [
+            PLATFORM_PERMISSION.OVERVIEW_READ,
+            PLATFORM_PERMISSION.USERS_READ,
+        ];
         const overview = {
             generatedAt: new Date('2026-09-01T00:00:00.000Z'),
             kpis: {},
@@ -40,6 +48,9 @@ describe('platformOverview.controller', () => {
             validated: {
                 query: { from, to },
             },
+            platformAuthorization: {
+                permissions,
+            },
         };
         const json = vi.fn();
         const status = vi.fn(() => ({ json }));
@@ -49,11 +60,32 @@ describe('platformOverview.controller', () => {
 
         await getOverview(req, res);
 
-        expect(getPlatformOverviewDashboardMock).toHaveBeenCalledWith({ from, to });
+        expect(getPlatformOverviewDashboardMock).toHaveBeenCalledWith({
+            from,
+            to,
+            permissions,
+        });
         expect(status).toHaveBeenCalledWith(200);
         expect(json).toHaveBeenCalledWith({
             status: 'success',
             data: { overview },
+        });
+    });
+
+    it('reste fail-closed si le contexte Platform ne contient aucune permission', async () => {
+        const req = {
+            validated: { query: {} },
+        };
+        const json = vi.fn();
+        const status = vi.fn(() => ({ json }));
+        const res = { status };
+
+        getPlatformOverviewDashboardMock.mockResolvedValue({});
+
+        await getOverview(req, res);
+
+        expect(getPlatformOverviewDashboardMock).toHaveBeenCalledWith({
+            permissions: [],
         });
     });
 });
