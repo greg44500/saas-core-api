@@ -9,11 +9,12 @@ import { Input } from '@/components/ui/input';
 import { useLoginMutation } from '@/features/auth/api/auth-api';
 import { resolveAuthenticatedDestination } from '@/features/auth/lib/authenticated-destination';
 import { loginSchema } from '@/features/auth/validation/auth-schemas';
+import { useLazyGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
 
-function getRequestedDestination(location, user) {
+function getRequestedDestination(location, platformAccess) {
   return resolveAuthenticatedDestination({
     destination: location.state?.from,
-    user,
+    platformAccess,
   });
 }
 
@@ -46,6 +47,7 @@ function LoginPage() {
   const location = useLocation();
   const statusMessage = getLoginStatusMessage(location);
   const [login, { isLoading }] = useLoginMutation();
+  const [getPlatformContext] = useLazyGetCurrentPlatformContextQuery();
   const {
     register,
     handleSubmit,
@@ -60,14 +62,26 @@ function LoginPage() {
 
   const onSubmit = async (values) => {
     try {
-      const response = await login(values).unwrap();
-      navigate(getRequestedDestination(location, response?.data?.user), { replace: true });
+      await login(values).unwrap();
     } catch {
       setError('root.credentials', {
         type: 'server',
         message: 'Email ou mot de passe incorrect.',
       });
+      return;
     }
+
+    let platformAccess = null;
+
+    try {
+      platformAccess = await getPlatformContext().unwrap();
+    } catch {
+      // Une indisponibilité du contexte Platform ne doit jamais transformer une
+      // authentification réussie en faux échec de credentials. Le fallback
+      // Workspace reste alors fail-closed.
+    }
+
+    navigate(getRequestedDestination(location, platformAccess), { replace: true });
   };
 
   return (
