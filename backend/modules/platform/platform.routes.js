@@ -5,6 +5,9 @@ import {
     platformTeamInvitationRouter,
 } from '../platformInvitation/platformInvitation.routes.js';
 import {
+    platformRoleRouter,
+} from '../platformRole/platformRole.routes.js';
+import {
     platformTeamRouter,
 } from '../platformTeam/platformTeam.routes.js';
 import {
@@ -48,6 +51,7 @@ platformRouter.use(
     platformEntitlementOverridesRouter,
 );
 platformRouter.use('/audit-logs', platformAuditLogsRouter);
+platformRouter.use('/team/roles', platformRoleRouter);
 platformRouter.use('/team', platformTeamRouter);
 platformRouter.use('/team', platformTeamInvitationRouter);
 
