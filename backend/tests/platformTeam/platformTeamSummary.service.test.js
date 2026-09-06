@@ -14,6 +14,7 @@ import { PlatformRole } from '../../modules/platformRole/platformRole.model.js';
 import { PlatformTeamMember } from '../../modules/platformTeam/platformTeamMember.model.js';
 import {
     getPlatformTeamSummary,
+    percentageOf,
 } from '../../modules/platformTeam/platformTeamSummary.service.js';
 
 vi.mock('mongoose', () => ({
@@ -117,6 +118,7 @@ describe('getPlatformTeamSummary', () => {
                     total: 3,
                     active: 2,
                     suspended: 1,
+                    percentage: 75,
                 },
                 {
                     role: {
@@ -128,6 +130,7 @@ describe('getPlatformTeamSummary', () => {
                     total: 1,
                     active: 1,
                     suspended: 0,
+                    percentage: 25,
                 },
             ],
             generatedAt: now,
@@ -180,7 +183,14 @@ describe('getPlatformTeamSummary', () => {
                 total: 1,
                 active: 1,
                 suspended: 0,
+                percentage: 100,
             },
         ]);
+    });
+
+    it('calcule un pourcentage stable pour les répartitions du dashboard', () => {
+        expect(percentageOf(3, 4)).toBe(75);
+        expect(percentageOf(1, 3)).toBe(33);
+        expect(percentageOf(0, 0)).toBe(0);
     });
 });
