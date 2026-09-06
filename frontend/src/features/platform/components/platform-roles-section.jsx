@@ -128,6 +128,7 @@ function PlatformRolesSection() {
               Icon={Eye}
               label={`Voir les permissions de ${role.name}`}
               onClick={() => setDetailsRoleId(role.id)}
+              tooltipLabel="Voir"
               variant="ghost"
             />
             {roleCanBeUpdated && (
