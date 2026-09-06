@@ -165,12 +165,14 @@ function PlatformTeamInvitationsSection() {
         toast({
           title: 'Invitation renvoyée',
           description: `Un nouveau lien a été envoyé à ${invitation.email}.`,
+          variant: 'success',
         });
       } else if (type === 'revoke') {
         await revokeInvitation(invitation.id).unwrap();
         toast({
           title: 'Invitation révoquée',
           description: `${formatInvitationRecipient(invitation)} ne peut plus utiliser cette invitation.`,
+          variant: 'success',
         });
       }
 
