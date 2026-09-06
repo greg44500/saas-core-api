@@ -32,6 +32,7 @@ const {
     permissionMiddleware: vi.fn((req, res, next) => next()),
     validationMiddleware: vi.fn((req, res, next) => next()),
     handlers: {
+        summary: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         list: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         updateRole: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         suspend: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
@@ -60,6 +61,16 @@ beforeEach(() => {
 
 
 describe('platformTeamRouter', () => {
+    it('protège le snapshot équipe avec team:read sans payload client', async () => {
+        const response = await request(app).get('/team/summary');
+
+        expect(response.status).toBe(200);
+        expect(authorizePlatformPermission.mock.calls).toContainEqual([
+            PLATFORM_PERMISSION.TEAM_READ,
+        ]);
+        expect(handlers.summary).toHaveBeenCalledOnce();
+    });
+
     it('configure la lecture avec team:read et pagination validée', async () => {
         const response = await request(app)
             .get('/team/members?page=1&limit=20');
