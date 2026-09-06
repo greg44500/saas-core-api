@@ -17,14 +17,18 @@ import {
 import { AppError } from '../../utils/appError.js';
 import { createAuditLog } from '../auditLog/auditLog.service.js';
 import {
+    getPlatformRoleEffectivePermissions,
     resolvePlatformAuthorization,
 } from '../platformTeam/platformAuthorization.service.js';
 import { PlatformTeamMember } from '../platformTeam/platformTeamMember.model.js';
 import { User } from '../users/user.model.js';
 import { PlatformRole } from './platformRole.model.js';
 import {
+    assertCanGovernCustomPlatformRoles,
+    assertCustomPlatformRoleDescription,
     assertCustomPlatformRoleIsMutable,
     assertCustomPlatformRolePermissions,
+    haveSamePermissionSet,
 } from './platformRole.policy.js';
 
 
@@ -83,6 +87,46 @@ const serializePlatformRole = (role) => ({
     createdAt: role.createdAt,
     updatedAt: role.updatedAt,
 });
+
+/**
+ * Un rôle personnalisé ne doit pas être une copie sémantique d'un rôle actif.
+ * Le contrôle compare les permissions comme des ensembles afin que leur ordre
+ * de présentation ne permette jamais de contourner la règle métier.
+ */
+const assertNoActivePlatformRolePermissionClone = async ({
+    permissions,
+    excludeRoleId = null,
+    session = null,
+}) => {
+    const activeRolesQuery = PlatformRole.find({
+        status: PLATFORM_ROLE_STATUS.ACTIVE,
+    });
+    const activeRoles = await applySession(activeRolesQuery, session);
+    const excludedId = excludeRoleId?.toString() ?? null;
+
+    const duplicateRole = activeRoles.find((role) => {
+        if (
+            excludedId
+            && role._id?.toString() === excludedId
+        ) {
+            return false;
+        }
+
+        const existingPermissions = getPlatformRoleEffectivePermissions(role);
+
+        return haveSamePermissionSet({
+            leftPermissions: permissions,
+            rightPermissions: existingPermissions,
+        });
+    });
+
+    if (duplicateRole) {
+        throw new AppError(
+            'Un rôle actif possède déjà exactement ce jeu de permissions.',
+            409,
+        );
+    }
+};
 
 const listPlatformRoles = async ({
     page = 1,
@@ -166,18 +210,28 @@ const createCustomPlatformRole = async ({
             authorization,
             permission: PLATFORM_PERMISSION.ROLES_CREATE,
         });
+        assertCanGovernCustomPlatformRoles({ authorization });
 
+        const description = assertCustomPlatformRoleDescription(
+            roleData.description,
+        );
         const permissions = assertCustomPlatformRolePermissions({
             authorization,
             permissions: roleData.permissions ?? [],
         });
+
+        await assertNoActivePlatformRolePermissionClone({
+            permissions,
+            session,
+        });
+
         const key = generateCustomPlatformRoleKey();
 
         const [role] = await PlatformRole.create([
             {
                 key,
                 name: roleData.name,
-                description: roleData.description ?? null,
+                description,
                 permissions: [...permissions],
                 isSystem: false,
                 status: PLATFORM_ROLE_STATUS.ACTIVE,
@@ -229,6 +283,7 @@ const updateCustomPlatformRole = async ({
             authorization,
             permission: PLATFORM_PERMISSION.ROLES_UPDATE,
         });
+        assertCanGovernCustomPlatformRoles({ authorization });
 
         const roleQuery = PlatformRole.findById(roleId);
         const role = await applySession(roleQuery, session);
@@ -237,17 +292,29 @@ const updateCustomPlatformRole = async ({
             throw new AppError('Rôle de Plateforme introuvable.', 404);
         }
 
-        assertCustomPlatformRoleIsMutable({
+        const currentPermissions = assertCustomPlatformRoleIsMutable({
             authorization,
             role,
         });
 
-        if (Object.hasOwn(roleData, 'permissions')) {
-            const permissions = assertCustomPlatformRolePermissions({
+        const nextPermissions = Object.hasOwn(roleData, 'permissions')
+            ? assertCustomPlatformRolePermissions({
                 authorization,
                 permissions: roleData.permissions,
-            });
-            role.permissions = [...permissions];
+            })
+            : currentPermissions;
+        const nextDescription = Object.hasOwn(roleData, 'description')
+            ? assertCustomPlatformRoleDescription(roleData.description)
+            : assertCustomPlatformRoleDescription(role.description);
+
+        await assertNoActivePlatformRolePermissionClone({
+            permissions: nextPermissions,
+            excludeRoleId: role._id,
+            session,
+        });
+
+        if (Object.hasOwn(roleData, 'permissions')) {
+            role.permissions = [...nextPermissions];
         }
 
         if (Object.hasOwn(roleData, 'name')) {
@@ -255,7 +322,7 @@ const updateCustomPlatformRole = async ({
         }
 
         if (Object.hasOwn(roleData, 'description')) {
-            role.description = roleData.description ?? null;
+            role.description = nextDescription;
         }
 
         role.updatedBy = actorId;
@@ -304,6 +371,7 @@ const archiveCustomPlatformRole = async ({
             authorization,
             permission: PLATFORM_PERMISSION.ROLES_ARCHIVE,
         });
+        assertCanGovernCustomPlatformRoles({ authorization });
 
         const roleQuery = PlatformRole.findById(roleId);
         const role = await applySession(roleQuery, session);
@@ -365,6 +433,7 @@ const archiveCustomPlatformRole = async ({
 
 export {
     archiveCustomPlatformRole,
+    assertNoActivePlatformRolePermissionClone,
     createCustomPlatformRole,
     generateCustomPlatformRoleKey,
     getPlatformRoleById,
