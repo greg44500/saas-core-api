@@ -14,6 +14,7 @@ import {
     list,
     reactivate,
     revoke,
+    summary,
     suspend,
     updateRole,
 } from './platformTeam.controller.js';
@@ -24,6 +25,14 @@ import {
 
 
 const platformTeamRouter = Router();
+
+platformTeamRouter.get(
+    '/summary',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.TEAM_READ,
+    ),
+    summary,
+);
 
 platformTeamRouter.get(
     '/members',
