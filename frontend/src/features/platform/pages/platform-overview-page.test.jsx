@@ -32,6 +32,16 @@ import { PlatformOverviewPage } from '@/features/platform/pages/platform-overvie
 
 const OVERVIEW = {
   generatedAt: '2026-09-03T12:00:00.000Z',
+  availableSections: {
+    users: true,
+    workspaces: true,
+    plans: true,
+    subscriptions: true,
+    overrides: true,
+    usage: true,
+    files: true,
+    audit: true,
+  },
   kpis: {
     users: {
       total: 100,
@@ -278,6 +288,90 @@ describe('PlatformOverviewPage', () => {
     expect(within(table).getByText('Échec de connexion · Utilisateur')).toBeInTheDocument();
     expect(within(table).getByText('À vérifier')).toHaveClass('text-warning');
     expect(within(attention).getByText(/1 point prioritaire affiché sur 10 signaux détectés/)).toBeInTheDocument();
+  });
+
+  it('compose une vue commerciale sans exposer les signaux Audit', () => {
+    mocks.useGetPlatformOverviewQuery.mockReturnValue({
+      data: {
+        ...OVERVIEW,
+        availableSections: {
+          ...OVERVIEW.availableSections,
+          audit: false,
+        },
+        attention: {
+          totalSignals: 8,
+          counts: {
+            pastDueSubscriptions: 3,
+            suspendedWorkspaces: 2,
+            trialsExpiringNext7Days: 2,
+            overridesExpiringNext7Days: 1,
+          },
+          items: [],
+        },
+      },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      refetch,
+    });
+
+    renderPage();
+
+    expect(screen.getByText('Dérogations actives')).toBeInTheDocument();
+    expect(screen.queryByText('Audits en échec')).not.toBeInTheDocument();
+    expect(screen.queryByText('Audit en échec')).not.toBeInTheDocument();
+  });
+
+  it('compose une vue support client sans Audit ni Dérogations', () => {
+    mocks.useGetPlatformOverviewQuery.mockReturnValue({
+      data: {
+        ...OVERVIEW,
+        availableSections: {
+          ...OVERVIEW.availableSections,
+          overrides: false,
+          audit: false,
+        },
+        overrides: undefined,
+        attention: {
+          totalSignals: 7,
+          counts: {
+            pastDueSubscriptions: 3,
+            suspendedWorkspaces: 2,
+            trialsExpiringNext7Days: 2,
+          },
+          items: [],
+        },
+      },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      refetch,
+    });
+
+    renderPage();
+
+    expect(screen.getByText('Abonnements actifs')).toBeInTheDocument();
+    expect(screen.queryByText('Dérogations actives')).not.toBeInTheDocument();
+    expect(screen.queryByText('Dérogations programmées')).not.toBeInTheDocument();
+    expect(screen.queryByText('Audits en échec')).not.toBeInTheDocument();
+  });
+
+  it('reste fail-closed si le backend ne fournit pas availableSections', () => {
+    mocks.useGetPlatformOverviewQuery.mockReturnValue({
+      data: {
+        generatedAt: OVERVIEW.generatedAt,
+        kpis: OVERVIEW.kpis,
+      },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      refetch,
+    });
+
+    renderPage();
+
+    expect(screen.queryByRole('region', { name: 'Indicateurs principaux' })).not.toBeInTheDocument();
+    expect(screen.getByText(/aucun indicateur métier supplémentaire/i)).toBeInTheDocument();
   });
 
   it('conserve le shell du dashboard et signale une erreur de chargement', () => {
