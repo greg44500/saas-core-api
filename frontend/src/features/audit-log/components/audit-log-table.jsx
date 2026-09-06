@@ -1,5 +1,8 @@
+import { useMemo } from 'react';
+
 import { DataTable } from '@/components/data-display/data-table';
 import {
+  createAuditMetadataLabelMaps,
   formatAuditAbsoluteDate,
   formatAuditRelativeDate,
   getAuditActionLabel,
@@ -8,7 +11,7 @@ import {
   getAuditStatusLabel,
 } from '@/features/audit-log/lib/audit-log-presentation';
 
-function AuditStatusBadge({ status }) {
+function AuditStatusBadge({ labelMaps, status }) {
   const isFailure = status === 'failed';
 
   return (
@@ -19,74 +22,86 @@ function AuditStatusBadge({ status }) {
           : 'border-border bg-muted/40 text-foreground'
       }`}
     >
-      {getAuditStatusLabel(status)}
+      {getAuditStatusLabel(status, labelMaps)}
     </span>
   );
 }
 
-const BASE_COLUMNS = [
-  {
-    id: 'action',
-    header: 'Action',
-    cellClassName: 'font-medium text-foreground',
-    cell: (auditLog) => getAuditActionLabel(auditLog.action),
-  },
-  {
-    id: 'actor',
-    header: 'Acteur',
-    cell: (auditLog) => (
-      <>
-        <p className="font-medium text-foreground">{getAuditActorLabel(auditLog.actor)}</p>
-        {auditLog.actor?.email && (
-          <p className="mt-1 text-xs text-muted-foreground">{auditLog.actor.email}</p>
-        )}
-      </>
-    ),
-  },
-  {
-    id: 'resource',
-    header: 'Ressource',
-    cellClassName: 'text-muted-foreground',
-    cell: (auditLog) => (
-      auditLog.entity
-        ? getAuditEntityTypeLabel(auditLog.entity.type)
-        : 'Non renseignée'
-    ),
-  },
-  {
-    id: 'status',
-    header: 'Statut',
-    cell: (auditLog) => <AuditStatusBadge status={auditLog.status} />,
-  },
-  {
-    id: 'date',
-    header: 'Date',
-    cellClassName: 'text-muted-foreground',
-    cell: (auditLog) => {
-      const absoluteDate = formatAuditAbsoluteDate(auditLog.createdAt);
-
-      return (
-        <>
-          <time dateTime={auditLog.createdAt} title={absoluteDate}>
-            {formatAuditRelativeDate(auditLog.createdAt)}
-          </time>
-          <p className="mt-1 text-xs">{absoluteDate}</p>
-        </>
-      );
+function buildBaseColumns(labelMaps) {
+  return [
+    {
+      id: 'action',
+      header: 'Action',
+      cellClassName: 'font-medium text-foreground',
+      cell: (auditLog) => getAuditActionLabel(auditLog.action, labelMaps),
     },
-  },
-];
+    {
+      id: 'actor',
+      header: 'Acteur',
+      cell: (auditLog) => (
+        <>
+          <p className="font-medium text-foreground">{getAuditActorLabel(auditLog.actor)}</p>
+          {auditLog.actor?.email && (
+            <p className="mt-1 text-xs text-muted-foreground">{auditLog.actor.email}</p>
+          )}
+        </>
+      ),
+    },
+    {
+      id: 'resource',
+      header: 'Ressource',
+      cellClassName: 'text-muted-foreground',
+      cell: (auditLog) => (
+        auditLog.entity
+          ? getAuditEntityTypeLabel(auditLog.entity.type, labelMaps)
+          : 'Non renseignée'
+      ),
+    },
+    {
+      id: 'status',
+      header: 'Statut',
+      cell: (auditLog) => (
+        <AuditStatusBadge labelMaps={labelMaps} status={auditLog.status} />
+      ),
+    },
+    {
+      id: 'date',
+      header: 'Date',
+      cellClassName: 'text-muted-foreground',
+      cell: (auditLog) => {
+        const absoluteDate = formatAuditAbsoluteDate(auditLog.createdAt);
+
+        return (
+          <>
+            <time dateTime={auditLog.createdAt} title={absoluteDate}>
+              {formatAuditRelativeDate(auditLog.createdAt)}
+            </time>
+            <p className="mt-1 text-xs">{absoluteDate}</p>
+          </>
+        );
+      },
+    },
+  ];
+}
 
 const WORKSPACE_COLUMN = {
   id: 'workspace',
-  header: 'Workspace',
+  header: 'Espace de travail',
   cell: (auditLog) => auditLog.workspace?.name ?? 'Plateforme',
 };
 
-function AuditLogTable({ auditLogs, showWorkspace = false }) {
-  const columns = showWorkspace
-    ? [BASE_COLUMNS[0], WORKSPACE_COLUMN, ...BASE_COLUMNS.slice(1)]
-    : BASE_COLUMNS;
+function AuditLogTable({ auditLogs, metadata, showWorkspace = false }) {
+  const labelMaps = useMemo(
+    () => createAuditMetadataLabelMaps(metadata),
+    [metadata],
+  );
+  const columns = useMemo(() => {
+    const baseColumns = buildBaseColumns(labelMaps);
+
+    return showWorkspace
+      ? [baseColumns[0], WORKSPACE_COLUMN, ...baseColumns.slice(1)]
+      : baseColumns;
+  }, [labelMaps, showWorkspace]);
 
   return (
     <DataTable
@@ -100,4 +115,8 @@ function AuditLogTable({ auditLogs, showWorkspace = false }) {
   );
 }
 
-export { AuditLogTable, AuditStatusBadge };
+export {
+  AuditLogTable,
+  AuditStatusBadge,
+  buildBaseColumns,
+};
