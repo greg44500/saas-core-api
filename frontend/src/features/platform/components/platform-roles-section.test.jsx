@@ -188,11 +188,17 @@ describe('PlatformRolesSection', () => {
     }));
   });
 
-  it('masque toutes les mutations pour un acteur disposant uniquement de roles:read', () => {
+  it('masque les mutations à un Administrateur de la Plateforme même s’il possède encore les permissions techniques correspondantes', () => {
     mocks.useCurrentContext.mockReturnValue({
       data: {
-        role: { key: 'customer_support' },
-        permissions: [PLATFORM_PERMISSION.ROLES_READ],
+        role: { key: 'platform_admin' },
+        permissions: [
+          PLATFORM_PERMISSION.ROLES_READ,
+          PLATFORM_PERMISSION.ROLES_CREATE,
+          PLATFORM_PERMISSION.ROLES_UPDATE,
+          PLATFORM_PERMISSION.ROLES_ARCHIVE,
+          PLATFORM_PERMISSION.USERS_READ,
+        ],
       },
     });
 
