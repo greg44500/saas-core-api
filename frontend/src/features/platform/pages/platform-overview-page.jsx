@@ -22,6 +22,7 @@ import { useGetPlatformOverviewQuery } from '@/features/platform/api/platform-ov
 import { PlatformAttentionTable } from '@/features/platform/components/platform-attention-table';
 import { PlatformEntitlementOverridesDrilldownDrawer } from '@/features/platform/components/platform-entitlement-overrides-drilldown-drawer';
 import { PlatformOverviewPeriodFilter } from '@/features/platform/components/platform-overview-period-filter';
+import { PlatformTeamSnapshotSection } from '@/features/platform/components/platform-team-snapshot-card';
 import {
   ENTITLEMENT_OVERRIDE_LIFECYCLE,
 } from '@/features/platform/lib/platform-entitlement-override-formatters';
@@ -351,6 +352,8 @@ function PlatformOverviewPage() {
           </OverviewPanel>
         </div>
       </DashboardSection>
+
+      <PlatformTeamSnapshotSection />
 
       <DashboardSection
         description="Les informations secondaires restent accessibles sans surcharger la lecture initiale."
