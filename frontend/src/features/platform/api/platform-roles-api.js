@@ -11,7 +11,11 @@ const platformRolesApi = baseApi.injectEndpoints({
     listPlatformRoles: build.query({
       query: ({ page = 1, limit = 100, status = 'active' } = {}) => ({
         url: '/platform/team/roles',
-        params: { page, limit, status },
+        params: {
+          page,
+          limit,
+          ...(status && status !== 'all' ? { status } : {}),
+        },
       }),
       transformResponse: (response) => ({
         roles: response?.data?.roles ?? [],
