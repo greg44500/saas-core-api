@@ -8,7 +8,7 @@ function SectionTabs({ ariaLabel, items }) {
   return (
     <nav
       aria-label={ariaLabel}
-      className="overflow-x-auto border-b border-border"
+      className="overflow-x-auto overflow-y-hidden border-b border-border"
     >
       <div className="flex min-w-max gap-6">
         {items.map(({ label, to }) => (
