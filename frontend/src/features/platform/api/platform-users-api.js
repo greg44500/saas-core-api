@@ -63,19 +63,6 @@ const platformUsersApi = baseApi.injectEndpoints({
       }),
       transformResponse: (response) => response?.data ?? null,
     }),
-    updatePlatformUserRole: build.mutation({
-      query: ({ userId, platformRole }) => ({
-        url: `/platform/users/${userId}/role`,
-        method: 'PATCH',
-        body: { platformRole },
-      }),
-      transformResponse: (response) => response?.data?.user ?? null,
-      invalidatesTags: (_result, _error, { userId }) => [
-        PLATFORM_USERS_LIST_TAG,
-        { type: 'PlatformUsers', id: userId },
-        'CurrentUser',
-      ],
-    }),
   }),
 });
 
@@ -85,7 +72,6 @@ export const {
   useGetPlatformUserQuery,
   useListPlatformUsersQuery,
   useRevokePlatformUserSessionsMutation,
-  useUpdatePlatformUserRoleMutation,
 } = platformUsersApi;
 
 export { platformUsersApi };
