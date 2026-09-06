@@ -8,7 +8,7 @@ function formatPlatformTeamMemberName(member) {
     .join(' ')
     .trim();
 
-  return fullName || user?.email || 'Membre';
+  return fullName || 'Membre';
 }
 
 function createPlatformTeamMemberReadColumns({
