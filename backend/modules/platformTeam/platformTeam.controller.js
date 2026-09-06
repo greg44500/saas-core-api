@@ -5,6 +5,9 @@ import {
     suspendPlatformTeamMember,
     updatePlatformTeamMemberRole,
 } from './platformTeam.service.js';
+import {
+    getPlatformTeamSummary,
+} from './platformTeamSummary.service.js';
 
 
 const toMemberDto = (member, roleOverride = null) => {
@@ -48,6 +51,17 @@ const toMemberDto = (member, roleOverride = null) => {
         createdAt: member.createdAt,
         updatedAt: member.updatedAt,
     };
+};
+
+const summary = async (_req, res) => {
+    const teamSummary = await getPlatformTeamSummary();
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            summary: teamSummary,
+        },
+    });
 };
 
 const list = async (req, res) => {
@@ -130,6 +144,7 @@ export {
     list,
     reactivate,
     revoke,
+    summary,
     suspend,
     updateRole,
 };
