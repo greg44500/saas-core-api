@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { getRequestedDestination } from '@/features/auth/pages/login-page';
+import {
+  getLoginStatusMessage,
+  getRequestedDestination,
+} from '@/features/auth/pages/login-page';
 
 describe('getRequestedDestination', () => {
   it('ignore une ancienne destination Workspace pour un super_admin', () => {
@@ -42,5 +45,15 @@ describe('getRequestedDestination', () => {
 
   it('dirige un utilisateur standard vers ses workspaces', () => {
     expect(getRequestedDestination({ state: null }, { id: 'user-1' })).toBe('/workspaces');
+  });
+});
+
+describe('getLoginStatusMessage', () => {
+  it('confirme la création du compte depuis une invitation Platform', () => {
+    expect(getLoginStatusMessage({
+      state: { platformInvitationAccepted: true },
+    })).toBe(
+      'Invitation acceptée. Votre compte est créé. Connectez-vous pour accéder à la Plateforme.',
+    );
   });
 });
