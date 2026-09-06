@@ -3,6 +3,7 @@ import { Navigate, useParams } from 'react-router';
 import { PageLoader } from '@/components/shared/page-loader';
 import { SectionTabs } from '@/components/shared/section-tabs';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
+import { PlatformTeamMembersSection } from '@/features/platform/components/platform-team-members-section';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 
 const PLATFORM_TEAM_SECTIONS = Object.freeze([
@@ -38,6 +39,14 @@ function getVisiblePlatformTeamSections(permissions) {
   return PLATFORM_TEAM_SECTIONS.filter(
     ({ permission }) => permissionSet.has(permission),
   );
+}
+
+function PlatformTeamSectionContent({ sectionKey }) {
+  if (sectionKey === 'members') {
+    return <PlatformTeamMembersSection />;
+  }
+
+  return null;
 }
 
 function PlatformTeamPage() {
@@ -97,6 +106,8 @@ function PlatformTeamPage() {
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           {activeSection.description}
         </p>
+
+        <PlatformTeamSectionContent sectionKey={activeSection.key} />
       </section>
     </div>
   );
@@ -105,5 +116,6 @@ function PlatformTeamPage() {
 export {
   PLATFORM_TEAM_SECTIONS,
   PlatformTeamPage,
+  PlatformTeamSectionContent,
   getVisiblePlatformTeamSections,
 };
