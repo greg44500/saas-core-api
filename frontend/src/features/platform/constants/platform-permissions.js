@@ -15,6 +15,9 @@ const PLATFORM_PERMISSION = Object.freeze({
   TEAM_MEMBER_REACTIVATE: 'platform:team:member_reactivate',
   TEAM_MEMBER_REVOKE: 'platform:team:member_revoke',
   ROLES_READ: 'platform:roles:read',
+  ROLES_CREATE: 'platform:roles:create',
+  ROLES_UPDATE: 'platform:roles:update',
+  ROLES_ARCHIVE: 'platform:roles:archive',
   SUPER_ADMINS_MANAGE: 'platform:super_admins:manage',
 });
 
