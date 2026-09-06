@@ -11,7 +11,10 @@ import {
   readFilters,
   writeSearchParams,
 } from '@/features/audit-log/lib/audit-log-query-state';
-import { useListPlatformAuditLogsQuery } from '@/features/platform/api/platform-audit-logs-api';
+import {
+  useGetPlatformAuditMetadataQuery,
+  useListPlatformAuditLogsQuery,
+} from '@/features/platform/api/platform-audit-logs-api';
 
 const PAGE_SIZE = 20;
 
@@ -23,6 +26,7 @@ function PlatformAuditLogsPage() {
     [searchParams],
   );
 
+  const metadataQuery = useGetPlatformAuditMetadataQuery();
   const auditQuery = useListPlatformAuditLogsQuery(
     {
       page,
@@ -38,8 +42,10 @@ function PlatformAuditLogsPage() {
     },
   );
 
+  const auditMetadata = metadataQuery.data;
   const auditLogs = auditQuery.data?.auditLogs ?? [];
   const pagination = auditQuery.data?.pagination;
+  const isFetching = auditQuery.isFetching || metadataQuery.isFetching;
 
   useEffect(() => {
     if (pagination?.totalPages > 0 && page > pagination.totalPages) {
@@ -59,18 +65,23 @@ function PlatformAuditLogsPage() {
     setSearchParams(writeSearchParams(filters, nextPage));
   }
 
-  if (auditQuery.isLoading) {
+  function refetchAuditData() {
+    metadataQuery.refetch();
+    auditQuery.refetch();
+  }
+
+  if (auditQuery.isLoading || metadataQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Chargement des événements d’audit…</p>;
   }
 
-  if (auditQuery.isError) {
+  if (auditQuery.isError || metadataQuery.isError) {
     return (
       <section className="space-y-3">
-        <h1 className="text-2xl font-semibold">Audit logs</h1>
+        <h1 className="text-2xl font-semibold">Journaux d’audit</h1>
         <p className="text-sm text-destructive" role="alert">
-          Impossible de charger les événements d’audit de la plateforme.
+          Impossible de charger les journaux d’audit de la Plateforme.
         </p>
-        <Button onClick={auditQuery.refetch} type="button" variant="outline">
+        <Button onClick={refetchAuditData} type="button" variant="outline">
           Réessayer
         </Button>
       </section>
@@ -80,30 +91,31 @@ function PlatformAuditLogsPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Audit logs</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Journaux d’audit</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Consultez l’historique global audité de la plateforme. Les adresses IP,
-          user-agents et metadata techniques restent volontairement absents de cette vue.
+          Consultez l’historique global audité de la Plateforme. Les adresses IP,
+          agents utilisateurs et métadonnées techniques restent volontairement absents de cette vue.
         </p>
       </header>
 
       <AuditLogFilters
         filters={filters}
+        metadata={auditMetadata}
         onApply={applyFilters}
         onReset={resetFilters}
-        pending={auditQuery.isFetching}
+        pending={isFetching}
       />
 
       <section className="rounded-xl border border-border bg-card">
         <div className="flex items-center justify-between gap-4 border-b border-border p-5">
           <div>
-            <h2 className="text-lg font-semibold">Événements Platform</h2>
+            <h2 className="text-lg font-semibold">Événements de la Plateforme</h2>
             <p className="mt-1 text-xs text-muted-foreground">
               {pagination?.total ?? auditLogs.length} événement
               {(pagination?.total ?? auditLogs.length) === 1 ? '' : 's'}
             </p>
           </div>
-          {auditQuery.isFetching && (
+          {isFetching && (
             <span className="text-xs text-muted-foreground" role="status">
               Actualisation…
             </span>
@@ -118,13 +130,17 @@ function PlatformAuditLogsPage() {
             </p>
           </div>
         ) : (
-          <AuditLogTable auditLogs={auditLogs} showWorkspace />
+          <AuditLogTable
+            auditLogs={auditLogs}
+            metadata={auditMetadata}
+            showWorkspace
+          />
         )}
 
         <div className="px-5 pb-5">
           <DataPagination
             className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between"
-            disabled={auditQuery.isFetching}
+            disabled={isFetching}
             onPageChange={changePage}
             page={page}
             pagination={pagination}
