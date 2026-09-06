@@ -3,6 +3,18 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { PlatformAttentionTable } from '@/features/platform/components/platform-attention-table';
 
+const AUDIT_METADATA = {
+  actions: [
+    { value: 'LOGIN_FAILED', label: 'Échec de connexion' },
+  ],
+  entityTypes: [
+    { value: 'User', label: 'Utilisateur' },
+  ],
+  statuses: [
+    { value: 'failed', label: 'Échouée' },
+  ],
+};
+
 const ITEMS = [
   {
     id: 'audit_failed:audit-1',
@@ -34,10 +46,11 @@ const ITEMS = [
 describe('PlatformAttentionTable', () => {
   afterEach(() => cleanup());
 
-  it('réutilise un vrai tableau partagé avec des libellés français et le niveau warning', () => {
+  it('réutilise un vrai tableau partagé avec les libellés Audit fournis par le backend et le niveau warning', () => {
     render(
       <PlatformAttentionTable
         items={ITEMS}
+        metadata={AUDIT_METADATA}
         totalSignals={7}
       />,
     );
@@ -52,6 +65,17 @@ describe('PlatformAttentionTable', () => {
     expect(within(table).getByText('Dérogation à échéance')).toBeInTheDocument();
     expect(within(table).getByText('Fonctionnalité : Téléversement de fichiers')).toBeInTheDocument();
     expect(screen.getByText(/2 points prioritaires affichés sur 7 signaux détectés/)).toBeInTheDocument();
+  });
+
+  it('conserve les libellés neutres si les métadonnées Audit ne sont pas disponibles', () => {
+    render(
+      <PlatformAttentionTable
+        items={[ITEMS[0]]}
+        totalSignals={1}
+      />,
+    );
+
+    expect(screen.getByText('Action inconnue · Ressource inconnue')).toBeInTheDocument();
   });
 
   it('affiche un état vide sans fabriquer de ligne', () => {
