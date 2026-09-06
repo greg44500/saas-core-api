@@ -1,3 +1,5 @@
+import { PlatformFounderBadge } from '@/features/platform/components/platform-founder-badge';
+
 function PlatformAccessSummary({
   platformAccess,
   mode = 'summary',
@@ -27,17 +29,17 @@ function PlatformAccessSummary({
     >
       {isDistinctionMode ? (
         distinction && (
-          <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-            {distinction}
-          </span>
+          platformAccess.isFounder
+            ? <PlatformFounderBadge />
+            : (
+              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                {distinction}
+              </span>
+            )
         )
       ) : (
         <>
-          {platformAccess.isFounder && (
-            <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-              Fondateur
-            </span>
-          )}
+          {platformAccess.isFounder && <PlatformFounderBadge />}
 
           {roleName && (
             <span className="text-xs text-muted-foreground">
