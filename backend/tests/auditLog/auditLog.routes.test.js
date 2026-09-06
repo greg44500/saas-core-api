@@ -15,6 +15,7 @@ import { enforcePlanFeature } from '../../middlewares/enforcePlanFeature.js';
 import { loadWorkspaceContext } from '../../middlewares/loadWorkspaceContext.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
+    getWorkspaceAuditLogMetadata,
     listWorkspaceAuditLogEntries,
 } from '../../modules/auditLog/auditLog.controller.js';
 import {
@@ -72,6 +73,9 @@ vi.mock('../../middlewares/enforcePlanFeature.js', () => ({
 vi.mock(
     '../../modules/auditLog/auditLog.controller.js',
     () => ({
+        getWorkspaceAuditLogMetadata: vi.fn((req, res) => {
+            res.status(200).json({ status: 'success' });
+        }),
         listWorkspaceAuditLogEntries: vi.fn((req, res) => {
             res.status(200).json({ status: 'success' });
         }),
@@ -84,6 +88,7 @@ beforeEach(() => {
     workspaceContextMiddleware.mockClear();
     permissionMiddleware.mockClear();
     featureMiddleware.mockClear();
+    getWorkspaceAuditLogMetadata.mockClear();
     listWorkspaceAuditLogEntries.mockClear();
 });
 
@@ -97,6 +102,27 @@ const createApp = () => {
 };
 
 describe('auditLog.routes', () => {
+    it('protège les métadonnées workspace avec audit:read et audit_logs', async () => {
+        const response = await request(createApp())
+            .get('/workspaces/507f1f77bcf86cd799439011/audit-logs/metadata');
+
+        expect(response.status).toBe(200);
+        expect(validateRequest).toHaveBeenCalledWith({
+            params: workspaceIdParamsSchema,
+        });
+        expect(authorizePermission).toHaveBeenCalledWith(
+            CORE_PERMISSION.AUDIT_READ,
+        );
+        expect(enforcePlanFeature).toHaveBeenCalledWith(
+            CORE_PLAN_FEATURE.AUDIT_LOGS,
+        );
+        expect(workspaceContextMiddleware).toHaveBeenCalledOnce();
+        expect(permissionMiddleware).toHaveBeenCalledOnce();
+        expect(featureMiddleware).toHaveBeenCalledOnce();
+        expect(getWorkspaceAuditLogMetadata).toHaveBeenCalledOnce();
+        expect(listWorkspaceAuditLogEntries).not.toHaveBeenCalled();
+    });
+
     it('protège la lecture workspace avec audit:read et audit_logs', async () => {
         const response = await request(createApp())
             .get('/workspaces/507f1f77bcf86cd799439011/audit-logs');
