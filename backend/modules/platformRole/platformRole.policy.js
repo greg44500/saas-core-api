@@ -32,6 +32,37 @@ const RESERVED_PLATFORM_PERMISSION_KEYS = new Set(
 const isSuperAdminAuthorization = (authorization) =>
     authorization?.roleKey === PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN;
 
+const assertCanGovernCustomPlatformRoles = ({ authorization }) => {
+    if (!authorization || !Array.isArray(authorization.permissions)) {
+        throw new TypeError(
+            'authorization is required to govern custom Platform roles',
+        );
+    }
+
+    if (
+        authorization.isFounder === true
+        || isSuperAdminAuthorization(authorization)
+    ) {
+        return true;
+    }
+
+    throw new AppError(
+        'Seuls le Fondateur ou un Super administrateur peuvent administrer les rôles personnalisés.',
+        403,
+    );
+};
+
+const assertCustomPlatformRoleDescription = (description) => {
+    if (typeof description !== 'string' || description.trim().length === 0) {
+        throw new AppError(
+            'Une description ou justification métier est obligatoire pour un rôle personnalisé.',
+            400,
+        );
+    }
+
+    return description.trim();
+};
+
 const isStrictPermissionSubset = ({
     candidatePermissions,
     actorPermissions,
@@ -42,6 +73,19 @@ const isStrictPermissionSubset = ({
     return candidateSet.size < actorSet.size
         && [...candidateSet].every(
             (permission) => actorSet.has(permission),
+        );
+};
+
+const haveSamePermissionSet = ({
+    leftPermissions,
+    rightPermissions,
+}) => {
+    const leftSet = new Set(leftPermissions);
+    const rightSet = new Set(rightPermissions);
+
+    return leftSet.size === rightSet.size
+        && [...leftSet].every(
+            (permission) => rightSet.has(permission),
         );
 };
 
@@ -175,8 +219,11 @@ const getPlatformRolePermissionCatalog = ({ authorization }) => {
 
 
 export {
+    assertCanGovernCustomPlatformRoles,
+    assertCustomPlatformRoleDescription,
     assertCustomPlatformRoleIsMutable,
     assertCustomPlatformRolePermissions,
     getPlatformRolePermissionCatalog,
+    haveSamePermissionSet,
     isStrictPermissionSubset,
 };
