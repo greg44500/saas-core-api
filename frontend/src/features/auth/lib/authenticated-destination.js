@@ -1,22 +1,17 @@
-import { PLATFORM_ROLE } from '@/features/platform/constants/platform-roles';
+import {
+  getFirstPlatformDestination,
+} from '@/features/platform/lib/platform-navigation';
 
 const PLATFORM_HOME = '/platform/overview';
 const WORKSPACE_HOME = '/workspaces';
 
-const isPlatformSuperAdmin = (user) => (
-  user?.platformRole === PLATFORM_ROLE.SUPER_ADMIN
-);
-
 /**
- * Retourne le contexte principal d'un utilisateur authentifié.
- *
- * Un `super_admin` administre d'abord la plateforme ; l'existence éventuelle
- * de memberships Workspace ne doit donc jamais faire de `/workspaces` son
- * accueil implicite. Les autres utilisateurs restent orientés vers leur
- * contexte tenant.
+ * L'accueil authentifié ne dépend jamais de User.platformRole.
+ * Le contexte Platform courant, résolu par le backend depuis PlatformTeamMember
+ * et PlatformRole, est l'unique source permettant de privilégier la console.
  */
-function getAuthenticatedHome(user) {
-  return isPlatformSuperAdmin(user) ? PLATFORM_HOME : WORKSPACE_HOME;
+function getAuthenticatedHome(platformAccess) {
+  return getFirstPlatformDestination(platformAccess) ?? WORKSPACE_HOME;
 }
 
 function isWorkspaceClientPath(pathname = '') {
@@ -34,28 +29,29 @@ function toLocationPath(destination) {
 
 /**
  * Une destination protégée mémorisée avant authentification reste prioritaire,
- * sauf lorsqu'elle ramènerait implicitement un `super_admin` dans le contexte
- * client Workspace. Dans ce cas, la console Platform redevient l'accueil ; un
- * Workspace pourra ensuite être ouvert volontairement depuis l'application.
+ * sauf lorsqu'elle ramènerait implicitement un membre Platform actif vers le
+ * contexte client Workspace. Dans ce cas, la première destination Platform
+ * réellement autorisée devient l'accueil ; un Workspace peut ensuite être
+ * ouvert volontairement depuis l'application.
  */
-function resolveAuthenticatedDestination({ destination, user } = {}) {
+function resolveAuthenticatedDestination({ destination, platformAccess } = {}) {
   const requestedPath = toLocationPath(destination);
+  const platformDestination = getFirstPlatformDestination(platformAccess);
 
   if (
     requestedPath
-    && !(isPlatformSuperAdmin(user) && isWorkspaceClientPath(destination.pathname))
+    && !(platformDestination && isWorkspaceClientPath(destination.pathname))
   ) {
     return requestedPath;
   }
 
-  return getAuthenticatedHome(user);
+  return platformDestination ?? WORKSPACE_HOME;
 }
 
 export {
   PLATFORM_HOME,
   WORKSPACE_HOME,
   getAuthenticatedHome,
-  isPlatformSuperAdmin,
   isWorkspaceClientPath,
   resolveAuthenticatedDestination,
 };
