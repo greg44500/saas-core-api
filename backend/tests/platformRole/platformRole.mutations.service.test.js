@@ -73,13 +73,14 @@ const superAdminAuthorization = {
         PLATFORM_PERMISSION.OVERVIEW_READ,
         PLATFORM_PERMISSION.USERS_READ,
     ],
+    isFounder: false,
 };
 
 const makeRole = (overrides = {}) => ({
     _id: 'role-id',
     key: 'custom_00000000-0000-4000-8000-000000000000',
     name: 'Support catalogue',
-    description: null,
+    description: 'Accès limité au suivi du catalogue',
     permissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
     isSystem: false,
     status: PLATFORM_ROLE_STATUS.ACTIVE,
@@ -104,13 +105,14 @@ describe('PlatformRole mutation services', () => {
         resolvePlatformAuthorization.mockResolvedValue(
             superAdminAuthorization,
         );
+        PlatformRole.find.mockReturnValue(queryResult([]));
         createAuditLog.mockResolvedValue(undefined);
         getPlatformRoleEffectivePermissions.mockImplementation(
             (role) => [...(role?.permissions ?? [])],
         );
     });
 
-    it('crée un rôle personnalisé avec une clé opaque générée uniquement par le backend', async () => {
+    it('crée un rôle personnalisé avec clé backend, justification métier et permissions uniques', async () => {
         PlatformRole.create.mockImplementation(async ([payload]) => ([
             makeRole({
                 key: payload.key,
@@ -123,6 +125,7 @@ describe('PlatformRole mutation services', () => {
         const result = await createCustomPlatformRole({
             roleData: {
                 name: 'Support catalogue',
+                description: 'Accès limité au suivi du catalogue',
                 permissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
             },
             actorId: actor._id,
@@ -133,6 +136,7 @@ describe('PlatformRole mutation services', () => {
             /^custom_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
         );
         expect(createdDocuments[0]).toMatchObject({
+            description: 'Accès limité au suivi du catalogue',
             isSystem: false,
             status: PLATFORM_ROLE_STATUS.ACTIVE,
             createdBy: actor._id,
@@ -148,19 +152,84 @@ describe('PlatformRole mutation services', () => {
         );
     });
 
+    it('refuse la création sans justification métier même si le service est appelé directement', async () => {
+        await expect(createCustomPlatformRole({
+            roleData: {
+                name: 'Support catalogue',
+                permissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
+            },
+            actorId: actor._id,
+        })).rejects.toMatchObject({ statusCode: 400 });
+
+        expect(PlatformRole.create).not.toHaveBeenCalled();
+        expect(createAuditLog).not.toHaveBeenCalled();
+    });
+
     it('refuse la création si l’autorité runtime a perdu roles:create', async () => {
         resolvePlatformAuthorization.mockResolvedValue({
             roleKey: PLATFORM_TEAM_ROLE_KEY.PLATFORM_ADMIN,
             permissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
+            isFounder: false,
         });
 
         await expect(createCustomPlatformRole({
             roleData: {
                 name: 'Support catalogue',
+                description: 'Accès limité au suivi du catalogue',
                 permissions: [],
             },
             actorId: actor._id,
         })).rejects.toMatchObject({ statusCode: 403 });
+
+        expect(PlatformRole.create).not.toHaveBeenCalled();
+        expect(createAuditLog).not.toHaveBeenCalled();
+    });
+
+    it('refuse un Administrateur de la Plateforme même s’il possède roles:create', async () => {
+        resolvePlatformAuthorization.mockResolvedValue({
+            roleKey: PLATFORM_TEAM_ROLE_KEY.PLATFORM_ADMIN,
+            permissions: [
+                PLATFORM_PERMISSION.ROLES_CREATE,
+                PLATFORM_PERMISSION.OVERVIEW_READ,
+            ],
+            isFounder: false,
+        });
+
+        await expect(createCustomPlatformRole({
+            roleData: {
+                name: 'Support catalogue',
+                description: 'Accès limité au suivi du catalogue',
+                permissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
+            },
+            actorId: actor._id,
+        })).rejects.toMatchObject({ statusCode: 403 });
+
+        expect(PlatformRole.find).not.toHaveBeenCalled();
+        expect(PlatformRole.create).not.toHaveBeenCalled();
+    });
+
+    it('refuse de créer un clone exact du jeu de permissions d’un rôle actif', async () => {
+        PlatformRole.find.mockReturnValue(queryResult([
+            makeRole({
+                _id: 'existing-role-id',
+                permissions: [
+                    PLATFORM_PERMISSION.USERS_READ,
+                    PLATFORM_PERMISSION.OVERVIEW_READ,
+                ],
+            }),
+        ]));
+
+        await expect(createCustomPlatformRole({
+            roleData: {
+                name: 'Clone interdit',
+                description: 'Tentative de dupliquer un rôle actif',
+                permissions: [
+                    PLATFORM_PERMISSION.OVERVIEW_READ,
+                    PLATFORM_PERMISSION.USERS_READ,
+                ],
+            },
+            actorId: actor._id,
+        })).rejects.toMatchObject({ statusCode: 409 });
 
         expect(PlatformRole.create).not.toHaveBeenCalled();
         expect(createAuditLog).not.toHaveBeenCalled();
@@ -174,6 +243,7 @@ describe('PlatformRole mutation services', () => {
             roleId: role._id,
             roleData: {
                 name: 'Responsable catalogue',
+                description: 'Responsable du suivi global du catalogue',
                 permissions: [
                     PLATFORM_PERMISSION.OVERVIEW_READ,
                     PLATFORM_PERMISSION.USERS_READ,
@@ -183,6 +253,9 @@ describe('PlatformRole mutation services', () => {
         });
 
         expect(role.name).toBe('Responsable catalogue');
+        expect(role.description).toBe(
+            'Responsable du suivi global du catalogue',
+        );
         expect(role.permissions).toEqual([
             PLATFORM_PERMISSION.OVERVIEW_READ,
             PLATFORM_PERMISSION.USERS_READ,
@@ -198,34 +271,58 @@ describe('PlatformRole mutation services', () => {
             expect.objectContaining({
                 action: AUDIT_ACTION.PLATFORM_ROLE_UPDATED,
                 metadata: expect.objectContaining({
-                    updatedFields: ['name', 'permissions'],
+                    updatedFields: ['name', 'description', 'permissions'],
                 }),
             }),
             { session: { id: 'session' } },
         );
     });
 
-    it('empêche un acteur ordinaire de modifier un rôle de puissance égale', async () => {
+    it('refuse un Administrateur de la Plateforme même s’il possède roles:update', async () => {
         resolvePlatformAuthorization.mockResolvedValue({
             roleKey: PLATFORM_TEAM_ROLE_KEY.PLATFORM_ADMIN,
             permissions: [
                 PLATFORM_PERMISSION.ROLES_UPDATE,
                 PLATFORM_PERMISSION.OVERVIEW_READ,
             ],
+            isFounder: false,
         });
-        const role = makeRole({
+
+        await expect(updateCustomPlatformRole({
+            roleId: 'role-id',
+            roleData: { name: 'Modification interdite' },
+            actorId: actor._id,
+        })).rejects.toMatchObject({ statusCode: 403 });
+
+        expect(PlatformRole.findById).not.toHaveBeenCalled();
+        expect(createAuditLog).not.toHaveBeenCalled();
+    });
+
+    it('refuse une modification qui transformerait le rôle en clone exact d’un autre rôle actif', async () => {
+        const role = makeRole();
+        const existingRole = makeRole({
+            _id: 'existing-role-id',
             permissions: [
-                PLATFORM_PERMISSION.ROLES_UPDATE,
                 PLATFORM_PERMISSION.OVERVIEW_READ,
+                PLATFORM_PERMISSION.USERS_READ,
             ],
         });
         PlatformRole.findById.mockReturnValue(queryResult(role));
+        PlatformRole.find.mockReturnValue(queryResult([
+            role,
+            existingRole,
+        ]));
 
         await expect(updateCustomPlatformRole({
             roleId: role._id,
-            roleData: { name: 'Même puissance' },
+            roleData: {
+                permissions: [
+                    PLATFORM_PERMISSION.USERS_READ,
+                    PLATFORM_PERMISSION.OVERVIEW_READ,
+                ],
+            },
             actorId: actor._id,
-        })).rejects.toMatchObject({ statusCode: 403 });
+        })).rejects.toMatchObject({ statusCode: 409 });
 
         expect(role.save).not.toHaveBeenCalled();
         expect(createAuditLog).not.toHaveBeenCalled();
