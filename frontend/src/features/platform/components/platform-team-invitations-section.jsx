@@ -16,13 +16,14 @@ import {
 import { PlatformInvitationDeliveryBadge } from '@/features/platform/components/platform-invitation-delivery-badge';
 import { PlatformInvitationFormDrawer } from '@/features/platform/components/platform-invitation-form-drawer';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
+import {
+  formatInvitationDate,
+  getInvitationAgeLabel,
+  getInvitationDeliveryTimeLabel,
+  getInvitationExpirationPresentation,
+} from '@/features/platform/lib/platform-invitation-time';
 
 const PLATFORM_TEAM_INVITATIONS_PAGE_SIZE = 20;
-
-const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
 
 function formatInvitationRecipient(invitation) {
   return [invitation?.firstName, invitation?.lastName]
@@ -31,18 +32,11 @@ function formatInvitationRecipient(invitation) {
     .trim() || invitation?.email || 'Invité';
 }
 
-function formatInvitationDate(value) {
-  if (!value) return '—';
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : dateFormatter.format(date);
-}
-
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
 }
 
-function PlatformTeamInvitationsSection() {
+function PlatformTeamInvitationsSection({ now = new Date() }) {
   const { toast } = useToast();
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
@@ -91,6 +85,9 @@ function PlatformTeamInvitationsSection() {
             <p className="break-all text-xs text-muted-foreground">
               {invitation.email}
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {getInvitationAgeLabel(invitation, { now })}
+            </p>
           </div>
         ),
       },
@@ -103,15 +100,36 @@ function PlatformTeamInvitationsSection() {
         id: 'delivery',
         header: 'Envoi',
         cell: (invitation) => (
-          <PlatformInvitationDeliveryBadge
-            status={invitation.deliveryStatus}
-          />
+          <div className="space-y-1.5">
+            <PlatformInvitationDeliveryBadge
+              status={invitation.deliveryStatus}
+            />
+            <p className="max-w-52 text-xs leading-5 text-muted-foreground">
+              {getInvitationDeliveryTimeLabel(invitation, { now })}
+            </p>
+          </div>
         ),
       },
       {
         id: 'expiresAt',
         header: 'Expiration',
-        cell: (invitation) => formatInvitationDate(invitation.expiresAt),
+        cell: (invitation) => {
+          const expiration = getInvitationExpirationPresentation(
+            invitation,
+            { now },
+          );
+
+          return (
+            <div>
+              <p className="font-medium text-foreground">
+                {expiration.relativeLabel}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {expiration.absoluteLabel}
+              </p>
+            </div>
+          );
+        },
       },
     ];
 
@@ -152,7 +170,7 @@ function PlatformTeamInvitationsSection() {
         ),
       },
     ];
-  }, [canResend, canRevoke]);
+  }, [canResend, canRevoke, now]);
 
   async function confirmAction() {
     if (!pendingAction?.invitation) return;
@@ -192,7 +210,7 @@ function PlatformTeamInvitationsSection() {
     <div className="mt-5 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          Seules les invitations encore actives sont affichées.
+          Seules les invitations encore actives sont affichées. Les dates permettent d’identifier rapidement une invitation ancienne, un envoi en échec ou une expiration proche.
         </p>
 
         {canInvite && (
