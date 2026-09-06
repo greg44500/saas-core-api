@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import { DataTable } from '@/components/data-display/data-table';
 import { StatusBadge } from '@/components/data-display/status-badge';
 import { InfoTooltip } from '@/components/shared/info-tooltip';
@@ -8,6 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
+  createAuditMetadataLabelMaps,
   formatAuditAbsoluteDate,
   getAuditActionLabel,
   getAuditEntityTypeLabel,
@@ -46,16 +49,16 @@ function getAttentionWorkspaceLabel(item) {
   return 'Plateforme';
 }
 
-function getAttentionSituation(item) {
+function getAttentionSituation(item, auditLabelMaps) {
   switch (item.type) {
     case 'subscription_past_due':
       return 'Abonnement à régulariser';
     case 'workspace_suspended':
       return 'Accès à l’espace suspendu';
     case 'audit_failed': {
-      const action = getAuditActionLabel(item.context?.action);
+      const action = getAuditActionLabel(item.context?.action, auditLabelMaps);
       const entityType = item.context?.entityType
-        ? getAuditEntityTypeLabel(item.context.entityType)
+        ? getAuditEntityTypeLabel(item.context.entityType, auditLabelMaps)
         : null;
 
       return entityType ? `${action} · ${entityType}` : action;
@@ -100,40 +103,44 @@ function formatAttentionSummary(itemCount, totalSignals) {
   return `${itemCount} ${pointLabel} sur ${totalSignals} ${signalLabel}.`;
 }
 
-const ATTENTION_COLUMNS = Object.freeze([
-  {
-    id: 'level',
-    header: 'Niveau',
-    cell: (item) => (
-      <StatusBadge tone={item.level}>
-        {getAttentionLevelLabel(item.level)}
-      </StatusBadge>
-    ),
-  },
-  {
-    id: 'type',
-    header: 'Type',
-    cell: (item) => (
-      <span className="font-medium">{getAttentionTypeLabel(item.type)}</span>
-    ),
-  },
-  {
-    id: 'workspace',
-    header: 'Espace de travail',
-    cell: (item) => getAttentionWorkspaceLabel(item),
-  },
-  {
-    id: 'situation',
-    header: 'Situation',
-    cell: (item) => getAttentionSituation(item),
-  },
-  {
-    id: 'referenceAt',
-    header: 'Date de référence',
-    cell: (item) => formatAttentionReferenceDate(item.referenceAt),
-    cellClassName: 'whitespace-nowrap',
-  },
-]);
+function createAttentionColumns(auditLabelMaps) {
+  return [
+    {
+      id: 'level',
+      header: 'Niveau',
+      cell: (item) => (
+        <StatusBadge tone={item.level}>
+          {getAttentionLevelLabel(item.level)}
+        </StatusBadge>
+      ),
+    },
+    {
+      id: 'type',
+      header: 'Type',
+      cell: (item) => (
+        <span className="font-medium">{getAttentionTypeLabel(item.type)}</span>
+      ),
+    },
+    {
+      id: 'workspace',
+      header: 'Espace de travail',
+      cell: (item) => getAttentionWorkspaceLabel(item),
+    },
+    {
+      id: 'situation',
+      header: 'Situation',
+      cell: (item) => getAttentionSituation(item, auditLabelMaps),
+    },
+    {
+      id: 'referenceAt',
+      header: 'Date de référence',
+      cell: (item) => formatAttentionReferenceDate(item.referenceAt),
+      cellClassName: 'whitespace-nowrap',
+    },
+  ];
+}
+
+const ATTENTION_COLUMNS = Object.freeze(createAttentionColumns());
 
 /**
  * Tableau de pilotage des signaux prioritaires du cockpit Platform.
@@ -145,8 +152,18 @@ const ATTENTION_COLUMNS = Object.freeze([
  */
 function PlatformAttentionTable({
   items = [],
+  metadata,
   totalSignals = 0,
 }) {
+  const auditLabelMaps = useMemo(
+    () => createAuditMetadataLabelMaps(metadata),
+    [metadata],
+  );
+  const columns = useMemo(
+    () => createAttentionColumns(auditLabelMaps),
+    [auditLabelMaps],
+  );
+
   return (
     <Card className="overflow-hidden">
       <CardHeader>
@@ -167,7 +184,7 @@ function PlatformAttentionTable({
         ) : (
           <>
             <DataTable
-              columns={ATTENTION_COLUMNS}
+              columns={columns}
               data={items}
               getRowKey={(item) => item.id}
             />
@@ -186,6 +203,7 @@ export {
   ATTENTION_LEVEL_LABEL,
   ATTENTION_TYPE_LABEL,
   PlatformAttentionTable,
+  createAttentionColumns,
   formatAttentionReferenceDate,
   formatAttentionSummary,
   getAttentionLevelLabel,
