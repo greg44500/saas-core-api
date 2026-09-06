@@ -288,6 +288,15 @@ function createAppRoutes(applicationRoutes = APPLICATION_FRONTEND_ROUTES) {
                   },
                 },
                 {
+                  path: 'team/:section?',
+                  lazy: async () => {
+                    const { PlatformTeamPage } = await import(
+                      '@/features/platform/pages/platform-team-page'
+                    );
+                    return { Component: PlatformTeamPage };
+                  },
+                },
+                {
                   path: 'audit-logs',
                   lazy: async () => {
                     const { PlatformAuditLogsPage } = await import(
