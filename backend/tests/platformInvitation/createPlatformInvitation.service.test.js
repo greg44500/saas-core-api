@@ -11,11 +11,13 @@ import {
     PLATFORM_PERMISSION,
 } from '../../constants/platformPermissions.constants.js';
 import {
+    PLATFORM_INVITATION_STATUS,
     PLATFORM_ROLE_STATUS,
     PLATFORM_TEAM_ROLE_KEY,
 } from '../../constants/platformTeam.constants.js';
 import {
     createPlatformInvitation,
+    resendPlatformInvitation,
 } from '../../modules/platformInvitation/platformInvitation.service.js';
 import { PlatformInvitation } from '../../modules/platformInvitation/platformInvitation.model.js';
 import { PlatformRole } from '../../modules/platformRole/platformRole.model.js';
@@ -54,6 +56,7 @@ vi.mock('../../modules/platformInvitation/platformInvitation.model.js', () => ({
     PlatformInvitation: {
         updateMany: vi.fn(),
         findOne: vi.fn(),
+        findById: vi.fn(),
         create: vi.fn(),
     },
 }));
@@ -71,6 +74,14 @@ const chainedResult = (value) => ({
 const sessionResult = (value) => ({
     session: vi.fn().mockResolvedValue(value),
 });
+const deferred = () => {
+    let resolve;
+    const promise = new Promise((resolver) => {
+        resolve = resolver;
+    });
+
+    return { promise, resolve };
+};
 
 describe('createPlatformInvitation', () => {
     beforeEach(() => {
@@ -129,5 +140,80 @@ describe('createPlatformInvitation', () => {
         expect(persisted.tokenHash).not.toBe(result.token);
         expect(persisted.emailCanonical).toBe('marie@example.com');
         expect(createAuditLog).toHaveBeenCalledOnce();
+    });
+
+    it('séquence les lectures partageant la session lors de la création', async () => {
+        const actorLookup = deferred();
+
+        User.findById.mockReturnValue({
+            select() { return this; },
+            session: vi.fn().mockReturnValue(actorLookup.promise),
+        });
+        PlatformRole.findById.mockClear();
+
+        const operation = createPlatformInvitation({
+            firstName: 'Marie',
+            lastName: 'Martin',
+            email: 'marie@example.com',
+            roleId: 'role-id',
+            actorId: 'actor-id',
+        });
+
+        expect(PlatformRole.findById).not.toHaveBeenCalled();
+
+        actorLookup.resolve({
+            _id: 'actor-id',
+            status: 'active',
+        });
+
+        await operation;
+
+        expect(PlatformRole.findById).toHaveBeenCalledWith('role-id');
+    });
+
+    it('séquence les lectures partageant la session lors du renvoi', async () => {
+        const actorLookup = deferred();
+        const invitation = {
+            _id: 'invitation-id',
+            role: 'role-id',
+            status: PLATFORM_INVITATION_STATUS.PENDING,
+            expiresAt: new Date('2026-09-10T12:00:00.000Z'),
+            save: vi.fn().mockResolvedValue(undefined),
+        };
+
+        User.findById.mockReturnValue({
+            select() { return this; },
+            session: vi.fn().mockReturnValue(actorLookup.promise),
+        });
+        resolvePlatformAuthorization.mockResolvedValue({
+            roleKey: PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN,
+            permissions: [
+                PLATFORM_PERMISSION.TEAM_INVITATION_RESEND,
+            ],
+        });
+        PlatformInvitation.findById.mockReturnValue(
+            sessionResult(invitation),
+        );
+        PlatformInvitation.findById.mockClear();
+
+        const operation = resendPlatformInvitation({
+            invitationId: 'invitation-id',
+            actorId: 'actor-id',
+            now: new Date('2026-09-06T12:00:00.000Z'),
+        });
+
+        expect(PlatformInvitation.findById).not.toHaveBeenCalled();
+
+        actorLookup.resolve({
+            _id: 'actor-id',
+            status: 'active',
+        });
+
+        await operation;
+
+        expect(PlatformInvitation.findById).toHaveBeenCalledWith(
+            'invitation-id',
+        );
+        expect(invitation.save).toHaveBeenCalledOnce();
     });
 });
