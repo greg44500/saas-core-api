@@ -1,7 +1,6 @@
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
 import { Button } from '@/components/ui/button';
 import {
-  formatPlatformRole,
   formatPlatformUserDate,
   formatPlatformUserName,
   formatPlatformUserStatus,
@@ -61,7 +60,6 @@ function PlatformUserDetailsDrawer({
               <DetailRow label="Nom" value={formatPlatformUserName(user)} />
               <DetailRow label="Email" value={user.email} />
               <DetailRow label="Statut" value={formatPlatformUserStatus(user.status)} />
-              <DetailRow label="Rôle plateforme" value={formatPlatformRole(user.platformRole)} />
               <DetailRow label="Email vérifié" value={formatPlatformUserDate(user.emailVerifiedAt)} />
               <DetailRow label="Dernière connexion" value={formatPlatformUserDate(user.lastLoginAt)} />
               <DetailRow label="Créé le" value={formatPlatformUserDate(user.createdAt)} />
@@ -87,7 +85,7 @@ function PlatformUserDetailsDrawer({
             <div>
               <h3 className="font-semibold">Actions d’administration</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Ces opérations sont contrôlées et auditées par le backend.
+                Le cycle de vie du compte est distinct de l’appartenance et du rôle dans l’Équipe de la Plateforme.
               </p>
             </div>
 
@@ -115,14 +113,6 @@ function PlatformUserDetailsDrawer({
                     Réactiver
                   </Button>
                 )}
-
-                <Button
-                  onClick={() => onRequestAction({ type: 'update-role', user })}
-                  type="button"
-                  variant="secondary"
-                >
-                  Modifier le rôle
-                </Button>
 
                 <Button
                   onClick={() => onRequestAction({ type: 'revoke-sessions', user })}
