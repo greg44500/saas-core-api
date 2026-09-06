@@ -5,7 +5,12 @@ import { MemoryRouter } from 'react-router';
 
 const mocks = vi.hoisted(() => ({
   drilldownProps: vi.fn(),
+  useGetPlatformAuditMetadataQuery: vi.fn(),
   useGetPlatformOverviewQuery: vi.fn(),
+}));
+
+vi.mock('@/features/platform/api/platform-audit-logs-api', () => ({
+  useGetPlatformAuditMetadataQuery: mocks.useGetPlatformAuditMetadataQuery,
 }));
 
 vi.mock('@/features/platform/api/platform-overview-api', () => ({
@@ -29,6 +34,18 @@ vi.mock('@/features/platform/components/platform-team-snapshot-card', () => ({
 }));
 
 import { PlatformOverviewPage } from '@/features/platform/pages/platform-overview-page';
+
+const AUDIT_METADATA = {
+  actions: [
+    { value: 'LOGIN_FAILED', label: 'Échec de connexion' },
+  ],
+  entityTypes: [
+    { value: 'User', label: 'Utilisateur' },
+  ],
+  statuses: [
+    { value: 'failed', label: 'Échouée' },
+  ],
+};
 
 const OVERVIEW = {
   generatedAt: '2026-09-03T12:00:00.000Z',
@@ -166,7 +183,14 @@ describe('PlatformOverviewPage', () => {
   beforeEach(() => {
     refetch.mockReset();
     mocks.drilldownProps.mockReset();
+    mocks.useGetPlatformAuditMetadataQuery.mockReset();
     mocks.useGetPlatformOverviewQuery.mockReset();
+    mocks.useGetPlatformAuditMetadataQuery.mockReturnValue({
+      data: AUDIT_METADATA,
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+    });
     mocks.useGetPlatformOverviewQuery.mockReturnValue({
       data: OVERVIEW,
       isLoading: false,
@@ -275,7 +299,7 @@ describe('PlatformOverviewPage', () => {
     expect(screen.queryByText('Téléversements mensuels')).not.toBeInTheDocument();
   });
 
-  it('affiche le DataTable des points prioritaires sans reconstruire leur ordre', () => {
+  it('affiche le DataTable des points prioritaires avec les métadonnées Audit autorisées', () => {
     renderPage();
 
     const attention = screen.getByRole('region', {
@@ -283,6 +307,10 @@ describe('PlatformOverviewPage', () => {
     });
     const table = within(attention).getByRole('table');
 
+    expect(mocks.useGetPlatformAuditMetadataQuery).toHaveBeenCalledWith(
+      undefined,
+      { skip: false },
+    );
     expect(within(table).getByText('Audit en échec')).toBeInTheDocument();
     expect(within(table).getByText('Acme')).toBeInTheDocument();
     expect(within(table).getByText('Échec de connexion · Utilisateur')).toBeInTheDocument();
@@ -290,7 +318,7 @@ describe('PlatformOverviewPage', () => {
     expect(within(attention).getByText(/1 point prioritaire affiché sur 10 signaux détectés/)).toBeInTheDocument();
   });
 
-  it('compose une vue commerciale sans exposer les signaux Audit', () => {
+  it('compose une vue commerciale sans exposer les signaux Audit ni charger leurs métadonnées', () => {
     mocks.useGetPlatformOverviewQuery.mockReturnValue({
       data: {
         ...OVERVIEW,
@@ -317,6 +345,10 @@ describe('PlatformOverviewPage', () => {
 
     renderPage();
 
+    expect(mocks.useGetPlatformAuditMetadataQuery).toHaveBeenCalledWith(
+      undefined,
+      { skip: true },
+    );
     expect(screen.getByText('Dérogations actives')).toBeInTheDocument();
     expect(screen.queryByText('Audits en échec')).not.toBeInTheDocument();
     expect(screen.queryByText('Audit en échec')).not.toBeInTheDocument();
@@ -370,6 +402,10 @@ describe('PlatformOverviewPage', () => {
 
     renderPage();
 
+    expect(mocks.useGetPlatformAuditMetadataQuery).toHaveBeenCalledWith(
+      undefined,
+      { skip: true },
+    );
     expect(screen.queryByRole('region', { name: 'Indicateurs principaux' })).not.toBeInTheDocument();
     expect(screen.getByText(/aucun indicateur métier supplémentaire/i)).toBeInTheDocument();
   });
