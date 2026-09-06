@@ -128,6 +128,21 @@ function renderRoute(initialEntry, authStatus = 'unauthenticated') {
   return router;
 }
 
+function mockActivePlatformAccess() {
+  useGetCurrentPlatformContextQueryMock.mockReturnValue({
+    data: {
+      status: 'active',
+      permissions: [
+        'platform:overview:read',
+        'platform:users:read',
+      ],
+    },
+    error: undefined,
+    isLoading: false,
+    isFetching: false,
+  });
+}
+
 describe('application routing', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -139,20 +154,13 @@ describe('application routing', () => {
     useGetCurrentUserQueryMock.mockReturnValue({
       data: {
         id: 'user-current',
-        platformRole: 'user',
       },
       error: undefined,
       isLoading: false,
       isFetching: false,
     });
     useGetCurrentPlatformContextQueryMock.mockReturnValue({
-      data: {
-        status: 'active',
-        permissions: [
-          'platform:overview:read',
-          'platform:users:read',
-        ],
-      },
+      data: null,
       error: undefined,
       isLoading: false,
       isFetching: false,
@@ -303,6 +311,7 @@ describe('application routing', () => {
   });
 
   it('rend le shell Platform et sa navigation pour une session authentifiée', async () => {
+    mockActivePlatformAccess();
     renderRoute('/platform/overview', 'authenticated');
 
     expect(
@@ -317,6 +326,7 @@ describe('application routing', () => {
 
   it('navigue vers une section Platform préparée', async () => {
     const user = userEvent.setup();
+    mockActivePlatformAccess();
     const router = renderRoute('/platform/overview', 'authenticated');
 
     await user.click(await screen.findByRole('link', { name: 'Utilisateurs' }));
