@@ -7,7 +7,9 @@ import {
   useGetCurrentUserQuery,
   useLogoutMutation,
 } from '@/features/auth/api/auth-api';
-import { PLATFORM_ROLE } from '@/features/platform/constants/platform-roles';
+import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
+import { PlatformAccessSummary } from '@/features/platform/components/platform-access-summary';
+import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 
 function getInitials(user) {
   const firstInitial = user?.firstName?.trim()?.charAt(0) ?? '';
@@ -27,6 +29,7 @@ function UserMenu() {
   const rootRef = useRef(null);
   const [open, setOpen] = useState(false);
   const { data: user, isLoading } = useGetCurrentUserQuery();
+  const { data: platformAccess } = useGetCurrentPlatformContextQuery();
   const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
 
   useEffect(() => {
@@ -93,7 +96,8 @@ function UserMenu() {
   const displayName = user
     ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email
     : 'Compte utilisateur';
-  const isSuperAdmin = user?.platformRole === PLATFORM_ROLE.SUPER_ADMIN;
+  const canOpenPlatformConsole = platformAccess?.status === 'active'
+    && platformAccess.permissions?.includes(PLATFORM_PERMISSION.OVERVIEW_READ);
   const isPlatformContext = location.pathname.startsWith('/platform');
 
   return (
@@ -124,6 +128,7 @@ function UserMenu() {
             {user?.email && (
               <p className="truncate text-xs text-muted-foreground">{user.email}</p>
             )}
+            <PlatformAccessSummary platformAccess={platformAccess} />
           </div>
 
           <div className="py-2">
@@ -145,7 +150,7 @@ function UserMenu() {
               <ShieldCheck aria-hidden="true" className="size-4" />
               Sécurité
             </button>
-            {isSuperAdmin && !isPlatformContext && (
+            {canOpenPlatformConsole && !isPlatformContext && (
               <button
                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => navigateFromMenu('/platform/overview')}
