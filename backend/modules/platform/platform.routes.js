@@ -11,6 +11,9 @@ import {
     platformAuditLogsRouter,
 } from './auditLogs/platformAuditLogs.routes.js';
 import {
+    platformCurrentContextRouter,
+} from './currentContext/platformCurrentContext.routes.js';
+import {
     platformEntitlementOverridesRouter,
 } from './entitlementOverrides/platformEntitlementOverrides.routes.js';
 import {
@@ -34,6 +37,7 @@ const platformRouter = Router();
  */
 platformRouter.use(authenticate);
 
+platformRouter.use('/me', platformCurrentContextRouter);
 platformRouter.use('/overview', platformOverviewRouter);
 platformRouter.use('/users', platformUsersRouter);
 platformRouter.use('/workspaces', platformWorkspacesRouter);
