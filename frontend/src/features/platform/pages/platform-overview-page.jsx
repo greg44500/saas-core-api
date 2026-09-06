@@ -27,6 +27,11 @@ import {
   ENTITLEMENT_OVERRIDE_LIFECYCLE,
 } from '@/features/platform/lib/platform-entitlement-override-formatters';
 import {
+  buildPlatformOverviewAttentionItems,
+  hasAnyPlatformOverviewSection,
+  resolvePlatformOverviewVisibility,
+} from '@/features/platform/lib/platform-overview-visibility';
+import {
   formatPlatformPlanMetric,
   formatPlatformPlanPrice,
 } from '@/features/platform/lib/platform-plan-formatters';
@@ -157,6 +162,10 @@ function PlatformOverviewPage() {
     refetchOnMountOrArgChange: true,
   });
   const overview = overviewQuery.data;
+  const sections = resolvePlatformOverviewVisibility(
+    overview?.availableSections,
+  );
+  const hasAnyOverviewSection = hasAnyPlatformOverviewSection(sections);
 
   function changePeriod(nextPeriod) {
     setSearchParams(writeOverviewPeriodSearchParams(nextPeriod));
@@ -176,18 +185,22 @@ function PlatformOverviewPage() {
   const attention = overview?.attention;
   const activeOverrideCount = overview?.overrides?.active ?? 0;
   const growthItems = [
-    {
-      key: 'users',
-      label: 'Nouveaux utilisateurs',
-      current: overview?.kpis?.users?.createdInPeriod ?? 0,
-      previous: overview?.kpis?.users?.createdInPreviousPeriod ?? 0,
-    },
-    {
-      key: 'workspaces',
-      label: 'Nouveaux espaces de travail',
-      current: overview?.kpis?.workspaces?.createdInPeriod ?? 0,
-      previous: overview?.kpis?.workspaces?.createdInPreviousPeriod ?? 0,
-    },
+    ...(sections.users
+      ? [{
+        key: 'users',
+        label: 'Nouveaux utilisateurs',
+        current: overview?.kpis?.users?.createdInPeriod ?? 0,
+        previous: overview?.kpis?.users?.createdInPreviousPeriod ?? 0,
+      }]
+      : []),
+    ...(sections.workspaces
+      ? [{
+        key: 'workspaces',
+        label: 'Nouveaux espaces de travail',
+        current: overview?.kpis?.workspaces?.createdInPeriod ?? 0,
+        previous: overview?.kpis?.workspaces?.createdInPreviousPeriod ?? 0,
+      }]
+      : []),
   ];
   const planDistributionItems = planDistribution.map((item) => ({
     key: item.plan.id ?? item.plan.key,
@@ -211,38 +224,18 @@ function PlatformOverviewPage() {
     value: item.sizeBytes,
     percentage: item.percentageOfStorage,
   }));
-  const attentionItems = [
-    {
-      key: 'past-due',
-      label: 'Abonnements en retard',
-      value: attention?.counts?.pastDueSubscriptions ?? 0,
-      tone: 'warning',
-    },
-    {
-      key: 'suspended-workspaces',
-      label: 'Espaces de travail suspendus',
-      value: attention?.counts?.suspendedWorkspaces ?? 0,
-      tone: 'warning',
-    },
-    {
-      key: 'failed-audits',
-      label: 'Audits en échec',
-      value: attention?.counts?.failedAuditEvents ?? 0,
-      tone: 'warning',
-    },
-    {
-      key: 'trials-expiring',
-      label: 'Essais arrivant à échéance',
-      value: attention?.counts?.trialsExpiringNext7Days ?? 0,
-      tone: 'warning',
-    },
-    {
-      key: 'overrides-expiring',
-      label: 'Dérogations arrivant à échéance',
-      value: attention?.counts?.overridesExpiringNext7Days ?? 0,
-      tone: 'warning',
-    },
-  ];
+  const attentionItems = buildPlatformOverviewAttentionItems({
+    attention,
+    sections,
+  });
+  const showPrimaryKpis = sections.users
+    || sections.workspaces
+    || sections.subscriptions;
+  const showGrowthAndDistribution = growthItems.length > 0 || sections.plans;
+  const showUsageCard = sections.usage || sections.files;
+  const showCommercialHealthCard = sections.subscriptions || sections.overrides;
+  const showHealthSection = showUsageCard || showCommercialHealthCard;
+  const showAttentionSection = Boolean(attention);
 
   return (
     <div className="space-y-8" aria-busy={overviewQuery.isFetching || undefined}>
@@ -251,7 +244,7 @@ function PlatformOverviewPage() {
           <p className="text-sm font-medium text-primary">Plateforme</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Vue d’ensemble</h1>
           <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            Analyse globale de l’activité, des abonnements et de la santé de la plateforme.
+            Synthèse des activités et signaux accessibles selon vos autorisations.
           </p>
           {overview?.generatedAt && (
             <p className="mt-2 text-xs text-muted-foreground">
@@ -296,201 +289,263 @@ function PlatformOverviewPage() {
         </Card>
       )}
 
-      <section
-        aria-label="Indicateurs principaux"
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-      >
-        <MetricCard
-          description="Nombre total de comptes inscrits sur la plateforme."
-          title="Utilisateurs"
-          value={formatCount(overview?.kpis?.users?.total)}
-          {...userTrend}
-        />
-        <MetricCard
-          description="Nombre total d’espaces de travail clients créés sur la plateforme."
-          title="Espaces de travail"
-          value={formatCount(overview?.kpis?.workspaces?.total)}
-          {...workspaceTrend}
-        />
-        <MetricCard
-          description="Nombre de contrats commerciaux actifs et encore valides à l’instant du calcul."
-          title="Abonnements actifs"
-          value={formatCount(overview?.kpis?.activeCommercialSubscriptions)}
-        />
-        <MetricCard
-          description="Équivalent mensuel brut des abonnements commerciaux actifs, calculé à partir des prix contractuels. Ce montant n’est ni facturé ni encaissé au sens comptable."
-          title="Valeur mensuelle contractuelle estimée"
-          value={formatMrrEstimate(overview?.kpis?.contractedMrrEstimate)}
-        />
-      </section>
+      {!overviewQuery.isLoading && overview && !hasAnyOverviewSection && (
+        <Card>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Aucun indicateur métier supplémentaire n’est accessible avec vos autorisations actuelles.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
-      <DashboardSection
-        description="Suivez la progression de la plateforme et la structure du parc client sur la période sélectionnée."
-        title="Croissance et répartition"
-      >
-        <div className="grid gap-4 xl:grid-cols-2">
-          <OverviewPanel
-            description="Compare les créations de la période sélectionnée avec la période précédente de même durée."
-            title="Croissance de la plateforme"
-          >
-            <ComparisonBarChart
-              aria-label="Comparaison de la croissance de la plateforme"
-              items={growthItems}
+      {showPrimaryKpis && (
+        <section
+          aria-label="Indicateurs principaux"
+          className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        >
+          {sections.users && (
+            <MetricCard
+              description="Nombre total de comptes inscrits sur la plateforme."
+              title="Utilisateurs"
+              value={formatCount(overview?.kpis?.users?.total)}
+              {...userTrend}
             />
-          </OverviewPanel>
+          )}
+          {sections.workspaces && (
+            <MetricCard
+              description="Nombre total d’espaces de travail clients créés sur la plateforme."
+              title="Espaces de travail"
+              value={formatCount(overview?.kpis?.workspaces?.total)}
+              {...workspaceTrend}
+            />
+          )}
+          {sections.subscriptions && (
+            <>
+              <MetricCard
+                description="Nombre de contrats commerciaux actifs et encore valides à l’instant du calcul."
+                title="Abonnements actifs"
+                value={formatCount(overview?.kpis?.activeCommercialSubscriptions)}
+              />
+              <MetricCard
+                description="Équivalent mensuel brut des abonnements commerciaux actifs, calculé à partir des prix contractuels. Ce montant n’est ni facturé ni encaissé au sens comptable."
+                title="Valeur mensuelle contractuelle estimée"
+                value={formatMrrEstimate(overview?.kpis?.contractedMrrEstimate)}
+              />
+            </>
+          )}
+        </section>
+      )}
 
-          <OverviewPanel
-            description="Nombre et pourcentage des espaces de travail par plan effectivement appliqué."
-            title="Répartition par plan"
-          >
-            <DistributionBarChart
-              aria-label="Répartition des espaces de travail par plan effectif"
-              emptyMessage="Aucune répartition disponible."
-              formatValue={(item) => `${formatCount(item.value)} espace${item.value === 1 ? '' : 's'}`}
-              items={planDistributionItems}
-            />
-          </OverviewPanel>
-        </div>
-      </DashboardSection>
+      {showGrowthAndDistribution && (
+        <DashboardSection
+          description="Suivez les évolutions et répartitions correspondant aux domaines que vous pouvez consulter."
+          title="Croissance et répartition"
+        >
+          <div className="grid gap-4 xl:grid-cols-2">
+            {growthItems.length > 0 && (
+              <OverviewPanel
+                description="Compare les créations de la période sélectionnée avec la période précédente de même durée."
+                title="Croissance de la plateforme"
+              >
+                <ComparisonBarChart
+                  aria-label="Comparaison de la croissance de la plateforme"
+                  items={growthItems}
+                />
+              </OverviewPanel>
+            )}
+
+            {sections.plans && (
+              <OverviewPanel
+                description="Nombre et pourcentage des espaces de travail par plan effectivement appliqué."
+                title="Répartition par plan"
+              >
+                <DistributionBarChart
+                  aria-label="Répartition des espaces de travail par plan effectif"
+                  emptyMessage="Aucune répartition disponible."
+                  formatValue={(item) => `${formatCount(item.value)} espace${item.value === 1 ? '' : 's'}`}
+                  items={planDistributionItems}
+                />
+              </OverviewPanel>
+            )}
+          </div>
+        </DashboardSection>
+      )}
 
       <PlatformTeamSnapshotSection />
 
-      <DashboardSection
-        description="Les informations secondaires restent accessibles sans surcharger la lecture initiale."
-        title="Santé et exploitation"
-      >
-        <div className="grid gap-4 xl:grid-cols-2">
-          <CollapsibleCard
-            description="Vue consolidée de la consommation fonctionnelle actuelle : membres, stockage, téléversements et répartition des fichiers actifs."
-            summary={(
-              <dl className="grid grid-cols-2 gap-4 text-sm">
-                {usage.slice(0, 2).map((metric) => (
-                  <div key={metric.key}>
-                    <dt className="text-muted-foreground">
-                      {formatPlatformPlanMetric(metric.key)}
-                    </dt>
-                    <dd className="mt-1 font-semibold">
-                      {formatUsageValue(metric.key, metric.value)}
-                    </dd>
-                  </div>
-                ))}
-                {usage.length === 0 && (
-                  <div>
-                    <dt className="text-muted-foreground">Métriques</dt>
-                    <dd className="mt-1 font-semibold">—</dd>
+      {showHealthSection && (
+        <DashboardSection
+          description="Les informations secondaires autorisées restent accessibles sans surcharger la lecture initiale."
+          title="Santé et exploitation"
+        >
+          <div className="grid gap-4 xl:grid-cols-2">
+            {showUsageCard && (
+              <CollapsibleCard
+                description="Vue consolidée de la consommation fonctionnelle actuelle et des fichiers lorsque ces données sont accessibles."
+                summary={(
+                  <dl className="grid grid-cols-2 gap-4 text-sm">
+                    {sections.usage && usage.slice(0, 2).map((metric) => (
+                      <div key={metric.key}>
+                        <dt className="text-muted-foreground">
+                          {formatPlatformPlanMetric(metric.key)}
+                        </dt>
+                        <dd className="mt-1 font-semibold">
+                          {formatUsageValue(metric.key, metric.value)}
+                        </dd>
+                      </div>
+                    ))}
+                    {sections.usage && usage.length === 0 && (
+                      <div>
+                        <dt className="text-muted-foreground">Métriques</dt>
+                        <dd className="mt-1 font-semibold">—</dd>
+                      </div>
+                    )}
+                    {!sections.usage && sections.files && (
+                      <>
+                        <div>
+                          <dt className="text-muted-foreground">Fichiers actifs</dt>
+                          <dd className="mt-1 font-semibold">{formatCount(files.totalCount)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted-foreground">Stockage</dt>
+                          <dd className="mt-1 font-semibold">{formatBytes(files.totalSizeBytes)}</dd>
+                        </div>
+                      </>
+                    )}
+                  </dl>
+                )}
+                title="Usage de la plateforme"
+              >
+                {sections.files && (
+                  <div className="space-y-6">
+                    <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                      <div>
+                        <dt className="text-muted-foreground">Fichiers actifs</dt>
+                        <dd className="mt-1 font-semibold">{formatCount(files.totalCount)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Stockage des fichiers actifs</dt>
+                        <dd className="mt-1 font-semibold">{formatBytes(files.totalSizeBytes)}</dd>
+                      </div>
+                    </dl>
+
+                    <div>
+                      <p className="mb-3 text-sm font-medium">Répartition par nombre de fichiers</p>
+                      <DistributionBarChart
+                        aria-label="Répartition des fichiers actifs par type"
+                        emptyMessage="Aucun fichier actif."
+                        formatValue={(item) => `${formatCount(item.value)} fichier${item.value === 1 ? '' : 's'}`}
+                        items={fileCountDistribution}
+                        renderLabel={renderFileDistributionLabel}
+                      />
+                    </div>
+
+                    <div>
+                      <p className="mb-3 text-sm font-medium">Répartition du stockage par type</p>
+                      <DistributionBarChart
+                        aria-label="Répartition du stockage des fichiers actifs par type"
+                        emptyMessage="Aucun stockage de fichier actif."
+                        formatValue={(item) => formatBytes(item.value)}
+                        items={fileStorageDistribution}
+                        renderLabel={renderFileDistributionLabel}
+                      />
+                    </div>
                   </div>
                 )}
-              </dl>
+              </CollapsibleCard>
             )}
-            title="Usage de la plateforme"
-          >
-            <div className="space-y-6">
-              <dl className="grid gap-4 text-sm sm:grid-cols-2">
-                <div>
-                  <dt className="text-muted-foreground">Fichiers actifs</dt>
-                  <dd className="mt-1 font-semibold">{formatCount(files.totalCount)}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Stockage des fichiers actifs</dt>
-                  <dd className="mt-1 font-semibold">{formatBytes(files.totalSizeBytes)}</dd>
-                </div>
-              </dl>
 
-              <div>
-                <p className="mb-3 text-sm font-medium">Répartition par nombre de fichiers</p>
-                <DistributionBarChart
-                  aria-label="Répartition des fichiers actifs par type"
-                  emptyMessage="Aucun fichier actif."
-                  formatValue={(item) => `${formatCount(item.value)} fichier${item.value === 1 ? '' : 's'}`}
-                  items={fileCountDistribution}
-                  renderLabel={renderFileDistributionLabel}
-                />
-              </div>
-
-              <div>
-                <p className="mb-3 text-sm font-medium">Répartition du stockage par type</p>
-                <DistributionBarChart
-                  aria-label="Répartition du stockage des fichiers actifs par type"
-                  emptyMessage="Aucun stockage de fichier actif."
-                  formatValue={(item) => formatBytes(item.value)}
-                  items={fileStorageDistribution}
-                  renderLabel={renderFileDistributionLabel}
-                />
-              </div>
-            </div>
-          </CollapsibleCard>
-
-          <CollapsibleCard
-            description="Échéances commerciales et dérogations nécessitant une surveillance."
-            summary={(
-              <dl className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <dt className="text-muted-foreground">Essais à échéance</dt>
-                  <dd className="mt-1 font-semibold">
-                    {formatCount(overview?.subscriptionHealth?.trialsExpiringNext7Days)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Dérogations actives</dt>
-                  <dd className="mt-1">
-                    <MetricDrilldownButton
-                      ariaLabel="Voir les dérogations actives"
-                      disabled={activeOverrideCount <= 0}
-                      onClick={() => setActiveOverridesOpen(true)}
-                      value={formatCount(activeOverrideCount)}
-                    />
-                  </dd>
-                </div>
-              </dl>
+            {showCommercialHealthCard && (
+              <CollapsibleCard
+                description="Échéances commerciales et dérogations accessibles dans votre périmètre."
+                summary={(
+                  <dl className="grid grid-cols-2 gap-4 text-sm">
+                    {sections.subscriptions && (
+                      <div>
+                        <dt className="text-muted-foreground">Essais à échéance</dt>
+                        <dd className="mt-1 font-semibold">
+                          {formatCount(overview?.subscriptionHealth?.trialsExpiringNext7Days)}
+                        </dd>
+                      </div>
+                    )}
+                    {sections.overrides && (
+                      <div>
+                        <dt className="text-muted-foreground">Dérogations actives</dt>
+                        <dd className="mt-1">
+                          <MetricDrilldownButton
+                            ariaLabel="Voir les dérogations actives"
+                            disabled={activeOverrideCount <= 0}
+                            onClick={() => setActiveOverridesOpen(true)}
+                            value={formatCount(activeOverrideCount)}
+                          />
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                )}
+                title="Échéances et exceptions"
+              >
+                <dl className="space-y-3 text-sm">
+                  {sections.subscriptions && (
+                    <>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-muted-foreground">Résiliations programmées</dt>
+                        <dd className="font-medium">{formatCount(overview?.subscriptionHealth?.cancellationScheduled)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-muted-foreground">Baisses de formule programmées</dt>
+                        <dd className="font-medium">{formatCount(overview?.subscriptionHealth?.downgradeScheduled)}</dd>
+                      </div>
+                    </>
+                  )}
+                  {sections.overrides && (
+                    <>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-muted-foreground">Dérogations programmées</dt>
+                        <dd className="font-medium">{formatCount(overview?.overrides?.scheduled)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-muted-foreground">Dérogations expirant sous 7 jours</dt>
+                        <dd className="font-medium">{formatCount(overview?.overrides?.expiringNext7Days)}</dd>
+                      </div>
+                    </>
+                  )}
+                </dl>
+              </CollapsibleCard>
             )}
-            title="Échéances et exceptions"
-          >
-            <dl className="space-y-3 text-sm">
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Résiliations programmées</dt>
-                <dd className="font-medium">{formatCount(overview?.subscriptionHealth?.cancellationScheduled)}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Baisses de formule programmées</dt>
-                <dd className="font-medium">{formatCount(overview?.subscriptionHealth?.downgradeScheduled)}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Dérogations programmées</dt>
-                <dd className="font-medium">{formatCount(overview?.overrides?.scheduled)}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Dérogations expirant sous 7 jours</dt>
-                <dd className="font-medium">{formatCount(overview?.overrides?.expiringNext7Days)}</dd>
-              </div>
-            </dl>
-          </CollapsibleCard>
-        </div>
-      </DashboardSection>
+          </div>
+        </DashboardSection>
+      )}
 
-      <DashboardSection
-        description="Synthèse et détail priorisé des signaux administratifs identifiés par le backend."
-        title="Points nécessitant une attention"
-      >
-        <div className="space-y-4">
-          <SignalSummaryCard
-            description="Ces signaux nécessitent une vérification administrative, mais ne représentent pas automatiquement des incidents techniques critiques. Les valeurs non nulles sont signalées en avertissement."
-            items={attentionItems}
-            title="Synthèse des points d’attention"
-            total={formatCount(attention?.totalSignals)}
-          />
-          <PlatformAttentionTable
-            items={attention?.items ?? []}
-            totalSignals={attention?.totalSignals ?? 0}
-          />
-        </div>
-      </DashboardSection>
+      {showAttentionSection && (
+        <DashboardSection
+          description="Synthèse et détail priorisé des signaux administratifs que vos autorisations permettent de consulter."
+          title="Points nécessitant une attention"
+        >
+          <div className="space-y-4">
+            <SignalSummaryCard
+              description="Ces signaux nécessitent une vérification administrative, mais ne représentent pas automatiquement des incidents techniques critiques. Les valeurs non nulles sont signalées en avertissement."
+              items={attentionItems}
+              title="Synthèse des points d’attention"
+              total={formatCount(attention?.totalSignals)}
+            />
+            <PlatformAttentionTable
+              items={attention?.items ?? []}
+              totalSignals={attention?.totalSignals ?? 0}
+            />
+          </div>
+        </DashboardSection>
+      )}
 
-      <PlatformEntitlementOverridesDrilldownDrawer
-        lifecycle={ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE}
-        onClose={() => setActiveOverridesOpen(false)}
-        open={activeOverridesOpen}
-        title="Dérogations actives"
-      />
+      {sections.overrides && (
+        <PlatformEntitlementOverridesDrilldownDrawer
+          lifecycle={ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE}
+          onClose={() => setActiveOverridesOpen(false)}
+          open={activeOverridesOpen}
+          title="Dérogations actives"
+        />
+      )}
     </div>
   );
 }
