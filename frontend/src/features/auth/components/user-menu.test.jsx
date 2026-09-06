@@ -6,10 +6,14 @@ import { RouterProvider } from 'react-router/dom';
 
 const useGetCurrentUserQueryMock = vi.hoisted(() => vi.fn());
 const useLogoutMutationMock = vi.hoisted(() => vi.fn());
+const useGetCurrentPlatformContextQueryMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/features/auth/api/auth-api', () => ({
   useGetCurrentUserQuery: useGetCurrentUserQueryMock,
   useLogoutMutation: useLogoutMutationMock,
+}));
+vi.mock('@/features/platform/api/platform-current-context-api', () => ({
+  useGetCurrentPlatformContextQuery: useGetCurrentPlatformContextQueryMock,
 }));
 
 import { UserMenu, getInitials } from '@/features/auth/components/user-menu';
@@ -37,6 +41,7 @@ describe('UserMenu', () => {
 
   beforeEach(() => {
     useGetCurrentUserQueryMock.mockReset();
+    useGetCurrentPlatformContextQueryMock.mockReset();
     useLogoutMutationMock.mockReset();
     logoutMock.mockReset();
     unwrapMock.mockReset();
@@ -48,6 +53,10 @@ describe('UserMenu', () => {
         lastName: 'Martin',
         email: 'greg@example.com',
       },
+      isLoading: false,
+    });
+    useGetCurrentPlatformContextQueryMock.mockReturnValue({
+      data: null,
       isLoading: false,
     });
 
@@ -80,8 +89,31 @@ describe('UserMenu', () => {
     expect(screen.getByText('greg@example.com')).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Profil' })).toBeEnabled();
     expect(screen.getByRole('menuitem', { name: 'Sécurité' })).toBeEnabled();
+    expect(screen.queryByText('Fondateur')).not.toBeInTheDocument();
     expect(screen.queryByRole('menuitem', { name: 'Console d’administration' })).not.toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Déconnexion' })).toBeEnabled();
+  });
+
+  it('affiche la qualité Fondateur séparément du rôle Platform', async () => {
+    const user = userEvent.setup();
+    useGetCurrentPlatformContextQueryMock.mockReturnValue({
+      data: {
+        isFounder: true,
+        status: 'active',
+        role: { name: 'Super administrateur' },
+        permissions: ['platform:overview:read'],
+      },
+      isLoading: false,
+    });
+
+    renderUserMenu();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' }),
+    );
+
+    expect(screen.getByText('Fondateur')).toBeInTheDocument();
+    expect(screen.getByText('Super administrateur')).toBeInTheDocument();
   });
 
   it('se ferme lors d’un clic à l’extérieur et avec Escape', async () => {
@@ -134,15 +166,14 @@ describe('UserMenu', () => {
     });
   });
 
-  it('propose un retour vers la console au super_admin situé hors Platform', async () => {
+  it('propose la console lorsque la permission runtime overview:read est active', async () => {
     const user = userEvent.setup();
-    useGetCurrentUserQueryMock.mockReturnValue({
+    useGetCurrentPlatformContextQueryMock.mockReturnValue({
       data: {
-        id: 'admin-1',
-        firstName: 'Super',
-        lastName: 'Admin',
-        email: 'admin@example.com',
-        platformRole: 'super_admin',
+        isFounder: false,
+        status: 'active',
+        role: { name: 'Support technique' },
+        permissions: ['platform:overview:read'],
       },
       isLoading: false,
     });
@@ -157,15 +188,14 @@ describe('UserMenu', () => {
     expect(router.state.location.pathname).toBe('/platform/overview');
   });
 
-  it('masque le raccourci console lorsque le super_admin est déjà dans Platform', async () => {
+  it('masque le raccourci console lorsque le membre est déjà dans Platform', async () => {
     const user = userEvent.setup();
-    useGetCurrentUserQueryMock.mockReturnValue({
+    useGetCurrentPlatformContextQueryMock.mockReturnValue({
       data: {
-        id: 'admin-1',
-        firstName: 'Super',
-        lastName: 'Admin',
-        email: 'admin@example.com',
-        platformRole: 'super_admin',
+        isFounder: true,
+        status: 'active',
+        role: { name: 'Super administrateur' },
+        permissions: ['platform:overview:read'],
       },
       isLoading: false,
     });
