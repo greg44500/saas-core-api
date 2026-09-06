@@ -7,6 +7,7 @@ const PLATFORM_PERMISSION = Object.freeze({
   ENTITLEMENT_OVERRIDES_READ: 'platform:entitlement_overrides:read',
   AUDIT_LOGS_READ: 'platform:audit_logs:read',
   TEAM_READ: 'platform:team:read',
+  ROLES_READ: 'platform:roles:read',
 });
 
 export { PLATFORM_PERMISSION };
