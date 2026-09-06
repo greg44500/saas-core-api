@@ -19,6 +19,8 @@ function resolveClassName(className, row, rowIndex) {
  * @param {Array<object>} props.columns
  * @param {Array<object>} props.data
  * @param {(row: object, rowIndex: number) => string | number} props.getRowKey
+ * @param {'default' | 'compact'} [props.density]
+ * @param {boolean} [props.scrollable]
  * @param {string} [props.tableClassName]
  * @param {string} [props.headerClassName]
  * @param {string | ((row: object, rowIndex: number) => string)} [props.rowClassName]
@@ -27,18 +29,27 @@ function DataTable({
   columns,
   data,
   getRowKey,
+  density = 'default',
+  scrollable = true,
   tableClassName = '',
   headerClassName = 'bg-muted/50 text-muted-foreground',
   rowClassName = '',
 }) {
+  const headerCellClassName = density === 'compact'
+    ? DATA_TABLE_STYLES.compactHeaderCell
+    : DATA_TABLE_STYLES.headerCell;
+  const bodyCellClassName = density === 'compact'
+    ? DATA_TABLE_STYLES.compactBodyCell
+    : DATA_TABLE_STYLES.bodyCell;
+
   return (
-    <div className="overflow-x-auto">
+    <div className={scrollable ? 'overflow-x-auto' : 'overflow-x-hidden'}>
       <table className={`w-full text-left text-sm ${tableClassName}`.trim()}>
         <thead className={headerClassName}>
           <tr>
             {columns.map((column) => (
               <th
-                className={`${DATA_TABLE_STYLES.headerCell} font-medium ${column.headerClassName ?? ''}`.trim()}
+                className={`${headerCellClassName} font-medium ${column.headerClassName ?? ''}`.trim()}
                 key={column.id}
                 scope="col"
               >
@@ -55,7 +66,7 @@ function DataTable({
             >
               {columns.map((column) => (
                 <td
-                  className={`${DATA_TABLE_STYLES.bodyCell} ${resolveClassName(
+                  className={`${bodyCellClassName} ${resolveClassName(
                     column.cellClassName,
                     row,
                     rowIndex,
