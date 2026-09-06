@@ -146,7 +146,9 @@ describe('PlatformUsersPage', () => {
     ).not.toBeInTheDocument();
 
     const table = screen.getByRole('table');
-    expect(within(table).getByRole('cell', { name: 'Utilisateur' })).toBeInTheDocument();
+    expect(
+      within(table).getByRole('columnheader', { name: 'Utilisateur' }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Suivant' }));
 
