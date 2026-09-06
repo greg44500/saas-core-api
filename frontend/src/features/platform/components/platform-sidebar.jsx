@@ -14,125 +14,23 @@ import { NavLink } from 'react-router';
 
 import { Button } from '@/components/ui/button';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
-import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
+import {
+  canDisplayPlatformNavigationItem,
+  getVisiblePlatformNavigationSections,
+  platformNavigationItems,
+  platformNavigationSections,
+} from '@/features/platform/lib/platform-navigation';
 
-const platformNavigationSections = [
-  {
-    id: 'pilotage',
-    label: 'Pilotage',
-    items: [
-      {
-        label: 'Vue d’ensemble',
-        Icon: LayoutDashboard,
-        to: '/platform/overview',
-        permission: PLATFORM_PERMISSION.OVERVIEW_READ,
-      },
-    ],
-  },
-  {
-    id: 'clients',
-    label: 'Clients',
-    items: [
-      {
-        label: 'Utilisateurs',
-        Icon: Users,
-        to: '/platform/users',
-        permission: PLATFORM_PERMISSION.USERS_READ,
-      },
-      {
-        label: 'Espaces de travail',
-        Icon: Building2,
-        to: '/platform/workspaces',
-        permission: PLATFORM_PERMISSION.WORKSPACES_READ,
-      },
-    ],
-  },
-  {
-    id: 'commercial',
-    label: 'Commercial',
-    items: [
-      {
-        label: 'Plans',
-        Icon: Tags,
-        to: '/platform/plans',
-        permission: PLATFORM_PERMISSION.PLANS_READ,
-      },
-      {
-        label: 'Abonnements',
-        Icon: CreditCard,
-        to: '/platform/subscriptions',
-        permission: PLATFORM_PERMISSION.SUBSCRIPTIONS_READ,
-      },
-      {
-        label: 'Dérogations',
-        Icon: SlidersHorizontal,
-        to: '/platform/entitlement-overrides',
-        permission: PLATFORM_PERMISSION.ENTITLEMENT_OVERRIDES_READ,
-      },
-    ],
-  },
-  {
-    id: 'organisation',
-    label: 'Organisation',
-    items: [
-      {
-        label: 'Équipe de la Plateforme',
-        Icon: ShieldCheck,
-        to: '/platform/team',
-        anyPermission: [
-          PLATFORM_PERMISSION.TEAM_READ,
-          PLATFORM_PERMISSION.ROLES_READ,
-        ],
-      },
-    ],
-  },
-  {
-    id: 'supervision',
-    label: 'Supervision',
-    items: [
-      {
-        label: 'Journaux d’audit',
-        Icon: ClipboardList,
-        to: '/platform/audit-logs',
-        permission: PLATFORM_PERMISSION.AUDIT_LOGS_READ,
-      },
-    ],
-  },
-];
-
-/*
- * Export plat conservé pour les consommateurs qui ont seulement besoin de la
- * liste des destinations. La sidebar utilise la structure par sections afin
- * que l'organisation visuelle ne duplique jamais la configuration des liens.
- */
-const platformNavigationItems = platformNavigationSections.flatMap(
-  (section) => section.items,
-);
-
-function canDisplayPlatformNavigationItem(item, permissionSet) {
-  if (item.permission) {
-    return permissionSet.has(item.permission);
-  }
-
-  if (Array.isArray(item.anyPermission)) {
-    return item.anyPermission.some((permission) => permissionSet.has(permission));
-  }
-
-  return false;
-}
-
-function getVisiblePlatformNavigationSections(permissions) {
-  const permissionSet = new Set(permissions ?? []);
-
-  return platformNavigationSections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => (
-        canDisplayPlatformNavigationItem(item, permissionSet)
-      )),
-    }))
-    .filter((section) => section.items.length > 0);
-}
+const PLATFORM_NAVIGATION_ICONS = Object.freeze({
+  overview: LayoutDashboard,
+  users: Users,
+  workspaces: Building2,
+  plans: Tags,
+  subscriptions: CreditCard,
+  'entitlement-overrides': SlidersHorizontal,
+  team: ShieldCheck,
+  'audit-logs': ClipboardList,
+});
 
 function PlatformSidebarLabel({ collapsed, children }) {
   return (
@@ -213,24 +111,27 @@ function PlatformSidebar({ collapsed, onToggle }) {
             )}
 
             <div className="space-y-1">
-              {section.items.map(({ label, Icon, to }) => (
-                <NavLink
-                  aria-label={collapsed ? label : undefined}
-                  className={({ isActive }) =>
-                    `group relative flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                    }`
-                  }
-                  key={to}
-                  to={to}
-                >
-                  <Icon aria-hidden="true" className="size-4 shrink-0" />
-                  <PlatformSidebarLabel collapsed={collapsed}>{label}</PlatformSidebarLabel>
-                  <PlatformSidebarTooltip collapsed={collapsed} label={label} />
-                </NavLink>
-              ))}
+              {section.items.map(({ id, label, to }) => {
+                const Icon = PLATFORM_NAVIGATION_ICONS[id];
+
+                return (
+                  <NavLink
+                    aria-label={collapsed ? label : undefined}
+                    className={({ isActive }) =>
+                      `group relative flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      }`}
+                    key={to}
+                    to={to}
+                  >
+                    <Icon aria-hidden="true" className="size-4 shrink-0" />
+                    <PlatformSidebarLabel collapsed={collapsed}>{label}</PlatformSidebarLabel>
+                    <PlatformSidebarTooltip collapsed={collapsed} label={label} />
+                  </NavLink>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -240,6 +141,7 @@ function PlatformSidebar({ collapsed, onToggle }) {
 }
 
 export {
+  PLATFORM_NAVIGATION_ICONS,
   PlatformSidebar,
   PlatformSidebarLabel,
   PlatformSidebarTooltip,
