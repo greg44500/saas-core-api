@@ -106,6 +106,7 @@ function PlatformInvitationFormDrawer({
       toast({
         title: 'Invitation envoyée',
         description: `${parsed.data.firstName} ${parsed.data.lastName} a été invité à rejoindre l’équipe de la Plateforme.`,
+        variant: 'success',
       });
       onClose();
     } catch (error) {
