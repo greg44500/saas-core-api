@@ -23,6 +23,25 @@ describe('PlatformAccessSummary', () => {
     expect(screen.getByText('Super administrateur')).toBeInTheDocument();
   });
 
+  it('permet de réutiliser uniquement la distinction dans un affichage inline', () => {
+    render(
+      <PlatformAccessSummary
+        label="Profil :"
+        platformAccess={{
+          isFounder: true,
+          status: 'active',
+          role: { name: 'Super administrateur' },
+        }}
+        showRole={false}
+        variant="inline"
+      />,
+    );
+
+    expect(screen.getByText('Profil :')).toBeInTheDocument();
+    expect(screen.getByText('Fondateur')).toBeInTheDocument();
+    expect(screen.queryByText('Super administrateur')).not.toBeInTheDocument();
+  });
+
   it('n’affiche pas Fondateur pour un autre membre Platform', () => {
     render(
       <PlatformAccessSummary
