@@ -10,6 +10,10 @@ vi.mock('@/features/platform/api/platform-current-context-api', () => ({
   useGetCurrentPlatformContextQuery: useGetCurrentPlatformContextQueryMock,
 }));
 
+vi.mock('@/features/platform/components/platform-team-members-section', () => ({
+  PlatformTeamMembersSection: () => <div>Tableau des membres</div>,
+}));
+
 import { PlatformTeamPage } from '@/features/platform/pages/platform-team-page';
 
 function renderPage(path = '/platform/team/members') {
@@ -58,6 +62,15 @@ describe('PlatformTeamPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Invitations', level: 2 }),
     ).toBeInTheDocument();
+  });
+
+  it('branche la vue Membres sur son composant métier sans dupliquer le tableau dans la page', () => {
+    renderPage('/platform/team/members');
+
+    expect(
+      screen.getByRole('heading', { name: 'Membres', level: 2 }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Tableau des membres')).toBeInTheDocument();
   });
 
   it('masque l’onglet rôles lorsque roles:read manque', () => {
