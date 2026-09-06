@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 import {
-  getAssignablePlatformRoles,
   canActorTargetPlatformMember,
+  canGovernCustomPlatformRoles,
+  getAssignablePlatformRoles,
 } from '@/features/platform/lib/platform-team-authorization';
 
 const superAdminAccess = {
@@ -26,6 +27,16 @@ const platformAdminAccess = {
 };
 
 describe('platform team frontend authorization policy', () => {
+  it('réserve la gouvernance des rôles personnalisés au Fondateur ou au Super administrateur', () => {
+    expect(canGovernCustomPlatformRoles(superAdminAccess)).toBe(true);
+    expect(canGovernCustomPlatformRoles({
+      ...platformAdminAccess,
+      isFounder: true,
+    })).toBe(true);
+    expect(canGovernCustomPlatformRoles(platformAdminAccess)).toBe(false);
+    expect(canGovernCustomPlatformRoles(null)).toBe(false);
+  });
+
   it('interdit les actions visuelles sur le Fondateur et sur soi-même', () => {
     expect(canActorTargetPlatformMember({
       currentUserId: 'actor-id',
