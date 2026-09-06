@@ -83,9 +83,16 @@ describe('PlatformTeamSnapshotSection', () => {
 
     const section = screen.getByRole('region', { name: 'Organisation interne' });
     expect(within(section).getByText('Équipe de la Plateforme')).toBeInTheDocument();
-    expect(within(section).getByText('3')).toBeInTheDocument();
-    expect(within(section).getByText('2')).toBeInTheDocument();
-    expect(within(section).getByText('1')).toBeInTheDocument();
+
+    const membersLabel = within(section).getByText('Membres');
+    const activeLabel = within(section).getByText('Actifs');
+    const suspendedLabel = within(section).getByText('Suspendus');
+    const founderLabel = within(section).getByText('Fondateur');
+
+    expect(membersLabel.nextElementSibling).toHaveTextContent('3');
+    expect(activeLabel.nextElementSibling).toHaveTextContent('2');
+    expect(suspendedLabel.nextElementSibling).toHaveTextContent('1');
+    expect(founderLabel.nextElementSibling).toHaveTextContent('1');
 
     await user.click(
       within(section).getByRole('button', { name: 'Afficher le détail' }),
