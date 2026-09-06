@@ -8,14 +8,12 @@ const mocks = vi.hoisted(() => ({
   disableUser: vi.fn(),
   enableUser: vi.fn(),
   revokeUserSessions: vi.fn(),
-  updateUserRole: vi.fn(),
   useDisablePlatformUserMutation: vi.fn(),
   useEnablePlatformUserMutation: vi.fn(),
   useGetCurrentUserQuery: vi.fn(),
   useGetPlatformUserQuery: vi.fn(),
   useListPlatformUsersQuery: vi.fn(),
   useRevokePlatformUserSessionsMutation: vi.fn(),
-  useUpdatePlatformUserRoleMutation: vi.fn(),
 }));
 
 vi.mock('@/features/auth/api/auth-api', () => ({
@@ -28,7 +26,6 @@ vi.mock('@/features/platform/api/platform-users-api', () => ({
   useGetPlatformUserQuery: mocks.useGetPlatformUserQuery,
   useListPlatformUsersQuery: mocks.useListPlatformUsersQuery,
   useRevokePlatformUserSessionsMutation: mocks.useRevokePlatformUserSessionsMutation,
-  useUpdatePlatformUserRoleMutation: mocks.useUpdatePlatformUserRoleMutation,
 }));
 
 import { PlatformUsersPage } from '@/features/platform/pages/platform-users-page';
@@ -37,7 +34,6 @@ const currentUser = {
   id: '507f1f77bcf86cd799439010',
   firstName: 'Super',
   lastName: 'Admin',
-  platformRole: 'super_admin',
 };
 
 const listedUser = {
@@ -46,7 +42,6 @@ const listedUser = {
   lastName: 'Doe',
   email: 'jane@example.com',
   status: 'active',
-  platformRole: 'user',
   lastLoginAt: '2026-09-01T08:30:00.000Z',
   createdAt: '2026-08-20T10:00:00.000Z',
 };
@@ -117,9 +112,6 @@ describe('PlatformUsersPage', () => {
         revokedSessionCount: 2,
       }),
     );
-    mocks.useUpdatePlatformUserRoleMutation.mockReturnValue(
-      resolvedMutation(mocks.updateUserRole),
-    );
   });
 
   afterEach(() => {
@@ -141,7 +133,7 @@ describe('PlatformUsersPage', () => {
     expect(screen.getByText('Chargement des utilisateurs…')).toBeInTheDocument();
   });
 
-  it('affiche les utilisateurs avec le DataTable et pagine côté serveur', async () => {
+  it('affiche les utilisateurs avec le DataTable et pagine côté serveur sans rôle User legacy', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -149,6 +141,9 @@ describe('PlatformUsersPage', () => {
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
     expect(screen.getByText('jane@example.com')).toBeInTheDocument();
     expect(screen.getByText('Actif')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('columnheader', { name: 'Rôle plateforme' }),
+    ).not.toBeInTheDocument();
 
     const table = screen.getByRole('table');
     expect(within(table).getByRole('cell', { name: 'Utilisateur' })).toBeInTheDocument();
@@ -200,7 +195,7 @@ describe('PlatformUsersPage', () => {
     expect(refetch).toHaveBeenCalledOnce();
   });
 
-  it('ouvre le drawer et conserve l’erreur de validation dans la confirmation', async () => {
+  it('sépare le cycle de vie du compte de la gestion des rôles Platform Team', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -208,7 +203,20 @@ describe('PlatformUsersPage', () => {
 
     const drawer = screen.getByRole('dialog', { name: 'Jane Doe' });
     expect(within(drawer).getByText('jane@example.com')).toBeInTheDocument();
+    expect(within(drawer).queryByText('Rôle plateforme')).not.toBeInTheDocument();
+    expect(
+      within(drawer).queryByRole('button', { name: 'Modifier le rôle' }),
+    ).not.toBeInTheDocument();
+    expect(within(drawer).getByText(/cycle de vie du compte est distinct/i)).toBeInTheDocument();
+  });
 
+  it('ouvre le drawer et conserve l’erreur de validation dans la confirmation', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: 'Voir' }));
+
+    const drawer = screen.getByRole('dialog', { name: 'Jane Doe' });
     await user.click(within(drawer).getByRole('button', { name: 'Désactiver' }));
 
     const confirmation = screen.getByRole('dialog', { name: 'Confirmer l’action' });
