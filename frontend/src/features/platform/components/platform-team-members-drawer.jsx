@@ -25,7 +25,7 @@ function PlatformTeamMembersDrawer({ onClose, open }) {
     total: members.length,
     totalPages: members.length > 0 ? 1 : 0,
   };
-  const columns = createPlatformTeamMemberReadColumns();
+  const columns = createPlatformTeamMemberReadColumns({ compact: true });
 
   return (
     <EntityDetailsDrawer
@@ -67,7 +67,10 @@ function PlatformTeamMembersDrawer({ onClose, open }) {
             <DataTable
               columns={columns}
               data={members}
+              density="compact"
               getRowKey={(member) => member.id}
+              scrollable={false}
+              tableClassName="table-fixed"
             />
           </div>
 
