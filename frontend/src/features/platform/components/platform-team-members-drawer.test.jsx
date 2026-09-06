@@ -84,7 +84,7 @@ describe('PlatformTeamMembersDrawer', () => {
     ).toBeInTheDocument();
   });
 
-  it('réutilise les colonnes de lecture membres dans le Drawer', () => {
+  it('réutilise les colonnes membres dans un tableau compact sans scroll ni email', () => {
     render(<PlatformTeamMembersDrawer onClose={vi.fn()} open />);
 
     expect(screen.getByRole('columnheader', { name: 'Membre' })).toBeInTheDocument();
@@ -93,8 +93,14 @@ describe('PlatformTeamMembersDrawer', () => {
     expect(screen.getByRole('columnheader', { name: 'Statut' })).toBeInTheDocument();
 
     expect(screen.getByText('Gregory BALLAT')).toBeInTheDocument();
+    expect(screen.queryByText('gregory@example.com')).not.toBeInTheDocument();
     expect(screen.getByText('Fondateur')).toBeInTheDocument();
     expect(screen.getByText('Super administrateur')).toBeInTheDocument();
     expect(screen.getByText('Actif')).toBeInTheDocument();
+
+    const table = screen.getByRole('table');
+    expect(table).toHaveClass('table-fixed');
+    expect(table.parentElement).toHaveClass('overflow-x-hidden');
+    expect(table.parentElement).not.toHaveClass('overflow-x-auto');
   });
 });
