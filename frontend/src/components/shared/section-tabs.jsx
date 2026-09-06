@@ -10,7 +10,7 @@ function SectionTabs({ ariaLabel, items }) {
       aria-label={ariaLabel}
       className="overflow-x-auto border-b border-border"
     >
-      <div className="flex min-w-max gap-6" role="tablist">
+      <div className="flex min-w-max gap-6">
         {items.map(({ label, to }) => (
           <NavLink
             className={({ isActive }) => (
@@ -22,7 +22,6 @@ function SectionTabs({ ariaLabel, items }) {
             )}
             end
             key={to}
-            role="tab"
             to={to}
           >
             {label}
