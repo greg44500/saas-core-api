@@ -36,8 +36,11 @@ const platformRoleNameSchema = z
 const platformRoleDescriptionSchema = z
     .string()
     .trim()
-    .max(500, 'description ne peut pas dépasser 500 caractères')
-    .nullable();
+    .min(
+        1,
+        'description doit contenir une justification métier explicite',
+    )
+    .max(500, 'description ne peut pas dépasser 500 caractères');
 
 /**
  * La clé technique, isSystem et le statut ne font volontairement pas partie
@@ -46,7 +49,7 @@ const platformRoleDescriptionSchema = z
  */
 const createPlatformRoleBodySchema = z.strictObject({
     name: platformRoleNameSchema,
-    description: platformRoleDescriptionSchema.optional(),
+    description: platformRoleDescriptionSchema,
     permissions: platformPermissionKeysSchema.default([]),
 });
 
