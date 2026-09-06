@@ -10,6 +10,7 @@ import {
     validateRequest,
 } from '../../../middlewares/validateRequest.js';
 import {
+    getAuditLogMetadata,
     listAuditLogs,
 } from './platformAuditLogs.controller.js';
 import {
@@ -18,6 +19,14 @@ import {
 
 
 const platformAuditLogsRouter = Router();
+
+platformAuditLogsRouter.get(
+    '/metadata',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.AUDIT_LOGS_READ,
+    ),
+    getAuditLogMetadata,
+);
 
 platformAuditLogsRouter.get(
     '/',
