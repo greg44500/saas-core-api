@@ -1,6 +1,19 @@
 import {
+    getAuditMetadata,
+} from './auditMetadata.service.js';
+import {
     listWorkspaceAuditLogs,
 } from './auditLog.service.js';
+
+
+const getWorkspaceAuditLogMetadata = async (_req, res) => {
+    res.status(200).json({
+        status: 'success',
+        data: {
+            metadata: getAuditMetadata(),
+        },
+    });
+};
 
 
 const listWorkspaceAuditLogEntries = async (req, res) => {
@@ -36,5 +49,6 @@ const listWorkspaceAuditLogEntries = async (req, res) => {
 
 
 export {
+    getWorkspaceAuditLogMetadata,
     listWorkspaceAuditLogEntries,
 };
