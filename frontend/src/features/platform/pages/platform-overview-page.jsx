@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { useGetPlatformAuditMetadataQuery } from '@/features/platform/api/platform-audit-logs-api';
 import { useGetPlatformOverviewQuery } from '@/features/platform/api/platform-overview-api';
 import { PlatformAttentionTable } from '@/features/platform/components/platform-attention-table';
 import { PlatformEntitlementOverridesDrilldownDrawer } from '@/features/platform/components/platform-entitlement-overrides-drilldown-drawer';
@@ -165,6 +166,9 @@ function PlatformOverviewPage() {
   const sections = resolvePlatformOverviewVisibility(
     overview?.availableSections,
   );
+  const auditMetadataQuery = useGetPlatformAuditMetadataQuery(undefined, {
+    skip: !sections.audit,
+  });
   const hasAnyOverviewSection = hasAnyPlatformOverviewSection(sections);
 
   function changePeriod(nextPeriod) {
@@ -532,6 +536,7 @@ function PlatformOverviewPage() {
             />
             <PlatformAttentionTable
               items={attention?.items ?? []}
+              metadata={auditMetadataQuery.data}
               totalSignals={attention?.totalSignals ?? 0}
             />
           </div>
