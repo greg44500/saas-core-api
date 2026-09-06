@@ -4,6 +4,10 @@ const PLATFORM_TEAM_MEMBERS_LIST_TAG = {
   type: 'PlatformTeamMembers',
   id: 'LIST',
 };
+const PLATFORM_TEAM_SUMMARY_TAG = {
+  type: 'PlatformTeamSummary',
+  id: 'CURRENT',
+};
 
 const platformTeamApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -29,6 +33,11 @@ const platformTeamApi = baseApi.injectEndpoints({
         })),
       ],
     }),
+    getPlatformTeamSummary: build.query({
+      query: () => '/platform/team/summary',
+      transformResponse: (response) => response?.data?.summary ?? null,
+      providesTags: [PLATFORM_TEAM_SUMMARY_TAG],
+    }),
     updatePlatformTeamMemberRole: build.mutation({
       query: ({ memberId, roleId }) => ({
         url: `/platform/team/members/${memberId}/role`,
@@ -38,6 +47,7 @@ const platformTeamApi = baseApi.injectEndpoints({
       transformResponse: (response) => response?.data?.member ?? null,
       invalidatesTags: (_result, _error, { memberId }) => [
         PLATFORM_TEAM_MEMBERS_LIST_TAG,
+        PLATFORM_TEAM_SUMMARY_TAG,
         { type: 'PlatformTeamMembers', id: memberId },
       ],
     }),
@@ -49,6 +59,7 @@ const platformTeamApi = baseApi.injectEndpoints({
       transformResponse: (response) => response?.data?.member ?? null,
       invalidatesTags: (_result, _error, memberId) => [
         PLATFORM_TEAM_MEMBERS_LIST_TAG,
+        PLATFORM_TEAM_SUMMARY_TAG,
         { type: 'PlatformTeamMembers', id: memberId },
       ],
     }),
@@ -60,6 +71,7 @@ const platformTeamApi = baseApi.injectEndpoints({
       transformResponse: (response) => response?.data?.member ?? null,
       invalidatesTags: (_result, _error, memberId) => [
         PLATFORM_TEAM_MEMBERS_LIST_TAG,
+        PLATFORM_TEAM_SUMMARY_TAG,
         { type: 'PlatformTeamMembers', id: memberId },
       ],
     }),
@@ -70,6 +82,7 @@ const platformTeamApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, memberId) => [
         PLATFORM_TEAM_MEMBERS_LIST_TAG,
+        PLATFORM_TEAM_SUMMARY_TAG,
         { type: 'PlatformTeamMembers', id: memberId },
       ],
     }),
@@ -77,6 +90,7 @@ const platformTeamApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useGetPlatformTeamSummaryQuery,
   useListPlatformTeamMembersQuery,
   useReactivatePlatformTeamMemberMutation,
   useRevokePlatformTeamMemberMutation,
@@ -86,5 +100,6 @@ export const {
 
 export {
   PLATFORM_TEAM_MEMBERS_LIST_TAG,
+  PLATFORM_TEAM_SUMMARY_TAG,
   platformTeamApi,
 };
