@@ -13,6 +13,7 @@ import {
     workspaceIdParamsSchema,
 } from '../workspace/workspace.validation.js';
 import {
+    getWorkspaceAuditLogMetadata,
     listWorkspaceAuditLogEntries,
 } from './auditLog.controller.js';
 import {
@@ -24,6 +25,26 @@ const router = Router({
     mergeParams: true,
 });
 
+const workspaceAuditReadMiddlewares = [
+    authenticate,
+    validateRequest({
+        params: workspaceIdParamsSchema,
+    }),
+    loadWorkspaceContext,
+    authorizePermission(
+        CORE_PERMISSION.AUDIT_READ,
+    ),
+    enforcePlanFeature(
+        CORE_PLAN_FEATURE.AUDIT_LOGS,
+    ),
+];
+
+
+router.get(
+    '/metadata',
+    ...workspaceAuditReadMiddlewares,
+    getWorkspaceAuditLogMetadata,
+);
 
 /**
  * La production des AuditLogs reste un invariant de sécurité du Core. Seule
