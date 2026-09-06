@@ -31,10 +31,14 @@ import {
 const {
     permissionMiddleware,
     validationMiddleware,
+    getAuditLogMetadata,
     listAuditLogs,
 } = vi.hoisted(() => ({
     permissionMiddleware: vi.fn((req, res, next) => next()),
     validationMiddleware: vi.fn((req, res, next) => next()),
+    getAuditLogMetadata: vi.fn((req, res) => res.status(200).json({
+        status: 'success',
+    })),
     listAuditLogs: vi.fn((req, res) => res.status(200).json({
         status: 'success',
     })),
@@ -70,6 +74,7 @@ vi.mock(
 vi.mock(
     '../../../modules/platform/auditLogs/platformAuditLogs.controller.js',
     () => ({
+        getAuditLogMetadata,
         listAuditLogs,
     }),
 );
@@ -82,11 +87,27 @@ beforeEach(() => {
     authenticate.mockClear();
     permissionMiddleware.mockClear();
     validationMiddleware.mockClear();
+    getAuditLogMetadata.mockClear();
     listAuditLogs.mockClear();
 });
 
 
 describe('platformAuditLogs.routes', () => {
+    it('protège les métadonnées Audit avec audit_logs:read', async () => {
+        const response = await request(app)
+            .get('/platform/audit-logs/metadata');
+
+        expect(response.status).toBe(200);
+        expect(authorizePlatformPermission.mock.calls).toContainEqual([
+            PLATFORM_PERMISSION.AUDIT_LOGS_READ,
+        ]);
+        expect(authenticate).toHaveBeenCalledOnce();
+        expect(permissionMiddleware).toHaveBeenCalledOnce();
+        expect(validationMiddleware).not.toHaveBeenCalled();
+        expect(getAuditLogMetadata).toHaveBeenCalledOnce();
+        expect(listAuditLogs).not.toHaveBeenCalled();
+    });
+
     it('protège et valide la lecture globale avant le controller', async () => {
         const response = await request(app)
             .get('/platform/audit-logs?page=1&limit=20');
