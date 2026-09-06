@@ -16,6 +16,11 @@ function isSuperAdminAuthorization(platformAccess) {
   return platformAccess?.role?.key === PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN;
 }
 
+function canGovernCustomPlatformRoles(platformAccess) {
+  return platformAccess?.isFounder === true
+    || isSuperAdminAuthorization(platformAccess);
+}
+
 function canActorManageTargetRole({ platformAccess, targetRole }) {
   if (!platformAccess || !targetRole) return false;
 
@@ -78,6 +83,7 @@ function getAssignablePlatformRoles({
 export {
   canActorManageTargetRole,
   canActorTargetPlatformMember,
+  canGovernCustomPlatformRoles,
   getAssignablePlatformRoles,
   isStrictPermissionSubset,
   isSuperAdminAuthorization,
