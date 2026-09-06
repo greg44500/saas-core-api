@@ -3,6 +3,7 @@ import { Navigate, useParams } from 'react-router';
 import { PageLoader } from '@/components/shared/page-loader';
 import { SectionTabs } from '@/components/shared/section-tabs';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
+import { PlatformRolesSection } from '@/features/platform/components/platform-roles-section';
 import { PlatformTeamInvitationsSection } from '@/features/platform/components/platform-team-invitations-section';
 import { PlatformTeamMembersSection } from '@/features/platform/components/platform-team-members-section';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
@@ -49,6 +50,10 @@ function PlatformTeamSectionContent({ sectionKey }) {
 
   if (sectionKey === 'invitations') {
     return <PlatformTeamInvitationsSection />;
+  }
+
+  if (sectionKey === 'roles') {
+    return <PlatformRolesSection />;
   }
 
   return null;
