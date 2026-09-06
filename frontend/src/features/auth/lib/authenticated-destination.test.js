@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 import {
   PLATFORM_HOME,
   getAuthenticatedHome,
@@ -7,10 +8,19 @@ import {
   resolveAuthenticatedDestination,
 } from '@/features/auth/lib/authenticated-destination';
 
+const overviewPlatformAccess = {
+  status: 'active',
+  permissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
+};
+
 describe('authenticated destination policy', () => {
-  it('utilise Platform comme accueil principal du super_admin', () => {
-    expect(getAuthenticatedHome({ platformRole: 'super_admin' })).toBe(PLATFORM_HOME);
-    expect(getAuthenticatedHome({ platformRole: 'user' })).toBe('/workspaces');
+  it('utilise la première destination Platform autorisée comme accueil principal', () => {
+    expect(getAuthenticatedHome(overviewPlatformAccess)).toBe(PLATFORM_HOME);
+    expect(getAuthenticatedHome({
+      status: 'active',
+      permissions: [PLATFORM_PERMISSION.USERS_READ],
+    })).toBe('/platform/users');
+    expect(getAuthenticatedHome(null)).toBe('/workspaces');
   });
 
   it('identifie les routes appartenant au contexte client Workspace', () => {
@@ -20,14 +30,17 @@ describe('authenticated destination policy', () => {
     expect(isWorkspaceClientPath('/platform/overview')).toBe(false);
   });
 
-  it('ignore une ancienne destination Workspace pour un super_admin', () => {
+  it('ignore une ancienne destination Workspace pour un membre Platform actif', () => {
     expect(resolveAuthenticatedDestination({
       destination: {
         pathname: '/workspaces/workspace-1/dashboard',
         search: '?tab=activity',
       },
-      user: { platformRole: 'super_admin' },
-    })).toBe(PLATFORM_HOME);
+      platformAccess: {
+        status: 'active',
+        permissions: [PLATFORM_PERMISSION.USERS_READ],
+      },
+    })).toBe('/platform/users');
   });
 
   it('préserve une destination non-Workspace explicitement demandée', () => {
@@ -37,7 +50,14 @@ describe('authenticated destination policy', () => {
         search: '?token=abc',
         hash: '#confirmation',
       },
-      user: { platformRole: 'super_admin' },
+      platformAccess: overviewPlatformAccess,
     })).toBe('/invitations/accept?token=abc#confirmation');
+  });
+
+  it('reste orienté Workspace sans contexte Platform actif', () => {
+    expect(resolveAuthenticatedDestination({
+      destination: { pathname: '/workspaces/workspace-1/dashboard' },
+      platformAccess: { status: 'suspended', permissions: [] },
+    })).toBe('/workspaces/workspace-1/dashboard');
   });
 });
