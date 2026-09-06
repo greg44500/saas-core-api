@@ -3,11 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 
-const useGetCurrentUserQueryMock = vi.hoisted(() => vi.fn());
+const useGetCurrentPlatformContextQueryMock = vi.hoisted(() => vi.fn());
 const useListWorkspacesQueryMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@/features/auth/api/auth-api', () => ({
-  useGetCurrentUserQuery: useGetCurrentUserQueryMock,
+vi.mock('@/features/platform/api/platform-current-context-api', () => ({
+  useGetCurrentPlatformContextQuery: useGetCurrentPlatformContextQueryMock,
 }));
 
 vi.mock('@/features/workspace/api/workspace-api', () => ({
@@ -16,9 +16,9 @@ vi.mock('@/features/workspace/api/workspace-api', () => ({
 
 import { WorkspaceEntryPage } from '@/features/workspace/pages/workspace-entry-page';
 
-function renderEntry(workspaces, user = { id: 'user-1', platformRole: 'user' }) {
-  useGetCurrentUserQueryMock.mockReturnValue({
-    data: user,
+function renderEntry(workspaces, platformAccess = null) {
+  useGetCurrentPlatformContextQueryMock.mockReturnValue({
+    data: platformAccess,
     isLoading: false,
     isFetching: false,
   });
@@ -33,6 +33,7 @@ function renderEntry(workspaces, user = { id: 'user-1', platformRole: 'user' }) 
     [
       { path: '/workspaces', Component: WorkspaceEntryPage },
       { path: '/platform/overview', Component: () => <h1>Platform cible</h1> },
+      { path: '/platform/users', Component: () => <h1>Utilisateurs Platform</h1> },
       { path: '/onboarding/workspace', Component: () => <h1>Onboarding cible</h1> },
       {
         path: '/workspaces/:workspaceId/dashboard',
@@ -48,7 +49,7 @@ function renderEntry(workspaces, user = { id: 'user-1', platformRole: 'user' }) 
 
 describe('WorkspaceEntryPage', () => {
   beforeEach(() => {
-    useGetCurrentUserQueryMock.mockReset();
+    useGetCurrentPlatformContextQueryMock.mockReset();
     useListWorkspacesQueryMock.mockReset();
   });
 
@@ -56,17 +57,25 @@ describe('WorkspaceEntryPage', () => {
     cleanup();
   });
 
-  it('redirige le super_admin vers son contexte Platform principal', async () => {
+  it('redirige un membre Platform actif vers sa première destination autorisée', async () => {
     const router = renderEntry(
       [{ id: 'workspace-1', name: 'Acme' }],
-      { id: 'platform-admin', platformRole: 'super_admin' },
+      {
+        status: 'active',
+        permissions: ['platform:users:read'],
+      },
     );
 
-    expect(await screen.findByRole('heading', { name: 'Platform cible' })).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe('/platform/overview');
+    expect(
+      await screen.findByRole('heading', { name: 'Utilisateurs Platform' }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/platform/users');
+    expect(useListWorkspacesQueryMock).toHaveBeenCalledWith(undefined, {
+      skip: true,
+    });
   });
 
-  it('redirige vers onboarding lorsque la liste est vide', async () => {
+  it('redirige vers onboarding lorsque la liste est vide et aucun contexte Platform actif n’existe', async () => {
     const router = renderEntry([]);
     expect(await screen.findByRole('heading', { name: 'Onboarding cible' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/onboarding/workspace');
