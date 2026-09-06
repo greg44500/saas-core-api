@@ -209,7 +209,7 @@ describe('PlatformUsersPage', () => {
     expect(
       within(drawer).queryByRole('button', { name: 'Modifier le rôle' }),
     ).not.toBeInTheDocument();
-    expect(within(drawer).getByText(/cycle de vie du compte est distinct/i)).toBeInTheDocument();
+    expect(within(drawer).getByText('Sécurité et cycle de vie')).toBeInTheDocument();
   });
 
   it('ouvre le drawer et conserve l’erreur de validation dans la confirmation', async () => {
