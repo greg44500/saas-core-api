@@ -7,6 +7,7 @@ const useListWorkspaceInvitationsQueryMock = vi.hoisted(() => vi.fn());
 const useListWorkspaceFilesQueryMock = vi.hoisted(() => vi.fn());
 const useGetWorkspaceSubscriptionQueryMock = vi.hoisted(() => vi.fn());
 const useListWorkspaceAuditLogsQueryMock = vi.hoisted(() => vi.fn());
+const useGetWorkspaceAuditMetadataQueryMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/features/workspace/components/workspace-context', () => ({
   useWorkspaceContext: useWorkspaceContextMock,
@@ -26,6 +27,7 @@ vi.mock('@/features/subscription/api/subscription-api', () => ({
 }));
 
 vi.mock('@/features/audit-log/api/audit-log-api', () => ({
+  useGetWorkspaceAuditMetadataQuery: useGetWorkspaceAuditMetadataQueryMock,
   useListWorkspaceAuditLogsQuery: useListWorkspaceAuditLogsQueryMock,
 }));
 
@@ -38,6 +40,11 @@ import {
 
 const workspace = { id: 'workspace-1', name: 'Acme', status: 'active' };
 const membership = { id: 'membership-1', role: { key: 'admin', name: 'Administrateur' } };
+const auditMetadata = {
+  actions: [{ value: 'WORKSPACE_UPDATED', label: 'Workspace modifié' }],
+  entityTypes: [{ value: 'Workspace', label: 'Workspace' }],
+  statuses: [{ value: 'success', label: 'Réussie' }],
+};
 
 function createQueryResult(data = undefined) {
   return {
@@ -62,6 +69,9 @@ function mockQueryResults() {
   );
   useListWorkspaceAuditLogsQueryMock.mockReturnValue(
     createQueryResult({ auditLogs: [{ id: 'audit-1' }], pagination: { total: 1 } }),
+  );
+  useGetWorkspaceAuditMetadataQueryMock.mockReturnValue(
+    createQueryResult(auditMetadata),
   );
 }
 
@@ -109,11 +119,16 @@ describe('useWorkspaceDashboardData', () => {
       { workspaceId: 'workspace-1', page: 1, limit: RECENT_ACTIVITY_LIMIT },
       { skip: false },
     );
+    expect(useGetWorkspaceAuditMetadataQueryMock).toHaveBeenCalledWith(
+      'workspace-1',
+      { skip: false },
+    );
 
     expect(result.current.members.total).toBe(4);
     expect(result.current.invitations.total).toBe(2);
     expect(result.current.files.total).toBe(7);
     expect(result.current.activity.entries).toEqual([{ id: 'audit-1' }]);
+    expect(result.current.activity.metadata).toEqual(auditMetadata);
   });
 
   it('skippe chaque source serveur lorsque la permission correspondante manque', () => {
@@ -131,5 +146,6 @@ describe('useWorkspaceDashboardData', () => {
     expect(useListWorkspaceFilesQueryMock.mock.calls[0][1]).toEqual({ skip: true });
     expect(useGetWorkspaceSubscriptionQueryMock.mock.calls[0][1]).toEqual({ skip: true });
     expect(useListWorkspaceAuditLogsQueryMock.mock.calls[0][1]).toEqual({ skip: true });
+    expect(useGetWorkspaceAuditMetadataQueryMock.mock.calls[0][1]).toEqual({ skip: true });
   });
 });
