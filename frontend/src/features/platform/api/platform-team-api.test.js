@@ -22,6 +22,7 @@ vi.mock('@/services/api/base-api', () => ({
       endpoints(builder);
 
       return {
+        useGetPlatformTeamSummaryQuery: vi.fn(),
         useListPlatformTeamMembersQuery: vi.fn(),
         useReactivatePlatformTeamMemberMutation: vi.fn(),
         useRevokePlatformTeamMemberMutation: vi.fn(),
@@ -75,8 +76,36 @@ describe('platformTeamApi', () => {
     });
   });
 
-  it('utilise les quatre endpoints backend de cycle de vie des membres', () => {
+  it('lit le snapshot agrégé sans reconstruire les KPI côté frontend', () => {
+    const summaryConfig = captured.queries[1];
+    const summary = {
+      total: 4,
+      active: 3,
+      suspended: 1,
+      founderCount: 1,
+      byRole: [
+        {
+          role: { id: 'role-id', name: 'Support technique' },
+          total: 3,
+          active: 2,
+          suspended: 1,
+          percentage: 75,
+        },
+      ],
+    };
+
+    expect(summaryConfig.query()).toBe('/platform/team/summary');
+    expect(summaryConfig.transformResponse({
+      data: { summary },
+    })).toEqual(summary);
+    expect(summaryConfig.providesTags).toEqual([
+      { type: 'PlatformTeamSummary', id: 'CURRENT' },
+    ]);
+  });
+
+  it('utilise les quatre endpoints backend de cycle de vie et invalide le snapshot', () => {
     const [updateRole, suspend, reactivate, revoke] = captured.mutations;
+    const summaryTag = { type: 'PlatformTeamSummary', id: 'CURRENT' };
 
     expect(updateRole.query({
       memberId: 'member-id',
@@ -99,5 +128,18 @@ describe('platformTeamApi', () => {
       url: '/platform/team/members/member-id',
       method: 'DELETE',
     });
+
+    expect(updateRole.invalidatesTags(null, null, {
+      memberId: 'member-id',
+    })).toContainEqual(summaryTag);
+    expect(suspend.invalidatesTags(null, null, 'member-id')).toContainEqual(
+      summaryTag,
+    );
+    expect(reactivate.invalidatesTags(null, null, 'member-id')).toContainEqual(
+      summaryTag,
+    );
+    expect(revoke.invalidatesTags(null, null, 'member-id')).toContainEqual(
+      summaryTag,
+    );
   });
 });
