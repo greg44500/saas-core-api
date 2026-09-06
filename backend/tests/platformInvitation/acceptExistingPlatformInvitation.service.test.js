@@ -80,6 +80,24 @@ const sessionResult = (value) => ({
     session: vi.fn().mockResolvedValue(value),
 });
 
+const deferred = () => {
+    let resolve;
+    const promise = new Promise((resolver) => {
+        resolve = resolver;
+    });
+
+    return { promise, resolve };
+};
+
+const flushUntil = async (predicate, attempts = 10) => {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+        if (predicate()) {
+            return;
+        }
+        await Promise.resolve();
+    }
+};
+
 const setup = ({ actorEmail = 'member@example.com', existingMember = null } = {}) => {
     const session = { id: 'session' };
     const invitation = {
@@ -167,6 +185,34 @@ describe('acceptExistingPlatformInvitation', () => {
         expect(invitation.save).toHaveBeenCalledWith({ session });
         expect(createAuditLog).toHaveBeenCalledOnce();
         expect(result.membership).toBe(membership);
+    });
+
+    it('séquence le rôle puis l’invitant dans la même transaction', async () => {
+        const { role } = setup();
+        const roleLookup = deferred();
+
+        PlatformRole.findById.mockReturnValue({
+            session: vi.fn().mockReturnValue(roleLookup.promise),
+        });
+
+        const operation = acceptExistingPlatformInvitation({
+            token: 'a'.repeat(64),
+            actorId: 'actor-id',
+        });
+
+        await flushUntil(() => PlatformRole.findById.mock.calls.length > 0);
+
+        expect(PlatformRole.findById).toHaveBeenCalledWith('role-id');
+        expect(
+            User.findById.mock.calls.some(([id]) => id === 'inviter-id'),
+        ).toBe(false);
+
+        roleLookup.resolve(role);
+        await operation;
+
+        expect(
+            User.findById.mock.calls.some(([id]) => id === 'inviter-id'),
+        ).toBe(true);
     });
 
     it('refuse lorsque l’email du compte authentifié diffère', async () => {
