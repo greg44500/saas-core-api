@@ -1,4 +1,7 @@
-import { useListWorkspaceAuditLogsQuery } from '@/features/audit-log/api/audit-log-api';
+import {
+  useGetWorkspaceAuditMetadataQuery,
+  useListWorkspaceAuditLogsQuery,
+} from '@/features/audit-log/api/audit-log-api';
 import { useListWorkspaceFilesQuery } from '@/features/files/api/files-api';
 import { useGetWorkspaceSubscriptionQuery } from '@/features/subscription/api/subscription-api';
 import {
@@ -91,6 +94,11 @@ function useWorkspaceDashboardData() {
     { skip: !permissions.canReadAudit },
   );
 
+  const auditMetadataQuery = useGetWorkspaceAuditMetadataQuery(
+    workspace.id,
+    { skip: !permissions.canReadAudit },
+  );
+
   return {
     workspace,
     membership,
@@ -113,6 +121,8 @@ function useWorkspaceDashboardData() {
     },
     activity: {
       query: activityQuery,
+      metadataQuery: auditMetadataQuery,
+      metadata: auditMetadataQuery.data ?? null,
       entries: activityQuery.data?.auditLogs ?? [],
     },
   };
