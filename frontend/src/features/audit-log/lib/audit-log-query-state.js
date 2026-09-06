@@ -1,13 +1,3 @@
-import {
-  AUDIT_ACTION_OPTIONS,
-  AUDIT_ENTITY_TYPE_OPTIONS,
-  AUDIT_STATUS_OPTIONS,
-} from '@/features/audit-log/lib/audit-log-presentation';
-
-const auditActionValues = new Set(AUDIT_ACTION_OPTIONS.map(([value]) => value));
-const auditEntityTypeValues = new Set(AUDIT_ENTITY_TYPE_OPTIONS.map(([value]) => value));
-const auditStatusValues = new Set(AUDIT_STATUS_OPTIONS.map(([value]) => value));
-
 function parsePage(value) {
   if (!/^\d+$/.test(value ?? '')) return 1;
 
@@ -15,8 +5,18 @@ function parsePage(value) {
   return Number.isSafeInteger(page) && page >= 1 ? page : 1;
 }
 
-function readAllowedValue(searchParams, key, allowedValues) {
+function metadataValues(items) {
+  return new Set(
+    (Array.isArray(items) ? items : [])
+      .map((item) => item?.value)
+      .filter(Boolean),
+  );
+}
+
+function readAllowedValue(searchParams, key, items) {
   const value = searchParams.get(key);
+  const allowedValues = metadataValues(items);
+
   return value && allowedValues.has(value) ? value : '';
 }
 
@@ -33,7 +33,7 @@ function isValidDateInput(value) {
   );
 }
 
-function readFilters(searchParams) {
+function readFilters(searchParams, metadata) {
   const rawFrom = searchParams.get('from') ?? '';
   const rawTo = searchParams.get('to') ?? '';
   let from = isValidDateInput(rawFrom) ? rawFrom : '';
@@ -45,9 +45,9 @@ function readFilters(searchParams) {
   }
 
   return {
-    action: readAllowedValue(searchParams, 'action', auditActionValues),
-    entityType: readAllowedValue(searchParams, 'entityType', auditEntityTypeValues),
-    status: readAllowedValue(searchParams, 'status', auditStatusValues),
+    action: readAllowedValue(searchParams, 'action', metadata?.actions),
+    entityType: readAllowedValue(searchParams, 'entityType', metadata?.entityTypes),
+    status: readAllowedValue(searchParams, 'status', metadata?.statuses),
     from,
     to,
   };
@@ -66,6 +66,7 @@ function writeSearchParams(filters, page = 1) {
 
 export {
   isValidDateInput,
+  metadataValues,
   parsePage,
   readFilters,
   writeSearchParams,
