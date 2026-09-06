@@ -15,13 +15,9 @@ import {
   useGetPlatformUserQuery,
   useListPlatformUsersQuery,
   useRevokePlatformUserSessionsMutation,
-  useUpdatePlatformUserRoleMutation,
 } from '@/features/platform/api/platform-users-api';
 import { PlatformUserDetailsDrawer } from '@/features/platform/components/platform-user-details-drawer';
-import { PLATFORM_ROLE } from '@/features/platform/constants/platform-roles';
 import {
-  PLATFORM_ROLE_LABEL,
-  formatPlatformRole,
   formatPlatformUserDate,
   formatPlatformUserName,
   formatPlatformUserStatus,
@@ -35,10 +31,6 @@ const disableUserSchema = z.strictObject({
     .trim()
     .min(3, 'Le motif doit contenir au minimum 3 caractères.')
     .max(500, 'Le motif ne peut pas dépasser 500 caractères.'),
-});
-
-const updateRoleSchema = z.strictObject({
-  platformRole: z.enum(Object.values(PLATFORM_ROLE)),
 });
 
 function getApiMessage(error, fallback) {
@@ -62,10 +54,6 @@ function getActionDescription(action) {
     return `Révoquer toutes les sessions actives de ${userName} ?`;
   }
 
-  if (action.type === 'update-role') {
-    return `Modifier le rôle plateforme de ${userName} ? Les sessions actives seront révoquées.`;
-  }
-
   return '';
 }
 
@@ -77,7 +65,6 @@ function PlatformUsersPage() {
   const [pendingAction, setPendingAction] = useState(null);
   const [pendingActionError, setPendingActionError] = useState(null);
   const [disabledReason, setDisabledReason] = useState('');
-  const [selectedRole, setSelectedRole] = useState('');
 
   const usersQuery = useListPlatformUsersQuery({ page, limit: PAGE_SIZE });
   const userDetailsQuery = useGetPlatformUserQuery(selectedUserId, {
@@ -87,18 +74,15 @@ function PlatformUsersPage() {
   const [disableUser, disableUserState] = useDisablePlatformUserMutation();
   const [enableUser, enableUserState] = useEnablePlatformUserMutation();
   const [revokeUserSessions, revokeSessionsState] = useRevokePlatformUserSessionsMutation();
-  const [updateUserRole, updateRoleState] = useUpdatePlatformUserRoleMutation();
 
   const mutationPending =
     disableUserState.isLoading ||
     enableUserState.isLoading ||
-    revokeSessionsState.isLoading ||
-    updateRoleState.isLoading;
+    revokeSessionsState.isLoading;
 
   function openPendingAction(action) {
     setPendingActionError(null);
     setDisabledReason('');
-    setSelectedRole('');
     setPendingAction(action);
   }
 
@@ -108,7 +92,6 @@ function PlatformUsersPage() {
     setPendingAction(null);
     setPendingActionError(null);
     setDisabledReason('');
-    setSelectedRole('');
   }
 
   async function confirmPendingAction() {
@@ -153,30 +136,8 @@ function PlatformUsersPage() {
         });
       }
 
-      if (pendingAction.type === 'update-role') {
-        const validation = updateRoleSchema.safeParse({ platformRole: selectedRole });
-
-        if (!validation.success) {
-          setPendingActionError('Choisissez un rôle plateforme.');
-          return;
-        }
-
-        if (validation.data.platformRole === pendingAction.user.platformRole) {
-          setPendingActionError('Choisissez un rôle différent du rôle actuel.');
-          return;
-        }
-
-        await updateUserRole({
-          userId: pendingAction.user.id,
-          platformRole: validation.data.platformRole,
-        }).unwrap();
-
-        toast({ title: 'Rôle plateforme mis à jour', variant: 'success' });
-      }
-
       setPendingAction(null);
       setDisabledReason('');
-      setSelectedRole('');
     } catch (error) {
       setPendingActionError(
         getApiMessage(error, "L’action d’administration n’a pas pu être effectuée."),
@@ -223,11 +184,6 @@ function PlatformUsersPage() {
       cell: (user) => formatPlatformUserStatus(user.status),
     },
     {
-      id: 'platformRole',
-      header: 'Rôle plateforme',
-      cell: (user) => formatPlatformRole(user.platformRole),
-    },
-    {
       id: 'lastLoginAt',
       header: 'Dernière connexion',
       cell: (user) => formatPlatformUserDate(user.lastLoginAt),
@@ -258,7 +214,7 @@ function PlatformUsersPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Utilisateurs</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Consultez les comptes de la plateforme et appliquez les opérations réservées au super-administrateur.
+          Consultez les comptes de la plateforme et appliquez les opérations autorisées par vos permissions Platform.
         </p>
       </div>
 
@@ -302,7 +258,7 @@ function PlatformUsersPage() {
       />
 
       <ConfirmationDialog
-        confirmLabel={pendingAction?.type === 'update-role' ? 'Modifier le rôle' : 'Confirmer'}
+        confirmLabel="Confirmer"
         confirmVariant={pendingAction?.type === 'disable' ? 'destructive' : 'default'}
         description={getActionDescription(pendingAction)}
         errorMessage={pendingActionError}
@@ -325,27 +281,6 @@ function PlatformUsersPage() {
               placeholder="Indiquez le motif administratif"
               value={disabledReason}
             />
-          </div>
-        )}
-
-        {pendingAction?.type === 'update-role' && (
-          <div className="mt-4 space-y-2">
-            <label className="text-sm font-medium" htmlFor="platform-user-role">
-              Nouveau rôle plateforme
-            </label>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              id="platform-user-role"
-              onChange={(event) => setSelectedRole(event.target.value)}
-              value={selectedRole}
-            >
-              <option value="">Choisir un rôle</option>
-              {Object.values(PLATFORM_ROLE).map((role) => (
-                <option key={role} value={role}>
-                  {PLATFORM_ROLE_LABEL[role] ?? role}
-                </option>
-              ))}
-            </select>
           </div>
         )}
       </ConfirmationDialog>
