@@ -2,7 +2,11 @@
 
 > **Statut : document temporaire de développement**
 >
-> Ce fichier est l'unique synthèse de reprise active du projet. Il n'est pas normatif et sera supprimé uniquement lorsque le Core sera finalisé et que sa suppression aura été explicitement validée.
+> Ce fichier est l'unique synthèse de reprise active du projet. Il n'est pas normatif et doit suivre l'état réel du code. Il sera supprimé uniquement lorsque le Core sera finalisé et que sa suppression aura été explicitement validée.
+>
+> **Dernière mise à jour : 2026-09-06**
+
+---
 
 ## 1. Hiérarchie d'autorité
 
@@ -14,532 +18,972 @@ En cas de contradiction :
 4. architecture, sécurité et guidelines canoniques ;
 5. `docs/DEBT.md` ;
 6. documentation opérationnelle ;
-7. documents historiques temporairement conservés ;
-8. présent fichier.
+7. présent fichier de reprise.
 
-Le présent fichier décrit uniquement l'état de reprise. Il ne doit jamais conserver une règle métier plus récente qu'un contrat canonique.
+Le présent fichier décrit l'état de travail et les décisions récentes. Il ne doit pas devenir une source concurrente des contrats canoniques.
+
+**Attention documentaire actuelle :** `docs/contracts/PLATFORM-TEAM.md` et la section D-018 de `docs/DEBT.md` contiennent encore des statuts d'implémentation datant du cadrage A1/A2. Le code a avancé bien au-delà. Ils devront être réalignés lors de la prochaine consolidation documentaire, sans utiliser leurs anciens statuts pour annuler le code et les tests plus récents.
 
 ---
 
 ## 2. État général du projet
 
-Le chantier documentaire **DOC-0 → DOC-11** est terminé.
+Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présenté comme `v1.0.0` ni comme automatiquement production-ready.
 
-Les lots de finalisation suivants sont clôturés :
-
-```text
-CORE-FIN-1  reprise et clôture F10.6                    ✅
-CORE-FIN-2  audit fonctionnel complet                  ✅
-CORE-FIN-3  corrections révélées par l'audit           ✅
-CORE-FIN-4  D-001 fermeture Account / Workspace        ✅
-```
-
-Le dépôt reste en version de développement `0.1.0`. Il ne doit pas encore être présenté comme `v1.0.0` ni comme automatiquement production-ready.
-
-Validation CORE-FIN-4 confirmée par l'utilisateur :
+Roadmap Core actuellement pertinente :
 
 ```text
-backend : tests complets verts
-frontend : tests ciblés verts
-frontend : tests globaux verts
-frontend : build Vite OK
+CORE-FIN-1  reprise et clôture F10.6                         ✅
+CORE-FIN-2  audit fonctionnel complet                       ✅
+CORE-FIN-3  corrections révélées par l'audit                ✅
+CORE-FIN-4  D-001 fermeture Account / Workspace             ✅
+CORE-FIN-5  D-014 points d'extension métier                 ✅
+D-018       Équipe de la Plateforme / RBAC / invitations    EN COURS
+D-015       versionnement / migrations / release            PLANIFIÉ
+D-016       Playwright / E2E Core                            PLANIFIÉ
+Audit final architecture / sécurité / qualité               À VENIR
+D-017       dérivation pilote + upgrade Core                PLANIFIÉ
+Release v1.0.0                                               À VENIR
 ```
-
-Une consolidation UX / Platform / Files a ensuite été réalisée avant CORE-FIN-5. L'utilisateur a confirmé le lot vert, le build frontend OK et la validation visuelle frontend OK.
 
 La couverture E2E Playwright reste une dette distincte D-016.
 
 ---
 
-## 3. Roadmap de finalisation Core
+## 3. Dernière baseline globale réellement validée
 
-Roadmap active :
+Avant les derniers ajouts A5.8 et Audit Metadata, l'utilisateur a confirmé :
 
 ```text
-CORE-FIN-1  reprise et clôture F10.6                    ✅
-CORE-FIN-2  audit fonctionnel complet                  ✅
-CORE-FIN-3  corrections révélées par l'audit           ✅
-CORE-FIN-4  D-001 fermeture Account / Workspace        ✅
-CORE-FIN-5  D-014 points d'extension métier            PROCHAIN
-CORE-FIN-6  D-015 versionnement / migrations / release
-CORE-FIN-7  D-016 Playwright / E2E Core
-CORE-FIN-8  audit final architecture / sécurité / qualité
-CORE-FIN-9  D-017 dérivation pilote + upgrade Core
-CORE-FIN-10 release v1.0.0
+backend : tests ciblés / fonctionnels concernés verts
+frontend : tests ciblés verts
+frontend : tests globaux verts
+frontend : build Vite OK
 ```
 
-Avant chaque bloc, vérifier le HEAD réel et les contrats canoniques ; ne pas repartir d'une ancienne checklist historique.
+Cette baseline validait notamment D-014 et l'essentiel de D-018 jusqu'à A5.7 avant les micro-ajustements UX ultérieurs.
+
+**Important :** plusieurs changements plus récents sont présents sur `main` mais n'ont pas encore reçu une confirmation de validation globale après leur ajout. Ils sont listés explicitement plus bas.
 
 ---
 
-## 4. Documentation canonique active
+## 4. D-014 — Points d'extension métier — VALIDÉ
 
-Porte d'entrée :
+D-014 est clôturée.
 
-```text
-README.md
-```
-
-Index :
+Points de composition disponibles :
 
 ```text
-docs/README.md
+capabilities / relations feature → métriques
+→ backend/config/applicationCapability.registry.js
+
+permissions métier / extensions des rôles système Workspace
+→ backend/config/applicationRolePermission.registry.js
+
+routes backend métier
+→ backend/config/applicationRoutes.registry.js
+
+routes frontend métier
+→ frontend/src/app/application-routes.js
+
+navigation Workspace métier
+→ frontend/src/app/workspace-navigation.js
 ```
 
-Références principales :
-
-```text
-docs/DEBT.md
-
-docs/contracts/CORE-CONTRACT.md
-docs/contracts/COMMERCIAL.md
-docs/contracts/CAPABILITIES.md
-
-docs/architecture/ARCHITECTURE.md
-docs/architecture/BACKEND.md
-docs/architecture/FRONTEND.md
-
-docs/security/SECURITY.md
-docs/frontend/FRONTEND-GUIDELINES.md
-docs/derived-saas/DERIVED-SAAS.md
-
-docs/compliance/COMPLIANCE.md
-docs/compliance/rgpd-data-tracker-inventory.md
-
-docs/operations/OPERATIONS.md
-docs/development-trial-reset.md
-```
-
-`frontend/README.md` reste le guide local du frontend.
-
-Aucun ancien document historique ne doit être utilisé pour contredire ces sources canoniques.
+Aucune autodécouverte dynamique ou système de plugins implicite n'a été ajouté. La composition reste explicite, auditable et testable.
 
 ---
 
-## 5. CORE-FIN-4 / D-001 — état final validé
+## 5. D-018 — Architecture Équipe de la Plateforme
 
-### 5.1 Fermeture Account
-
-Endpoints :
+Modèle actif :
 
 ```text
-GET  /api/users/me/closure-impact
-POST /api/users/me/closure
+User
+→ identité / authentification
+
+PlatformTeamMember
+→ appartenance interne à l'équipe de la Plateforme
+
+PlatformRole
+→ rôle système ou personnalisé
+
+PlatformPermission
+→ autorité administrative réelle
+
+PlatformInvitation
+→ invitation interne sécurisée
+
+Fondateur
+→ qualité historique protégée, distincte du rôle RBAC
 ```
 
-Confirmation forte :
+Le RBAC Platform reste strictement distinct du RBAC Workspace.
+
+### Invariants Fondateur
 
 ```text
-currentPassword
-confirmationEmail
-confirmAccountClosure = true
+exactement un Fondateur actif
+Fondateur → toujours Super administrateur
+Super administrateur → pas nécessairement Fondateur
 ```
 
-Le backend recalcule toujours la situation réelle depuis MongoDB.
+Le Fondateur ne peut pas être rétrogradé, suspendu, révoqué ou fermé via l'administration ordinaire.
 
-Workflow :
+Un futur transfert de la qualité de Fondateur devra être un workflow dédié, fortement sécurisé et audité. Ne jamais simuler ce transfert par une modification de rôle.
+
+### Super administrateur
+
+Plusieurs Super administrateurs sont supportés.
+
+Le rôle système `super_admin` reçoit toutes les permissions actives du registre Platform, y compris les permissions applicatives ajoutées ultérieurement.
+
+Le système protège l'invariant d'au moins un Super administrateur actif.
+
+### Runtime authorization
+
+Les permissions Platform sensibles sont résolues depuis l'état DB courant et non depuis un rôle embarqué dans le JWT.
 
 ```text
-simple membre
-→ memberships retirées
-→ quota membre libéré
-→ Workspaces tiers restent actifs
-
-owner
-→ Workspaces encore possédés archivés automatiquement
-→ Workspaces transférés auparavant restent actifs
-→ memberships du User retirées
-→ AuthSessions révoquées
-→ User ACTIVE → DELETION_REQUESTED → CLOSED
+requête sensible
+→ resolvePlatformAuthorization()
+→ PlatformTeamMember courant
+→ PlatformRole courant
+→ permissions effectives courantes
 ```
 
-Le frontend place « Fermer mon compte » dans la page Sécurité et affiche l'impact réel fourni par le backend avant confirmation.
+Une suspension/révocation prend donc effet sans attendre l'expiration d'un access token.
 
-Après succès, la session frontend est terminée et le cache RTK Query est purgé.
+Le fallback legacy `User.platformRole === super_admin` ne concerne que les utilisateurs n'ayant jamais eu de membership Platform et reste transitoire.
 
-### 5.2 Archivage Workspace owner
+Un membership historique `REVOKED` ne doit jamais retomber sur ce fallback.
+
+---
+
+## 6. D-018 backend — état implémenté et validé
+
+### A2 — Registre permissions / rôles système
+
+Implémenté :
+
+- registre de permissions Platform ;
+- niveaux `DELEGABLE`, `SENSITIVE`, `RESERVED` ;
+- presets système :
+  - Super administrateur ;
+  - Administrateur de la Plateforme ;
+  - Support technique ;
+  - Support commercial ;
+  - Support client ;
+- `authorizePlatformPermission` ;
+- seed des rôles Platform ;
+- extension applicative des permissions Platform ;
+- Super administrateur = toutes les permissions actives.
+
+### A3 — Invitations Platform sécurisées
+
+Implémenté et validé :
+
+- `PlatformInvitation` séparée des invitations Workspace ;
+- token aléatoire 32 bytes / 64 hex ;
+- stockage SHA-256 uniquement ;
+- email canonique exact ;
+- expiration ;
+- resend avec rotation du token ;
+- revoke ;
+- acceptance ;
+- utilisateur existant : authentification requise + email exact ;
+- nouvel utilisateur : identité issue de l'invitation, saisie du mot de passe uniquement ;
+- `emailVerifiedAt` renseigné à l'acceptation ;
+- aucune session implicite après création ;
+- `CLIENT_URL` de confiance ;
+- HTML échappé ;
+- aucun token brut dans l'audit ;
+- mutations transactionnelles ;
+- rate limit public ;
+- revalidation de l'invitant, du rôle et de l'assignabilité dans la transaction.
+
+### A4 — Cycle de vie des membres Platform
+
+Endpoints disponibles :
+
+```text
+GET    /api/platform/team/members
+PATCH  /api/platform/team/members/:memberId/role
+PATCH  /api/platform/team/members/:memberId/suspend
+PATCH  /api/platform/team/members/:memberId/reactivate
+DELETE /api/platform/team/members/:memberId
+```
+
+Protections :
+
+- permissions exactes ;
+- re-résolution de l'acteur dans la transaction ;
+- protection Fondateur ;
+- pas d'auto-changement de rôle/statut ;
+- politique de stricte sous-puissance pour les acteurs ordinaires ;
+- cible Super administrateur soumise à `platform:super_admins:manage` ;
+- invariant dernier Super administrateur actif ;
+- audit des mutations.
+
+### A4.1 — Current Platform Context
 
 Endpoint :
 
 ```text
-POST /api/workspaces/:workspaceId/archive
+GET /api/platform/me
 ```
 
-Protection :
+Le frontend distingue correctement :
 
 ```text
-owner-only backend
-+ mot de passe courant
-+ confirmation exacte du nom
+Fondateur
+Rôle : Super administrateur
 ```
 
-Transition :
+La qualité de Fondateur n'est jamais déduite de `User.platformRole`.
+
+### A4.2 — rôles personnalisés backend
+
+Endpoints disponibles :
 
 ```text
-ACTIVE → ARCHIVED
+GET   /api/platform/team/roles
+GET   /api/platform/team/roles/permissions
+GET   /api/platform/team/roles/:roleId
+POST  /api/platform/team/roles
+PATCH /api/platform/team/roles/:roleId
+PATCH /api/platform/team/roles/:roleId/archive
 ```
 
-Effets :
+État actuel du backend :
 
-- Subscriptions commerciales closables neutralisées ;
-- baseline conservée ;
-- invitations pendantes révoquées ;
-- AuditLog ;
-- données non supprimées physiquement par ce workflow.
+- clé technique opaque `custom_<UUID>` générée uniquement par le backend ;
+- système / archived protégés ;
+- permissions inconnues refusées ;
+- permissions réservées refusées dans les rôles personnalisés ;
+- anti-escalade ;
+- archive refusée lorsqu'un membre ACTIVE/SUSPENDED utilise encore le rôle ;
+- audit create/update/archive ;
+- validation Zod stricte.
 
-Le frontend expose cette action dans les paramètres du Workspace uniquement lorsque le contexte indique le rôle système owner. Cette visibilité reste une règle UX ; le backend revérifie l'ownership.
+**Voir section 9 : de nouvelles règles de gouvernance ont été validées le 2026-09-06 et doivent encore durcir cette implémentation.**
 
-### 5.3 Fermeture terminale Workspace
+### Route legacy supprimée côté backend
+
+La mutation historique :
 
 ```text
-PATCH /api/platform/workspaces/:workspaceId/close
+PATCH /api/platform/users/:id/role
 ```
 
-`CLOSED` reste une décision Platform / administrative et ne doit pas être exposé comme commande owner.
+n'existe plus côté backend.
 
-### 5.4 Auth après fermeture
-
-`deletion_requested` et `closed` sont refusés sur :
-
-```text
-login
-access token / authenticate
-refresh token
-reset-password
-```
-
-`forgot-password` garde une réponse neutre anti-énumération sans permettre une récupération réactivant ces états.
-
-`disabled` reste une suspension administrative distincte : memberships et Workspaces sont conservés et la réactivation reste possible.
+**Ne jamais la restaurer.**
 
 ---
 
-## 6. Consolidation post-CORE-FIN-4 validée
+## 7. D-018 frontend — état actuel
 
-Cette consolidation a été réalisée avant CORE-FIN-5 afin de ne pas démarrer les points d'extension métier avec des incohérences UX ou Platform connues.
+### A5.1 — structure Équipe de la Plateforme — VALIDÉ
 
-### 6.1 Confirmations / modales
-
-`ConfirmationDialog` reste la primitive partagée des confirmations sensibles.
-
-Son overlay applique désormais un léger flou d'arrière-plan (`backdrop-blur-sm`) afin de renforcer la présence de la modale sans dupliquer ce comportement dans chaque feature.
-
-### 6.2 Navigation Workspace et fichier
-
-Le groupe de navigation contenant `Fichiers` est présenté comme **Ressources**, et non comme « Fonctionnalités ».
-
-Distinction à conserver :
+Zone unique :
 
 ```text
-file:read
-→ consultation des fichiers existants
-
-file_upload
-→ possibilité de nouveaux téléversements
+Administration de la Plateforme
+→ Équipe de la Plateforme
 ```
 
-Une absence de `file_upload` ne doit donc pas masquer automatiquement la ressource Fichiers si `file:read` reste accordé.
-
-Côté affichage commercial utilisateur, lorsque `file_upload` n'est pas effectif :
+Navigation par vraies URLs :
 
 ```text
-Stockage                   —
-Téléversements mensuels    —
+/platform/team/members
+/platform/team/invitations
+/platform/team/roles
 ```
 
-Cette neutralisation est uniquement une règle de présentation. Les valeurs backend ne sont ni supprimées ni falsifiées.
+Composant partagé : `SectionTabs`.
 
-### 6.3 Listing Files scalable
+Le parent « Équipe de la Plateforme » reste actif sur ses routes enfants.
 
-Le listing Files supporte désormais des filtres serveur pour :
+Les onglets sont filtrés par permissions runtime.
+
+### A5.2 — Membres consultation — VALIDÉ
+
+- RTK Query ;
+- `DataTable` partagé ;
+- pagination serveur ;
+- badge Fondateur réutilisable ;
+- statut actif/suspendu ;
+- email retiré de la table Membres lorsque sans action métier utile ;
+- table du Drawer adaptée à la largeur, sans scroll horizontal.
+
+### A5.3 — actions membres — VALIDÉ
+
+Actions conditionnelles :
+
+- modifier le rôle ;
+- suspendre ;
+- réactiver ;
+- révoquer.
+
+Composants partagés utilisés :
+
+- `DataTableActions` ;
+- `ActionIconButton` ;
+- `ConfirmationDialog` ;
+- `SelectField` ;
+- toasts.
+
+Le frontend applique la policy UX, mais le backend reste l'autorité finale.
+
+### A5.4 — Team Snapshot Dashboard — VALIDÉ
+
+Backend : endpoint agrégé dédié, sans dériver les KPI depuis une page paginée de membres.
+
+Snapshot :
 
 ```text
-category
-search
+total
+active
+suspended
+founderCount
+byRole[]
 ```
 
-La validation est faite côté backend et pagination / total sont calculés sur le résultat filtré. Ne jamais remplacer ce comportement par un filtrage uniquement frontend sur la page courante.
+La répartition expose également son pourcentage côté backend.
 
-Le tableau Files a été simplifié :
+Frontend :
+
+- section Dashboard « Organisation interne » ;
+- `CollapsibleCard` ;
+- `DistributionBarChart` ;
+- `EntityDetailsDrawer` ;
+- liste membres chargée uniquement à l'ouverture du Drawer ;
+- aucune donnée d'équipe demandée sans `platform:team:read`.
+
+### A5.5 — Vue d'ensemble permission-aware — VALIDÉ
+
+Le Dashboard Platform n'est pas codé en dur par nom de rôle.
+
+Principe :
 
 ```text
-Fichier | Catégorie | Taille | Ajouté le | Actions
+même Vue d'ensemble
+→ sections composées par permissions runtime
 ```
 
-Décisions UX :
+Le backend expose `availableSections` et filtre réellement le cockpit avant réponse.
 
-- suppression du MIME visible `application/pdf` dans la liste ;
-- suppression de la colonne Type redondante ;
-- nom de fichier tronqué lorsque nécessaire, nom complet disponible au survol ;
-- largeur des colonnes maîtrisée afin d'éviter une scrollbar horizontale dans le layout desktop normal ;
-- catégorie filtrable ;
-- recherche par nom serveur-side.
+Le frontend suit cette projection et reste fail-closed.
 
-Le MIME reste une donnée de sécurité backend et n'a pas été retiré du modèle ni du contrôle de type réel.
+Un rôle sans accès Audit ne reçoit pas les données Audit, y compris via des compteurs globaux permettant d'inférer des informations cachées.
 
-### 6.4 Dérogations Platform
+### A5.6 — Invitations UI — couvert par la baseline frontend globale
 
-Le backend conserve la séparation :
+UI disponible :
+
+- liste des invitations actives ;
+- rôle prévu ;
+- informations d'envoi / expiration existantes selon DTO ;
+- formulaire d'invitation dans Drawer ;
+- Zod frontend ;
+- choix du rôle ;
+- resend ;
+- revoke ;
+- permissions runtime ;
+- RTK Query.
+
+Un point UX supplémentaire sur l'âge de l'invitation est encore à traiter, voir section 11.
+
+### A5.7 — Rôles et permissions — baseline VALIDÉE
+
+UI disponible :
+
+- liste rôles système + personnalisés ;
+- Drawer de détail ;
+- catalogue permissions ;
+- création / modification de rôle personnalisé ;
+- archivage ;
+- rôles système en lecture seule ;
+- `CheckboxField` accessible ;
+- `Textarea` réutilisable ;
+- permissions non assignables absentes du formulaire ;
+- anti-escalade UX.
+
+Derniers ajustements UX implémentés après cette baseline :
+
+- tableau `Rôles et permissions` sans scroll horizontal ;
+- description retirée de la cellule et déplacée dans `InfoTooltip` ;
+- action œil : tooltip visuel court `Voir` ;
+- `ActionIconButton` sépare désormais `label` (ARIA précis) et `tooltipLabel` (texte visuel court).
+
+**Validation ciblée du tout dernier correctif `ActionIconButton` à reconfirmer**, car le premier test interrogeait le tooltip alors qu'il était `aria-hidden`; le test a été corrigé pour le faire apparaître au focus clavier.
+
+### A5.8 — Acceptation invitation côté destinataire — IMPLÉMENTÉ, VALIDATION ENCORE À CONFIRMER
+
+Flux implémenté :
 
 ```text
-FEATURE override
-≠
-LIMIT override
+/platform-invitations/accept?token=...
 ```
 
-L'administration Platform présente désormais plus clairement :
+Utilisateur existant :
 
 ```text
-Plan
-Dérogation
-Effectif
+lien
+→ login si nécessaire
+→ retour au lien
+→ acceptation authentifiée
+→ email exact revérifié backend
+→ CurrentPlatformContext invalidé
+→ redirection vers première destination réellement autorisée
 ```
 
-pour les limites d'un Workspace et permet d'ajuster une limite sans modifier le Plan catalogue des autres clients.
-
-Les libellés techniques / ambigus ont été corrigés :
+Nouvel utilisateur :
 
 ```text
-Capability
-→ Fonctionnalité ou Limite selon le type
-
-Valeur
-→ Action appliquée / Valeur appliquée
-
-État
-→ Statut de la dérogation
+lien
+→ mot de passe + confirmation uniquement
+→ identité issue de l'invitation
+→ création + acceptation
+→ aucune session implicite
+→ retour Login
 ```
 
-Le statut de dérogation reste utile côté Platform car il distingue notamment :
+Le token n'est pas stocké dans `localStorage`.
 
-```text
-Active
-Planifiée
-Expirée
-Révoquée
-```
-
-### 6.5 Liens secondaires compacts
-
-Un composant partagé `InlineIconLink` est disponible pour les actions de navigation secondaires placées à côté d'une entité.
-
-Usage actuel : dans le détail d'une dérogation, le Workspace est affiché ainsi :
-
-```text
-Workspace Laetitia BALLAT  ↗
-```
-
-avec tooltip « Voir le workspace », au lieu d'un gros bouton sous le nom.
-
-### 6.6 Drawer Workspace Platform
-
-Le détail administratif d'un Workspace n'affiche plus son ObjectId technique.
-
-L'identifiant reste bien entendu disponible et utilisé par le backend, RTK Query et les routes ; il n'est simplement plus exposé dans ce drawer sans besoin UX.
-
-### 6.7 Création / modification des Plans : fonctionnalités + quotas
-
-Création et modification utilisent le même `PlatformPlanForm`.
-
-Fonctionnalités et métriques sont regroupées par les métadonnées de présentation du Capability Registry :
-
-```text
-category
-categoryLabel
-displayOrder
-```
-
-Pour une catégorie contenant exactement une fonctionnalité et une ou plusieurs métriques, le switch de la fonctionnalité pilote un dépliage UX des quotas :
-
-```text
-OFF
-→ quotas repliés
-
-ON
-→ quotas dépliés
-```
-
-Le dépliage utilise le composant partagé `SmoothCollapse` avec une transition courte et compatible `prefers-reduced-motion`.
-
-Le passage OFF n'efface pas les valeurs déjà configurées. Un OFF → ON restitue donc les paramètres précédents.
-
-Important : ce mécanisme reste une association de présentation, pas une dépendance métier implicite.
-
-Si une catégorie contient plusieurs fonctionnalités, le Core ne doit pas deviner arbitrairement quel switch contrôle quelle métrique. Dans ce cas les métriques restent visibles tant qu'un lien explicite n'est pas déclaré par le futur contrat d'extension D-014.
-
-Ne jamais hardcoder dans React une relation du type :
-
-```text
-file_upload → storage_bytes / file_uploads_monthly
-```
-
-Le futur mécanisme métier pourra, si nécessaire, déclarer explicitement les métriques associées à une feature.
-
-### 6.8 Validation du lot
-
-L'utilisateur a confirmé après cette consolidation :
-
-```text
-tests : verts
-frontend build : OK
-validation visuelle frontend : OK
-```
-
-Aucune dette UX connue de ce lot ne doit bloquer le démarrage de CORE-FIN-5.
+Tests ciblés A5.8 et build doivent encore être confirmés après pull.
 
 ---
 
-## 7. Rétention et conformité : ce qui reste ouvert
+## 8. Audit Metadata Contract — IMPLÉMENTÉ, VALIDATION ENCORE À CONFIRMER
 
-Invariant :
+Un défaut architectural a été identifié le 2026-09-06 : le frontend conservait des listes statiques de confort pour les actions, ressources et statuts Audit.
+
+Cela provoquait une divergence visible :
 
 ```text
-fermeture fonctionnelle / archivage
-≠
-purge physique immédiate
+backend : EntitlementOverride
+frontend : catalogue absent
+→ affichage technique anglais
+→ filtre Ressource incomplet
 ```
 
-D-001 est clôturée, mais D-006 reste ouverte pour chaque produit réel :
+Décision :
 
-- durée de conservation ;
-- anonymisation / pseudonymisation ;
-- purge définitive ;
-- sauvegardes ;
-- exceptions légales ;
-- articulation avec données contractuelles et financières.
+```text
+BACKEND = unique source de vérité du vocabulaire Audit
+FRONTEND = présentation uniquement
+```
 
-Le Core ne doit pas coder une durée juridique universelle.
+### Registre canonique backend
+
+`backend/constants/auditActions.constants.js` contient désormais des registres enrichis dont sont dérivées les anciennes constantes techniques utilisées par le modèle et Zod.
+
+Une entrée définit à la fois :
+
+```text
+key technique
+value technique stable
+label français
+```
+
+Les identifiants existants sont conservés pour la compatibilité des AuditLogs historiques.
+
+### Metadata API
+
+Deux contextes sécurisés exposent le même registre canonique :
+
+```text
+GET /api/platform/audit-logs/metadata
+GET /api/workspaces/:workspaceId/audit-logs/metadata
+```
+
+La route Platform utilise `platform:audit_logs:read`.
+
+La route Workspace conserve la chaîne de sécurité de lecture Audit Workspace : auth, contexte Workspace, permission `audit:read`, feature `audit_logs`.
+
+### Frontend dynamique
+
+Les listes statiques frontend suivantes ont été supprimées :
+
+```text
+AUDIT_ACTION_OPTIONS
+AUDIT_ENTITY_TYPE_OPTIONS
+AUDIT_STATUS_OPTIONS
+```
+
+Les filtres, libellés du tableau et la validation des filtres URL utilisent désormais les metadata reçues du backend.
+
+Invariant attendu :
+
+```text
+nouvelle ressource ajoutée au registre backend
+→ validation backend
+→ metadata API
+→ RTK Query
+→ filtre frontend
+→ libellé DataTable
+```
+
+sans ajout d'une table métier parallèle dans React.
+
+Le fallback frontend est volontairement neutre :
+
+```text
+Action inconnue
+Ressource inconnue
+Statut inconnu
+```
+
+Il ne transforme plus une valeur technique anglaise en pseudo-libellé utilisateur.
+
+Vocabulaire visible corrigé sur la page Platform :
+
+```text
+Audit logs            → Journaux d'audit
+Événements Platform   → Événements de la Plateforme
+Workspace             → Espace de travail
+metadata              → métadonnées
+EntitlementOverride   → Dérogation via metadata backend
+```
+
+### Validation à faire en priorité à la reprise
+
+Depuis la racine :
+
+```bash
+npx vitest run backend/tests/auditLog backend/tests/platform/auditLogs
+```
+
+Depuis `frontend/` :
+
+```bash
+npx vitest run src/features/audit-log/api/audit-log-api.test.js src/features/audit-log/lib/audit-log-presentation.test.js src/features/audit-log/lib/audit-log-query-state.test.js src/features/audit-log/components/audit-log-filters.test.jsx src/features/audit-log/pages/workspace-audit-log-page.test.jsx src/features/platform/api/platform-audit-logs-api.test.js src/features/platform/pages/platform-audit-logs-page.test.jsx src/features/platform/pages/platform-audit-logs-route.test.jsx
+```
+
+Puis :
+
+```bash
+npm run build
+```
+
+Validation manuelle attendue :
+
+```text
+Journaux d'audit
+→ action « Dérogation révoquée »
+→ ressource « Dérogation »
+→ filtre Ressource contient « Dérogation »
+→ aucun « Entitlementoverride » visible
+```
 
 ---
 
-## 8. Multi-workspace et vocabulaire métier — décision clarifiée
+## 9. Décisions RBAC validées le 2026-09-06 — À INTÉGRER AU CONTRAT ET AU CODE
 
-Le Core V1 reste techniquement multi-workspace :
+Ces décisions ont été explicitement approuvées mais ne sont pas encore toutes implémentées.
 
-```text
-User → 0..N Workspaces
-```
+### 9.1 Permissions = code-owned uniquement
 
-Il n'impose pas une limite commerciale universelle du nombre de Workspaces par User.
-
-Le modèle commercial V1 reste Workspace-scoped :
+Une permission n'est jamais créée librement depuis l'UI ou directement en base.
 
 ```text
-Workspace
-├── Subscription
-├── UsageMetric
-└── EntitlementOverride
+permission
+→ déclarée dans le code / registre actif
+→ protège une capacité réellement implémentée
 ```
 
-Une application dérivée peut néanmoins :
+Le frontend peut sélectionner des permissions existantes pour composer un rôle ; il ne peut pas inventer une clé.
 
-- fonctionner avec un seul Workspace logique ;
-- masquer le mot « Workspace » derrière un vocabulaire métier comme organisation, établissement, cabinet ou espace client ;
-- ajouter une ressource métier interne comme `Dossier` ;
-- monétiser une métrique métier, par exemple 5 / 10 / illimité dossiers, via le Capability Registry et les limites de Plan ;
-- ajouter plus tard une couche commerciale multi-workspace si son modèle produit le justifie.
+### 9.2 Rôles système immuables
 
-Ne pas utiliser le nombre de Workspaces pour représenter artificiellement une ressource métier interne au tenant.
+Les presets suivants restent stables :
+
+```text
+Super administrateur
+Administrateur de la Plateforme
+Support technique
+Support commercial
+Support client
+```
+
+Ils sont :
+
+- non supprimables ;
+- non archivables ;
+- non modifiables depuis l'administration courante.
+
+Une organisation ayant besoin d'une variante crée un rôle personnalisé au lieu d'altérer le preset Core.
+
+### 9.3 Gouvernance des rôles personnalisés à durcir
+
+Cible validée :
+
+```text
+Fondateur
+OU
+Super administrateur
+→ créer / modifier / archiver les rôles personnalisés
+
+Tous les autres rôles
+→ jamais
+```
+
+Ce contrôle doit être imposé côté backend en plus des permissions runtime ordinaires.
+
+Un rôle personnalisé :
+
+- utilise uniquement des permissions du registre actif ;
+- ne reçoit jamais de permission RESERVED ;
+- reste soumis à l'anti-escalade ;
+- conserve une description / justification métier explicite ;
+- ne doit pas dupliquer exactement le jeu de permissions d'un rôle actif existant ;
+- peut être archivé, jamais supprimé physiquement par le workflow courant.
+
+### 9.4 Pas de permissions directement sur un utilisateur
+
+À conserver :
+
+```text
+PlatformTeamMember
+→ un rôle
+→ permissions dérivées du rôle
+```
+
+Ne pas ajouter de `+permission` ou `-permission` spécifique à une personne.
+
+### 9.5 Multi-rôles non retenu pour l'instant
+
+Le Core reste :
+
+```text
+1 membre Platform
+→ 1 rôle Platform
+```
+
+Un besoin hybride commercial + technique utilise un rôle personnalisé documenté.
+
+Le multi-rôles ne devra être envisagé que si l'usage réel produit une explosion de rôles combinatoires.
+
+### 9.6 Dérogation commerciale future
+
+Ne pas donner automatiquement au Support commercial le moteur générique complet des `EntitlementOverride`.
+
+Le besoin commercial identifié est plutôt une future capacité bornée, par exemple :
+
+```text
+Découverte commerciale
+→ feature allowlistée
+→ durée max
+→ expiration obligatoire
+→ motif
+→ audit
+→ permission dédiée
+```
+
+Ce mécanisme appartient à un futur lot métier/commercial séparé. **Ne pas l'implémenter dans D-018 sans cadrage dédié.**
 
 ---
 
-## 9. D-004 Billing — décisions déjà figées mais non codées
+## 10. Reliquat frontend legacy confirmé
 
-Ces décisions restent à conserver pour D-004 :
+`frontend/src/features/platform/api/platform-users-api.js` contient encore :
 
 ```text
-incident paiement
-→ User reste ACTIVE
-→ Subscription porte l'état commercial réel
-→ Workspace peut entrer en remediation / future grâce
+updatePlatformUserRole
+PATCH /platform/users/:userId/role
 ```
 
-Une future grâce commerciale doit être :
+La route backend correspondante a été supprimée.
 
-- temporaire ;
-- motivée ;
-- auditée ;
-- permissionnée côté Platform ;
-- automatiquement expirante ;
-- distincte d'EntitlementOverride.
+Ce reliquat frontend doit être retiré lors de la consolidation D-018.
 
-Un médiateur humain ne doit jamais modifier MongoDB manuellement, forcer artificiellement `Subscription.status` ni manipuler PAN/CVV.
+**Ne jamais restaurer la route backend pour satisfaire ce code frontend obsolète.**
 
-Un paiement externe doit être rapproché par une commande métier dédiée, puis le domaine Billing décide de la conséquence sur Subscription.
+Vérifier également les pages/tests Platform Users qui pourraient encore importer cette mutation legacy.
 
 ---
 
-## 10. Règles permanentes de développement
+## 11. Point UX Invitations encore à traiter
 
-### Sécurité
+Besoin exprimé mais pas encore finalisé : rendre l'ancienneté d'une invitation réellement utile à la décision.
+
+À cadrer après les validations prioritaires :
 
 ```text
-ne jamais faire dépendre la cohérence
-uniquement de la coopération du frontend ou de l'utilisateur
+date d'envoi
+âge de l'invitation
+expiration / temps restant
+éventuellement nombre / date de renvoi si le backend l'expose
 ```
 
-Le backend reste l'autorité sur :
+Objectif UX : aider un administrateur à décider s'il faut :
 
-- ownership ;
-- memberships ;
-- permissions ;
-- entitlement ;
-- quotas ;
-- lifecycle ;
-- conséquences des mutations sensibles.
+- attendre ;
+- renvoyer ;
+- révoquer ;
+- vérifier une éventuelle erreur d'adresse.
 
-### Frontend
+Règle permanente : le frontend ne doit inventer aucun âge, historique de renvoi ou donnée temporelle non fournie par le backend. Les durées d'affichage peuvent être calculées à partir de timestamps réels exposés par l'API, mais l'historique métier doit rester backend-owned.
+
+---
+
+## 12. Composants frontend réutilisables à préserver
 
 Réutilisabilité obligatoire :
 
 - `DataTable` pour les tableaux compatibles ;
-- confirmations partagées ;
-- drawers partagés ;
-- formulaires réutilisables ;
-- `InlineIconLink` pour les liens secondaires compacts lorsque ce pattern est pertinent ;
-- `SmoothCollapse` pour les dévoilements progressifs réutilisables ;
-- pages légères ;
-- RTK Query pour le server state ;
-- Redux Toolkit pour le vrai state global client ;
-- `useState` pour le state local.
+- `DataPagination` ;
+- `DataTableActions` ;
+- `EntityDetailsDrawer` ;
+- `ConfirmationDialog` ;
+- `ActionIconButton` ;
+- `InfoTooltip` ;
+- `SectionTabs` ;
+- `SelectField` ;
+- `CheckboxField` ;
+- `Textarea` ;
+- `InlineIconLink` ;
+- `SmoothCollapse` ;
+- `CollapsibleCard` ;
+- `DistributionBarChart` ;
+- composants de badge partagés lorsqu'une même sémantique est réutilisée.
 
-### Fichiers du dépôt
+Pages : assemblage uniquement ; pas de logique métier lourde.
+
+State :
 
 ```text
-ne supprimer ou déplacer aucun fichier
-sans approbation explicite préalable de l'utilisateur
+useState        → état local UI
+Redux Toolkit   → vrai état global client
+RTK Query       → server state
+```
+
+Ne pas créer de tableaux, drawers, confirmations ou formulaires parallèles lorsqu'un composant partagé peut être composé.
+
+---
+
+## 13. Règles permanentes de sécurité
+
+Invariant :
+
+```text
+ne jamais faire confiance à l'utilisateur
+ne jamais faire dépendre la sécurité du frontend
+```
+
+Backend = autorité sur :
+
+- identité ;
+- ownership ;
+- membership ;
+- permissions ;
+- entitlements ;
+- quotas ;
+- lifecycle ;
+- transitions sensibles ;
+- vocabulaire métier exposé par les registres lorsqu'il constitue un contrat backend.
+
+Validation Zod stricte obligatoire.
+
+MongoDB :
+
+- `sanitizeFilter` reste activé ;
+- ne jamais le contourner ;
+- les filtres Mongo internes contenant `$in`, `$gt`, `$lte`, etc. utilisent `mongoose.trusted()` selon la convention du projet.
+
+Mutations sensibles :
+
+- réautorisation dans la transaction lorsque nécessaire ;
+- audit ;
+- fail-closed ;
+- pas de confiance dans un rôle JWT obsolète.
+
+---
+
+## 14. Tests — conventions de reprise
+
+### Backend
+
+Depuis la racine du projet.
+
+Les tests peuvent être regroupés par fonctionnalité complète.
+
+Éviter les commandes Bash multi-lignes avec `\` sous Windows.
+
+### Frontend
+
+L'utilisateur entre lui-même dans :
+
+```bash
+cd frontend
+```
+
+Ensuite utiliser :
+
+```bash
+npx vitest run ...
+```
+
+**Ne pas utiliser `npm --prefix frontend` dans les commandes frontend.**
+
+Après un lot significatif :
+
+```bash
+npx vitest run
+npm run build
 ```
 
 ---
 
-## 11. Prochaine reprise exacte
+## 15. Prochaine reprise exacte
 
-Prochain bloc :
+La prochaine discussion doit repartir dans cet ordre, sans lancer immédiatement une nouvelle fonctionnalité.
 
-```text
-CORE-FIN-5 / D-014
-Points d'extension métier : RBAC et routing backend/frontend
+### Étape 1 — synchroniser
+
+```bash
+git pull
 ```
 
-Objectif : permettre à un petit module métier de référence d'enregistrer proprement :
+### Étape 2 — valider Audit Metadata Contract
 
-```text
-permissions métier
-extensions des rôles système
-routes backend
-routes frontend
-navigation / capabilities
+Backend :
+
+```bash
+npx vitest run backend/tests/auditLog backend/tests/platform/auditLogs
 ```
 
-sans modifier directement de longues listes centrales du Core et sans introduire une architecture plugin complexe prématurée.
+Frontend depuis `frontend/` :
 
-Point d'attention issu de la consolidation précédente : le futur contrat d'extension doit également permettre de déclarer proprement les métadonnées UX d'une capability et, lorsque nécessaire, la relation explicite entre une feature et les métriques qui lui sont associées. Le frontend ne doit pas inférer cette relation à partir de clés techniques ou de hardcodes métier.
+```bash
+npx vitest run src/features/audit-log/api/audit-log-api.test.js src/features/audit-log/lib/audit-log-presentation.test.js src/features/audit-log/lib/audit-log-query-state.test.js src/features/audit-log/components/audit-log-filters.test.jsx src/features/audit-log/pages/workspace-audit-log-page.test.jsx src/features/platform/api/platform-audit-logs-api.test.js src/features/platform/pages/platform-audit-logs-page.test.jsx src/features/platform/pages/platform-audit-logs-route.test.jsx
+```
 
-Avant de coder :
+Puis :
 
-1. auditer les points d'extension existants du HEAD ;
-2. vérifier `docs/derived-saas/DERIVED-SAAS.md`, `CAPABILITIES.md` et D-014 ;
-3. proposer le contrat minimal de composition ;
-4. inclure dans ce contrat les besoins de présentation / association feature-metrics sans transformer le Core en framework de plugins complexe ;
-5. coder backend et frontend en mini-lots testables ;
-6. valider les tests avant de poursuivre.
+```bash
+npm run build
+```
+
+Faire ensuite la vérification visuelle « Dérogation » décrite en section 8.
+
+### Étape 3 — valider les derniers micro-ajustements A5.7
+
+Depuis `frontend/` :
+
+```bash
+npx vitest run src/components/shared/action-icon-button.test.jsx src/features/platform/components/platform-roles-section.test.jsx
+```
+
+### Étape 4 — valider A5.8 invitation acceptance
+
+Depuis `frontend/` :
+
+```bash
+npx vitest run src/features/platform-invitation/api/platform-invitation-acceptance-api.test.js src/features/platform-invitation/validation/platform-invitation-schemas.test.js src/features/platform-invitation/pages/accept-platform-invitation-page.test.jsx src/features/auth/pages/login-page.destination.test.js src/app/platform-invitation-route.test.js
+```
+
+Puis refaire au minimum :
+
+```bash
+npx vitest run
+npm run build
+```
+
+### Étape 5 — mettre à jour le contrat D-018 avant de durcir les rôles
+
+Aligner `docs/contracts/PLATFORM-TEAM.md` sur les décisions de la section 9 :
+
+- permissions code-owned ;
+- rôles système immuables ;
+- rôles personnalisés Founder/Superadmin uniquement ;
+- pas de clone exact de permissions ;
+- justification métier ;
+- mono-rôle conservé.
+
+Mettre ensuite à jour `docs/DEBT.md` pour ne plus indiquer A3/A4/A5 comme « à faire ».
+
+### Étape 6 — implémenter le durcissement RBAC des rôles personnalisés
+
+Backend d'abord :
+
+- policy Founder/Superadmin ;
+- interdiction clone exact ;
+- validation de la justification métier retenue ;
+- tests unitaires/service/routes ;
+- aucun relâchement de l'anti-escalade actuelle.
+
+Frontend ensuite :
+
+- actions créer/modifier/archiver uniquement pour Founder/Superadmin ;
+- aucun bouton indisponible affiché inutilement ;
+- backend reste autorité finale.
+
+### Étape 7 — traiter l'UX temporelle Invitations
+
+Cadrer les timestamps backend disponibles puis afficher uniquement des informations réelles : date d'envoi, âge, expiration restante, et si pertinent historique de resend exposé par l'API.
+
+### Étape 8 — consolidation D-018
+
+- supprimer `updatePlatformUserRole` frontend legacy et ses usages ;
+- rechercher les autres reliquats `User.platformRole` servant encore d'autorité frontend ;
+- régression backend/frontend ;
+- build ;
+- checklist manuelle du cycle complet ;
+- audit sécurité final D-018 ;
+- mettre à jour les documents canoniques ;
+- seulement ensuite décider si D-018 peut passer `VALIDÉ`.
+
+---
+
+## 16. Ce qu'il ne faut pas faire à la reprise
+
+Ne pas :
+
+- restaurer `PATCH /platform/users/:id/role` ;
+- rendre les rôles système modifiables ;
+- permettre la création libre de permissions depuis l'UI ;
+- coder un Dashboard différent par nom de rôle ;
+- dériver Founder de `User.platformRole` ;
+- ajouter des permissions directement sur un User ;
+- passer au multi-rôles sans preuve d'un besoin réel ;
+- donner au Support commercial le moteur générique complet de dérogations pour résoudre le besoin de découverte commerciale ;
+- réintroduire des catalogues métier statiques frontend lorsqu'ils doivent venir du backend ;
+- créer un composant de tableau/drawer/confirmation dupliqué ;
+- déclarer D-018 terminé avant les validations et la consolidation listées ci-dessus.
+
+---
+
+## 17. Fichiers de référence prioritaires pour la prochaine discussion
+
+```text
+docs/REPRISE-CURRENT.md
+docs/DEBT.md
+docs/contracts/PLATFORM-TEAM.md
+
+backend/constants/auditActions.constants.js
+backend/modules/auditLog/auditLogMetadata.service.js
+backend/modules/auditLog/*
+backend/modules/platform/auditLogs/*
+
+backend/modules/platformTeam/*
+backend/modules/platformRole/*
+backend/modules/platformInvitation/*
+backend/config/applicationPlatformPermission.registry.js
+
+frontend/src/features/platform/*
+frontend/src/features/platform-invitation/*
+frontend/src/features/audit-log/*
+frontend/src/components/data-display/data-table.jsx
+frontend/src/components/shared/entity-details-drawer.jsx
+frontend/src/components/shared/action-icon-button.jsx
+frontend/src/components/shared/info-tooltip.jsx
+```
+
+---
+
+## 18. Résumé de reprise en une phrase
+
+Le Core a terminé D-014 et possède désormais l'essentiel du modèle Équipe de la Plateforme / RBAC / invitations de D-018 ; avant toute nouvelle fonctionnalité, il faut valider les derniers changements A5.8 + Audit Metadata, aligner les contrats canoniques sur les décisions RBAC du 2026-09-06, durcir la gouvernance des rôles personnalisés, finaliser l'UX Invitations puis effectuer la consolidation et la régression finale D-018.
