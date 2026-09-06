@@ -1,26 +1,31 @@
 import { Navigate, Outlet } from 'react-router';
 
 import { PageLoader } from '@/components/shared/page-loader';
-import { useGetCurrentUserQuery } from '@/features/auth/api/auth-api';
-import { PLATFORM_ROLE } from '@/features/platform/constants/platform-roles';
+import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
+
+function hasActivePlatformAccess(platformAccess) {
+  return platformAccess?.status === 'active'
+    && Array.isArray(platformAccess.permissions)
+    && platformAccess.permissions.length > 0;
+}
 
 function PlatformGuard() {
   const {
-    data: user,
+    data: platformAccess,
     error,
     isLoading,
     isFetching,
-  } = useGetCurrentUserQuery();
+  } = useGetCurrentPlatformContextQuery();
 
-  if (isLoading || (isFetching && !user)) {
+  if (isLoading || (isFetching && platformAccess === undefined)) {
     return <PageLoader />;
   }
 
-  if (error || !user || user.platformRole !== PLATFORM_ROLE.SUPER_ADMIN) {
+  if (error || !hasActivePlatformAccess(platformAccess)) {
     return <Navigate to="/workspaces" replace />;
   }
 
   return <Outlet />;
 }
 
-export { PlatformGuard };
+export { PlatformGuard, hasActivePlatformAccess };
