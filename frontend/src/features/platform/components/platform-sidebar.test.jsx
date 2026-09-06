@@ -15,9 +15,13 @@ import { PlatformSidebar } from '@/features/platform/components/platform-sidebar
 
 const allNavigationPermissions = Object.values(PLATFORM_PERMISSION);
 
-function renderSidebar({ collapsed = false, onToggle = vi.fn() } = {}) {
+function renderSidebar({
+  collapsed = false,
+  onToggle = vi.fn(),
+  path = '/platform/overview',
+} = {}) {
   render(
-    <MemoryRouter initialEntries={['/platform/overview']}>
+    <MemoryRouter initialEntries={[path]}>
       <PlatformSidebar collapsed={collapsed} onToggle={onToggle} />
     </MemoryRouter>,
   );
@@ -53,6 +57,18 @@ describe('PlatformSidebar', () => {
     expect(screen.getByText('Dérogations')).toBeInTheDocument();
     expect(screen.getByText('Équipe de la Plateforme')).toBeInTheDocument();
     expect(screen.getByText('Journaux d’audit')).toBeInTheDocument();
+  });
+
+  it('conserve Équipe de la Plateforme active sur toute la branche team', () => {
+    renderSidebar({ path: '/platform/team/roles' });
+
+    const teamLink = screen.getByRole('link', {
+      name: 'Équipe de la Plateforme',
+    });
+
+    expect(teamLink).toHaveAttribute('aria-current', 'page');
+    expect(teamLink.className).toContain('bg-primary');
+    expect(teamLink).toHaveAttribute('href', '/platform/team');
   });
 
   it('masque une destination lorsque la permission runtime correspondante manque', () => {
