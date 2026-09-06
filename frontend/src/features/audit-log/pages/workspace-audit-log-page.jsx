@@ -3,7 +3,10 @@ import { useSearchParams } from 'react-router';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { Button } from '@/components/ui/button';
-import { useListWorkspaceAuditLogsQuery } from '@/features/audit-log/api/audit-log-api';
+import {
+  useGetWorkspaceAuditMetadataQuery,
+  useListWorkspaceAuditLogsQuery,
+} from '@/features/audit-log/api/audit-log-api';
 import { AuditLogFilters, EMPTY_FILTERS } from '@/features/audit-log/components/audit-log-filters';
 import { AuditLogTable } from '@/features/audit-log/components/audit-log-table';
 import { dateInputToIsoBoundary } from '@/features/audit-log/lib/audit-log-presentation';
@@ -26,6 +29,7 @@ function WorkspaceAuditLogPage() {
     [searchParams],
   );
 
+  const metadataQuery = useGetWorkspaceAuditMetadataQuery(workspace.id);
   const auditQuery = useListWorkspaceAuditLogsQuery(
     {
       workspaceId: workspace.id,
@@ -42,8 +46,10 @@ function WorkspaceAuditLogPage() {
     },
   );
 
+  const auditMetadata = metadataQuery.data;
   const auditLogs = auditQuery.data?.auditLogs ?? [];
   const pagination = auditQuery.data?.pagination;
+  const isFetching = auditQuery.isFetching || metadataQuery.isFetching;
 
   useEffect(() => {
     if (pagination?.totalPages > 0 && page > pagination.totalPages) {
@@ -63,18 +69,23 @@ function WorkspaceAuditLogPage() {
     setSearchParams(writeSearchParams(filters, nextPage));
   }
 
-  if (auditQuery.isLoading) {
+  function refetchAuditData() {
+    metadataQuery.refetch();
+    auditQuery.refetch();
+  }
+
+  if (auditQuery.isLoading || metadataQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Chargement de l’activité…</p>;
   }
 
-  if (auditQuery.isError) {
+  if (auditQuery.isError || metadataQuery.isError) {
     return (
       <section className="space-y-3">
         <h1 className="text-2xl font-semibold">Historique d’activité</h1>
         <p className="text-sm text-destructive">
-          Impossible de charger l’historique d’activité du workspace.
+          Impossible de charger l’historique d’activité de l’espace de travail.
         </p>
-        <Button onClick={auditQuery.refetch} type="button" variant="outline">
+        <Button onClick={refetchAuditData} type="button" variant="outline">
           Réessayer
         </Button>
       </section>
@@ -95,9 +106,10 @@ function WorkspaceAuditLogPage() {
 
       <AuditLogFilters
         filters={filters}
+        metadata={auditMetadata}
         onApply={applyFilters}
         onReset={resetFilters}
-        pending={auditQuery.isFetching}
+        pending={isFetching}
       />
 
       <section className="rounded-xl border border-border bg-card">
@@ -109,7 +121,7 @@ function WorkspaceAuditLogPage() {
               {(pagination?.total ?? auditLogs.length) === 1 ? '' : 's'}
             </p>
           </div>
-          {auditQuery.isFetching && (
+          {isFetching && (
             <span className="text-xs text-muted-foreground" role="status">Actualisation…</span>
           )}
         </div>
@@ -122,12 +134,13 @@ function WorkspaceAuditLogPage() {
             </p>
           </div>
         ) : (
-          <AuditLogTable auditLogs={auditLogs} />
+          <AuditLogTable auditLogs={auditLogs} metadata={auditMetadata} />
         )}
 
         <div className="px-5 pb-5">
           <DataPagination
             className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between"
+            disabled={isFetching}
             onPageChange={changePage}
             page={page}
             pagination={pagination}
