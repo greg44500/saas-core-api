@@ -3,9 +3,9 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 
 import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { Button } from '@/components/ui/button';
-import { useGetCurrentUserQuery } from '@/features/auth/api/auth-api';
 import { UserMenu } from '@/features/auth/components/user-menu';
-import { PLATFORM_ROLE } from '@/features/platform/constants/platform-roles';
+import { getAuthenticatedHome } from '@/features/auth/lib/authenticated-destination';
+import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
 
 const accountNavigationItems = [
   { label: 'Profil', path: '/account/profile' },
@@ -15,10 +15,8 @@ const accountNavigationItems = [
 function AccountLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { data: user } = useGetCurrentUserQuery();
-  const fallbackDestination = user?.platformRole === PLATFORM_ROLE.SUPER_ADMIN
-    ? '/platform/overview'
-    : '/workspaces';
+  const { data: platformAccess } = useGetCurrentPlatformContextQuery();
+  const fallbackDestination = getAuthenticatedHome(platformAccess);
   const returnDestination = location.state?.accountReturnTo ?? fallbackDestination;
   const accountNavigationState = { accountReturnTo: returnDestination };
 
@@ -57,8 +55,7 @@ function AccountLayout() {
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                }`
-              }
+                }`}
               key={path}
               state={accountNavigationState}
               to={path}
