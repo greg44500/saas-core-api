@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { DataTable } from '@/components/data-display/data-table';
+import { StatusBadge } from '@/components/data-display/status-badge';
 import {
   createAuditMetadataLabelMaps,
   formatAuditAbsoluteDate,
@@ -11,19 +12,23 @@ import {
   getAuditStatusLabel,
 } from '@/features/audit-log/lib/audit-log-presentation';
 
-function AuditStatusBadge({ labelMaps, status }) {
-  const isFailure = status === 'failed';
+function getAuditStatusTone(status) {
+  if (status === 'success') {
+    return 'success';
+  }
 
+  if (status === 'failed') {
+    return 'destructive';
+  }
+
+  return 'neutral';
+}
+
+function AuditStatusBadge({ labelMaps, status }) {
   return (
-    <span
-      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
-        isFailure
-          ? 'border-destructive/30 bg-destructive/10 text-destructive'
-          : 'border-border bg-muted/40 text-foreground'
-      }`}
-    >
+    <StatusBadge tone={getAuditStatusTone(status)}>
       {getAuditStatusLabel(status, labelMaps)}
-    </span>
+    </StatusBadge>
   );
 }
 
@@ -119,4 +124,5 @@ export {
   AuditLogTable,
   AuditStatusBadge,
   buildBaseColumns,
+  getAuditStatusTone,
 };
