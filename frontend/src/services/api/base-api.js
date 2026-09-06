@@ -10,6 +10,7 @@ const baseApi = createApi({
   baseQuery: baseQueryWithReauth,
   tagTypes: [
     'CurrentUser',
+    'CurrentPlatformContext',
     'WorkspaceList',
     'Workspace',
     'PlanCatalog',
