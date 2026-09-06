@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createAuditMetadataLabelMaps,
   dateInputToIsoBoundary,
   formatAuditAbsoluteDate,
   formatAuditRelativeDate,
@@ -10,14 +11,55 @@ import {
   getAuditStatusLabel,
 } from '@/features/audit-log/lib/audit-log-presentation';
 
+const metadata = {
+  actions: [
+    {
+      value: 'WORKSPACE_OWNERSHIP_TRANSFERRED',
+      label: 'Propriété de l’espace de travail transférée',
+    },
+    {
+      value: 'USER_PROFILE_UPDATED',
+      label: 'Profil utilisateur modifié',
+    },
+  ],
+  entityTypes: [
+    {
+      value: 'WorkspaceMember',
+      label: 'Membre d’espace de travail',
+    },
+    {
+      value: 'EntitlementOverride',
+      label: 'Dérogation',
+    },
+  ],
+  statuses: [
+    {
+      value: 'failed',
+      label: 'Échouée',
+    },
+  ],
+};
+
 describe('audit log presentation', () => {
-  it('traduit les valeurs techniques connues en libellés français', () => {
-    expect(getAuditActionLabel('WORKSPACE_OWNERSHIP_TRANSFERRED')).toBe(
-      'Propriété du workspace transférée',
+  it('utilise les libellés fournis par les métadonnées backend', () => {
+    const labelMaps = createAuditMetadataLabelMaps(metadata);
+
+    expect(getAuditActionLabel('WORKSPACE_OWNERSHIP_TRANSFERRED', labelMaps)).toBe(
+      'Propriété de l’espace de travail transférée',
     );
-    expect(getAuditActionLabel('USER_PROFILE_UPDATED')).toBe('Profil utilisateur modifié');
-    expect(getAuditEntityTypeLabel('WorkspaceMember')).toBe('Membre');
-    expect(getAuditStatusLabel('failed')).toBe('Échouée');
+    expect(getAuditActionLabel('USER_PROFILE_UPDATED', labelMaps)).toBe(
+      'Profil utilisateur modifié',
+    );
+    expect(getAuditEntityTypeLabel('EntitlementOverride', labelMaps)).toBe('Dérogation');
+    expect(getAuditStatusLabel('failed', labelMaps)).toBe('Échouée');
+  });
+
+  it('n’affiche jamais une valeur technique inconnue comme libellé utilisateur', () => {
+    const labelMaps = createAuditMetadataLabelMaps(metadata);
+
+    expect(getAuditActionLabel('TECHNICAL_UNKNOWN_ACTION', labelMaps)).toBe('Action inconnue');
+    expect(getAuditEntityTypeLabel('TechnicalUnknownEntity', labelMaps)).toBe('Ressource inconnue');
+    expect(getAuditStatusLabel('technical-status', labelMaps)).toBe('Statut inconnu');
   });
 
   it('présente un acteur ou le système sans inventer de données', () => {
