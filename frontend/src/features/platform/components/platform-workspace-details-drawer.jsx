@@ -85,7 +85,7 @@ function PlatformWorkspaceDetailsDrawer({
             <div>
               <h3 className="font-semibold">Actions d’administration</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Les transitions autorisées restent contrôlées et auditées par le backend.
+                Les transitions autorisées restent contrôlées et auditées.
               </p>
             </div>
 
@@ -111,7 +111,7 @@ function PlatformWorkspaceDetailsDrawer({
             {workspace.status !== PLATFORM_WORKSPACE_STATUS.ACTIVE
               && workspace.status !== PLATFORM_WORKSPACE_STATUS.SUSPENDED && (
                 <p className="text-sm text-muted-foreground">
-                  Aucune transition Platform n’est exposée par l’API pour ce statut.
+                  Aucune transition Plateforme n’est exposée par l’API pour ce statut.
                 </p>
               )}
           </section>

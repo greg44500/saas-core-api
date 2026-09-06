@@ -410,7 +410,7 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
       <div className="border-b border-border p-5">
         <h2 className="text-lg font-semibold">Droits et limites du workspace</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Le plan reste la base commerciale. Les dérogations modifient uniquement ce workspace et la colonne Effectif indique ce que le backend applique réellement.
+          Le plan reste la base commerciale. Les dérogations modifient uniquement ce workspace.
         </p>
       </div>
 
@@ -419,7 +419,7 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
       </div>
       {featureRows.length === 0 ? (
         <p className="p-5 text-sm text-muted-foreground">
-          Aucune fonctionnalité n’est enregistrée dans le Capability Registry.
+          Aucune fonctionnalité n’est enregistrée dans le registre des fonctionnalités.
         </p>
       ) : (
         <DataTable
@@ -437,7 +437,7 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
       </div>
       {metricRows.length === 0 ? (
         <p className="p-5 text-sm text-muted-foreground">
-          Aucune limite n’est enregistrée dans le Capability Registry.
+          Aucune limite n’est enregistrée dans le registre des fonctionnalités.
         </p>
       ) : (
         <DataTable

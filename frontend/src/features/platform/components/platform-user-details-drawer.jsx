@@ -84,9 +84,7 @@ function PlatformUserDetailsDrawer({
           <section className="space-y-3 rounded-xl border border-border bg-card p-4">
             <div>
               <h3 className="font-semibold">Actions d’administration</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Le cycle de vie du compte est distinct de l’appartenance et du rôle dans l’Équipe de la Plateforme.
-              </p>
+
             </div>
 
             {isSelf ? (
