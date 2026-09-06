@@ -36,19 +36,27 @@ function canActorManageTargetRole({ platformAccess, targetRole }) {
   );
 }
 
-function canActorManagePlatformMember({
+/**
+ * Filtre UX pour les actions de cycle de vie. Les règles de hiérarchie fines
+ * restent revalidées par le backend, car le DTO membre n'expose volontairement
+ * pas toutes les permissions du rôle cible.
+ */
+function canActorTargetPlatformMember({
   currentUserId,
   member,
   platformAccess,
-  targetRole,
 }) {
   if (!member || member.isFounder) return false;
   if (!currentUserId || member.user?.id === currentUserId) return false;
 
-  return canActorManageTargetRole({
-    platformAccess,
-    targetRole,
-  });
+  if (member.role?.key === PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN) {
+    return isSuperAdminAuthorization(platformAccess)
+      && platformAccess?.permissions?.includes(
+        PLATFORM_PERMISSION.SUPER_ADMINS_MANAGE,
+      );
+  }
+
+  return true;
 }
 
 function getAssignablePlatformRoles({
@@ -68,8 +76,8 @@ function getAssignablePlatformRoles({
 }
 
 export {
-  canActorManagePlatformMember,
   canActorManageTargetRole,
+  canActorTargetPlatformMember,
   getAssignablePlatformRoles,
   isStrictPermissionSubset,
   isSuperAdminAuthorization,
