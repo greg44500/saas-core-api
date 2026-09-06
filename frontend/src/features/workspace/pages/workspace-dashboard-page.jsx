@@ -89,7 +89,8 @@ function WorkspaceDashboardPage() {
         <DashboardRecentActivity
           entries={activity.entries}
           isError={activity.query.isError}
-          isLoading={activity.query.isLoading}
+          isLoading={activity.query.isLoading || activity.metadataQuery.isLoading}
+          metadata={activity.metadata}
           workspaceId={workspace.id}
         />
       )}
