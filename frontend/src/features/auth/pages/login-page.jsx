@@ -34,6 +34,10 @@ function getLoginStatusMessage(location) {
     return 'Toutes vos sessions ont été révoquées. Reconnectez-vous pour continuer.';
   }
 
+  if (location.state?.platformInvitationAccepted) {
+    return 'Invitation acceptée. Votre compte est créé. Connectez-vous pour accéder à la Plateforme.';
+  }
+
   return null;
 }
 
