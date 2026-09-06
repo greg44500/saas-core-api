@@ -65,6 +65,7 @@ describe('PlatformTeamInvitationsSection', () => {
           PLATFORM_PERMISSION.TEAM_INVITE,
           PLATFORM_PERMISSION.TEAM_INVITATION_RESEND,
           PLATFORM_PERMISSION.TEAM_INVITATION_REVOKE,
+          PLATFORM_PERMISSION.ROLES_READ,
         ],
       },
     });
@@ -106,7 +107,7 @@ describe('PlatformTeamInvitationsSection', () => {
     expect(screen.getByText('Envoyée')).toBeInTheDocument();
   });
 
-  it('ouvre le Drawer d’invitation uniquement avec team:invite', async () => {
+  it('ouvre le Drawer d’invitation uniquement avec team:invite et roles:read', async () => {
     const user = userEvent.setup();
     render(<PlatformTeamInvitationsSection />);
 
@@ -116,7 +117,12 @@ describe('PlatformTeamInvitationsSection', () => {
 
     cleanup();
     mocks.useGetCurrentPlatformContextQuery.mockReturnValue({
-      data: { permissions: [PLATFORM_PERMISSION.TEAM_READ] },
+      data: {
+        permissions: [
+          PLATFORM_PERMISSION.TEAM_READ,
+          PLATFORM_PERMISSION.TEAM_INVITE,
+        ],
+      },
     });
     render(<PlatformTeamInvitationsSection />);
 
