@@ -1,10 +1,23 @@
 import {
+    getAuditMetadata,
+} from '../../auditLog/auditMetadata.service.js';
+import {
     listPlatformAuditLogs,
 } from './services/listPlatformAuditLogs.service.js';
 
 
+const getAuditLogMetadata = async (_req, res) => {
+    res.status(200).json({
+        status: 'success',
+        data: {
+            metadata: getAuditMetadata(),
+        },
+    });
+};
+
+
 /**
- * Retourne la liste globale des AuditLogs accessibles au super-admin.
+ * Retourne la liste globale des AuditLogs accessibles à la Plateforme.
  *
  * La validation HTTP a déjà normalisé pagination, identifiants et dates.
  * Le contrôleur reste donc limité à l'orchestration du contrat HTTP.
@@ -48,5 +61,6 @@ const listAuditLogs = async (req, res) => {
 
 
 export {
+    getAuditLogMetadata,
     listAuditLogs,
 };
