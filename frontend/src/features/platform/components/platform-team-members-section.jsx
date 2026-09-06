@@ -38,13 +38,6 @@ const updateMemberRoleSchema = z.strictObject({
     .regex(/^[a-f\d]{24}$/i, 'Choisissez un rôle valide.'),
 });
 
-const MEMBER_ACTION_PERMISSIONS = Object.freeze([
-  PLATFORM_PERMISSION.TEAM_MEMBER_ROLE_UPDATE,
-  PLATFORM_PERMISSION.TEAM_MEMBER_SUSPEND,
-  PLATFORM_PERMISSION.TEAM_MEMBER_REACTIVATE,
-  PLATFORM_PERMISSION.TEAM_MEMBER_REVOKE,
-]);
-
 function formatPlatformTeamMemberName(member) {
   const user = member?.user;
   const fullName = [user?.firstName, user?.lastName]
@@ -130,9 +123,6 @@ function PlatformTeamMembersSection() {
     || revokeState.isLoading;
 
   const roles = rolesQuery.data?.roles ?? [];
-  const hasAnyMemberActionPermission = MEMBER_ACTION_PERMISSIONS.some(
-    (permission) => permissionSet.has(permission),
-  );
 
   function openPendingAction(type, member) {
     setPendingActionError(null);
@@ -251,6 +241,55 @@ function PlatformTeamMembersSection() {
     );
   }
 
+  function getActionCapabilities(member) {
+    const canTarget = canActorTargetPlatformMember({
+      currentUserId: currentUser?.id,
+      member,
+      platformAccess,
+    });
+
+    if (!canTarget) {
+      return {
+        assignableRoles: [],
+        canChangeRole: false,
+        canReactivate: false,
+        canRevoke: false,
+        canSuspend: false,
+      };
+    }
+
+    const assignableRoles = canUpdateRole
+      ? getAssignablePlatformRoles({
+        currentRoleId: member.role?.id,
+        platformAccess,
+        roles,
+      })
+      : [];
+
+    return {
+      assignableRoles,
+      canChangeRole: canUpdateRole && assignableRoles.length > 0,
+      canSuspend:
+        member.status === PLATFORM_TEAM_MEMBER_STATUS.ACTIVE
+        && permissionSet.has(PLATFORM_PERMISSION.TEAM_MEMBER_SUSPEND),
+      canReactivate:
+        member.status === PLATFORM_TEAM_MEMBER_STATUS.SUSPENDED
+        && permissionSet.has(PLATFORM_PERMISSION.TEAM_MEMBER_REACTIVATE),
+      canRevoke: permissionSet.has(
+        PLATFORM_PERMISSION.TEAM_MEMBER_REVOKE,
+      ),
+    };
+  }
+
+  const hasVisibleMemberActions = members.some((member) => {
+    const capabilities = getActionCapabilities(member);
+
+    return capabilities.canChangeRole
+      || capabilities.canSuspend
+      || capabilities.canReactivate
+      || capabilities.canRevoke;
+  });
+
   const columns = [
     {
       id: 'member',
@@ -290,37 +329,16 @@ function PlatformTeamMembersSection() {
     },
   ];
 
-  if (hasAnyMemberActionPermission) {
+  if (hasVisibleMemberActions) {
     columns.push({
       id: 'actions',
       header: 'Actions',
       cell: (member) => {
-        const canTarget = canActorTargetPlatformMember({
-          currentUserId: currentUser?.id,
-          member,
-          platformAccess,
-        });
-
-        if (!canTarget) return null;
-
-        const assignableRoles = canUpdateRole
-          ? getAssignablePlatformRoles({
-            currentRoleId: member.role?.id,
-            platformAccess,
-            roles,
-          })
-          : [];
-        const canSuspend = member.status === PLATFORM_TEAM_MEMBER_STATUS.ACTIVE
-          && permissionSet.has(PLATFORM_PERMISSION.TEAM_MEMBER_SUSPEND);
-        const canReactivate = member.status === PLATFORM_TEAM_MEMBER_STATUS.SUSPENDED
-          && permissionSet.has(PLATFORM_PERMISSION.TEAM_MEMBER_REACTIVATE);
-        const canRevoke = permissionSet.has(
-          PLATFORM_PERMISSION.TEAM_MEMBER_REVOKE,
-        );
+        const capabilities = getActionCapabilities(member);
 
         return (
           <DataTableActions>
-            {canUpdateRole && assignableRoles.length > 0 && (
+            {capabilities.canChangeRole && (
               <ActionIconButton
                 Icon={Pencil}
                 label={`Modifier le rôle de ${formatPlatformTeamMemberName(member)}`}
@@ -328,7 +346,7 @@ function PlatformTeamMembersSection() {
                 variant="outline"
               />
             )}
-            {canSuspend && (
+            {capabilities.canSuspend && (
               <ActionIconButton
                 Icon={Pause}
                 label={`Suspendre ${formatPlatformTeamMemberName(member)}`}
@@ -336,7 +354,7 @@ function PlatformTeamMembersSection() {
                 variant="outline"
               />
             )}
-            {canReactivate && (
+            {capabilities.canReactivate && (
               <ActionIconButton
                 Icon={Play}
                 label={`Réactiver ${formatPlatformTeamMemberName(member)}`}
@@ -344,7 +362,7 @@ function PlatformTeamMembersSection() {
                 variant="outline"
               />
             )}
-            {canRevoke && (
+            {capabilities.canRevoke && (
               <ActionIconButton
                 Icon={UserMinus}
                 label={`Retirer ${formatPlatformTeamMemberName(member)}`}
@@ -425,7 +443,6 @@ function PlatformTeamMembersSection() {
 }
 
 export {
-  MEMBER_ACTION_PERMISSIONS,
   PLATFORM_TEAM_MEMBERS_PAGE_SIZE,
   PlatformTeamMembersSection,
   formatPlatformTeamMemberName,
