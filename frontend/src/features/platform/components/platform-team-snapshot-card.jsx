@@ -16,15 +16,6 @@ function formatTeamCount(value) {
   return Number.isFinite(value) ? numberFormatter.format(value) : '—';
 }
 
-function PlatformTeamSnapshotCard({ children }) {
-  return (
-    <CollapsibleCard
-      description="Effectif actuel de l’équipe interne, statut des accès et répartition par rôle de Plateforme."
-      {...children}
-    />
-  );
-}
-
 function PlatformTeamSnapshotSection() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { data: platformAccess } = useGetCurrentPlatformContextQuery();
