@@ -68,6 +68,10 @@ function PlatformRoleFormDrawer({
     () => new Map(catalog.map((permission) => [permission.key, permission])),
     [catalog],
   );
+  const assignablePermissions = useMemo(
+    () => catalog.filter((permission) => permission.assignable),
+    [catalog],
+  );
 
   useEffect(() => {
     if (!open) {
@@ -240,7 +244,7 @@ function PlatformRoleFormDrawer({
               Permissions
             </h3>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Les permissions réservées ou supérieures à votre niveau ne peuvent pas être sélectionnées.
+              Seules les permissions que vous êtes autorisé à déléguer sont proposées.
             </p>
           </div>
 
@@ -260,7 +264,7 @@ function PlatformRoleFormDrawer({
             <PlatformPermissionChecklist
               disabled={mutationPending}
               onToggle={togglePermission}
-              permissions={catalog}
+              permissions={assignablePermissions}
               selectedKeys={form.permissions}
             />
           )}
