@@ -51,7 +51,8 @@ function PlatformTeamInvitationsSection() {
 
   const { data: platformAccess } = useGetCurrentPlatformContextQuery();
   const permissionSet = new Set(platformAccess?.permissions ?? []);
-  const canInvite = permissionSet.has(PLATFORM_PERMISSION.TEAM_INVITE);
+  const canInvite = permissionSet.has(PLATFORM_PERMISSION.TEAM_INVITE)
+    && permissionSet.has(PLATFORM_PERMISSION.ROLES_READ);
   const canResend = permissionSet.has(
     PLATFORM_PERMISSION.TEAM_INVITATION_RESEND,
   );
