@@ -29,11 +29,59 @@ const platformTeamApi = baseApi.injectEndpoints({
         })),
       ],
     }),
+    updatePlatformTeamMemberRole: build.mutation({
+      query: ({ memberId, roleId }) => ({
+        url: `/platform/team/members/${memberId}/role`,
+        method: 'PATCH',
+        body: { roleId },
+      }),
+      transformResponse: (response) => response?.data?.member ?? null,
+      invalidatesTags: (_result, _error, { memberId }) => [
+        PLATFORM_TEAM_MEMBERS_LIST_TAG,
+        { type: 'PlatformTeamMembers', id: memberId },
+      ],
+    }),
+    suspendPlatformTeamMember: build.mutation({
+      query: (memberId) => ({
+        url: `/platform/team/members/${memberId}/suspend`,
+        method: 'PATCH',
+      }),
+      transformResponse: (response) => response?.data?.member ?? null,
+      invalidatesTags: (_result, _error, memberId) => [
+        PLATFORM_TEAM_MEMBERS_LIST_TAG,
+        { type: 'PlatformTeamMembers', id: memberId },
+      ],
+    }),
+    reactivatePlatformTeamMember: build.mutation({
+      query: (memberId) => ({
+        url: `/platform/team/members/${memberId}/reactivate`,
+        method: 'PATCH',
+      }),
+      transformResponse: (response) => response?.data?.member ?? null,
+      invalidatesTags: (_result, _error, memberId) => [
+        PLATFORM_TEAM_MEMBERS_LIST_TAG,
+        { type: 'PlatformTeamMembers', id: memberId },
+      ],
+    }),
+    revokePlatformTeamMember: build.mutation({
+      query: (memberId) => ({
+        url: `/platform/team/members/${memberId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_result, _error, memberId) => [
+        PLATFORM_TEAM_MEMBERS_LIST_TAG,
+        { type: 'PlatformTeamMembers', id: memberId },
+      ],
+    }),
   }),
 });
 
 export const {
   useListPlatformTeamMembersQuery,
+  useReactivatePlatformTeamMemberMutation,
+  useRevokePlatformTeamMemberMutation,
+  useSuspendPlatformTeamMemberMutation,
+  useUpdatePlatformTeamMemberRoleMutation,
 } = platformTeamApi;
 
 export {
