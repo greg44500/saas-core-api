@@ -1,17 +1,8 @@
-import { PLATFORM_ROLE } from '@/features/platform/constants/platform-roles';
-
 const PLATFORM_USER_STATUS_LABEL = Object.freeze({
   active: 'Actif',
   disabled: 'Désactivé',
   deletion_requested: 'Clôture demandée',
   closed: 'Clôturé',
-});
-
-const PLATFORM_ROLE_LABEL = Object.freeze({
-  [PLATFORM_ROLE.USER]: 'Utilisateur',
-  [PLATFORM_ROLE.SUPPORT]: 'Support',
-  [PLATFORM_ROLE.ADMIN]: 'Administrateur',
-  [PLATFORM_ROLE.SUPER_ADMIN]: 'Super-administrateur',
 });
 
 const dateTimeFormatter = new Intl.DateTimeFormat('fr-FR', {
@@ -21,10 +12,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat('fr-FR', {
 
 function formatPlatformUserStatus(status) {
   return PLATFORM_USER_STATUS_LABEL[status] ?? status ?? '—';
-}
-
-function formatPlatformRole(role) {
-  return PLATFORM_ROLE_LABEL[role] ?? role ?? '—';
 }
 
 function formatPlatformUserDate(value) {
@@ -49,8 +36,6 @@ function formatPlatformUserName(user) {
 }
 
 export {
-  PLATFORM_ROLE_LABEL,
-  formatPlatformRole,
   formatPlatformUserDate,
   formatPlatformUserName,
   formatPlatformUserStatus,
