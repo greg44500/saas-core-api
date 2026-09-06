@@ -6,6 +6,7 @@ import { createMemoryRouter, Outlet } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 
 const useGetCurrentUserQueryMock = vi.hoisted(() => vi.fn());
+const useGetCurrentPlatformContextQueryMock = vi.hoisted(() => vi.fn());
 const useGetWorkspaceByIdQueryMock = vi.hoisted(() => vi.fn());
 const useListWorkspacesQueryMock = vi.hoisted(() => vi.fn());
 
@@ -17,6 +18,10 @@ vi.mock('@/features/auth/api/auth-api', async (importOriginal) => {
     useGetCurrentUserQuery: useGetCurrentUserQueryMock,
   };
 });
+
+vi.mock('@/features/platform/api/platform-current-context-api', () => ({
+  useGetCurrentPlatformContextQuery: useGetCurrentPlatformContextQueryMock,
+}));
 
 vi.mock('@/features/workspace/api/workspace-api', () => ({
   useGetWorkspaceByIdQuery: useGetWorkspaceByIdQueryMock,
@@ -128,12 +133,25 @@ describe('application routing', () => {
     window.localStorage.clear();
     document.documentElement.classList.remove('dark');
     useGetCurrentUserQueryMock.mockReset();
+    useGetCurrentPlatformContextQueryMock.mockReset();
     useGetWorkspaceByIdQueryMock.mockReset();
     useListWorkspacesQueryMock.mockReset();
     useGetCurrentUserQueryMock.mockReturnValue({
       data: {
         id: 'user-current',
         platformRole: 'user',
+      },
+      error: undefined,
+      isLoading: false,
+      isFetching: false,
+    });
+    useGetCurrentPlatformContextQueryMock.mockReturnValue({
+      data: {
+        status: 'active',
+        permissions: [
+          'platform:overview:read',
+          'platform:users:read',
+        ],
       },
       error: undefined,
       isLoading: false,
