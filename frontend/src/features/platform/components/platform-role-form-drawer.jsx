@@ -14,8 +14,7 @@ import {
 } from '@/features/platform/api/platform-roles-api';
 import { PlatformPermissionChecklist } from '@/features/platform/components/platform-permission-checklist';
 import {
-  isStrictPermissionSubset,
-  isSuperAdminAuthorization,
+  canGovernCustomPlatformRoles,
 } from '@/features/platform/lib/platform-team-authorization';
 
 const PLATFORM_PERMISSION_PATTERN =
@@ -23,7 +22,11 @@ const PLATFORM_PERMISSION_PATTERN =
 
 const platformRoleFormSchema = z.strictObject({
   name: z.string().trim().min(2, 'Le nom doit contenir au moins 2 caractères.').max(100),
-  description: z.string().trim().max(500, 'La description ne peut pas dépasser 500 caractères.'),
+  description: z
+    .string()
+    .trim()
+    .min(1, 'La justification métier est obligatoire.')
+    .max(500, 'La justification métier ne peut pas dépasser 500 caractères.'),
   permissions: z
     .array(z.string().regex(PLATFORM_PERMISSION_PATTERN))
     .max(200)
@@ -55,9 +58,11 @@ function PlatformRoleFormDrawer({
   const [form, setForm] = useState(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
+  const canGovernCustomRoles = canGovernCustomPlatformRoles(platformAccess);
+  const drawerOpen = open && canGovernCustomRoles;
 
   const catalogQuery = useGetPlatformRolePermissionCatalogQuery(undefined, {
-    skip: !open,
+    skip: !drawerOpen,
   });
   const [createRole, createState] = useCreatePlatformRoleMutation();
   const [updateRole, updateState] = useUpdatePlatformRoleMutation();
@@ -74,7 +79,7 @@ function PlatformRoleFormDrawer({
   );
 
   useEffect(() => {
-    if (!open) {
+    if (!drawerOpen) {
       setForm(EMPTY_FORM);
       setFieldErrors({});
       setSubmitError(null);
@@ -93,7 +98,7 @@ function PlatformRoleFormDrawer({
 
     setFieldErrors({});
     setSubmitError(null);
-  }, [isEdit, open, role]);
+  }, [drawerOpen, isEdit, role]);
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -122,6 +127,10 @@ function PlatformRoleFormDrawer({
     event.preventDefault();
     setSubmitError(null);
 
+    if (!canGovernCustomRoles) {
+      return;
+    }
+
     const parsed = platformRoleFormSchema.safeParse(form);
 
     if (!parsed.success) {
@@ -148,24 +157,9 @@ function PlatformRoleFormDrawer({
       return;
     }
 
-    if (
-      !isSuperAdminAuthorization(platformAccess)
-      && !isStrictPermissionSubset(
-        parsed.data.permissions,
-        platformAccess?.permissions ?? [],
-      )
-    ) {
-      setFieldErrors((current) => ({
-        ...current,
-        permissions:
-          'Un rôle personnalisé doit conserver des droits strictement inférieurs aux vôtres.',
-      }));
-      return;
-    }
-
     const body = {
       name: parsed.data.name,
-      description: parsed.data.description || null,
+      description: parsed.data.description,
       permissions: parsed.data.permissions,
     };
 
@@ -200,10 +194,10 @@ function PlatformRoleFormDrawer({
   return (
     <EntityDetailsDrawer
       description={isEdit
-        ? 'Modifiez uniquement le nom, la description et les permissions autorisées. La clé technique reste immuable.'
-        : 'Créez un rôle personnalisé à partir du catalogue de permissions autorisées.'}
+        ? 'Modifiez le nom, la justification métier et les permissions autorisées. La clé technique reste immuable.'
+        : 'Créez un rôle personnalisé justifié à partir du catalogue de permissions autorisées.'}
       onClose={onClose}
-      open={open}
+      open={drawerOpen}
       title={isEdit ? 'Modifier le rôle' : 'Créer un rôle'}
     >
       <form className="space-y-6" onSubmit={handleSubmit}>
@@ -224,9 +218,9 @@ function PlatformRoleFormDrawer({
 
         <FormField
           error={fieldErrors.description}
-          hint="Décrivez clairement la mission de ce rôle pour faciliter son attribution."
+          hint="Expliquez la mission de ce rôle et pourquoi ce niveau d’accès est nécessaire."
           id="platform-role-description"
-          label="Description"
+          label="Justification métier"
         >
           <Textarea
             aria-describedby="platform-role-description-message"
@@ -244,7 +238,7 @@ function PlatformRoleFormDrawer({
               Permissions
             </h3>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Seules les permissions que vous êtes autorisé à déléguer sont proposées.
+              Seules les permissions que le backend autorise à déléguer sont proposées.
             </p>
           </div>
 
