@@ -44,6 +44,18 @@ const baseData = {
   },
   activity: {
     query: { isLoading: false, isError: false },
+    metadataQuery: { isLoading: false, isError: false },
+    metadata: {
+      actions: [
+        { value: 'WORKSPACE_UPDATED', label: 'Workspace modifié' },
+      ],
+      entityTypes: [
+        { value: 'Workspace', label: 'Workspace' },
+      ],
+      statuses: [
+        { value: 'success', label: 'Réussie' },
+      ],
+    },
     entries: [
       {
         id: 'audit-1',
