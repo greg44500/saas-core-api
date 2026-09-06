@@ -9,9 +9,12 @@ import {
     PLATFORM_TEAM_ROLE_KEY,
 } from '../../constants/platformTeam.constants.js';
 import {
+    assertCanGovernCustomPlatformRoles,
+    assertCustomPlatformRoleDescription,
     assertCustomPlatformRoleIsMutable,
     assertCustomPlatformRolePermissions,
     getPlatformRolePermissionCatalog,
+    haveSamePermissionSet,
 } from '../../modules/platformRole/platformRole.policy.js';
 
 
@@ -30,9 +33,55 @@ const superAdminAuthorization = {
     permissions: Object.values(PLATFORM_PERMISSION),
 };
 
+const founderAuthorization = {
+    ...superAdminAuthorization,
+    isFounder: true,
+};
+
 
 describe('platformRole policy', () => {
-    it('autorise un acteur ordinaire à définir uniquement un sous-ensemble strict de ses droits', () => {
+    it('réserve la gouvernance des rôles personnalisés au Fondateur et aux Super administrateurs', () => {
+        expect(assertCanGovernCustomPlatformRoles({
+            authorization: superAdminAuthorization,
+        })).toBe(true);
+        expect(assertCanGovernCustomPlatformRoles({
+            authorization: founderAuthorization,
+        })).toBe(true);
+        expect(() => assertCanGovernCustomPlatformRoles({
+            authorization: platformAdminAuthorization,
+        })).toThrow(/Fondateur.*Super administrateur/i);
+    });
+
+    it('exige une justification métier non vide', () => {
+        expect(assertCustomPlatformRoleDescription(
+            '  Accès lecture support niveau 2  ',
+        )).toBe('Accès lecture support niveau 2');
+
+        expect(() => assertCustomPlatformRoleDescription('   '))
+            .toThrow(/justification métier/i);
+        expect(() => assertCustomPlatformRoleDescription(null))
+            .toThrow(/justification métier/i);
+    });
+
+    it('compare les permissions comme des ensembles, indépendamment de leur ordre', () => {
+        expect(haveSamePermissionSet({
+            leftPermissions: [
+                PLATFORM_PERMISSION.OVERVIEW_READ,
+                PLATFORM_PERMISSION.USERS_READ,
+            ],
+            rightPermissions: [
+                PLATFORM_PERMISSION.USERS_READ,
+                PLATFORM_PERMISSION.OVERVIEW_READ,
+            ],
+        })).toBe(true);
+
+        expect(haveSamePermissionSet({
+            leftPermissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
+            rightPermissions: [PLATFORM_PERMISSION.USERS_READ],
+        })).toBe(false);
+    });
+
+    it('conserve la règle de sous-ensemble pour toute validation anti-escalade ordinaire', () => {
         expect(assertCustomPlatformRolePermissions({
             authorization: platformAdminAuthorization,
             permissions: [
