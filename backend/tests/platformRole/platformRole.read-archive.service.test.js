@@ -79,13 +79,14 @@ const authorization = {
         PLATFORM_PERMISSION.ROLES_READ,
         PLATFORM_PERMISSION.OVERVIEW_READ,
     ],
+    isFounder: false,
 };
 
 const makeRole = (overrides = {}) => ({
     _id: 'role-id',
     key: 'custom_00000000-0000-4000-8000-000000000000',
     name: 'Support catalogue',
-    description: null,
+    description: 'Accès limité au suivi du catalogue',
     permissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
     isSystem: false,
     status: PLATFORM_ROLE_STATUS.ACTIVE,
@@ -205,6 +206,26 @@ describe('PlatformRole read and archive services', () => {
             }),
             { session: { id: 'session' } },
         );
+    });
+
+    it('refuse l’archivage à un Administrateur de la Plateforme même avec roles:archive', async () => {
+        resolvePlatformAuthorization.mockResolvedValue({
+            roleKey: PLATFORM_TEAM_ROLE_KEY.PLATFORM_ADMIN,
+            permissions: [
+                PLATFORM_PERMISSION.ROLES_ARCHIVE,
+                PLATFORM_PERMISSION.OVERVIEW_READ,
+            ],
+            isFounder: false,
+        });
+
+        await expect(archiveCustomPlatformRole({
+            roleId: 'role-id',
+            actorId: actor._id,
+        })).rejects.toMatchObject({ statusCode: 403 });
+
+        expect(PlatformRole.findById).not.toHaveBeenCalled();
+        expect(PlatformTeamMember.countDocuments).not.toHaveBeenCalled();
+        expect(createAuditLog).not.toHaveBeenCalled();
     });
 
     it('refuse l’archivage lorsqu’un membre actif ou suspendu utilise encore le rôle', async () => {
