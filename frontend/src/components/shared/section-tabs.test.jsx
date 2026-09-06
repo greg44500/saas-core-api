@@ -20,10 +20,10 @@ describe('SectionTabs', () => {
       </MemoryRouter>,
     );
 
-    const activeTab = screen.getByRole('tab', { name: 'Invitations' });
+    const activeLink = screen.getByRole('link', { name: 'Invitations' });
 
-    expect(activeTab).toHaveAttribute('aria-current', 'page');
-    expect(activeTab.className).toContain('border-primary');
-    expect(screen.getAllByRole('tab')).toHaveLength(3);
+    expect(activeLink).toHaveAttribute('aria-current', 'page');
+    expect(activeLink.className).toContain('border-primary');
+    expect(screen.getAllByRole('link')).toHaveLength(3);
   });
 });
