@@ -77,6 +77,15 @@ function createAppRoutes(applicationRoutes = APPLICATION_FRONTEND_ROUTES) {
             return { Component: ResetPasswordPage };
           },
         },
+        {
+          path: 'platform-invitations/accept',
+          lazy: async () => {
+            const { AcceptPlatformInvitationPage } = await import(
+              '@/features/platform-invitation/pages/accept-platform-invitation-page'
+            );
+            return { Component: AcceptPlatformInvitationPage };
+          },
+        },
       ],
     },
     {
