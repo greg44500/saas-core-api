@@ -6,10 +6,15 @@ import { ToastProvider } from '@/components/shared/toast-provider';
 
 const useGetCurrentUserQueryMock = vi.hoisted(() => vi.fn());
 const useUpdateCurrentUserMutationMock = vi.hoisted(() => vi.fn());
+const useGetCurrentPlatformContextQueryMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/features/auth/api/auth-api', () => ({
   useGetCurrentUserQuery: useGetCurrentUserQueryMock,
   useUpdateCurrentUserMutation: useUpdateCurrentUserMutationMock,
+}));
+
+vi.mock('@/features/platform/api/platform-current-context-api', () => ({
+  useGetCurrentPlatformContextQuery: useGetCurrentPlatformContextQueryMock,
 }));
 
 import { ProfilePage } from '@/features/account/pages/profile-page';
@@ -41,6 +46,13 @@ describe('ProfilePage', () => {
       isLoading: false,
       refetch: refetchMock,
     });
+    useGetCurrentPlatformContextQueryMock.mockReturnValue({
+      data: {
+        isFounder: true,
+        status: 'active',
+        role: { name: 'Super administrateur' },
+      },
+    });
     unwrapMock.mockResolvedValue({
       id: 'user-1',
       firstName: 'Gregory',
@@ -57,7 +69,7 @@ describe('ProfilePage', () => {
 
   afterEach(() => cleanup());
 
-  it('affiche le profil et garde l’email non modifiable', async () => {
+  it('affiche le profil, sa distinction Platform et garde l’email non modifiable', async () => {
     renderPage();
 
     await waitFor(() => {
@@ -67,6 +79,9 @@ describe('ProfilePage', () => {
     expect(screen.getByLabelText('Adresse email')).toHaveValue('greg@example.com');
     expect(screen.getByLabelText('Adresse email')).toBeDisabled();
     expect(screen.getByText('Adresse email vérifiée.')).toBeInTheDocument();
+    expect(screen.getByText('Profil :')).toBeInTheDocument();
+    expect(screen.getByText('Fondateur')).toBeInTheDocument();
+    expect(screen.queryByText('Super administrateur')).not.toBeInTheDocument();
   });
 
   it('envoie uniquement le champ réellement modifié et confirme par toast', async () => {
