@@ -18,6 +18,12 @@ const emptyRoleCounters = () => ({
     suspended: 0,
 });
 
+const percentageOf = (value, total) => (
+    total > 0
+        ? Math.round((value / total) * 100)
+        : 0
+);
+
 const getPlatformTeamSummary = async ({ now = new Date() } = {}) => {
     const groupedMemberships = await PlatformTeamMember.aggregate([
         {
@@ -120,6 +126,7 @@ const getPlatformTeamSummary = async ({ now = new Date() } = {}) => {
                     isSystem: role?.isSystem ?? null,
                 },
                 ...counters,
+                percentage: percentageOf(counters.total, summary.total),
             };
         })
         .sort((left, right) => (
@@ -134,4 +141,5 @@ const getPlatformTeamSummary = async ({ now = new Date() } = {}) => {
 export {
     CURRENT_PLATFORM_TEAM_MEMBER_STATUSES,
     getPlatformTeamSummary,
+    percentageOf,
 };
