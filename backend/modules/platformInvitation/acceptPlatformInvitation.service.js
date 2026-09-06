@@ -56,12 +56,14 @@ const loadAcceptableInvitation = async ({
         );
     }
 
-    const [role, inviter] = await Promise.all([
-        PlatformRole.findById(invitation.role).session(session),
-        User.findById(invitation.invitedBy)
-            .select('_id platformRole status')
-            .session(session),
-    ]);
+    // Les lectures partageant une session transactionnelle restent
+    // séquentielles : MongoDB/Mongoose ne garantit pas le parallélisme dans une
+    // transaction et peut invalider le numéro de transaction actif.
+    const role = await PlatformRole.findById(invitation.role)
+        .session(session);
+    const inviter = await User.findById(invitation.invitedBy)
+        .select('_id platformRole status')
+        .session(session);
 
     if (!inviter || inviter.status !== USER_STATUS.ACTIVE) {
         throw new AppError(
