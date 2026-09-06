@@ -5,6 +5,7 @@ import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
@@ -71,13 +72,18 @@ function PlatformRolesSection() {
     {
       id: 'role',
       header: 'Rôle',
+      headerClassName: 'w-auto',
+      cellClassName: 'min-w-0',
       cell: (role) => (
-        <div className="min-w-0">
-          <p className="font-medium text-foreground">{role.name}</p>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="min-w-0 break-words font-medium text-foreground">
+            {role.name}
+          </span>
           {role.description && (
-            <p className="mt-1 line-clamp-2 max-w-xl text-xs text-muted-foreground">
-              {role.description}
-            </p>
+            <InfoTooltip
+              content={role.description}
+              label={`Description du rôle ${role.name}`}
+            />
           )}
         </div>
       ),
@@ -85,11 +91,15 @@ function PlatformRolesSection() {
     {
       id: 'type',
       header: 'Type',
+      headerClassName: 'w-28',
+      cellClassName: 'w-28',
       cell: (role) => <PlatformRoleTypeBadge isSystem={role.isSystem} />,
     },
     {
       id: 'permissions',
       header: 'Permissions',
+      headerClassName: 'w-24',
+      cellClassName: 'w-24',
       cell: (role) => (
         <span className="font-medium text-foreground">
           {role.permissions?.length ?? 0}
@@ -99,13 +109,15 @@ function PlatformRolesSection() {
     {
       id: 'status',
       header: 'Statut',
+      headerClassName: 'w-24',
+      cellClassName: 'w-24',
       cell: (role) => <PlatformRoleStatusBadge status={role.status} />,
     },
     {
       id: 'actions',
       header: 'Actions',
-      headerClassName: 'w-px whitespace-nowrap text-right',
-      cellClassName: 'w-px whitespace-nowrap text-right',
+      headerClassName: 'w-36 text-right',
+      cellClassName: 'w-36 text-right',
       cell: (role) => {
         const roleCanBeUpdated = canMutateRole(role, canUpdate);
         const roleCanBeArchived = canMutateRole(role, canArchive);
@@ -215,6 +227,8 @@ function PlatformRolesSection() {
               columns={columns}
               data={roles}
               getRowKey={(role) => role.id}
+              scrollable={false}
+              tableClassName="table-fixed"
             />
           </div>
 
