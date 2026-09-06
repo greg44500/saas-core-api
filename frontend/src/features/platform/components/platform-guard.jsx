@@ -2,12 +2,7 @@ import { Navigate, Outlet } from 'react-router';
 
 import { PageLoader } from '@/components/shared/page-loader';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
-
-function hasActivePlatformAccess(platformAccess) {
-  return platformAccess?.status === 'active'
-    && Array.isArray(platformAccess.permissions)
-    && platformAccess.permissions.length > 0;
-}
+import { hasActivePlatformAccess } from '@/features/platform/lib/platform-navigation';
 
 function PlatformGuard() {
   const {
