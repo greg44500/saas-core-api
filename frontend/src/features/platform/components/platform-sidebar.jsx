@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
+  ShieldCheck,
   SlidersHorizontal,
   Tags,
   Users,
@@ -12,37 +13,86 @@ import {
 import { NavLink } from 'react-router';
 
 import { Button } from '@/components/ui/button';
+import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
+import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 
 const platformNavigationSections = [
   {
     id: 'pilotage',
     label: 'Pilotage',
     items: [
-      { label: 'Vue d’ensemble', Icon: LayoutDashboard, to: '/platform/overview' },
+      {
+        label: 'Vue d’ensemble',
+        Icon: LayoutDashboard,
+        to: '/platform/overview',
+        permission: PLATFORM_PERMISSION.OVERVIEW_READ,
+      },
     ],
   },
   {
     id: 'clients',
     label: 'Clients',
     items: [
-      { label: 'Utilisateurs', Icon: Users, to: '/platform/users' },
-      { label: 'Espaces de travail', Icon: Building2, to: '/platform/workspaces' },
+      {
+        label: 'Utilisateurs',
+        Icon: Users,
+        to: '/platform/users',
+        permission: PLATFORM_PERMISSION.USERS_READ,
+      },
+      {
+        label: 'Espaces de travail',
+        Icon: Building2,
+        to: '/platform/workspaces',
+        permission: PLATFORM_PERMISSION.WORKSPACES_READ,
+      },
     ],
   },
   {
     id: 'commercial',
     label: 'Commercial',
     items: [
-      { label: 'Plans', Icon: Tags, to: '/platform/plans' },
-      { label: 'Abonnements', Icon: CreditCard, to: '/platform/subscriptions' },
-      { label: 'Dérogations', Icon: SlidersHorizontal, to: '/platform/entitlement-overrides' },
+      {
+        label: 'Plans',
+        Icon: Tags,
+        to: '/platform/plans',
+        permission: PLATFORM_PERMISSION.PLANS_READ,
+      },
+      {
+        label: 'Abonnements',
+        Icon: CreditCard,
+        to: '/platform/subscriptions',
+        permission: PLATFORM_PERMISSION.SUBSCRIPTIONS_READ,
+      },
+      {
+        label: 'Dérogations',
+        Icon: SlidersHorizontal,
+        to: '/platform/entitlement-overrides',
+        permission: PLATFORM_PERMISSION.ENTITLEMENT_OVERRIDES_READ,
+      },
+    ],
+  },
+  {
+    id: 'organisation',
+    label: 'Organisation',
+    items: [
+      {
+        label: 'Équipe de la Plateforme',
+        Icon: ShieldCheck,
+        to: '/platform/team/members',
+        permission: PLATFORM_PERMISSION.TEAM_READ,
+      },
     ],
   },
   {
     id: 'supervision',
     label: 'Supervision',
     items: [
-      { label: 'Journaux d’audit', Icon: ClipboardList, to: '/platform/audit-logs' },
+      {
+        label: 'Journaux d’audit',
+        Icon: ClipboardList,
+        to: '/platform/audit-logs',
+        permission: PLATFORM_PERMISSION.AUDIT_LOGS_READ,
+      },
     ],
   },
 ];
@@ -55,6 +105,19 @@ const platformNavigationSections = [
 const platformNavigationItems = platformNavigationSections.flatMap(
   (section) => section.items,
 );
+
+function getVisiblePlatformNavigationSections(permissions) {
+  const permissionSet = new Set(permissions ?? []);
+
+  return platformNavigationSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        ({ permission }) => permissionSet.has(permission),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+}
 
 function PlatformSidebarLabel({ collapsed, children }) {
   return (
@@ -85,6 +148,10 @@ function PlatformSidebarTooltip({ collapsed, label }) {
 
 function PlatformSidebar({ collapsed, onToggle }) {
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
+  const { data: platformAccess } = useGetCurrentPlatformContextQuery();
+  const visibleSections = getVisiblePlatformNavigationSections(
+    platformAccess?.permissions,
+  );
 
   return (
     <aside
@@ -117,7 +184,7 @@ function PlatformSidebar({ collapsed, onToggle }) {
       </div>
 
       <nav aria-label="Navigation de la plateforme" className="flex-1 overflow-visible p-3">
-        {platformNavigationSections.map((section, sectionIndex) => (
+        {visibleSections.map((section, sectionIndex) => (
           <div
             aria-label={section.label}
             className={sectionIndex === 0 ? '' : 'mt-5'}
@@ -161,6 +228,7 @@ export {
   PlatformSidebar,
   PlatformSidebarLabel,
   PlatformSidebarTooltip,
+  getVisiblePlatformNavigationSections,
   platformNavigationItems,
   platformNavigationSections,
 };
