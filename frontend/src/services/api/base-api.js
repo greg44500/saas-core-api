@@ -27,6 +27,7 @@ const baseApi = createApi({
     'PlatformEntitlementContext',
     'PlatformAuditLogs',
     'PlatformOverview',
+    'PlatformTeamMembers',
   ],
   endpoints: () => ({}),
 });
