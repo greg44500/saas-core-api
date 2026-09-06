@@ -23,6 +23,7 @@ import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-perm
 import { PLATFORM_ROLE_STATUS } from '@/features/platform/constants/platform-team';
 import {
   canActorManageTargetRole,
+  canGovernCustomPlatformRoles,
 } from '@/features/platform/lib/platform-team-authorization';
 
 const PLATFORM_ROLES_PAGE_SIZE = 20;
@@ -41,9 +42,13 @@ function PlatformRolesSection() {
 
   const { data: platformAccess } = useGetCurrentPlatformContextQuery();
   const permissionSet = new Set(platformAccess?.permissions ?? []);
-  const canCreate = permissionSet.has(PLATFORM_PERMISSION.ROLES_CREATE);
-  const canUpdate = permissionSet.has(PLATFORM_PERMISSION.ROLES_UPDATE);
-  const canArchive = permissionSet.has(PLATFORM_PERMISSION.ROLES_ARCHIVE);
+  const canGovernCustomRoles = canGovernCustomPlatformRoles(platformAccess);
+  const canCreate = canGovernCustomRoles
+    && permissionSet.has(PLATFORM_PERMISSION.ROLES_CREATE);
+  const canUpdate = canGovernCustomRoles
+    && permissionSet.has(PLATFORM_PERMISSION.ROLES_UPDATE);
+  const canArchive = canGovernCustomRoles
+    && permissionSet.has(PLATFORM_PERMISSION.ROLES_ARCHIVE);
 
   const rolesQuery = useListPlatformRolesQuery({
     page,
@@ -180,7 +185,7 @@ function PlatformRolesSection() {
     <div className="mt-5 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          Les rôles système sont protégés. Les rôles personnalisés peuvent être gérés selon votre niveau d’autorisation.
+          Les rôles système sont protégés. Seuls le Fondateur et les Super administrateurs peuvent administrer les rôles personnalisés.
         </p>
 
         {canCreate && (
