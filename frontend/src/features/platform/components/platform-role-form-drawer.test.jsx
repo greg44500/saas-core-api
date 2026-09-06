@@ -97,7 +97,10 @@ describe('PlatformRoleFormDrawer', () => {
     expect(screen.queryByLabelText(/clé/i)).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Nom du rôle'), 'Support catalogue');
-    await user.type(screen.getByLabelText('Description'), 'Accès lecture catalogue');
+    await user.type(
+      screen.getByLabelText('Justification métier'),
+      'Accès lecture catalogue nécessaire au support.',
+    );
     await user.click(
       screen.getByRole('checkbox', { name: 'Consulter les utilisateurs' }),
     );
@@ -105,7 +108,7 @@ describe('PlatformRoleFormDrawer', () => {
 
     expect(mocks.createRole).toHaveBeenCalledWith({
       name: 'Support catalogue',
-      description: 'Accès lecture catalogue',
+      description: 'Accès lecture catalogue nécessaire au support.',
       permissions: ['platform:users:read'],
     });
     expect(mocks.createRole.mock.calls[0][0]).not.toHaveProperty('key');
@@ -116,31 +119,47 @@ describe('PlatformRoleFormDrawer', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('empêche un acteur ordinaire de créer un rôle de puissance égale', async () => {
+  it('refuse la création sans justification métier', async () => {
     const user = userEvent.setup();
-    const ordinaryAccess = {
+
+    render(
+      <PlatformRoleFormDrawer
+        onClose={vi.fn()}
+        open
+        platformAccess={superAdminAccess}
+      />,
+    );
+
+    await user.type(screen.getByLabelText('Nom du rôle'), 'Support catalogue');
+    await user.click(screen.getByRole('button', { name: 'Créer le rôle' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /justification métier est obligatoire/i,
+    );
+    expect(mocks.createRole).not.toHaveBeenCalled();
+  });
+
+  it('ne rend pas le formulaire pour un acteur qui ne gouverne pas les rôles personnalisés', () => {
+    const platformAdminAccess = {
       role: { key: 'platform_admin' },
-      permissions: ['platform:users:read'],
+      permissions: [
+        'platform:roles:create',
+        'platform:roles:update',
+        'platform:users:read',
+      ],
     };
 
     render(
       <PlatformRoleFormDrawer
         onClose={vi.fn()}
         open
-        platformAccess={ordinaryAccess}
+        platformAccess={platformAdminAccess}
       />,
     );
 
-    await user.type(screen.getByLabelText('Nom du rôle'), 'Même pouvoir');
-    await user.click(
-      screen.getByRole('checkbox', { name: 'Consulter les utilisateurs' }),
-    );
-    await user.click(screen.getByRole('button', { name: 'Créer le rôle' }));
-
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      /strictement inférieurs/i,
-    );
-    expect(mocks.createRole).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('Nom du rôle')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Justification métier')).not.toBeInTheDocument();
+    expect(mocks.useCatalog).toHaveBeenCalledWith(undefined, { skip: true });
   });
 
   it('préremplit un rôle personnalisé en modification et conserve sa clé hors formulaire', () => {
@@ -161,7 +180,7 @@ describe('PlatformRoleFormDrawer', () => {
     );
 
     expect(screen.getByLabelText('Nom du rôle')).toHaveValue('Support catalogue');
-    expect(screen.getByLabelText('Description')).toHaveValue('Description existante');
+    expect(screen.getByLabelText('Justification métier')).toHaveValue('Description existante');
     expect(
       screen.getByRole('checkbox', { name: 'Consulter les utilisateurs' }),
     ).toBeChecked();
