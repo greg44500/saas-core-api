@@ -4,10 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Provider } from 'react-redux';
 import { MemoryRouter, Route, Routes } from 'react-router';
 
-const useGetCurrentUserQueryMock = vi.hoisted(() => vi.fn());
+import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 
-vi.mock('@/features/auth/api/auth-api', () => ({
-  useGetCurrentUserQuery: useGetCurrentUserQueryMock,
+const useGetCurrentPlatformContextQueryMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/platform/api/platform-current-context-api', () => ({
+  useGetCurrentPlatformContextQuery: useGetCurrentPlatformContextQueryMock,
 }));
 
 import { AuthGuard, GuestGuard } from '@/features/auth/components/auth-guard';
@@ -48,16 +50,21 @@ function renderAuthenticatedRoutes(initialEntry) {
   );
 }
 
+const activePlatformAccess = {
+  status: 'active',
+  permissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
+};
+
 describe('AuthGuard / GuestGuard', () => {
   beforeEach(() => {
-    useGetCurrentUserQueryMock.mockReset();
+    useGetCurrentPlatformContextQueryMock.mockReset();
   });
 
   afterEach(() => cleanup());
 
-  it('redirige un super_admin restauré sur une route Workspace vers Platform au cold start', async () => {
-    useGetCurrentUserQueryMock.mockReturnValue({
-      data: { id: 'admin-1', platformRole: 'super_admin' },
+  it('redirige un membre Platform actif restauré sur une route Workspace vers sa console au cold start', async () => {
+    useGetCurrentPlatformContextQueryMock.mockReturnValue({
+      data: activePlatformAccess,
       isLoading: false,
       isFetching: false,
       error: undefined,
@@ -69,9 +76,9 @@ describe('AuthGuard / GuestGuard', () => {
     expect(screen.queryByRole('heading', { name: 'Workspace cible' })).not.toBeInTheDocument();
   });
 
-  it('laisse un utilisateur standard restaurer directement son Workspace', async () => {
-    useGetCurrentUserQueryMock.mockReturnValue({
-      data: { id: 'user-1', platformRole: 'user' },
+  it('laisse un utilisateur sans accès Platform restaurer directement son Workspace', async () => {
+    useGetCurrentPlatformContextQueryMock.mockReturnValue({
+      data: null,
       isLoading: false,
       isFetching: false,
       error: undefined,
@@ -82,9 +89,9 @@ describe('AuthGuard / GuestGuard', () => {
     expect(await screen.findByRole('heading', { name: 'Workspace cible' })).toBeInTheDocument();
   });
 
-  it('redirige un super_admin déjà authentifié depuis login vers Platform', async () => {
-    useGetCurrentUserQueryMock.mockReturnValue({
-      data: { id: 'admin-1', platformRole: 'super_admin' },
+  it('redirige un membre Platform déjà authentifié depuis login vers sa première destination autorisée', async () => {
+    useGetCurrentPlatformContextQueryMock.mockReturnValue({
+      data: activePlatformAccess,
       isLoading: false,
       isFetching: false,
       error: undefined,
