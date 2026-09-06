@@ -122,6 +122,26 @@ describe('PlatformRolesSection', () => {
     expect(screen.queryByText('custom_opaque')).not.toBeInTheDocument();
   });
 
+  it('compacte le tableau et expose la description uniquement via InfoTooltip', async () => {
+    const user = userEvent.setup();
+    render(<PlatformRolesSection />);
+
+    const table = screen.getByRole('table');
+    expect(table).toHaveClass('table-fixed');
+    expect(table.parentElement).toHaveClass('overflow-x-hidden');
+
+    expect(screen.queryByText('Rôle système protégé.')).not.toBeInTheDocument();
+
+    const descriptionButton = screen.getByRole('button', {
+      name: 'Description du rôle Support technique',
+    });
+    await user.hover(descriptionButton);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Rôle système protégé.',
+    );
+  });
+
   it('protège les rôles système et archivés mais permet les actions sur un rôle personnalisé actif', async () => {
     const user = userEvent.setup();
     render(<PlatformRolesSection />);
