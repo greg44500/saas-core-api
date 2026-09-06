@@ -199,10 +199,14 @@ const createPlatformInvitation = async ({
     const emailCanonical = canonicalizeEmail(email);
 
     return mongoose.connection.transaction(async (session) => {
-        const [{ authorization }, role] = await Promise.all([
-            loadActorAuthorization({ actorId, session }),
-            PlatformRole.findById(roleId).session(session),
-        ]);
+        // Une session transactionnelle MongoDB ne doit pas exécuter plusieurs
+        // opérations en parallèle. Chaque lecture est donc volontairement
+        // séquencée avant de poursuivre le workflow atomique.
+        const { authorization } = await loadActorAuthorization({
+            actorId,
+            session,
+        });
+        const role = await PlatformRole.findById(roleId).session(session);
 
         assertRuntimePermission({
             authorization,
@@ -452,10 +456,13 @@ const resendPlatformInvitation = async ({
     }
 
     return mongoose.connection.transaction(async (session) => {
-        const [{ authorization }, invitation] = await Promise.all([
-            loadActorAuthorization({ actorId, session }),
-            PlatformInvitation.findById(invitationId).session(session),
-        ]);
+        const { authorization } = await loadActorAuthorization({
+            actorId,
+            session,
+        });
+        const invitation = await PlatformInvitation.findById(
+            invitationId,
+        ).session(session);
 
         assertRuntimePermission({
             authorization,
