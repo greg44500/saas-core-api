@@ -11,10 +11,13 @@ import {
   useGetCurrentUserQuery,
   useUpdateCurrentUserMutation,
 } from '@/features/auth/api/auth-api';
+import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
+import { PlatformAccessSummary } from '@/features/platform/components/platform-access-summary';
 
 function ProfilePage() {
   const { toast } = useToast();
   const { data: user, isError, isLoading, refetch } = useGetCurrentUserQuery();
+  const { data: platformAccess } = useGetCurrentPlatformContextQuery();
   const [updateCurrentUser, { isLoading: isSaving }] = useUpdateCurrentUserMutation();
   const {
     register,
@@ -87,6 +90,12 @@ function ProfilePage() {
         <p className="max-w-2xl text-sm text-muted-foreground">
           Gérez les informations personnelles utilisées pour vous identifier dans l’application.
         </p>
+        <PlatformAccessSummary
+          label="Profil :"
+          platformAccess={platformAccess}
+          showRole={false}
+          variant="inline"
+        />
       </header>
 
       <section className="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
