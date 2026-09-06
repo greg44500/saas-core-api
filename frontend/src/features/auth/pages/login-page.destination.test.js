@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
+import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 import {
   getLoginStatusMessage,
   getRequestedDestination,
 } from '@/features/auth/pages/login-page';
 
+const overviewPlatformAccess = {
+  status: 'active',
+  permissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
+};
+
 describe('getRequestedDestination', () => {
-  it('ignore une ancienne destination Workspace pour un super_admin', () => {
+  it('ignore une ancienne destination Workspace pour un membre Platform actif', () => {
     const location = {
       state: {
         from: {
@@ -17,18 +23,19 @@ describe('getRequestedDestination', () => {
       },
     };
 
-    expect(getRequestedDestination(location, { platformRole: 'super_admin' })).toBe(
+    expect(getRequestedDestination(location, overviewPlatformAccess)).toBe(
       '/platform/overview',
     );
   });
 
-  it('dirige un super_admin vers la Console plateforme sans destination préalable', () => {
-    expect(getRequestedDestination({ state: null }, { platformRole: 'super_admin' })).toBe(
-      '/platform/overview',
-    );
+  it('dirige vers la première destination Platform autorisée sans destination préalable', () => {
+    expect(getRequestedDestination({ state: null }, {
+      status: 'active',
+      permissions: [PLATFORM_PERMISSION.USERS_READ],
+    })).toBe('/platform/users');
   });
 
-  it('préserve une destination non-Workspace explicitement demandée par le super_admin', () => {
+  it('préserve une destination non-Workspace explicitement demandée', () => {
     const location = {
       state: {
         from: {
@@ -38,13 +45,13 @@ describe('getRequestedDestination', () => {
       },
     };
 
-    expect(getRequestedDestination(location, { platformRole: 'super_admin' })).toBe(
+    expect(getRequestedDestination(location, overviewPlatformAccess)).toBe(
       '/account/security?tab=sessions',
     );
   });
 
-  it('dirige un utilisateur standard vers ses workspaces', () => {
-    expect(getRequestedDestination({ state: null }, { id: 'user-1' })).toBe('/workspaces');
+  it('dirige un utilisateur sans accès Platform vers ses workspaces', () => {
+    expect(getRequestedDestination({ state: null }, null)).toBe('/workspaces');
   });
 });
 
