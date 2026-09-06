@@ -79,7 +79,10 @@ const platformNavigationSections = [
         label: 'Équipe de la Plateforme',
         Icon: ShieldCheck,
         to: '/platform/team/members',
-        permission: PLATFORM_PERMISSION.TEAM_READ,
+        anyPermission: [
+          PLATFORM_PERMISSION.TEAM_READ,
+          PLATFORM_PERMISSION.ROLES_READ,
+        ],
       },
     ],
   },
@@ -106,15 +109,27 @@ const platformNavigationItems = platformNavigationSections.flatMap(
   (section) => section.items,
 );
 
+function canDisplayPlatformNavigationItem(item, permissionSet) {
+  if (item.permission) {
+    return permissionSet.has(item.permission);
+  }
+
+  if (Array.isArray(item.anyPermission)) {
+    return item.anyPermission.some((permission) => permissionSet.has(permission));
+  }
+
+  return false;
+}
+
 function getVisiblePlatformNavigationSections(permissions) {
   const permissionSet = new Set(permissions ?? []);
 
   return platformNavigationSections
     .map((section) => ({
       ...section,
-      items: section.items.filter(
-        ({ permission }) => permissionSet.has(permission),
-      ),
+      items: section.items.filter((item) => (
+        canDisplayPlatformNavigationItem(item, permissionSet)
+      )),
     }))
     .filter((section) => section.items.length > 0);
 }
@@ -228,6 +243,7 @@ export {
   PlatformSidebar,
   PlatformSidebarLabel,
   PlatformSidebarTooltip,
+  canDisplayPlatformNavigationItem,
   getVisiblePlatformNavigationSections,
   platformNavigationItems,
   platformNavigationSections,
