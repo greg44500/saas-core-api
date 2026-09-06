@@ -31,7 +31,7 @@ const PLATFORM_TEAM_SECTIONS = Object.freeze([
     to: '/platform/team/roles',
     permission: PLATFORM_PERMISSION.ROLES_READ,
     description:
-      'Consultez les rôles système et personnalisés ainsi que leurs permissions effectives.',
+      'Consultez les rôles système et gérez les rôles personnalisés ainsi que leurs permissions selon votre niveau d’autorisation.',
   }),
 ]);
 
