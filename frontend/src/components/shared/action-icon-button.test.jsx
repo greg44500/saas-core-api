@@ -29,6 +29,13 @@ describe('ActionIconButton', () => {
     });
 
     expect(button).toBeInTheDocument();
+    expect(screen.getByRole('tooltip', { hidden: true })).toHaveTextContent(
+      'Voir',
+    );
+
+    await user.tab();
+
+    expect(button).toHaveFocus();
     expect(screen.getByRole('tooltip')).toHaveTextContent('Voir');
 
     await user.click(button);
