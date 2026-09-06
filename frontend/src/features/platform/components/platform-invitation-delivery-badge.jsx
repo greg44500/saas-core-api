@@ -3,7 +3,7 @@ import { StatusBadge } from '@/components/data-display/status-badge';
 const DELIVERY_PRESENTATION = Object.freeze({
   pending: Object.freeze({
     label: 'Envoi en attente',
-    tone: 'warning',
+    tone: 'neutral',
   }),
   sent: Object.freeze({
     label: 'Envoyée',
