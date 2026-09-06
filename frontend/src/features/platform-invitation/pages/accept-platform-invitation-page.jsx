@@ -147,7 +147,7 @@ function AcceptPlatformInvitationPage() {
             Rejoindre l’équipe
           </h1>
           <p className="text-sm text-muted-foreground">
-            Confirmez l’invitation avec votre compte actuellement connecté. Le backend vérifiera que son adresse email correspond exactement au destinataire.
+            Confirmez l’invitation avec votre compte actuellement connecté. Son adresse email doit correspondre exactement à celle utilisée pour l’invitation.
           </p>
         </div>
 
