@@ -78,7 +78,7 @@ const platformNavigationSections = [
       {
         label: 'Équipe de la Plateforme',
         Icon: ShieldCheck,
-        to: '/platform/team/members',
+        to: '/platform/team',
         anyPermission: [
           PLATFORM_PERMISSION.TEAM_READ,
           PLATFORM_PERMISSION.ROLES_READ,
