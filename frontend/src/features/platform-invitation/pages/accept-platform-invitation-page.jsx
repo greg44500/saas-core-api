@@ -24,19 +24,11 @@ import {
   useLazyGetCurrentPlatformContextQuery,
 } from '@/features/platform/api/platform-current-context-api';
 import {
-  getVisiblePlatformNavigationSections,
-} from '@/features/platform/components/platform-sidebar';
+  getFirstPlatformDestination,
+} from '@/features/platform/lib/platform-navigation';
 
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
-}
-
-function getFirstPlatformDestination(platformAccess) {
-  const sections = getVisiblePlatformNavigationSections(
-    platformAccess?.permissions,
-  );
-
-  return sections[0]?.items?.[0]?.to ?? '/account/profile';
 }
 
 function AcceptPlatformInvitationPage() {
@@ -102,7 +94,10 @@ function AcceptPlatformInvitationPage() {
     try {
       await acceptExisting(token).unwrap();
       const platformAccess = await getPlatformContext().unwrap();
-      navigate(getFirstPlatformDestination(platformAccess), { replace: true });
+      navigate(
+        getFirstPlatformDestination(platformAccess) ?? '/account/profile',
+        { replace: true },
+      );
     } catch (error) {
       setError('root.acceptance', {
         type: 'server',
