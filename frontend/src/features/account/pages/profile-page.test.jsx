@@ -69,19 +69,21 @@ describe('ProfilePage', () => {
 
   afterEach(() => cleanup());
 
-  it('affiche le profil, sa distinction Platform et garde l’email non modifiable', async () => {
+  it('affiche la distinction Platform à côté du titre et garde l’email non modifiable', async () => {
     renderPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Prénom')).toHaveValue('Greg');
     });
+
+    expect(screen.getByRole('heading', { name: 'Profil' })).toBeInTheDocument();
+    expect(screen.getByText('Fondateur')).toBeInTheDocument();
+    expect(screen.queryByText('Profil :')).not.toBeInTheDocument();
+    expect(screen.queryByText('Super administrateur')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Nom')).toHaveValue('Martin');
     expect(screen.getByLabelText('Adresse email')).toHaveValue('greg@example.com');
     expect(screen.getByLabelText('Adresse email')).toBeDisabled();
     expect(screen.getByText('Adresse email vérifiée.')).toBeInTheDocument();
-    expect(screen.getByText('Profil :')).toBeInTheDocument();
-    expect(screen.getByText('Fondateur')).toBeInTheDocument();
-    expect(screen.queryByText('Super administrateur')).not.toBeInTheDocument();
   });
 
   it('envoie uniquement le champ réellement modifié et confirme par toast', async () => {
