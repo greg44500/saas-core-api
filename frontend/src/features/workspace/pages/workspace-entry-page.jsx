@@ -2,39 +2,36 @@ import { Link, Navigate } from 'react-router';
 
 import { PageLoader } from '@/components/shared/page-loader';
 import { Button } from '@/components/ui/button';
-import { useGetCurrentUserQuery } from '@/features/auth/api/auth-api';
-import {
-  PLATFORM_HOME,
-  isPlatformSuperAdmin,
-} from '@/features/auth/lib/authenticated-destination';
+import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
+import { getFirstPlatformDestination } from '@/features/platform/lib/platform-navigation';
 import { useListWorkspacesQuery } from '@/features/workspace/api/workspace-api';
 import { resolveWorkspaceContext } from '@/features/workspace/lib/resolve-workspace-context';
 
 function WorkspaceEntryPage() {
   const {
-    data: currentUser,
-    isLoading: isCurrentUserLoading,
-    isFetching: isCurrentUserFetching,
-  } = useGetCurrentUserQuery();
+    data: platformAccess,
+    isLoading: isPlatformAccessLoading,
+    isFetching: isPlatformAccessFetching,
+  } = useGetCurrentPlatformContextQuery();
+  const platformContextPending = isPlatformAccessLoading
+    || (isPlatformAccessFetching && platformAccess === undefined);
+  const platformDestination = getFirstPlatformDestination(platformAccess);
+
   const {
     data: workspaces = [],
     isLoading,
     isError,
     refetch,
   } = useListWorkspacesQuery(undefined, {
-    skip: isPlatformSuperAdmin(currentUser),
+    skip: platformContextPending || Boolean(platformDestination),
   });
 
-  if (
-    isCurrentUserLoading
-    || (isCurrentUserFetching && !currentUser)
-    || isLoading
-  ) {
+  if (platformContextPending || isLoading) {
     return <PageLoader />;
   }
 
-  if (isPlatformSuperAdmin(currentUser)) {
-    return <Navigate to={PLATFORM_HOME} replace />;
+  if (platformDestination) {
+    return <Navigate to={platformDestination} replace />;
   }
 
   if (isError) {
