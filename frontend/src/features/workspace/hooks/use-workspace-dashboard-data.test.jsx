@@ -2,6 +2,7 @@ import { cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  useGetWorkspaceAuditMetadataQuery: vi.fn(),
   useListWorkspaceAuditLogsQuery: vi.fn(),
   useListWorkspaceFilesQuery: vi.fn(),
   useGetWorkspaceSubscriptionQuery: vi.fn(),
@@ -10,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/features/audit-log/api/audit-log-api', () => ({
+  useGetWorkspaceAuditMetadataQuery: mocks.useGetWorkspaceAuditMetadataQuery,
   useListWorkspaceAuditLogsQuery: mocks.useListWorkspaceAuditLogsQuery,
 }));
 vi.mock('@/features/files/api/files-api', () => ({
@@ -89,6 +91,10 @@ describe('useWorkspaceDashboardData', () => {
       expect.any(Object),
       { skip: true },
     );
+    expect(mocks.useGetWorkspaceAuditMetadataQuery).toHaveBeenCalledWith(
+      'workspace-1',
+      { skip: true },
+    );
     expect(mocks.useGetWorkspaceSubscriptionQuery).toHaveBeenCalledWith(
       'workspace-1',
       { skip: false },
@@ -116,6 +122,10 @@ describe('useWorkspaceDashboardData', () => {
     );
     expect(mocks.useListWorkspaceAuditLogsQuery).toHaveBeenCalledWith(
       expect.any(Object),
+      { skip: false },
+    );
+    expect(mocks.useGetWorkspaceAuditMetadataQuery).toHaveBeenCalledWith(
+      'workspace-1',
       { skip: false },
     );
   });
