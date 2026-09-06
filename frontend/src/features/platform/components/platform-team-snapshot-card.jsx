@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { CollapsibleCard } from '@/components/data-display/collapsible-card';
 import { DistributionBarChart } from '@/components/data-display/distribution-bar-chart';
+import { DashboardSection } from '@/components/shared/dashboard-section';
 import { MetricDrilldownButton } from '@/components/shared/metric-drilldown-button';
 import { Button } from '@/components/ui/button';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
@@ -15,7 +16,16 @@ function formatTeamCount(value) {
   return Number.isFinite(value) ? numberFormatter.format(value) : '—';
 }
 
-function PlatformTeamSnapshotCard() {
+function PlatformTeamSnapshotCard({ children }) {
+  return (
+    <CollapsibleCard
+      description="Effectif actuel de l’équipe interne, statut des accès et répartition par rôle de Plateforme."
+      {...children}
+    />
+  );
+}
+
+function PlatformTeamSnapshotSection() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { data: platformAccess } = useGetCurrentPlatformContextQuery();
   const canReadTeam = platformAccess?.permissions?.includes(
@@ -29,8 +39,10 @@ function PlatformTeamSnapshotCard() {
     return null;
   }
 
+  let snapshotCard;
+
   if (summaryQuery.isLoading) {
-    return (
+    snapshotCard = (
       <CollapsibleCard
         description="Synthèse des membres internes actuels de la Plateforme."
         summary={(
@@ -41,10 +53,8 @@ function PlatformTeamSnapshotCard() {
         title="Équipe de la Plateforme"
       />
     );
-  }
-
-  if (summaryQuery.error) {
-    return (
+  } else if (summaryQuery.error) {
+    snapshotCard = (
       <CollapsibleCard
         description="Synthèse des membres internes actuels de la Plateforme."
         summary={(
@@ -65,24 +75,22 @@ function PlatformTeamSnapshotCard() {
         title="Équipe de la Plateforme"
       />
     );
-  }
+  } else {
+    const summary = summaryQuery.data ?? {
+      total: 0,
+      active: 0,
+      suspended: 0,
+      founderCount: 0,
+      byRole: [],
+    };
+    const distributionItems = (summary.byRole ?? []).map((item) => ({
+      key: item.role?.id ?? item.role?.key ?? item.role?.name,
+      label: item.role?.name ?? 'Rôle indisponible',
+      value: item.total,
+      percentage: item.percentage,
+    }));
 
-  const summary = summaryQuery.data ?? {
-    total: 0,
-    active: 0,
-    suspended: 0,
-    founderCount: 0,
-    byRole: [],
-  };
-  const distributionItems = (summary.byRole ?? []).map((item) => ({
-    key: item.role?.id ?? item.role?.key ?? item.role?.name,
-    label: item.role?.name ?? 'Rôle indisponible',
-    value: item.total,
-    percentage: item.percentage,
-  }));
-
-  return (
-    <>
+    snapshotCard = (
       <CollapsibleCard
         description="Effectif actuel de l’équipe interne, statut des accès et répartition par rôle de Plateforme."
         summary={(
@@ -133,6 +141,19 @@ function PlatformTeamSnapshotCard() {
           items={distributionItems}
         />
       </CollapsibleCard>
+    );
+  }
+
+  return (
+    <>
+      <DashboardSection
+        description="Suivez l’effectif interne et la répartition des responsabilités de l’équipe qui administre la Plateforme."
+        title="Organisation interne"
+      >
+        <div className="grid gap-4 xl:grid-cols-2">
+          {snapshotCard}
+        </div>
+      </DashboardSection>
 
       <PlatformTeamMembersDrawer
         onClose={() => setDrawerOpen(false)}
@@ -143,6 +164,6 @@ function PlatformTeamSnapshotCard() {
 }
 
 export {
-  PlatformTeamSnapshotCard,
+  PlatformTeamSnapshotSection,
   formatTeamCount,
 };
