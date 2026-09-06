@@ -2,9 +2,11 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 
+const useGetWorkspaceAuditMetadataQueryMock = vi.hoisted(() => vi.fn());
 const useListWorkspaceAuditLogsQueryMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/features/audit-log/api/audit-log-api', () => ({
+  useGetWorkspaceAuditMetadataQuery: useGetWorkspaceAuditMetadataQueryMock,
   useListWorkspaceAuditLogsQuery: useListWorkspaceAuditLogsQueryMock,
 }));
 
@@ -17,6 +19,20 @@ import { WorkspaceProvider } from '@/features/workspace/components/workspace-con
 
 const workspace = { id: 'workspace-1', name: 'Acme', status: 'active' };
 const membership = { id: 'membership-1', role: { key: 'admin', name: 'Administrateur' } };
+const auditMetadata = {
+  actions: [
+    { value: 'WORKSPACE_UPDATED', label: 'Espace de travail modifié' },
+    { value: 'FILE_DELETED', label: 'Fichier supprimé' },
+  ],
+  entityTypes: [
+    { value: 'Workspace', label: 'Espace de travail' },
+    { value: 'File', label: 'Fichier' },
+  ],
+  statuses: [
+    { value: 'success', label: 'Réussie' },
+    { value: 'failed', label: 'Échouée' },
+  ],
+};
 
 function renderPage(initialEntry = '/workspaces/workspace-1/activity') {
   return render(
@@ -34,7 +50,15 @@ function renderPage(initialEntry = '/workspaces/workspace-1/activity') {
 
 describe('WorkspaceAuditLogPage', () => {
   beforeEach(() => {
+    useGetWorkspaceAuditMetadataQueryMock.mockReset();
     useListWorkspaceAuditLogsQueryMock.mockReset();
+    useGetWorkspaceAuditMetadataQueryMock.mockReturnValue({
+      data: auditMetadata,
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
     useListWorkspaceAuditLogsQueryMock.mockReturnValue({
       data: {
         auditLogs: [
@@ -62,6 +86,7 @@ describe('WorkspaceAuditLogPage', () => {
       isError: false,
       isFetching: false,
       isLoading: false,
+      isUninitialized: false,
       refetch: vi.fn(),
     });
   });
@@ -70,17 +95,17 @@ describe('WorkspaceAuditLogPage', () => {
     cleanup();
   });
 
-  it('affiche les données d’audit avec des libellés humains', () => {
+  it('affiche les données d’audit avec les libellés fournis par le backend', () => {
     renderPage();
 
     expect(screen.getByRole('heading', { name: 'Historique d’activité' })).toBeInTheDocument();
     expect(screen.getByText('Acme')).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: 'Workspace modifié' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Espace de travail modifié' })).toBeInTheDocument();
     expect(screen.getByText('Jean Dupont')).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'Réussie' })).toBeInTheDocument();
   });
 
-  it('transmet pagination et filtres URL au contrat RTK Query', () => {
+  it('transmet pagination et filtres URL validés par metadata au contrat RTK Query', () => {
     renderPage(
       '/workspaces/workspace-1/activity?page=2&action=FILE_DELETED&status=failed&entityType=File&from=2026-09-01&to=2026-09-02',
     );
@@ -94,7 +119,10 @@ describe('WorkspaceAuditLogPage', () => {
         status: 'failed',
         entityType: 'File',
       }),
-      { refetchOnMountOrArgChange: true },
+      {
+        skip: false,
+        refetchOnMountOrArgChange: true,
+      },
     );
 
     const query = useListWorkspaceAuditLogsQueryMock.mock.calls[0][0];
@@ -103,7 +131,7 @@ describe('WorkspaceAuditLogPage', () => {
     expect(Date.parse(query.from)).toBeLessThan(Date.parse(query.to));
   });
 
-  it('normalise les paramètres URL invalides avant tout appel API', () => {
+  it('normalise les paramètres URL invalides avec le catalogue backend', () => {
     expect(parsePage('2foo')).toBe(1);
     expect(parsePage('0')).toBe(1);
 
@@ -111,6 +139,7 @@ describe('WorkspaceAuditLogPage', () => {
       new URLSearchParams(
         'action=UNKNOWN&status=invalid&entityType=Secret&from=2026-02-31&to=2026-01-01',
       ),
+      auditMetadata,
     );
 
     expect(filters).toEqual({
@@ -122,7 +151,10 @@ describe('WorkspaceAuditLogPage', () => {
     });
 
     expect(
-      readFilters(new URLSearchParams('from=2026-09-10&to=2026-09-01')),
+      readFilters(
+        new URLSearchParams('from=2026-09-10&to=2026-09-01'),
+        auditMetadata,
+      ),
     ).toEqual({
       action: '',
       entityType: '',
@@ -141,6 +173,7 @@ describe('WorkspaceAuditLogPage', () => {
       isError: false,
       isFetching: false,
       isLoading: false,
+      isUninitialized: false,
       refetch: vi.fn(),
     });
 
