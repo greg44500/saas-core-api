@@ -19,6 +19,15 @@ vi.mock('@/features/platform/components/platform-entitlement-overrides-drilldown
   },
 }));
 
+vi.mock('@/features/platform/components/platform-team-snapshot-card', () => ({
+  PlatformTeamSnapshotSection: () => (
+    <section aria-label="Organisation interne">
+      <h2>Organisation interne</h2>
+      <p>Snapshot équipe</p>
+    </section>
+  ),
+}));
+
 import { PlatformOverviewPage } from '@/features/platform/pages/platform-overview-page';
 
 const OVERVIEW = {
@@ -175,6 +184,7 @@ describe('PlatformOverviewPage', () => {
     expect(within(attention).getByText('Abonnements en retard')).toBeInTheDocument();
     expect(within(attention).queryByText('Past due')).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Croissance et répartition' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Organisation interne' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Santé et exploitation' })).toBeInTheDocument();
   });
 
