@@ -18,6 +18,10 @@ vi.mock('@/features/platform/components/platform-team-invitations-section', () =
   PlatformTeamInvitationsSection: () => <div>Tableau des invitations</div>,
 }));
 
+vi.mock('@/features/platform/components/platform-roles-section', () => ({
+  PlatformRolesSection: () => <div>Gestion des rôles</div>,
+}));
+
 import { PlatformTeamPage } from '@/features/platform/pages/platform-team-page';
 
 function renderPage(path = '/platform/team/members') {
@@ -76,6 +80,18 @@ describe('PlatformTeamPage', () => {
       screen.getByRole('heading', { name: 'Membres', level: 2 }),
     ).toBeInTheDocument();
     expect(screen.getByText('Tableau des membres')).toBeInTheDocument();
+  });
+
+  it('branche la vue Rôles et permissions sur son composant métier', () => {
+    renderPage('/platform/team/roles');
+
+    expect(
+      screen.getByRole('heading', { name: 'Rôles et permissions', level: 2 }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Gestion des rôles')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Rôles et permissions' }),
+    ).toHaveAttribute('aria-current', 'page');
   });
 
   it('masque l’onglet rôles lorsque roles:read manque', () => {
