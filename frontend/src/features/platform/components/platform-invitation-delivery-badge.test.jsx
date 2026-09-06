@@ -7,7 +7,7 @@ describe('PlatformInvitationDeliveryBadge', () => {
   afterEach(() => cleanup());
 
   it.each([
-    ['pending', 'Envoi en attente', 'text-warning'],
+    ['pending', 'Envoi en attente', 'text-muted-foreground'],
     ['sent', 'Envoyée', 'text-success'],
     ['failed', 'Échec d’envoi', 'text-destructive'],
   ])('utilise le ton sémantique attendu pour %s', (status, label, expectedClass) => {
