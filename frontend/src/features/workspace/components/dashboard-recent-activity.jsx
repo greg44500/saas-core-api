@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router';
 
 import {
+  createAuditMetadataLabelMaps,
   formatAuditAbsoluteDate,
   formatAuditRelativeDate,
   getAuditActionLabel,
@@ -8,7 +10,18 @@ import {
   getAuditStatusLabel,
 } from '@/features/audit-log/lib/audit-log-presentation';
 
-function DashboardRecentActivity({ workspaceId, entries, isLoading, isError }) {
+function DashboardRecentActivity({
+  workspaceId,
+  entries,
+  isLoading,
+  isError,
+  metadata,
+}) {
+  const auditLabelMaps = useMemo(
+    () => createAuditMetadataLabelMaps(metadata),
+    [metadata],
+  );
+
   return (
     <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
       <div className="flex items-center justify-between gap-4 border-b border-border p-5">
@@ -44,9 +57,11 @@ function DashboardRecentActivity({ workspaceId, entries, isLoading, isError }) {
             return (
               <li className="flex flex-col gap-2 p-5 sm:flex-row sm:items-start sm:justify-between" key={entry.id}>
                 <div>
-                  <p className="font-medium text-foreground">{getAuditActionLabel(entry.action)}</p>
+                  <p className="font-medium text-foreground">
+                    {getAuditActionLabel(entry.action, auditLabelMaps)}
+                  </p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {getAuditActorLabel(entry.actor)} · {getAuditStatusLabel(entry.status)}
+                    {getAuditActorLabel(entry.actor)} · {getAuditStatusLabel(entry.status, auditLabelMaps)}
                   </p>
                 </div>
                 <time
