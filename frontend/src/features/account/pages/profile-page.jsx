@@ -86,16 +86,17 @@ function ProfilePage() {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Profil</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight">Profil</h1>
+          <PlatformAccessSummary
+            mode="distinction"
+            platformAccess={platformAccess}
+            variant="inline"
+          />
+        </div>
         <p className="max-w-2xl text-sm text-muted-foreground">
           Gérez les informations personnelles utilisées pour vous identifier dans l’application.
         </p>
-        <PlatformAccessSummary
-          label="Profil :"
-          platformAccess={platformAccess}
-          showRole={false}
-          variant="inline"
-        />
       </header>
 
       <section className="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
