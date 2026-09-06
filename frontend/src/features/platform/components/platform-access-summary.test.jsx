@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 describe('PlatformAccessSummary', () => {
-  it('affiche séparément la qualité Fondateur et le rôle effectif', () => {
+  it('affiche séparément la qualité Fondateur et le rôle effectif dans le menu', () => {
     render(
       <PlatformAccessSummary
         platformAccess={{
@@ -23,33 +23,33 @@ describe('PlatformAccessSummary', () => {
     expect(screen.getByText('Super administrateur')).toBeInTheDocument();
   });
 
-  it('permet de réutiliser uniquement la distinction dans un affichage inline', () => {
+  it('utilise Fondateur comme distinction principale sur le profil du Fondateur', () => {
     render(
       <PlatformAccessSummary
-        label="Profil :"
+        mode="distinction"
         platformAccess={{
           isFounder: true,
           status: 'active',
           role: { name: 'Super administrateur' },
         }}
-        showRole={false}
         variant="inline"
       />,
     );
 
-    expect(screen.getByText('Profil :')).toBeInTheDocument();
     expect(screen.getByText('Fondateur')).toBeInTheDocument();
     expect(screen.queryByText('Super administrateur')).not.toBeInTheDocument();
   });
 
-  it('n’affiche pas Fondateur pour un autre membre Platform', () => {
+  it('utilise le rôle effectif comme distinction pour un autre membre Platform', () => {
     render(
       <PlatformAccessSummary
+        mode="distinction"
         platformAccess={{
           isFounder: false,
           status: 'active',
           role: { name: 'Support technique' },
         }}
+        variant="inline"
       />,
     );
 
