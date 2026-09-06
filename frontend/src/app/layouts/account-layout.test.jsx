@@ -4,10 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 
-const useGetCurrentUserQueryMock = vi.hoisted(() => vi.fn());
+import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 
-vi.mock('@/features/auth/api/auth-api', () => ({
-  useGetCurrentUserQuery: useGetCurrentUserQueryMock,
+const useGetCurrentPlatformContextQueryMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/platform/api/platform-current-context-api', () => ({
+  useGetCurrentPlatformContextQuery: useGetCurrentPlatformContextQueryMock,
 }));
 
 vi.mock('@/components/shared/theme-toggle', () => ({
@@ -44,8 +46,8 @@ function renderAccount(initialEntry) {
 
 describe('AccountLayout', () => {
   beforeEach(() => {
-    useGetCurrentUserQueryMock.mockReturnValue({
-      data: { platformRole: 'user' },
+    useGetCurrentPlatformContextQueryMock.mockReturnValue({
+      data: null,
     });
   });
 
@@ -78,10 +80,13 @@ describe('AccountLayout', () => {
     });
   });
 
-  it('utilise la console Platform comme fallback pour un super-admin', async () => {
+  it('utilise la première destination Platform autorisée comme fallback', async () => {
     const user = userEvent.setup();
-    useGetCurrentUserQueryMock.mockReturnValue({
-      data: { platformRole: 'super_admin' },
+    useGetCurrentPlatformContextQueryMock.mockReturnValue({
+      data: {
+        status: 'active',
+        permissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
+      },
     });
     const router = renderAccount('/account/profile');
 
