@@ -24,12 +24,13 @@ function WorkspaceAuditLogPage() {
   const { workspace } = useWorkspaceContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const page = parsePage(searchParams.get('page'));
+  const metadataQuery = useGetWorkspaceAuditMetadataQuery(workspace.id);
+  const auditMetadata = metadataQuery.data;
   const filters = useMemo(
-    () => readFilters(searchParams),
-    [searchParams],
+    () => readFilters(searchParams, auditMetadata),
+    [auditMetadata, searchParams],
   );
 
-  const metadataQuery = useGetWorkspaceAuditMetadataQuery(workspace.id);
   const auditQuery = useListWorkspaceAuditLogsQuery(
     {
       workspaceId: workspace.id,
@@ -42,11 +43,11 @@ function WorkspaceAuditLogPage() {
       to: dateInputToIsoBoundary(filters.to, 'end'),
     },
     {
+      skip: !auditMetadata,
       refetchOnMountOrArgChange: true,
     },
   );
 
-  const auditMetadata = metadataQuery.data;
   const auditLogs = auditQuery.data?.auditLogs ?? [];
   const pagination = auditQuery.data?.pagination;
   const isFetching = auditQuery.isFetching || metadataQuery.isFetching;
@@ -71,14 +72,16 @@ function WorkspaceAuditLogPage() {
 
   function refetchAuditData() {
     metadataQuery.refetch();
-    auditQuery.refetch();
+    if (!auditQuery.isUninitialized) {
+      auditQuery.refetch();
+    }
   }
 
-  if (auditQuery.isLoading || metadataQuery.isLoading) {
+  if (metadataQuery.isLoading || (auditMetadata && auditQuery.isLoading)) {
     return <p className="text-sm text-muted-foreground">Chargement de l’activité…</p>;
   }
 
-  if (auditQuery.isError || metadataQuery.isError) {
+  if (metadataQuery.isError || auditQuery.isError) {
     return (
       <section className="space-y-3">
         <h1 className="text-2xl font-semibold">Historique d’activité</h1>
