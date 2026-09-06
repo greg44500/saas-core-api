@@ -29,10 +29,24 @@ describe('platformRole validation', () => {
         });
     });
 
+    it('exige une justification métier lors de la création', () => {
+        expect(createPlatformRoleBodySchema.safeParse({
+            name: 'Sans justification',
+            permissions: [],
+        }).success).toBe(false);
+
+        expect(createPlatformRoleBodySchema.safeParse({
+            name: 'Justification vide',
+            description: '   ',
+            permissions: [],
+        }).success).toBe(false);
+    });
+
     it('refuse les champs techniques contrôlés par le backend', () => {
         const result = createPlatformRoleBodySchema.safeParse({
             key: 'super_admin',
             name: 'Faux super admin',
+            description: 'Tentative de contourner la clé backend',
             permissions: [],
         });
 
@@ -42,6 +56,7 @@ describe('platformRole validation', () => {
     it('refuse les doublons de permissions et les clés mal formées', () => {
         expect(createPlatformRoleBodySchema.safeParse({
             name: 'Doublons',
+            description: 'Rôle de test avec doublons',
             permissions: [
                 'platform:overview:read',
                 'platform:overview:read',
@@ -50,15 +65,19 @@ describe('platformRole validation', () => {
 
         expect(createPlatformRoleBodySchema.safeParse({
             name: 'Invalide',
+            description: 'Rôle de test avec clé invalide',
             permissions: ['workspace:read'],
         }).success).toBe(false);
     });
 
-    it('impose au moins un champ lors d’une modification', () => {
+    it('impose au moins un champ lors d’une modification et refuse une justification vide', () => {
         expect(updatePlatformRoleBodySchema.safeParse({}).success).toBe(false);
         expect(updatePlatformRoleBodySchema.safeParse({
             name: 'Support client avancé',
         }).success).toBe(true);
+        expect(updatePlatformRoleBodySchema.safeParse({
+            description: '   ',
+        }).success).toBe(false);
     });
 
     it('valide les ObjectId et la pagination filtrable par statut', () => {
