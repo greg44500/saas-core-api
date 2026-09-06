@@ -4,7 +4,8 @@ import { cn } from '@/lib/utils';
  * Case à cocher partagée pour les sélections multiples.
  *
  * Le composant reste purement UI : la feature conserve la validation et la
- * logique métier de sélection.
+ * logique métier de sélection. Le libellé fournit le nom accessible tandis que
+ * la description reste une information complémentaire via aria-describedby.
  */
 function CheckboxField({
   checked,
@@ -15,6 +16,8 @@ function CheckboxField({
   onChange,
   className,
 }) {
+  const descriptionId = description ? `${id}-description` : undefined;
+
   return (
     <label
       className={cn(
@@ -25,6 +28,8 @@ function CheckboxField({
       htmlFor={id}
     >
       <input
+        aria-describedby={descriptionId}
+        aria-label={label}
         checked={checked}
         className="mt-0.5 size-4 rounded border-input accent-primary"
         disabled={disabled}
@@ -37,7 +42,10 @@ function CheckboxField({
           {label}
         </span>
         {description && (
-          <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+          <span
+            className="mt-1 block text-xs leading-5 text-muted-foreground"
+            id={descriptionId}
+          >
             {description}
           </span>
         )}
