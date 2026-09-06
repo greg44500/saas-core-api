@@ -13,7 +13,7 @@ const items = [
 afterEach(() => cleanup());
 
 describe('SectionTabs', () => {
-  it('rend des onglets navigables avec un état actif explicite', () => {
+  it('rend des onglets navigables avec un état actif explicite sans scroll vertical parasite', () => {
     render(
       <MemoryRouter initialEntries={['/platform/team/invitations']}>
         <SectionTabs ariaLabel="Équipe de la Plateforme" items={items} />
@@ -21,9 +21,14 @@ describe('SectionTabs', () => {
     );
 
     const activeLink = screen.getByRole('link', { name: 'Invitations' });
+    const navigation = screen.getByRole('navigation', {
+      name: 'Équipe de la Plateforme',
+    });
 
     expect(activeLink).toHaveAttribute('aria-current', 'page');
     expect(activeLink.className).toContain('border-primary');
     expect(screen.getAllByRole('link')).toHaveLength(3);
+    expect(navigation.className).toContain('overflow-x-auto');
+    expect(navigation.className).toContain('overflow-y-hidden');
   });
 });
