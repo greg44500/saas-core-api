@@ -2,11 +2,6 @@ import { useEffect, useState } from 'react';
 
 import { DatePicker } from '@/components/forms/date-picker';
 import { Button } from '@/components/ui/button';
-import {
-  AUDIT_ACTION_OPTIONS,
-  AUDIT_ENTITY_TYPE_OPTIONS,
-  AUDIT_STATUS_OPTIONS,
-} from '@/features/audit-log/lib/audit-log-presentation';
 
 const controlClassName =
   'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
@@ -19,9 +14,18 @@ const EMPTY_FILTERS = Object.freeze({
   to: '',
 });
 
-function AuditLogFilters({ filters, onApply, onReset, pending = false }) {
+function AuditLogFilters({
+  filters,
+  metadata,
+  onApply,
+  onReset,
+  pending = false,
+}) {
   const [draft, setDraft] = useState({ ...EMPTY_FILTERS, ...filters });
   const [dateError, setDateError] = useState('');
+  const actions = metadata?.actions ?? [];
+  const entityTypes = metadata?.entityTypes ?? [];
+  const statuses = metadata?.statuses ?? [];
 
   useEffect(() => {
     setDraft({ ...EMPTY_FILTERS, ...filters });
@@ -48,7 +52,7 @@ function AuditLogFilters({ filters, onApply, onReset, pending = false }) {
       <div>
         <h2 className="text-base font-semibold">Filtrer l’activité</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Affinez l’historique avec les critères exposés par le backend.
+          Affinez l’historique avec les critères disponibles.
         </p>
       </div>
 
@@ -62,7 +66,7 @@ function AuditLogFilters({ filters, onApply, onReset, pending = false }) {
             value={draft.action}
           >
             <option value="">Toutes</option>
-            {AUDIT_ACTION_OPTIONS.map(([value, label]) => (
+            {actions.map(({ value, label }) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
@@ -77,7 +81,7 @@ function AuditLogFilters({ filters, onApply, onReset, pending = false }) {
             value={draft.entityType}
           >
             <option value="">Toutes</option>
-            {AUDIT_ENTITY_TYPE_OPTIONS.map(([value, label]) => (
+            {entityTypes.map(({ value, label }) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
@@ -92,7 +96,7 @@ function AuditLogFilters({ filters, onApply, onReset, pending = false }) {
             value={draft.status}
           >
             <option value="">Tous</option>
-            {AUDIT_STATUS_OPTIONS.map(([value, label]) => (
+            {statuses.map(({ value, label }) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
