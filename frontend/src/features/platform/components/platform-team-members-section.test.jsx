@@ -271,7 +271,7 @@ describe('PlatformTeamMembersSection', () => {
 
     render(<PlatformTeamMembersSection />);
 
-    expect(screen.getByText('Voir')).toBeInTheDocument();
+    expect(screen.getAllByText('Voir')).toHaveLength(2);
     expect(screen.getByText('Modifier le rôle')).toBeInTheDocument();
     expect(screen.getByText('Suspendre')).toBeInTheDocument();
     expect(screen.getByText('Révoquer')).toBeInTheDocument();
