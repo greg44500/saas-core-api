@@ -31,7 +31,7 @@ const member = {
 afterEach(() => cleanup());
 
 describe('PlatformTeamMemberDetailsDrawer', () => {
-  it('affiche l’identité, l’accès Platform et le cycle de vie du membre', () => {
+  it('affiche l’identité, l’accès Platform et le cycle de vie utile du membre', () => {
     render(
       <PlatformTeamMemberDetailsDrawer
         currentUserId="founder-user-id"
@@ -59,7 +59,7 @@ describe('PlatformTeamMemberDetailsDrawer', () => {
     expect(within(drawer).getByText('Cycle de vie')).toBeInTheDocument();
     expect(within(drawer).getByText('Membre depuis')).toBeInTheDocument();
     expect(within(drawer).getByText('Suspendu le')).toBeInTheDocument();
-    expect(within(drawer).getByText('Révoqué le')).toBeInTheDocument();
+    expect(within(drawer).queryByText('Révoqué le')).not.toBeInTheDocument();
     expect(within(drawer).getByText('Créé le')).toBeInTheDocument();
     expect(within(drawer).getByText('Mis à jour le')).toBeInTheDocument();
   });
@@ -69,6 +69,7 @@ describe('PlatformTeamMemberDetailsDrawer', () => {
       ...member,
       isFounder: true,
       status: 'active',
+      suspendedAt: null,
       user: {
         ...member.user,
         id: 'founder-user-id',
@@ -97,5 +98,6 @@ describe('PlatformTeamMemberDetailsDrawer', () => {
 
     expect(within(drawer).getByText('Fondateur')).toBeInTheDocument();
     expect(within(drawer).getByText('Super administrateur')).toBeInTheDocument();
+    expect(within(drawer).queryByText('Suspendu le')).not.toBeInTheDocument();
   });
 });
