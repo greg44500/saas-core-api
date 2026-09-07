@@ -1,11 +1,25 @@
+import { WORKSPACE_MEMBER_STATUS } from '../../../../constants/workspaceMember.constants.js';
 import { User } from '../../../users/user.model.js';
+import { WorkspaceMember } from '../../../workspaceMember/workspaceMember.model.js';
+
+
+const CURRENT_CLIENT_MEMBERSHIP_STATUSES = Object.freeze([
+    WORKSPACE_MEMBER_STATUS.ACTIVE,
+    WORKSPACE_MEMBER_STATUS.SUSPENDED,
+]);
 
 
 /**
- * Retourne les utilisateurs de la plateforme avec pagination.
+ * Retourne les utilisateurs possédant une relation client Workspace courante.
  *
- * Ce service est volontairement indépendant du rôle de l'acteur :
- * l'autorisation d'accès à cette opération appartient à la couche HTTP.
+ * L'identité User reste globale, mais la liste "Clients > Utilisateurs" ne doit
+ * pas mélanger les collaborateurs internes de Platform Team avec les clients du
+ * SaaS. Un utilisateur présent dans les deux populations reste naturellement
+ * visible ici s'il possède aussi un WorkspaceMember actif ou suspendu.
+ *
+ * La sélection est effectuée en base avant la pagination afin que le total et
+ * les pages restent cohérents lorsqu'un même utilisateur appartient à plusieurs
+ * workspaces.
  */
 const listPlatformUsers = async ({
     page = 1,
@@ -29,20 +43,79 @@ const listPlatformUsers = async ({
 
     const skip = (page - 1) * limit;
 
-    const [userDocuments, total] = await Promise.all([
-        User.find({})
-            .select(
-                '_id firstName lastName email '
-                + 'status platformRole '
-                + 'emailVerifiedAt lastLoginAt '
-                + 'createdAt updatedAt',
-            )
-            .sort({ createdAt: -1, _id: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean(),
-        User.countDocuments({}),
+    const [aggregation = { users: [], total: [] }] = await User.aggregate([
+        {
+            $lookup: {
+                from: WorkspaceMember.collection.name,
+                localField: '_id',
+                foreignField: 'user',
+                pipeline: [
+                    {
+                        $match: {
+                            status: {
+                                $in: CURRENT_CLIENT_MEMBERSHIP_STATUSES,
+                            },
+                        },
+                    },
+                    {
+                        $limit: 1,
+                    },
+                    {
+                        $project: {
+                            _id: 1,
+                        },
+                    },
+                ],
+                as: 'currentWorkspaceMemberships',
+            },
+        },
+        {
+            $match: {
+                'currentWorkspaceMemberships.0': {
+                    $exists: true,
+                },
+            },
+        },
+        {
+            $sort: {
+                createdAt: -1,
+                _id: -1,
+            },
+        },
+        {
+            $facet: {
+                users: [
+                    {
+                        $skip: skip,
+                    },
+                    {
+                        $limit: limit,
+                    },
+                    {
+                        $project: {
+                            _id: 1,
+                            firstName: 1,
+                            lastName: 1,
+                            email: 1,
+                            status: 1,
+                            emailVerifiedAt: 1,
+                            lastLoginAt: 1,
+                            createdAt: 1,
+                            updatedAt: 1,
+                        },
+                    },
+                ],
+                total: [
+                    {
+                        $count: 'value',
+                    },
+                ],
+            },
+        },
     ]);
+
+    const userDocuments = aggregation.users ?? [];
+    const total = aggregation.total?.[0]?.value ?? 0;
 
     const users = userDocuments.map((user) => ({
         id: user._id.toString(),
@@ -50,7 +123,6 @@ const listPlatformUsers = async ({
         lastName: user.lastName,
         email: user.email,
         status: user.status,
-        platformRole: user.platformRole,
         emailVerifiedAt: user.emailVerifiedAt ?? null,
         lastLoginAt: user.lastLoginAt ?? null,
         createdAt: user.createdAt,
@@ -68,4 +140,7 @@ const listPlatformUsers = async ({
     };
 };
 
-export { listPlatformUsers };
+export {
+    CURRENT_CLIENT_MEMBERSHIP_STATUSES,
+    listPlatformUsers,
+};
