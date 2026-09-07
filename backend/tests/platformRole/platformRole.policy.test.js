@@ -96,7 +96,7 @@ describe('platformRole policy', () => {
         expect(() => assertCustomPlatformRolePermissions({
             authorization: platformAdminAuthorization,
             permissions: platformAdminAuthorization.permissions,
-        })).toThrow(/strictement inférieurs/i);
+        })).toThrow(/permission réservée|strictement inférieurs/i);
     });
 
     it('refuse une permission que l’acteur non-Superadmin ne possède pas', () => {
@@ -108,13 +108,18 @@ describe('platformRole policy', () => {
         })).toThrow(/strictement inférieurs/i);
     });
 
-    it('refuse une permission réservée même dans un rôle créé par un Super administrateur', () => {
-        expect(() => assertCustomPlatformRolePermissions({
-            authorization: superAdminAuthorization,
-            permissions: [
-                PLATFORM_PERMISSION.SUPER_ADMINS_MANAGE,
-            ],
-        })).toThrow(/permission réservée/i);
+    it('refuse les permissions réservées même dans un rôle créé par un Super administrateur', () => {
+        for (const permission of [
+            PLATFORM_PERMISSION.ROLES_CREATE,
+            PLATFORM_PERMISSION.ROLES_UPDATE,
+            PLATFORM_PERMISSION.ROLES_ARCHIVE,
+            PLATFORM_PERMISSION.SUPER_ADMINS_MANAGE,
+        ]) {
+            expect(() => assertCustomPlatformRolePermissions({
+                authorization: superAdminAuthorization,
+                permissions: [permission],
+            })).toThrow(/permission réservée/i);
+        }
     });
 
     it('refuse une permission absente du registre actif', () => {
@@ -148,21 +153,30 @@ describe('platformRole policy', () => {
         })).toThrow(/archivé/i);
     });
 
-    it('expose un catalogue code-owned avec les permissions réservées non assignables', () => {
+    it('expose un catalogue code-owned avec toutes les permissions réservées non assignables', () => {
         const catalog = getPlatformRolePermissionCatalog({
             authorization: superAdminAuthorization,
         });
-        const reserved = catalog.find(
-            ({ key }) => key === PLATFORM_PERMISSION.SUPER_ADMINS_MANAGE,
-        );
         const overview = catalog.find(
             ({ key }) => key === PLATFORM_PERMISSION.OVERVIEW_READ,
         );
 
-        expect(reserved).toMatchObject({
-            sensitivity: PLATFORM_PERMISSION_SENSITIVITY.RESERVED,
-            assignable: false,
-        });
+        for (const permission of [
+            PLATFORM_PERMISSION.ROLES_CREATE,
+            PLATFORM_PERMISSION.ROLES_UPDATE,
+            PLATFORM_PERMISSION.ROLES_ARCHIVE,
+            PLATFORM_PERMISSION.SUPER_ADMINS_MANAGE,
+        ]) {
+            const reserved = catalog.find(
+                ({ key }) => key === permission,
+            );
+
+            expect(reserved).toMatchObject({
+                sensitivity: PLATFORM_PERMISSION_SENSITIVITY.RESERVED,
+                assignable: false,
+            });
+        }
+
         expect(overview).toMatchObject({ assignable: true });
     });
 });
