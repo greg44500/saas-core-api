@@ -1,4 +1,4 @@
-import { Eye, Pause, Pencil, Play, UserMinus } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { useState } from 'react';
 import { z } from 'zod';
 
@@ -80,7 +80,7 @@ function getMemberActionTitle(type) {
 function PlatformTeamMembersSection() {
   const { toast } = useToast();
   const [page, setPage] = useState(1);
-  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedMemberId, setSelectedMemberId] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
   const [pendingActionError, setPendingActionError] = useState(null);
   const [selectedRoleId, setSelectedRoleId] = useState('');
@@ -175,6 +175,7 @@ function PlatformTeamMembersSection() {
 
       if (pendingAction.type === 'revoke') {
         await revokeMember(memberId).unwrap();
+        setSelectedMemberId(null);
         toast({
           title: 'Membre retiré',
           description: 'Son appartenance à l’équipe de la Plateforme a été révoquée.',
@@ -284,7 +285,6 @@ function PlatformTeamMembersSection() {
     id: 'actions',
     header: 'Actions',
     cell: (member) => {
-      const capabilities = getActionCapabilities(member);
       const memberName = formatPlatformTeamMemberName(member);
 
       return (
@@ -292,50 +292,21 @@ function PlatformTeamMembersSection() {
           <ActionIconButton
             Icon={Eye}
             label={`Voir ${memberName}`}
-            onClick={() => setSelectedMember(member)}
+            onClick={() => setSelectedMemberId(member.id)}
             tooltipLabel="Voir"
             variant="outline"
           />
-          {capabilities.canChangeRole && (
-            <ActionIconButton
-              Icon={Pencil}
-              label={`Modifier le rôle de ${memberName}`}
-              onClick={() => openPendingAction('update-role', member)}
-              tooltipLabel="Modifier le rôle"
-              variant="outline"
-            />
-          )}
-          {capabilities.canSuspend && (
-            <ActionIconButton
-              Icon={Pause}
-              label={`Suspendre ${memberName}`}
-              onClick={() => openPendingAction('suspend', member)}
-              tooltipLabel="Suspendre"
-              variant="outline"
-            />
-          )}
-          {capabilities.canReactivate && (
-            <ActionIconButton
-              Icon={Play}
-              label={`Réactiver ${memberName}`}
-              onClick={() => openPendingAction('reactivate', member)}
-              tooltipLabel="Réactiver"
-              variant="outline"
-            />
-          )}
-          {capabilities.canRevoke && (
-            <ActionIconButton
-              Icon={UserMinus}
-              label={`Révoquer ${memberName}`}
-              onClick={() => openPendingAction('revoke', member)}
-              tooltipLabel="Révoquer"
-              variant="destructive"
-            />
-          )}
         </DataTableActions>
       );
     },
   });
+
+  const selectedMember = members.find(
+    (member) => member.id === selectedMemberId,
+  ) ?? null;
+  const selectedMemberCapabilities = selectedMember
+    ? getActionCapabilities(selectedMember)
+    : {};
 
   const pendingAssignableRoles = pendingAction?.type === 'update-role'
     ? getAssignablePlatformRoles({
@@ -364,9 +335,11 @@ function PlatformTeamMembersSection() {
       />
 
       <PlatformTeamMemberDetailsDrawer
+        actionCapabilities={selectedMemberCapabilities}
         currentUserId={currentUser?.id ?? null}
         member={selectedMember}
-        onClose={() => setSelectedMember(null)}
+        onClose={() => setSelectedMemberId(null)}
+        onRequestAction={openPendingAction}
         open={Boolean(selectedMember)}
       />
 
