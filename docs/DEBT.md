@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Registre canonique des dettes actives
 
 **Statut :** source de vérité documentaire pour les dettes non résolues  
-**Dernière mise à jour :** 2026-09-05  
+**Dernière mise à jour :** 2026-09-07  
 **Périmètre :** Core clonable et, lorsque précisé, applications dérivées
 
 ---
@@ -76,14 +76,15 @@ produit dérivé automatiquement production-ready
 
 | ID | Dette | Statut |
 |---|---|---|
-| D-018 | Équipe de la Plateforme, RBAC Platform et invitations internes | EN COURS |
+| D-019 | Moteur sécurisé de rétention et purge des données Core | PLANIFIÉ |
+| D-020 | Invitation commerciale client et offres privées de découverte | PLANIFIÉ |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
-D-001 a été clôturée pendant CORE-FIN-4 et D-014 pendant CORE-FIN-5. Elles ne sont plus des blockers actifs de la finalisation Core.
+D-001 a été clôturée pendant CORE-FIN-4, D-014 pendant CORE-FIN-5 et D-018 le 2026-09-07. Elles ne sont plus des blockers actifs de la finalisation Core.
 
-D-018 a été ajoutée après la clôture de D-014 lorsqu'un manque réellement générique a été confirmé : le Core possède déjà une amorce de permissions Platform et des rôles `support` / `admin`, mais ne possède pas encore de véritable modèle d'équipe interne, de rôles Platform exploitables, d'invitation dédiée ni de protection explicite du Fondateur. Ce besoin est traité avant D-015 afin de ne pas préparer une release d'un socle encore fonctionnellement incomplet sur ce point.
+D-019 et D-020 sont volontairement placées avant D-015 : le versionnement ne doit pas figer une release candidate tant que ces deux capacités génériques déjà démontrées comme nécessaires ne sont pas cadrées puis implémentées ou explicitement reclassifiées.
 
 ### 4.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -116,9 +117,10 @@ Elles ne doivent pas être ajoutées au Core uniquement pour anticiper un besoin
 ```text
 D-001 fermeture de compte et cycle de vie Workspace → VALIDÉ
 D-014 points d'extension métier RBAC/routing            → VALIDÉ
+D-018 équipe Platform / RBAC / invitations internes     → VALIDÉ
 ```
 
-Les sections D-001 et D-014 ci-dessous restent temporairement présentes afin de documenter leurs critères de clôture. Elles pourront être retirées du registre actif lors d'un nettoyage documentaire ultérieur, l'historique restant disponible dans Git.
+Les sections correspondantes restent temporairement présentes afin de documenter leurs critères de clôture. Elles pourront être retirées du registre actif lors d'un nettoyage documentaire ultérieur, l'historique restant disponible dans Git.
 
 ---
 
@@ -712,41 +714,19 @@ Création et upgrade réellement exécutés et documentés, conflits éventuels 
 
 ## D-018 — Équipe de la Plateforme, RBAC Platform et invitations internes
 
-**Statut :** EN COURS  
+**Statut :** VALIDÉ  
 **Périmètre :** Core  
-**Blocage Core 1.0 :** oui — fonctionnalité générique d'exploitation identifiée avant la préparation des releases  
-**Blocage production dérivée :** oui lorsque plusieurs collaborateurs doivent administrer la Plateforme sans partager les pouvoirs du Fondateur  
+**Blocage Core 1.0 :** non — clôturé le 2026-09-07  
+**Blocage production dérivée :** non pour le contrat Core ; les rôles réels d'une équipe peuvent être adaptés par les presets/rôles personnalisés prévus  
 **Source :** `docs/contracts/PLATFORM-TEAM.md`
 
-### État confirmé
+### État validé
 
-Le Core possède déjà une première fondation :
-
-```text
-User.platformRole
-PLATFORM_ROLE = user / support / admin / super_admin
-PLATFORM_PERMISSION
-DEFAULT_PLATFORM_ROLE_PERMISSIONS
-authorizePlatformPermission()
-authorizePlatformRole()
-```
-
-Cependant, la politique active attribue actuellement toutes les permissions Platform uniquement à `super_admin`. Les rôles `admin` et `support` existent mais ne constituent pas encore une vraie délégation exploitable. Plusieurs routes Platform restent également protégées directement par `SUPER_ADMIN`.
-
-Le Core ne possède pas encore :
-
-- de modèle explicite d'appartenance à l'équipe interne distinct du `User` ;
-- d'autorité Fondateur protégée et distincte du rôle RBAC ;
-- de rôles Platform personnalisables ;
-- d'invitation Platform dédiée ;
-- de cycle Platform `ACTIVE / SUSPENDED / REVOKED` indépendant du statut global du User ;
-- de surface frontend « Équipe de la Plateforme » complète.
-
-### Cible validée A1 + A2
+Le Core possède désormais :
 
 ```text
 User
-→ identité / authentification
+→ identité/authentification globale
 
 PlatformTeamMember
 → appartenance à l'équipe interne
@@ -755,54 +735,169 @@ PlatformRole
 → rôle système ou personnalisé
 
 PlatformPermission
-→ autorité réelle des actions Platform
+→ autorité effective code-owned
 
 PlatformInvitation
 → invitation interne sécurisée
 
 Fondateur
-→ autorité historique protégée
+→ qualité historique protégée distincte du rôle RBAC
 ```
 
-A2 a également figé :
+Invariants validés :
 
-- trois niveaux de permissions : `DÉLÉGABLE`, `SENSIBLE`, `RÉSERVÉE` ;
-- un catalogue granulaire distinguant lecture, suspension, réactivation, fermeture, trial, annulation, reprise, overrides et gestion d'équipe ;
-- les presets système `Super administrateur`, `Administrateur de la Plateforme`, `Support technique`, `Support commercial`, `Support client` ;
-- des rôles personnalisés sans permission réservée et sans escalade au-delà des droits de leur créateur ;
-- un futur registre applicatif de permissions Platform afin que les SaaS dérivés puissent étendre l'administration sans modifier une constante centrale ;
-- `super_admin` comme bénéficiaire automatique de toutes les permissions du registre actif, présentes et futures ;
-- la fermeture terminale User/Workspace et la gestion des Super administrateurs comme permissions réservées ;
-- l'absence d'élévation automatique des anciens rôles `admin` / `support` pendant la migration.
+- exactement un Fondateur actif ;
+- Fondateur toujours `super_admin` ;
+- plusieurs Super administrateurs supportés ;
+- protection du dernier Super administrateur actif ;
+- protection du Fondateur contre rétrogradation, suspension, révocation et fermeture ordinaires ;
+- séparation stricte RBAC Platform / RBAC Workspace ;
+- autorité Platform résolue depuis l'état MongoDB courant ;
+- suspension/révocation effective sans attendre l'expiration du JWT ;
+- `User.platformRole` non utilisé comme autorité frontend ;
+- rôles système immuables depuis l'administration courante ;
+- rôles personnalisés avec clé backend opaque, justification obligatoire et permissions du registre actif ;
+- permissions `RESERVED` interdites aux rôles personnalisés ;
+- clone exact d'un rôle actif interdit ;
+- archivage d'un rôle personnalisé interdit tant qu'il est assigné à un membre `ACTIVE` ou `SUSPENDED` ;
+- `platform:roles:create`, `platform:roles:update` et `platform:roles:archive` classées `RESERVED`, absentes du preset `platform_admin` et non assignables à un rôle personnalisé ;
+- invitation Platform sécurisée, temporaire, révocable et distincte des invitations Workspace ;
+- secrets d'invitation non persistés ni exposés en clair ;
+- UI « Équipe de la Plateforme » basée sur les composants partagés et une table Membres consultative ouvrant un drawer de détail/actions ;
+- synchronisation frontend de l'autorité Platform après `403` et invalidation du contexte courant.
 
-Invariants principaux :
+### Validation
 
-- exactement un Fondateur actif à un instant donné ;
-- le Fondateur est toujours Super administrateur ;
-- plusieurs Super administrateurs sont possibles ;
-- le Fondateur ne peut pas être rétrogradé, suspendu, retiré ou fermé via l'administration ordinaire ;
-- le rôle `super_admin` possède toutes les permissions Platform connues ;
-- RBAC Platform et RBAC Workspace restent séparés ;
-- suspension/retrait Platform ne supprime pas le User ni ses memberships Workspace ;
-- les invitations Platform sont distinctes des invitations Workspace ;
-- les changements de droits prennent effet côté serveur sans attendre l'expiration d'un JWT ;
-- les opérations sensibles sont auditées ;
-- l'interface française affiche « Plateforme », « Fondateur » et « Super administrateur », tandis que `Platform` reste le vocabulaire technique du code.
-
-### Découpage
+Le 2026-09-07, l'utilisateur a confirmé verts :
 
 ```text
-A1 cadrage fonctionnel                         VALIDÉ
-A2 catalogue RBAC Platform / délégation        VALIDÉ
-A3 invitations Platform sécurisées             À FAIRE
-A4 gestion membres / cycle de vie               À FAIRE
-A5 frontend Équipe de la Plateforme             À FAIRE
-A6 audit final + tests sécurité + régression     À FAIRE
+backend ciblé D-018
+backend global
+frontend ciblé
+frontend global
+build Vite production
 ```
+
+Les gates manuels de sécurité ont également été confirmés :
+
+```text
+GET /api/platform/me du Fondateur → isFounder=true / super_admin
+protection Fondateur → 403 sur mutations interdites
+gouvernance custom role par platform_admin → refusée
+permission RESERVED dans rôle custom → refusée
+clone exact rôle actif → refusé
+archivage rôle assigné ACTIVE → refusé
+archivage rôle assigné SUSPENDED → refusé
+invitations → rotation/revoke/secrets validés
+utilisateur SaaS ordinaire → platformAccess=null
+```
+
+Le critère de clôture est atteint. Toute évolution future doit respecter `docs/contracts/PLATFORM-TEAM.md`.
+
+---
+
+## D-019 — Moteur sécurisé de rétention et purge des données Core
+
+**Statut :** PLANIFIÉ  
+**Périmètre :** Core  
+**Blocage Core 1.0 :** oui — doit être traité avant D-015  
+**Blocage production dérivée :** dépend de la policy de conservation réellement configurée  
+**Dépendance conceptuelle :** D-006 définit la politique juridique/produit ; D-019 fournit le moteur générique d'exécution
+
+D-019 n'est pas une politique juridique universelle.
+
+```text
+D-006
+→ quoi conserver, combien de temps et pourquoi selon le produit / cadre applicable
+
+D-019
+→ appliquer de manière sécurisée une policy explicite déjà configurée
+```
+
+Cible de cadrage avant code :
+
+- policy de rétention explicite et versionnable ;
+- éligibilité calculée côté backend ;
+- aucun cutoff arbitraire fourni par le client ;
+- aucune route générique de suppression par filtre libre ;
+- autorité Platform fortement restreinte ;
+- preview avant purge ;
+- confirmation explicite pour les opérations manuelles ;
+- traitement par lots bornés ;
+- audit durable indépendant du contenu supprimé ;
+- prévention de deux exécutions concurrentes ;
+- scheduler compatible multi-instance ;
+- lock distribué MongoDB privilégié si suffisant avant ajout de Redis ;
+- indexes et coûts de requêtes vérifiés ;
+- idempotence et reprise après échec ;
+- tests sécurité, concurrence et non-régression.
 
 ### Critère de clôture
 
-D-018 sera `VALIDÉ` lorsque le Fondateur est explicitement protégé, plusieurs Super administrateurs sont supportés, l'équipe interne possède des rôles et permissions granulaires, les invitations Platform sont sécurisées, les cycles de suspension/retrait n'altèrent pas le User global, les opérations critiques sont auditées, l'UI respecte les composants partagés et le vocabulaire retenu, et les suites backend/frontend ainsi que le build de production sont verts.
+Contrat de rétention Core documenté, moteur fail-closed implémenté, exécutions concurrentes protégées, preview/confirmation sécurisées lorsque pertinentes, audit durable, tests ciblés et globaux verts.
+
+---
+
+## D-020 — Invitation commerciale client et offres privées de découverte
+
+**Statut :** PLANIFIÉ  
+**Périmètre :** Core — onboarding commercial générique  
+**Blocage Core 1.0 :** oui — besoin générique confirmé avant versionnement  
+**Blocage production dérivée :** seulement si le produit utilise ce canal d'acquisition  
+**Dépendances :** Plan / Subscription / EntitlementOverride / Workspace / User / RBAC Platform existants
+
+Le besoin est distinct de D-018 :
+
+```text
+PlatformInvitation
+→ collaborateur interne de l'éditeur
+
+future CommercialInvitation
+→ prospect ou futur client utilisateur du SaaS
+```
+
+Le modèle ne doit jamais réutiliser `PlatformInvitation` pour une finalité commerciale client.
+
+### Cible fonctionnelle à cadrer avant code
+
+Le Core doit pouvoir permettre à un acteur Platform autorisé d'envoyer une invitation commerciale ciblée préparant une offre privée.
+
+Cas visés :
+
+```text
+Free standard
+Free personnalisé via EntitlementOverride
+Découverte commerciale temporaire
+Découverte commerciale sans échéance
+plan privé négocié
+beta / partenaire / early adopter
+```
+
+Décisions déjà figées :
+
+- une offre « Découverte commerciale » peut être représentée par un Plan privé (`isPublic=false`) ;
+- le prix peut être `0` sans transformer l'offre en plan baseline ;
+- les fonctionnalités sont explicitement listées dans le Plan ; aucune règle dynamique « toutes les fonctionnalités sauf IA » ne doit accorder automatiquement de futures capabilities ;
+- l'IA peut être exclue explicitement de l'offre ;
+- une offre sans échéance n'est pas appelée « trial illimité » ;
+- un vrai trial reste temporaire et conserve sa sémantique `trialEndsAt` ;
+- l'accès commercial manuel ne doit pas nécessairement consommer le `TrialEligibility` public : ce point doit être contractualisé avant implémentation ;
+- les `EntitlementOverride` restent le mécanisme des exceptions individuelles, tandis qu'un Plan privé représente une offre réutilisable ;
+- le Workspace n'est créé ou rattaché qu'au moment de l'acceptation selon le flow retenu, afin d'éviter les environnements orphelins ;
+- l'utilisateur invité devient owner du Workspace cible selon le workflow prévu ;
+- le Super administrateur est seul autorisé au départ ;
+- l'autorité doit néanmoins être conçue par permissions Platform dédiées afin de pouvoir être déléguée ultérieurement à un rôle commercial sans changer la logique métier ;
+- un commercial autorisé sélectionne une offre existante mais ne fabrique pas arbitrairement un Plan ou un jeu de capabilities au moment de l'invitation ;
+- raison commerciale, acteur, bénéficiaire, offre, dates et révocations doivent être audités ;
+- secrets d'invitation temporaires, rotation/revoke et absence de stockage en clair doivent reprendre les primitives de sécurité éprouvées sans partager le modèle métier D-018.
+
+### Point d'architecture à traiter
+
+Le résolveur actuel des Subscriptions commerciales actives attend une `currentPeriodEnd` future. Une offre commerciale gratuite réellement sans échéance doit donc recevoir une sémantique métier explicite ; aucune date artificielle lointaine telle que `2099-12-31` ne doit simuler l'illimité.
+
+### Critère de clôture
+
+Contrat d'onboarding commercial validé, permissions Platform dédiées, modèle d'invitation client distinct, offre privée temporaire/permanente correctement représentée, acceptation atomique et auditée, sécurité des secrets validée, frontend réutilisable, tests backend/frontend et build verts.
 
 ---
 
@@ -838,21 +933,22 @@ Un SaaS dérivé peut :
 
 ## 7. Ordre de traitement recommandé après le chantier documentaire
 
-État après validation de D-014 et cadrages A1 + A2 de D-018 :
+État après clôture D-018 :
 
 ```text
 1. D-001 fermeture Account / Workspace                         ✅ VALIDÉ
 2. D-014 points d'extension métier                             ✅ VALIDÉ
-3. D-018 Équipe de la Plateforme / RBAC / invitations          EN COURS
-4. réévaluer les derniers besoins génériques réellement démontrés du Core
-5. D-015 release/version/provenance/migrations
-6. D-016 Playwright E2E Core
-7. audit final architecture / sécurité / qualité
-8. D-017 dérivation + upgrade pilote
-9. taguer uniquement ensuite la release Core stable
+3. D-018 Équipe de la Plateforme / RBAC / invitations          ✅ VALIDÉ
+4. D-019 moteur sécurisé de rétention / purge Core             PLANIFIÉ
+5. D-020 invitation commerciale / offre privée découverte       PLANIFIÉ
+6. D-015 release/version/provenance/migrations                  PLANIFIÉ
+7. D-016 Playwright E2E Core                                    PLANIFIÉ
+8. audit final architecture / sécurité / qualité
+9. D-017 dérivation + upgrade pilote                            PLANIFIÉ
+10. taguer uniquement ensuite la release Core stable
 ```
 
-L'ordre exact pourra être ajusté par dépendances techniques, mais aucune release `v1.0.0` ne doit être déclarée avant la clôture ou la reclassification explicite de tous les blockers Core 1.0.
+D-019 puis D-020 doivent être traitées avant D-015. Aucune release `v1.0.0` ne doit être déclarée avant la clôture ou la reclassification explicite de tous les blockers Core 1.0.
 
 ---
 
