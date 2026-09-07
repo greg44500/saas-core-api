@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Ce fichier est l'unique synthèse de reprise active du projet. Il décrit l'état réel du travail afin de reprendre dans une nouvelle conversation. Il n'est pas normatif : en cas de contradiction, le code, les tests réellement validés et les contrats canoniques priment.
+> Ce fichier est l'unique synthèse de reprise active du projet. Il décrit l'état réel du travail au moment de la reprise. Il n'est pas normatif : le code, les contraintes DB, les tests réellement validés et les contrats canoniques priment.
 >
 > **Dernière mise à jour : 2026-09-07**
 
@@ -22,30 +22,15 @@ En cas de contradiction :
 
 Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présenté comme `v1.0.0` ni comme automatiquement prêt pour la production.
 
-Référence fonctionnelle immédiatement avant la présente mise à jour documentaire :
-
-```text
-1500ba04d9610b905901ac3a16ea67b078376959
-docs: clarify platform admin role description
-```
-
-Ce commit modifie bien un preset backend malgré son préfixe `docs:` :
-
-```text
-backend/modules/platformRole/platformRole.presets.js
-Administrateur de la Plateforme
-→ description : « Administration courante étendue sur les opérations. »
-```
-
-La mise à jour de `REPRISE-CURRENT.md` crée nécessairement un commit supplémentaire. À la reprise, travailler depuis le HEAD courant après `git pull` plutôt que d'exiger un SHA exact.
+À la reprise : toujours commencer par `git pull` et travailler depuis le HEAD courant plutôt que d'exiger un SHA documentaire précis.
 
 ---
 
-## 2. Objectif final du Core
+## 2. Objectif du Core
 
-`saas-core-api` est un **socle SaaS générique clonable et maintenable**.
+`saas-core-api` est un **socle SaaS générique clonable, maintenable et évolutif**.
 
-Le Core doit fournir les capacités transversales :
+Le Core porte les responsabilités transversales :
 
 ```text
 authentification / sessions
@@ -59,23 +44,23 @@ Audit logs
 administration Platform
 lifecycle Account / Workspace
 points d'extension métier
+rétention / purge générique sécurisée
+onboarding commercial générique
 versionnement / migrations / upgrade
 E2E Core
 ```
 
 Les modules métier réels ne doivent pas être développés directement dans le dépôt Core.
 
-Le produit dérivé doit conserver une filiation Git avec le Core afin de pouvoir recevoir ses futures corrections et versions.
-
 ---
 
 ## 3. Roadmap réelle jusqu'au clonage métier
 
-Ordre figé :
+Ordre figé après clôture D-018 :
 
 ```text
-D-018  Équipe de la Plateforme / RBAC / invitations
-→ D-019 moteur sécurisé de rétention / purge Core
+D-019 moteur sécurisé de rétention / purge Core
+→ D-020 invitation commerciale client / offre privée Découverte
 → D-015 versionnement / provenance / migrations / release
 → D-016 Playwright / E2E Core
 → audit final architecture / sécurité / qualité
@@ -85,59 +70,42 @@ D-018  Équipe de la Plateforme / RBAC / invitations
 → cadrage puis développement des modules métier
 ```
 
-Point important :
+Important :
 
 ```text
 D-017
-= petit clone pilote technique destiné à éprouver dérivation + upgrade
+= clone pilote technique temporaire destiné à éprouver dérivation + upgrade
 
 clone métier réel
-= après validation du Core et release v1.0.0
+= seulement après validation du Core et release v1.0.0
 ```
-
-Ne pas confondre ces deux étapes.
 
 ---
 
-## 4. Points d'extension métier déjà validés — D-014
+## 4. D-018 — VALIDÉ
 
-D-014 est `VALIDÉ`.
+D-018 « Équipe de la Plateforme / RBAC Platform / invitations internes » est **clôturé et VALIDÉ le 2026-09-07**.
 
-Points de composition disponibles :
+Contrat canonique :
 
 ```text
-capabilities / relations feature → métriques
-→ backend/config/applicationCapability.registry.js
-
-permissions métier / extensions rôles système Workspace
-→ backend/config/applicationRolePermission.registry.js
-
-routes backend métier
-→ backend/config/applicationRoutes.registry.js
-
-routes frontend métier
-→ frontend/src/app/application-routes.js
-
-navigation Workspace métier
-→ frontend/src/app/workspace-navigation.js
+docs/contracts/PLATFORM-TEAM.md
 ```
 
-Les futurs modules métier doivent utiliser ces points d'extension au lieu de réécrire les longues listes centrales du Core.
+Dette canonique :
 
-Aucune autodécouverte filesystem ou architecture plugin implicite n'a été retenue.
+```text
+docs/DEBT.md
+```
 
----
-
-## 5. Architecture D-018 figée
-
-Modèle actif :
+### 4.1 Architecture validée
 
 ```text
 User
 → identité / authentification globale
 
 PlatformTeamMember
-→ appartenance à l'équipe interne de la Plateforme
+→ appartenance à l'équipe interne
 
 PlatformRole
 → rôle système ou personnalisé
@@ -158,7 +126,8 @@ Invariants :
 exactement un Fondateur actif
 Fondateur → toujours Super administrateur
 Super administrateur → pas nécessairement Fondateur
-Administrateur de la Plateforme → rôle distinct du Super administrateur
+plusieurs Super administrateurs possibles
+Administrateur de la Plateforme ≠ Super administrateur
 1 PlatformTeamMember → 1 PlatformRole
 permissions → dérivées du rôle et de l'état DB courant
 RBAC Platform ≠ RBAC Workspace
@@ -166,143 +135,96 @@ RBAC Platform ≠ RBAC Workspace
 
 Le Fondateur ne peut pas être rétrogradé, suspendu, révoqué ou fermé via l'administration ordinaire.
 
-Plusieurs Super administrateurs sont possibles, mais le dernier Super administrateur actif est protégé.
+Le dernier Super administrateur actif est protégé.
 
-L'autorisation Platform sensible est résolue depuis MongoDB à chaque requête utile via `resolvePlatformAuthorization()` ; une suspension ou révocation prend donc effet sans attendre l'expiration du JWT.
+L'autorisation Platform sensible est recalculée depuis MongoDB via `resolvePlatformAuthorization()` ; une suspension ou révocation prend effet sans attendre l'expiration d'un JWT.
 
-`User.platformRole` reste uniquement un fallback backend de compatibilité historique très limité. Il ne doit plus être une autorité frontend.
+`User.platformRole` reste un fallback backend historique limité et ne constitue pas une autorité frontend.
 
----
+### 4.2 Gouvernance des rôles validée
 
-## 6. D-018 — backend implémenté
+Rôles système :
 
-### Platform Team / rôles / permissions
+```text
+Super administrateur
+Administrateur de la Plateforme
+Support technique
+Support commercial
+Support client
+```
 
-Implémenté :
+Les rôles système sont immuables depuis l'administration courante.
 
-- `PlatformTeamMember` ;
-- `PlatformRole` ;
-- rôles système immuables depuis l'administration courante ;
-- rôles personnalisés ;
-- registre de permissions Platform code-owned ;
-- niveaux de sensibilité ;
-- anti-escalade ;
-- gouvernance Fondateur / Super administrateur ;
-- interdiction des permissions RESERVED dans les rôles personnalisés ;
-- interdiction du clone exact d'un rôle actif ;
-- archivage d'un rôle custom interdit lorsqu'il est encore assigné à un membre actif ou suspendu ;
-- protection du Fondateur ;
-- protection du dernier Super administrateur actif ;
-- audit transactionnel des opérations critiques.
+Rôles personnalisés :
 
-### Platform Invitations
+- clé technique opaque générée backend ;
+- description / justification obligatoire ;
+- permissions issues uniquement du registre Platform actif ;
+- aucune permission `RESERVED` ;
+- aucun clone exact d'un rôle actif ;
+- archivage seulement lorsqu'aucun membre `ACTIVE` ou `SUSPENDED` ne l'utilise ;
+- création / modification / archivage réservées au Fondateur ou Super administrateur.
 
-Implémenté :
+Décision finale de cohérence RBAC :
 
-- modèle distinct des invitations Workspace ;
+```text
+platform:roles:read
+→ DÉLÉGABLE
+
+platform:roles:create
+platform:roles:update
+platform:roles:archive
+→ RÉSERVÉES
+```
+
+Conséquences :
+
+```text
+platform_admin
+→ peut lire les rôles
+→ ne possède pas create/update/archive
+
+rôle personnalisé
+→ ne peut jamais recevoir create/update/archive
+
+Founder / SuperAdmin
+→ gouvernance autorisée
+→ policy métier conservée en défense en profondeur
+```
+
+Correctifs de clôture code :
+
+```text
+7fba739  fix: retire les mutations de rôles du preset platform_admin
+a5db86e  test: verrouille le preset platform_admin
+52eb156  fix: classe les mutations de rôles personnalisés en RESERVED
+6f07303  test: verrouille les permissions RESERVED de gouvernance
+```
+
+### 4.3 Invitations Platform validées
+
+`PlatformInvitation` reste strictement dédiée aux collaborateurs internes de la Plateforme.
+
+Validé :
+
 - token aléatoire ;
-- stockage SHA-256 uniquement ;
+- SHA-256 persisté, jamais le secret brut ;
 - expiration ;
 - resend avec rotation du secret ;
 - revoke ;
-- accept-existing ;
-- accept-new ;
+- accept-existing / accept-new ;
 - contrôle de l'email ;
-- aucune session implicite lors d'une acceptation new-user ;
-- revalidation de l'autorité de l'invitant au moment de l'acceptation ;
+- aucune session implicite pour une acceptation new-user ;
+- revalidation de l'autorité de l'invitant à l'acceptation ;
 - audit ;
 - rate limiting ;
-- aucun token brut exposé dans les réponses administratives ou l'audit.
+- aucun token brut dans listing/réponse admin/audit.
 
-### Correctif transactionnel MongoDB Atlas
+`PlatformInvitation` ne doit jamais être réutilisée pour une invitation commerciale d'un prospect ou client.
 
-Un test manuel d'envoi d'invitation avait révélé :
+### 4.4 Frontend D-018 validé
 
-```text
-Only servers in a sharded cluster can start a new transaction at the active transaction number
-```
-
-Cause : plusieurs lectures concurrentes via `Promise.all()` partageaient la même session transactionnelle MongoDB.
-
-Correctif validé conceptuellement et par tests : sérialisation des lectures transactionnelles dans :
-
-```text
-création d'invitation
-renvoi d'invitation
-acceptation d'invitation
-```
-
-Les transactions ont été conservées. Les `Promise.all()` restant dans les services adjacents concernent des lectures hors transaction.
-
----
-
-## 7. Séparation « Utilisateurs clients » / « Équipe Platform »
-
-Une confusion UX et fonctionnelle a été corrigée : un membre interne Platform n'est pas automatiquement un utilisateur client.
-
-Règle positive retenue :
-
-```text
-Utilisateur client
-= User possédant au moins un WorkspaceMember courant
-  avec status active ou suspended
-```
-
-Un `WorkspaceMember` `removed` est historique et n'entre pas dans la population client courante.
-
-Un utilisateur hybride peut être à la fois :
-
-```text
-membre Platform interne
-+
-utilisateur client d'un Workspace
-```
-
-Dans ce cas il apparaît légitimement dans les deux vues.
-
-Backend :
-
-```text
-backend/modules/platform/users/services/listPlatformUsers.service.js
-```
-
-La liste utilise un agrégat MongoDB avec lookup `WorkspaceMember`, filtre avant pagination et compte chaque `User` une seule fois même s'il appartient à plusieurs Workspaces.
-
-Frontend : la page est désormais libellée **« Utilisateurs clients »**. Le statut affiché dans cette vue reste le statut global `User` ; le statut de l'équipe Platform appartient à `PlatformTeamMember`.
-
-Ce mini-lot a été confirmé vert et visuellement conforme par l'utilisateur avant les tout derniers changements de drawer membres.
-
----
-
-## 8. Synchronisation runtime des permissions Platform côté frontend
-
-Un défaut UX avait été découvert lors d'une révocation :
-
-```text
-backend → 403 correct
-frontend → navigation Platform encore visible avec ancien platformAccess en cache
-```
-
-Le correctif implémenté :
-
-- policy de route Platform centralisée ;
-- `PlatformGuard` vérifie la permission de la route courante ;
-- middleware Redux/RTK Query détecte un `403` sur `/platform/...` ;
-- invalidation du tag `CurrentPlatformContext` ;
-- refetch de `/api/platform/me` ;
-- redirection vers la première route Platform encore autorisée ou `/workspaces`.
-
-Pas de polling ni websocket ajouté.
-
-Conséquence assumée : un membre révoqué mais totalement inactif dans l'interface ne reçoit pas une notification push instantanée. Au prochain appel Platform, l'autorité est recalculée et l'UI se réaligne.
-
-Ce correctif a été confirmé vert et visuellement conforme par l'utilisateur.
-
----
-
-## 9. D-018 — frontend Platform Team actuel
-
-Routes UI :
+Routes :
 
 ```text
 /platform/team/members
@@ -310,7 +232,7 @@ Routes UI :
 /platform/team/roles
 ```
 
-Composants réutilisables obligatoires conservés :
+Réutilisation obligatoire confirmée :
 
 ```text
 DataTable
@@ -323,495 +245,181 @@ SelectField
 badges partagés
 ```
 
-### 9.1 Tableau Membres : lecture uniquement
+Tableau Membres : lecture uniquement avec action `Voir`.
 
-Décision UX finale :
+Drawer membre : détails + actions d'administration conditionnelles selon permissions/état.
 
-```text
-Tableau Membres
-→ colonne Actions
-→ uniquement l'action « Voir » avec icône Eye
-```
+Le frontend resynchronise le contexte Platform après un `403` sur une route Platform via invalidation/refetch de `/api/platform/me` puis redirection vers une route encore autorisée ou `/workspaces`.
 
-Les mutations administratives ont été retirées du tableau.
+### 4.5 Gates manuels D-018 validés
 
-Objectif : le tableau sert au repérage et à l'accès au détail ; il ne devient pas une barre d'administration dense et difficile à maintenir.
-
-Fichier principal :
+Confirmés pendant la clôture :
 
 ```text
-frontend/src/features/platform/components/platform-team-members-section.jsx
-```
-
-Le tableau continue d'utiliser le `DataTable` partagé.
-
-### 9.2 Drawer de détail d'un membre Platform
-
-Nouveau composant métier :
-
-```text
-frontend/src/features/platform/components/platform-team-member-details-drawer.jsx
-```
-
-Il **réutilise** le composant partagé :
-
-```text
-frontend/src/components/shared/entity-details-drawer.jsx
-```
-
-Aucune nouvelle mécanique de drawer n'a été dupliquée.
-
-Contenu actuel :
-
-```text
-Identité
-- Nom
-- Email
-- Statut global du compte User
-
-Accès à la Plateforme
-- Qualité : Fondateur / Membre plateforme
-- Rôle
-- Description du rôle
-- Statut d'accès Platform
-
-Cycle de vie
-- Membre depuis
-- Suspendu le, seulement si une date existe
-- Révoqué le, seulement si une date existe
-- Créé le
-- Mis à jour le
-```
-
-La liste courante ne renvoie que les membres `active` ou `suspended` ; les lignes de cycle de vie non pertinentes ne sont donc pas affichées artificiellement avec `—`.
-
-### 9.3 Actions d'administration centralisées dans le drawer
-
-Décision UX finale :
-
-```text
-Tableau
-→ Voir uniquement
-
-Drawer
-→ section « Actions d’administration » tout en bas
-```
-
-Selon les permissions et l'état du membre :
-
-```text
-membre actif administrable
-→ Modifier le rôle
-→ Suspendre
-→ Révoquer
-
-membre suspendu administrable
-→ Modifier le rôle
-→ Réactiver
-→ Révoquer
-```
-
-`Révoquer` utilise la variante destructive.
-
-Les boutons affichent icône + texte, car il s'agit d'actions sensibles et l'espace du drawer permet un libellé explicite.
-
-La section entière disparaît si aucune action n'est autorisée. Le Fondateur reste consultable via `Voir`, mais aucune section d'administration vide ou action interdite n'est affichée.
-
-La logique existante est réutilisée :
-
-```text
-canActorTargetPlatformMember()
-getAssignablePlatformRoles()
-permissions provenant de platformAccess
-mutations RTK Query existantes
-ConfirmationDialog partagé
-```
-
-La sécurité reste backend-first : le masquage frontend n'est jamais considéré comme une barrière d'autorisation.
-
-### 9.4 Synchronisation du drawer avec RTK Query
-
-Le composant conserve `selectedMemberId` plutôt qu'une copie durable du membre sélectionné.
-
-Le membre affiché est retrouvé dans les données courantes de la requête de liste. Après modification de rôle, suspension ou réactivation, le drawer peut donc se réaligner avec les données rafraîchies par les invalidations RTK Query.
-
-Après révocation, le drawer est fermé car le membre sort de la population active/suspendue.
-
-### 9.5 Commits UI récents de référence
-
-```text
-8ac0b17b1d737c3817a9eb35c49e6978c7134dcd
-refactor: keep platform member table read-only
-
-1b5a75c3e9fb40015c7ab0098ea1a8cd46761a75
-test: cover platform member drawer admin actions
-
-bdea246f8b7f710620154c3ec72f317bf9532497
-test: enforce read-only platform member table
-```
-
-Des commits précédents du même mini-lot ont introduit puis raffiné le drawer et ses tests.
-
----
-
-## 10. Presets des rôles système Platform et synchronisation MongoDB
-
-Fichier canonique des presets :
-
-```text
-backend/modules/platformRole/platformRole.presets.js
-```
-
-Rôles système actuels :
-
-```text
-Super administrateur
-Administrateur de la Plateforme
-Support technique
-Support commercial
-Support client
-```
-
-Distinction importante :
-
-```text
-Administrateur de la Plateforme
-≠ Super administrateur
-```
-
-Le Fondateur possède la qualité protégée `isFounder=true` et le rôle `super_admin`.
-
-Le texte du rôle `platform_admin` a été ajusté au commit `1500ba04...` :
-
-```text
-Administration courante étendue sur les opérations.
-```
-
-Modifier le preset ne change pas immédiatement le document déjà persisté en MongoDB.
-
-Le mécanisme prévu pour resynchroniser les rôles système est :
-
-```bash
-npm run seed:platform-roles
-```
-
-qui exécute :
-
-```text
-backend/seeds/seedPlatformRoles.js
-```
-
-Ce seed synchronise uniquement les rôles système et met à jour notamment :
-
-```text
-name
-description
-permissions
-status
-```
-
-Les rôles personnalisés ne sont pas modifiés par ce seed.
-
-Ne pas éditer manuellement MongoDB pour ce type d'évolution normale de preset.
-
-### Point RBAC à ne pas oublier avant clôture D-018
-
-Le preset `Administrateur de la Plateforme` possède actuellement notamment :
-
-```text
-platform:roles:create
-platform:roles:update
-platform:roles:archive
-```
-
-mais la policy métier `assertCanGovernCustomPlatformRoles()` réserve la gouvernance des rôles personnalisés au Fondateur ou au Super administrateur.
-
-Ce décalage a été identifié pendant la conversation. Il n'a **pas** encore été modifié.
-
-Avant de clôturer D-018, décider explicitement si :
-
-```text
-A. ces permissions sont retirées du preset Platform Admin
-   pour aligner le RBAC sur la capacité réellement utilisable
-
-ou
-
-B. elles restent volontairement comme première barrière de permission,
-   avec une policy de gouvernance plus restrictive en défense en profondeur
-```
-
-Ne pas changer cette politique implicitement.
-
----
-
-## 11. État réel des tests automatisés
-
-### Baseline confirmée
-
-Après les mini-lots de synchronisation Platform runtime et de séparation Utilisateurs clients / équipe Platform, l'utilisateur a confirmé :
-
-```text
-tout est vert
-visuellement conforme
-```
-
-### Derniers changements non encore revalidés explicitement dans la conversation
-
-Après cette confirmation, plusieurs commits frontend ont ajouté :
-
-- drawer de détail membre ;
-- cycle de vie ;
-- action Eye ;
-- centralisation des mutations dans `Actions d’administration` ;
-- tableau membres rendu strictement consultatif.
-
-Aucune confirmation utilisateur explicite d'une exécution des tests **après le dernier commit `bdea246...`** n'a encore été consignée.
-
-D-018 ne doit donc pas être marqué `VALIDÉ`.
-
-### Tests prioritaires à lancer à la reprise
-
-Depuis `frontend/` :
-
-```bash
-npx vitest run src/features/platform/components/platform-team-member-details-drawer.test.jsx src/features/platform/components/platform-team-members-section.test.jsx
-```
-
-Puis si vert :
-
-```bash
-npx vitest run
-npm run build
-```
-
-Comme les derniers mini-lots sont frontend-only, aucun changement backend n'a été nécessaire pour le drawer. La baseline backend D-018 reste néanmoins à garder verte avant clôture formelle.
-
-Avant validation finale D-018, exécuter depuis la racine :
-
-```bash
-npx vitest run backend/tests/platformInvitation
-npx vitest run
-```
-
-Contrôles legacy utiles :
-
-```bash
-git grep -n "platformRole" -- frontend/src
-git grep -n "isPlatformSuperAdmin" -- frontend/src
-```
-
-Un résultat textuel n'est pas automatiquement une erreur : vérifier qu'aucune occurrence ne sert encore de **source d'autorité frontend**.
-
----
-
-## 12. Gate manuel D-018 — état précis
-
-### Déjà validé
-
-#### Invitation réelle
-
-Le flux réel a déjà fonctionné après le correctif transactionnel :
-
-```text
-create invitation
-→ livraison
-→ acceptation
-→ création/connexion du nouvel utilisateur
-→ visibilité Platform selon rôle
-```
-
-#### Suspension runtime
-
-Test manuel validé :
-
-```text
-membre Platform connecté
-→ Fondateur suspend le membre depuis une autre session
-→ requête Platform suivante : accès perdu
-→ User global reste actif
-```
-
-#### Révocation runtime / synchronisation frontend
-
-Backend : révocation prise en compte immédiatement sur la requête Platform suivante, sans fallback legacy réactivant les droits.
-
-Le défaut de cache frontend découvert à cette occasion a été corrigé via invalidation/refetch de `platformAccess`, puis confirmé visuellement conforme.
-
-#### Protection du Fondateur par HTTP direct
-
-Test Postman avec le vrai `PlatformTeamMember.id` du Fondateur :
-
-```text
-PATCH /api/platform/team/members/:memberId/suspend
-→ 403
-
-DELETE /api/platform/team/members/:memberId
-→ 403
-
-PATCH /api/platform/team/members/:memberId/role
-→ 403
-```
-
-L'utilisateur a confirmé les trois `403`.
-
-Important : les routes attendent le **top-level `PlatformTeamMember.id`**, pas `user.id`.
-
-### Gate actuellement interrompu / à reprendre exactement ici
-
-Le test suivant visait la gouvernance des rôles personnalisés.
-
-Un `POST /api/platform/team/roles` a renvoyé `403` avec un compte que l'utilisateur pensait être **Super administrateur**.
-
-Ce résultat n'est pas normal si le compte est réellement :
-
-```text
-PlatformTeamMember actif
-+
-PlatformRole.key === super_admin
-```
-
-La policy backend autorise explicitement le Fondateur et le Super administrateur à gouverner les rôles personnalisés.
-
-La prochaine conversation doit donc reprendre par le diagnostic suivant avec **la même session / le même compte qui produit le 403** :
-
-```http
-GET /api/platform/me
-```
-
-Vérifier :
-
-```text
-status
-source d'autorité
-role.key
-permissions
-notamment platform:roles:create
-```
-
-Puis regarder le body exact du `403` du `POST /api/platform/team/roles` :
-
-```text
-« Accès plateforme non autorisé »
-→ blocage permission/runtime
-
-« Seuls le Fondateur ou un Super administrateur peuvent administrer les rôles personnalisés. »
-→ le resolver/policy ne reconnaît pas le compte comme SuperAdmin
-```
-
-Ne pas confondre :
-
-```text
-Administrateur de la Plateforme
-→ platform_admin
-
-Super administrateur
-→ super_admin
-```
-
-### Gates sensibles encore à terminer
-
-Après résolution du point précédent :
-
-```text
-Administrateur de la Plateforme non SuperAdmin
-→ gouvernance rôle personnalisé refusée côté backend
-
-Rôle personnalisé
+Founder /api/platform/me
+→ isFounder=true
+→ role.key=super_admin
+→ permissions complètes
+
+protection Founder
+→ suspend 403
+→ revoke 403
+→ role update 403
+
+platform_admin
+→ gouvernance custom role refusée
+
+rôle custom
 → permission RESERVED refusée
-→ clone exact d'un rôle actif refusé
-→ archivage tant qu'assigné à active/suspended refusé
+→ clone exact actif refusé
+→ archivage assigné ACTIVE refusé
+→ archivage assigné SUSPENDED refusé
 
-Invitation
-→ ancien token après resend inutilisable
-→ invitation révoquée inutilisable
-→ aucun token brut dans listing/réponse admin/audit
+invitation Platform
+→ rotation / revoke / absence secret brut validées
+
+utilisateur SaaS ordinaire
+GET /api/platform/me
+→ platformAccess=null
 ```
 
-Un utilisateur SaaS ordinaire doit également conserver :
+Le rôle custom de test a été désassigné puis archivé ; le compte `platform_admin` de test a été rétabli dans son état normal.
+
+### 4.6 Validation automatisée finale
+
+L'utilisateur a confirmé après les derniers correctifs :
 
 ```text
-GET /api/platform/me sans accès Platform effectif
-navigation Workspace normale
+backend ciblé D-018       ✅
+backend global             ✅
+frontend ciblé             ✅
+frontend global            ✅
+build Vite production      ✅
 ```
 
-Les scénarios sensibles doivent être testés par HTTP direct. Un bouton masqué ne prouve jamais la sécurité.
+Aucune nouvelle modification de code D-018 n'est à faire à la prochaine reprise.
 
 ---
 
-## 13. Documentation D-018 encore à aligner après les gates
+## 5. D-019 — prochain bloc exact
 
-`docs/DEBT.md` et `docs/contracts/PLATFORM-TEAM.md` ne doivent pas être finalisés prématurément.
-
-État attendu tant que les gates précédents restent ouverts :
-
-```text
-D-018 = EN COURS
-```
-
-Ne passer D-018 à `VALIDÉ` qu'après :
-
-```text
-HEAD courant testé
-+
-build frontend vert
-+
-gates manuels sécurité conformes
-+
-décision explicite sur la cohérence des permissions Platform Admin
-+
-documentation canonique alignée
-```
-
-À ce moment seulement :
-
-1. aligner `docs/DEBT.md` ;
-2. aligner `docs/contracts/PLATFORM-TEAM.md` ;
-3. passer D-018 à `VALIDÉ` ;
-4. rafraîchir `REPRISE-CURRENT.md` ;
-5. enregistrer/cadrer D-019.
-
----
-
-## 14. D-019 — prochaine dette Core avant D-015
-
-Après clôture D-018, enregistrer formellement dans `docs/DEBT.md` :
+D-019 est maintenant la prochaine dette Core à traiter.
 
 ```text
 D-019 — Moteur sécurisé de rétention et purge des données Core
 ```
 
-D-019 n'est pas D-006.
+D-019 n'est pas D-006 :
 
 ```text
 D-006
 → politique juridique / produit : quoi conserver, combien de temps et pourquoi
 
 D-019
-→ moteur générique sécurisé appliquant une policy déjà configurée
+→ moteur générique sécurisé appliquant une policy déjà définie
 ```
 
-Cible de cadrage avant code :
+### 5.1 Cible de cadrage avant tout code
 
-- policy de rétention explicite ;
+À figer avant implémentation :
+
+- modèle de policy de rétention ;
+- versionnement / validation de la policy ;
+- entités Core concernées ;
 - éligibilité calculée backend ;
-- aucun cutoff arbitraire fourni par le client ;
-- aucune route de suppression générique ;
-- autorité Platform fortement restreinte ;
+- aucune date cutoff arbitraire fournie par le client ;
+- aucune route générique de suppression par filtre libre ;
+- permissions Platform nécessaires ;
 - preview avant purge ;
 - confirmation explicite ;
 - traitement par lots ;
-- audit durable indépendant du contenu purgé ;
-- protection contre deux exécutions concurrentes ;
-- scheduler compatible multi-instance ;
-- lock distribué MongoDB privilégié avant Redis si suffisant ;
-- indexes vérifiés ;
-- tests sécurité / concurrence / idempotence.
+- idempotence ;
+- audit durable indépendant des données purgées ;
+- lock distribué / concurrence ;
+- scheduler multi-instance ;
+- reprise après échec ;
+- indexes nécessaires ;
+- tests sécurité / concurrence / non-régression.
 
-D-019 doit être cadrée et documentée **avant d'écrire son code**.
+### 5.2 Règle de reprise
+
+Ne pas écrire de code D-019 avant d'avoir :
+
+```text
+1. analysé les données Core actuellement soft-deleted / archived / closed
+2. distingué conservation fonctionnelle et purge physique
+3. défini le contrat de policy
+4. défini les permissions et frontières Platform
+5. défini le workflow preview → exécution → audit
+6. défini les tests critiques
+```
 
 ---
 
-## 15. D-015, D-016, audit final et D-017
+## 6. D-020 — bloc figé avant D-015
+
+D-020 a été ajouté au registre canonique :
+
+```text
+D-020 — Invitation commerciale client et offres privées de découverte
+```
+
+Il sera traité **après D-019 et avant D-015**.
+
+### 6.1 Séparation fonctionnelle obligatoire
+
+```text
+PlatformInvitation
+→ collaborateur interne de l'éditeur
+
+CommercialInvitation
+→ prospect / futur client utilisateur
+```
+
+Deux domaines, deux modèles, deux permissions, deux finalités.
+
+### 6.2 Décisions déjà figées
+
+Une offre privée « Découverte commerciale » est pertinente lorsque la même offre doit être proposée à plusieurs prospects ciblés.
+
+Cible :
+
+```text
+Plan privé
+→ isPublic=false
+→ prix éventuellement 0 €
+→ fonctionnalités explicitement choisies
+→ IA explicitement exclue si souhaité
+→ limites configurables
+```
+
+Ne pas utiliser une règle dynamique « toutes les fonctionnalités sauf IA » : une future capability ne doit pas être accordée automatiquement.
+
+Distinction :
+
+```text
+trial
+→ temporaire
+→ vraie trialEndsAt
+
+accès commercial sans échéance
+→ gratuité commerciale durable
+→ pas « trial illimité »
+```
+
+Les `EntitlementOverride` restent destinés aux exceptions individuelles ; le Plan privé représente une offre réutilisable.
+
+Le Super administrateur sera seul autorisé au départ, mais l'architecture devra utiliser des permissions Platform dédiées afin de permettre une future délégation à un service commercial.
+
+Un commercial autorisé sélectionnera une offre préparée ; il ne fabriquera pas arbitrairement les features/limites lors de l'invitation.
+
+L'onboarding devra être audité et sécurisé, sans création anticipée de workspaces orphelins.
+
+Point technique à résoudre : le moteur actuel des Subscriptions commerciales actives attend une `currentPeriodEnd` future ; une offre gratuite commerciale sans échéance doit recevoir une sémantique explicite, jamais une date artificielle lointaine.
+
+---
+
+## 7. D-015, D-016, audit final et D-017
 
 ### D-015
 
@@ -821,30 +429,19 @@ Versionnement / provenance / migrations / release :
 - tags ;
 - release notes ;
 - changelog si retenu ;
-- migrations et ordre pre/post-deploy ;
+- migrations pre/post-deploy ;
 - idempotence ;
 - rollback ;
 - variables d'environnement ;
 - dépendances système ;
-- provenance Core machine-readable dans les produits dérivés ;
+- provenance Core machine-readable ;
 - procédure d'upgrade.
+
+D-015 ne commence qu'après D-019 et D-020.
 
 ### D-016
 
-Playwright / E2E Core :
-
-```text
-auth/session
-Account lifecycle
-Workspace lifecycle
-isolation tenant
-RBAC Workspace
-RBAC Platform
-subscriptions / entitlements / quotas
-administration Platform critique
-File si capability active
-états interdits
-```
+Playwright / E2E Core sur les parcours transversaux critiques.
 
 ### Audit final
 
@@ -852,24 +449,13 @@ Revue architecture / sécurité / qualité avant dérivation pilote.
 
 ### D-017
 
-Exercice pilote obligatoire :
-
-```text
-release candidate Core
-→ clone pilote avec historique Git
-→ petit module métier représentatif
-→ évolution compatible du Core
-→ nouvelle release candidate
-→ upgrade depuis upstream-core
-→ tests Core + métier + E2E
-→ analyse des conflits
-```
+Exercice pilote obligatoire de clonage + petite extension métier + upgrade depuis `upstream-core`.
 
 Toute faiblesse générique découverte doit revenir dans le Core avant `v1.0.0`.
 
 ---
 
-## 16. Stratégie canonique de clonage du vrai SaaS métier
+## 8. Stratégie canonique de clonage du vrai SaaS métier
 
 Références :
 
@@ -878,9 +464,7 @@ docs/derived-saas/DERIVED-SAAS.md
 docs/derived-saas/EXTENSION-POINTS.md
 ```
 
-Méthode canonique : conserver l'historique Git du Core.
-
-Exemple conceptuel après release stable :
+Après release stable :
 
 ```bash
 git clone <URL_SAAS_CORE_API> <nom-du-produit>
@@ -892,8 +476,6 @@ git remote add origin <URL_NOUVEAU_DEPOT_PRODUIT>
 git push -u origin main
 ```
 
-Résultat :
-
 ```text
 origin
 → dépôt du SaaS métier
@@ -902,17 +484,13 @@ upstream-core
 → dépôt maître saas-core-api
 ```
 
-Le nom réel du nouveau dépôt sera fourni explicitement au moment du clonage.
-
-Variables d'environnement, secrets, base de données et configuration produit doivent être séparés du Core.
+Secrets, base de données, environnement et configuration produit restent propres au produit dérivé.
 
 ---
 
-## 17. Règles permanentes pour les futurs modules métier
+## 9. Règles permanentes de développement
 
 ### Backend
-
-Structure cible :
 
 ```text
 backend/modules/<domaine>/
@@ -924,8 +502,6 @@ backend/modules/<domaine>/
 └── tests
 ```
 
-Règles :
-
 - JavaScript uniquement ;
 - Zod strict ;
 - logique métier dans les services ;
@@ -933,13 +509,10 @@ Règles :
 - RBAC ;
 - entitlement / quotas si nécessaire ;
 - audit ;
-- transactions lorsque l'invariant l'exige ;
-- soft delete si pertinent ;
+- transaction lorsque l'invariant l'exige ;
 - aucune logique métier lourde dans routes/controllers.
 
 ### Frontend
-
-Structure cible :
 
 ```text
 frontend/src/features/<domaine>/
@@ -954,34 +527,16 @@ frontend/src/features/<domaine>/
 Gestion d'état :
 
 ```text
-useState
-→ état UI local
-
-Redux Toolkit
-→ état client global réel
-
-RTK Query
-→ état serveur
+useState      → état UI local
+Redux Toolkit → état client global
+RTK Query     → état serveur
 ```
 
-Réutilisation obligatoire des composants partagés existants. Ne jamais créer un second DataTable, système de toast, drawer générique, confirmation générique ou stratégie RTK Query parallèle.
-
-Avant chaque module métier :
-
-1. cadrage fonctionnel ;
-2. règles métier ;
-3. rôles et permissions ;
-4. capabilities / quotas ;
-5. sécurité et validation ;
-6. composants réutilisables ;
-7. routes / contrats API ;
-8. tests ;
-9. checklist manuelle ;
-10. seulement ensuite implémentation.
+Réutilisation obligatoire des composants partagés. Aucun second DataTable, système de drawer générique, confirmation générique, toast ou stratégie RTK Query parallèle ne doit être créé sans justification architecturale.
 
 ---
 
-## 18. Sécurité permanente
+## 10. Sécurité permanente
 
 Invariant :
 
@@ -990,118 +545,81 @@ ne jamais faire confiance au frontend
 ne jamais faire dépendre la sécurité d'un bouton masqué
 ```
 
-Backend = autorité sur :
-
-- identité ;
-- ownership ;
-- membership ;
-- permissions ;
-- entitlements ;
-- quotas ;
-- lifecycle ;
-- transitions sensibles ;
-- purge/rétention ;
-- vocabulaire backend constituant un contrat.
+Backend = autorité sur identité, ownership, memberships, permissions, entitlements, quotas, lifecycle, transitions sensibles et purge/rétention.
 
 Validation Zod stricte obligatoire.
 
-`sanitizeFilter` reste activé. Les opérateurs MongoDB internes construits par le serveur utilisent `mongoose.trusted()` lorsque nécessaire ; ne jamais neutraliser globalement la protection.
+`sanitizeFilter` reste activé. Utiliser `mongoose.trusted()` uniquement pour les opérateurs MongoDB construits intentionnellement par le serveur.
 
-Mutations sensibles : réautorisation transactionnelle lorsque nécessaire, audit, fail-closed, aucune confiance dans une autorité JWT potentiellement obsolète.
+Les mutations sensibles doivent rester fail-closed, réautoriser depuis l'état courant lorsque nécessaire et conserver un audit approprié.
 
 ---
 
-## 19. Prochaine reprise exacte
+## 11. Prochaine reprise exacte
 
-La prochaine conversation doit reprendre **D-018**, sans passer à D-019 ni à un module métier.
+La prochaine conversation ne doit **plus reprendre D-018**.
 
-Ordre recommandé :
+D-018 est clôturé.
+
+Ordre exact :
 
 ```text
 1. git pull
 2. vérifier le HEAD courant
-3. depuis frontend : lancer les 2 tests ciblés drawer/membres
-4. frontend global : npx vitest run
-5. build : npm run build
-6. si nécessaire, npm run seed:platform-roles pour resynchroniser les presets système
-7. reprendre le 403 du compte supposé SuperAdmin
-8. avec la même session : GET /api/platform/me
-9. identifier role.key / status / permissions / source d'autorité
-10. rejouer POST /api/platform/team/roles et lire le body exact du 403
-11. distinguer SuperAdmin réel de Platform Admin
-12. décider explicitement du sort des permissions roles:create/update/archive du preset Platform Admin
-13. tester le refus de gouvernance par un Platform Admin non-SuperAdmin
-14. tester RESERVED
-15. tester clone exact
-16. tester archivage rôle assigné
-17. terminer ancien token resend / invitation révoquée / absence token brut
-18. backend ciblé PlatformInvitation
-19. backend global
-20. aligner DEBT.md + PLATFORM-TEAM.md si tout est vert
-21. passer D-018 VALIDÉ uniquement à ce moment
-22. cadrer D-019 avant code
+3. lire docs/DEBT.md — D-019
+4. lire le présent REPRISE-CURRENT.md
+5. cadrer D-019 avant tout code
+6. inventorier les états/données Core concernés par une purge
+7. définir policy + permissions + workflow + audit + concurrence
+8. proposer le découpage d'implémentation D-019
+9. seulement après validation du cadrage : commencer le backend D-019
 ```
 
-Ne pas exécuter plusieurs gates sensibles en parallèle.
+Ne pas commencer D-020 tant que D-019 n'est pas terminé.
+
+Ne pas commencer D-015 tant que D-019 et D-020 ne sont pas terminés ou explicitement reclassifiés.
 
 ---
 
-## 20. Fichiers prioritaires à la prochaine conversation
+## 12. Fichiers prioritaires à la prochaine conversation
 
 ```text
 docs/REPRISE-CURRENT.md
 docs/DEBT.md
-docs/contracts/PLATFORM-TEAM.md
 
-backend/modules/platformTeam/platformAuthorization.service.js
-backend/modules/platformTeam/platformTeam.service.js
-backend/modules/platformTeam/platformTeam.routes.js
-backend/modules/platformRole/platformRole.policy.js
-backend/modules/platformRole/platformRole.service.js
-backend/modules/platformRole/platformRole.routes.js
-backend/modules/platformRole/platformRole.presets.js
-backend/seeds/seedPlatformRoles.js
-backend/modules/platformInvitation/*
+docs/contracts/PLATFORM-TEAM.md       # référence D-018 désormais VALIDÉE
 
-frontend/src/features/platform/components/platform-team-members-section.jsx
-frontend/src/features/platform/components/platform-team-members-section.test.jsx
-frontend/src/features/platform/components/platform-team-member-details-drawer.jsx
-frontend/src/features/platform/components/platform-team-member-details-drawer.test.jsx
-frontend/src/features/platform/components/platform-team-member-read-columns.jsx
-frontend/src/features/platform/lib/platform-team-authorization.js
-frontend/src/features/platform/lib/platform-navigation.js
-frontend/src/features/platform/store/platform-access-sync-middleware.js
-frontend/src/components/shared/entity-details-drawer.jsx
-frontend/src/components/data-display/data-table.jsx
+backend/modules/users/*
+backend/modules/workspace/*
+backend/modules/workspaceMember/*
+backend/modules/subscriptions/*
+backend/modules/file/*
+backend/modules/auditLog/*
+backend/modules/platform/*
+backend/jobs/*
 ```
+
+Pour D-019, l'inventaire exact des modèles et états doit être fait depuis le code courant avant de définir une policy de purge.
 
 ---
 
-## 21. Ce qu'il ne faut pas faire
+## 13. Ce qu'il ne faut pas faire
 
 Ne pas :
 
-- restaurer `PATCH /platform/users/:id/role` ;
-- réintroduire `User.platformRole` comme autorité frontend ;
-- confondre `User.id` et `PlatformTeamMember.id` ;
-- confondre `platform_admin` et `super_admin` ;
-- coder la navigation par nom de rôle ;
-- rendre les rôles système modifiables depuis l'administration courante ;
-- créer librement des permissions depuis l'UI ;
-- ajouter des permissions directement sur un User ;
-- modifier manuellement MongoDB pour synchroniser un preset système normal : utiliser le seed prévu ;
-- supprimer les transactions pour contourner une erreur MongoDB ;
-- utiliser `Promise.all()` pour des opérations partageant la même session transactionnelle ;
-- remettre les mutations membres directement dans le DataTable ;
-- dupliquer `EntityDetailsDrawer` ou `DataTable` ;
+- rouvrir D-018 sans bug ou besoin nouveau démontré ;
+- confondre `PlatformInvitation` et la future `CommercialInvitation` ;
 - coder une durée juridique universelle de rétention dans le Core ;
-- exposer une purge générique avec cutoff ou filtre arbitraire ;
-- commencer D-015 avant D-019 ;
-- lancer les modules métier réels dans le dépôt Core ;
-- déclarer `v1.0.0` avant les gates D-015, D-016, audit final et D-017.
+- exposer un cutoff ou filtre de purge arbitraire fourni par le frontend ;
+- créer une route générique de suppression ;
+- simuler un accès commercial « illimité » avec une date artificielle lointaine ;
+- considérer un accès gratuit permanent comme un « trial illimité » ;
+- commencer D-015 avant D-019 et D-020 ;
+- commencer les modules métier réels dans le dépôt Core ;
+- déclarer `v1.0.0` avant D-015, D-016, audit final et D-017.
 
 ---
 
-## 22. Résumé de reprise en une phrase
+## 14. Résumé de reprise en une phrase
 
-D-018 est très avancée : les invitations, le RBAC Platform runtime, la séparation Utilisateurs clients / équipe interne, la protection du Fondateur et la synchronisation frontend des révocations sont en place ; le tableau Membres est désormais consultatif et ouvre un drawer réutilisable contenant le cycle de vie et les actions d'administration, mais les tout derniers tests frontend doivent être rejoués et le prochain gate doit reprendre exactement sur le `403` obtenu avec un compte supposé SuperAdmin afin de vérifier son autorité réelle via `/api/platform/me`, clarifier la cohérence du preset `platform_admin`, terminer les derniers scénarios sécurité puis seulement clôturer D-018 avant de cadrer D-019.
+D-018 est désormais entièrement **VALIDÉ** — équipe interne, RBAC Platform, Founder/SuperAdmin, rôles personnalisés, invitations sécurisées, frontend et gates de sécurité sont clôturés — et la prochaine reprise doit commencer par le cadrage backend-first de **D-019 rétention/purge**, puis traiter **D-020 invitation commerciale / offre privée Découverte** avant d'ouvrir le versionnement D-015.
