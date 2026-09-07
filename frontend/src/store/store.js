@@ -4,6 +4,9 @@ import {
 } from '@reduxjs/toolkit';
 
 import { authSlice, sessionTerminated } from '@/features/auth/store/auth-slice';
+import {
+  platformAccessSyncMiddleware,
+} from '@/features/platform/store/platform-access-sync-middleware';
 import { baseApi } from '@/services/api/base-api';
 
 const sessionListenerMiddleware = createListenerMiddleware();
@@ -27,7 +30,10 @@ function createAppStore(preloadedState) {
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware()
         .prepend(sessionListenerMiddleware.middleware)
-        .concat(baseApi.middleware),
+        .concat(
+          baseApi.middleware,
+          platformAccessSyncMiddleware,
+        ),
     preloadedState,
   });
 }
