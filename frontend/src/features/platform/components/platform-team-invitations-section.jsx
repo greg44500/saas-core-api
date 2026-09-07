@@ -161,7 +161,7 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
                   setActionError(null);
                   setPendingAction({ type: 'resend', invitation });
                 }}
-                tooltipLabel="Renvoyer l’invitation"
+                tooltipLabel="Renvoyer"
                 variant="ghost"
               />
             )}
@@ -174,7 +174,7 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
                   setActionError(null);
                   setPendingAction({ type: 'revoke', invitation });
                 }}
-                tooltipLabel="Révoquer l’invitation"
+                tooltipLabel="Révoquer"
                 variant="ghost"
               />
             )}
@@ -260,7 +260,7 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
           <p className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
             Aucune invitation active.
           </p>
-      )}
+        )}
 
       {!invitationsQuery.isLoading
         && !invitationsQuery.isError
@@ -285,7 +285,7 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
               summary={`${pagination.total} invitation${pagination.total > 1 ? 's' : ''}`}
             />
           </>
-      )}
+        )}
 
       <PlatformInvitationFormDrawer
         onClose={() => setCreateOpen(false)}
