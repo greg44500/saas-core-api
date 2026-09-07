@@ -6,9 +6,12 @@ import {
     vi,
 } from 'vitest';
 
+import { WORKSPACE_MEMBER_STATUS } from '../../../constants/workspaceMember.constants.js';
 import { User } from '../../../modules/users/user.model.js';
+import { WorkspaceMember } from '../../../modules/workspaceMember/workspaceMember.model.js';
 
 import {
+    CURRENT_CLIENT_MEMBERSHIP_STATUSES,
     listPlatformUsers,
 } from '../../../modules/platform/users/services/listPlatformUsers.service.js';
 
@@ -17,8 +20,18 @@ vi.mock(
     '../../../modules/users/user.model.js',
     () => ({
         User: {
-            find: vi.fn(),
-            countDocuments: vi.fn(),
+            aggregate: vi.fn(),
+        },
+    }),
+);
+
+vi.mock(
+    '../../../modules/workspaceMember/workspaceMember.model.js',
+    () => ({
+        WorkspaceMember: {
+            collection: {
+                name: 'workspacemembers',
+            },
         },
     }),
 );
@@ -29,44 +42,35 @@ describe('listPlatformUsers', () => {
         vi.clearAllMocks();
     });
 
-    it('retourne les utilisateurs transformés avec leur pagination', async () => {
-        const userDocuments = [
-            {
-                _id: {
-                    toString: () => 'user-1',
-                },
-                firstName: 'Alice',
-                lastName: 'Martin',
-                email: 'alice@example.com',
-                status: 'active',
-                platformRole: 'user',
-                emailVerifiedAt: new Date(
-                    '2026-08-01T10:00:00.000Z',
-                ),
-                lastLoginAt: new Date(
-                    '2026-08-20T08:00:00.000Z',
-                ),
-                createdAt: new Date(
-                    '2026-07-01T09:00:00.000Z',
-                ),
-                updatedAt: new Date(
-                    '2026-08-20T08:00:00.000Z',
-                ),
+    it('retourne uniquement la projection client paginée sans rôle Platform legacy', async () => {
+        const userDocument = {
+            _id: {
+                toString: () => 'user-1',
             },
-        ];
-
-        const query = {
-            select: vi.fn().mockReturnThis(),
-            sort: vi.fn().mockReturnThis(),
-            skip: vi.fn().mockReturnThis(),
-            limit: vi.fn().mockReturnThis(),
-            lean: vi.fn().mockResolvedValue(
-                userDocuments,
+            firstName: 'Alice',
+            lastName: 'Martin',
+            email: 'alice@example.com',
+            status: 'active',
+            emailVerifiedAt: new Date(
+                '2026-08-01T10:00:00.000Z',
+            ),
+            lastLoginAt: new Date(
+                '2026-08-20T08:00:00.000Z',
+            ),
+            createdAt: new Date(
+                '2026-07-01T09:00:00.000Z',
+            ),
+            updatedAt: new Date(
+                '2026-08-20T08:00:00.000Z',
             ),
         };
 
-        User.find.mockReturnValue(query);
-        User.countDocuments.mockResolvedValue(1);
+        User.aggregate.mockResolvedValue([
+            {
+                users: [userDocument],
+                total: [{ value: 1 }],
+            },
+        ]);
 
         const result = await listPlatformUsers({
             page: 1,
@@ -81,15 +85,14 @@ describe('listPlatformUsers', () => {
                     lastName: 'Martin',
                     email: 'alice@example.com',
                     status: 'active',
-                    platformRole: 'user',
                     emailVerifiedAt:
-                        userDocuments[0].emailVerifiedAt,
+                        userDocument.emailVerifiedAt,
                     lastLoginAt:
-                        userDocuments[0].lastLoginAt,
+                        userDocument.lastLoginAt,
                     createdAt:
-                        userDocuments[0].createdAt,
+                        userDocument.createdAt,
                     updatedAt:
-                        userDocuments[0].updatedAt,
+                        userDocument.updatedAt,
                 },
             ],
             pagination: {
@@ -100,39 +103,91 @@ describe('listPlatformUsers', () => {
             },
         });
 
-        expect(query.skip).toHaveBeenCalledWith(0);
-        expect(query.limit).toHaveBeenCalledWith(20);
-
-        expect(
-            User.countDocuments,
-        ).toHaveBeenCalledWith({});
+        expect(result.users[0]).not.toHaveProperty('platformRole');
     });
 
-    it('applique correctement la pagination demandée', async () => {
-        const query = {
-            select: vi.fn().mockReturnThis(),
-            sort: vi.fn().mockReturnThis(),
-            skip: vi.fn().mockReturnThis(),
-            limit: vi.fn().mockReturnThis(),
-            lean: vi.fn().mockResolvedValue([]),
-        };
+    it('filtre en base les utilisateurs sans appartenance Workspace courante avant pagination', async () => {
+        User.aggregate.mockResolvedValue([
+            {
+                users: [],
+                total: [],
+            },
+        ]);
 
-        User.find.mockReturnValue(query);
-        User.countDocuments.mockResolvedValue(45);
-
-        const result = await listPlatformUsers({
+        await listPlatformUsers({
             page: 3,
             limit: 10,
         });
 
-        expect(query.skip).toHaveBeenCalledWith(20);
-        expect(query.limit).toHaveBeenCalledWith(10);
+        expect(User.aggregate).toHaveBeenCalledOnce();
 
-        expect(result.pagination).toEqual({
-            page: 3,
+        const pipeline = User.aggregate.mock.calls[0][0];
+        const lookupStage = pipeline.find((stage) => stage.$lookup)?.$lookup;
+        const membershipMatch = lookupStage.pipeline.find(
+            (stage) => stage.$match,
+        ).$match;
+        const currentMembershipStage = pipeline.find(
+            (stage) => stage.$match?.['currentWorkspaceMemberships.0'],
+        );
+        const facetStage = pipeline.find((stage) => stage.$facet)?.$facet;
+
+        expect(lookupStage.from).toBe(
+            WorkspaceMember.collection.name,
+        );
+        expect(membershipMatch).toEqual({
+            status: {
+                $in: [
+                    WORKSPACE_MEMBER_STATUS.ACTIVE,
+                    WORKSPACE_MEMBER_STATUS.SUSPENDED,
+                ],
+            },
+        });
+        expect(currentMembershipStage).toEqual({
+            $match: {
+                'currentWorkspaceMemberships.0': {
+                    $exists: true,
+                },
+            },
+        });
+        expect(facetStage.users).toContainEqual({
+            $skip: 20,
+        });
+        expect(facetStage.users).toContainEqual({
+            $limit: 10,
+        });
+    });
+
+    it('considère active et suspended comme relations client courantes, jamais removed', () => {
+        expect(CURRENT_CLIENT_MEMBERSHIP_STATUSES).toEqual([
+            WORKSPACE_MEMBER_STATUS.ACTIVE,
+            WORKSPACE_MEMBER_STATUS.SUSPENDED,
+        ]);
+        expect(CURRENT_CLIENT_MEMBERSHIP_STATUSES).not.toContain(
+            WORKSPACE_MEMBER_STATUS.REMOVED,
+        );
+    });
+
+    it('calcule correctement une pagination vide', async () => {
+        User.aggregate.mockResolvedValue([
+            {
+                users: [],
+                total: [],
+            },
+        ]);
+
+        const result = await listPlatformUsers({
+            page: 2,
             limit: 10,
-            total: 45,
-            totalPages: 5,
+        });
+
+        expect(result).toEqual({
+            users: [],
+            pagination: {
+                page: 2,
+                limit: 10,
+                total: 0,
+                totalPages: 0,
+            },
         });
     });
 
@@ -155,9 +210,6 @@ describe('listPlatformUsers', () => {
             'limit must be an integer between 1 and 100',
         );
 
-        expect(User.find).not.toHaveBeenCalled();
-        expect(
-            User.countDocuments,
-        ).not.toHaveBeenCalled();
+        expect(User.aggregate).not.toHaveBeenCalled();
     });
 });
