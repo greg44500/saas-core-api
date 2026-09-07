@@ -63,6 +63,21 @@ describe('system PlatformRole presets', () => {
         }
     });
 
+    it('réserve la gouvernance des rôles personnalisés au super-admin', () => {
+        expect(PLATFORM_ADMIN_PERMISSIONS).toContain(
+            PLATFORM_PERMISSION.ROLES_READ,
+        );
+        expect(PLATFORM_ADMIN_PERMISSIONS).not.toContain(
+            PLATFORM_PERMISSION.ROLES_CREATE,
+        );
+        expect(PLATFORM_ADMIN_PERMISSIONS).not.toContain(
+            PLATFORM_PERMISSION.ROLES_UPDATE,
+        );
+        expect(PLATFORM_ADMIN_PERMISSIONS).not.toContain(
+            PLATFORM_PERMISSION.ROLES_ARCHIVE,
+        );
+    });
+
     it('limite le support commercial au grant trial pour les mutations Subscription', () => {
         const commercialSupport =
             SYSTEM_PLATFORM_ROLE_PRESETS.find(
