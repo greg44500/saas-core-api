@@ -18,21 +18,33 @@ function PlatformProbe() {
   return <h1>Console autorisée</h1>;
 }
 
+function PlansProbe() {
+  return <h1>Plans autorisés</h1>;
+}
+
+function UsersProbe() {
+  return <h1>Utilisateurs autorisés</h1>;
+}
+
 function WorkspacesProbe() {
   return <h1>Workspaces cible</h1>;
 }
 
-function renderGuard() {
+function renderGuard(initialEntry = '/platform/overview') {
   const router = createMemoryRouter(
     [
       {
         path: '/platform',
         Component: PlatformGuard,
-        children: [{ path: 'overview', Component: PlatformProbe }],
+        children: [
+          { path: 'overview', Component: PlatformProbe },
+          { path: 'plans', Component: PlansProbe },
+          { path: 'users', Component: UsersProbe },
+        ],
       },
       { path: '/workspaces', Component: WorkspacesProbe },
     ],
-    { initialEntries: ['/platform/overview'] },
+    { initialEntries: [initialEntry] },
   );
 
   render(<RouterProvider router={router} />);
@@ -64,7 +76,7 @@ describe('PlatformGuard', () => {
     expect(hasActivePlatformAccess(null)).toBe(false);
   });
 
-  it('autorise un membre Platform actif selon son autorité runtime', async () => {
+  it('autorise un membre Platform actif sur une route permise', async () => {
     useGetCurrentPlatformContextQueryMock.mockReturnValue({
       data: {
         isFounder: false,
@@ -119,5 +131,26 @@ describe('PlatformGuard', () => {
       await screen.findByRole('heading', { name: 'Workspaces cible' }),
     ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/workspaces');
+  });
+
+  it('redirige une route devenue interdite vers la première destination autorisée', async () => {
+    useGetCurrentPlatformContextQueryMock.mockReturnValue({
+      data: {
+        isFounder: false,
+        status: 'active',
+        role: { name: 'Support client' },
+        permissions: ['platform:users:read'],
+      },
+      error: undefined,
+      isLoading: false,
+      isFetching: false,
+    });
+
+    const router = renderGuard('/platform/plans');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Utilisateurs autorisés' }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/platform/users');
   });
 });
