@@ -58,7 +58,11 @@ function createPlatformTeamMemberReadColumns({
       cell: (member) => (
         member.isFounder
           ? <PlatformFounderBadge />
-          : <span className="text-muted-foreground">—</span>
+          : (
+            <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+              Membre plateforme
+            </span>
+          )
       ),
     },
     {
