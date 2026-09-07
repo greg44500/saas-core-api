@@ -93,14 +93,14 @@ const SYSTEM_PLATFORM_ROLE_PRESETS = Object.freeze([
         key: PLATFORM_TEAM_ROLE_KEY.PLATFORM_ADMIN,
         name: 'Administrateur de la Plateforme',
         description:
-            'Administration courante étendue sans les opérations réservées au Super administrateur.',
+            'Administration courante étendue sur les opérations.',
         permissions: PLATFORM_ADMIN_PERMISSIONS,
     }),
     Object.freeze({
         key: PLATFORM_TEAM_ROLE_KEY.TECHNICAL_SUPPORT,
         name: 'Support technique',
         description:
-            'Diagnostic technique et assistance sans pouvoir commercial ou terminal.',
+            'Diagnostic technique et assistance.',
         permissions: TECHNICAL_SUPPORT_PERMISSIONS,
     }),
     Object.freeze({
