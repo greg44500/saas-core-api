@@ -1,4 +1,7 @@
+import { Pause, Pencil, Play, UserMinus } from 'lucide-react';
+
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import { Button } from '@/components/ui/button';
 import { PlatformFounderBadge } from '@/features/platform/components/platform-founder-badge';
 import {
   formatPlatformTeamMemberName,
@@ -27,9 +30,11 @@ function DetailRow({ label, value }) {
 }
 
 function PlatformTeamMemberDetailsDrawer({
+  actionCapabilities = {},
   currentUserId,
   member,
   onClose,
+  onRequestAction,
   open,
 }) {
   const isCurrentUser = Boolean(
@@ -42,6 +47,16 @@ function PlatformTeamMemberDetailsDrawer({
   const title = isCurrentUser
     ? `${memberName} (vous)`
     : memberName;
+  const {
+    canChangeRole = false,
+    canReactivate = false,
+    canRevoke = false,
+    canSuspend = false,
+  } = actionCapabilities;
+  const hasAdministrativeActions = canChangeRole
+    || canReactivate
+    || canRevoke
+    || canSuspend;
 
   return (
     <EntityDetailsDrawer
@@ -120,6 +135,63 @@ function PlatformTeamMemberDetailsDrawer({
               />
             </dl>
           </section>
+
+          {hasAdministrativeActions && (
+            <section className="space-y-3 rounded-xl border border-border bg-card p-4">
+              <div>
+                <h3 className="font-semibold">Actions d’administration</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Gérez le rôle et l’accès interne de ce membre selon vos permissions Platform.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {canChangeRole && (
+                  <Button
+                    onClick={() => onRequestAction?.('update-role', member)}
+                    type="button"
+                    variant="outline"
+                  >
+                    <Pencil aria-hidden="true" className="mr-2 size-4" />
+                    Modifier le rôle
+                  </Button>
+                )}
+
+                {canSuspend && (
+                  <Button
+                    onClick={() => onRequestAction?.('suspend', member)}
+                    type="button"
+                    variant="outline"
+                  >
+                    <Pause aria-hidden="true" className="mr-2 size-4" />
+                    Suspendre
+                  </Button>
+                )}
+
+                {canReactivate && (
+                  <Button
+                    onClick={() => onRequestAction?.('reactivate', member)}
+                    type="button"
+                    variant="outline"
+                  >
+                    <Play aria-hidden="true" className="mr-2 size-4" />
+                    Réactiver
+                  </Button>
+                )}
+
+                {canRevoke && (
+                  <Button
+                    onClick={() => onRequestAction?.('revoke', member)}
+                    type="button"
+                    variant="destructive"
+                  >
+                    <UserMinus aria-hidden="true" className="mr-2 size-4" />
+                    Révoquer
+                  </Button>
+                )}
+              </div>
+            </section>
+          )}
         </div>
       )}
     </EntityDetailsDrawer>
