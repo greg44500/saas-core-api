@@ -57,6 +57,13 @@ function getActionDescription(action) {
   return '';
 }
 
+function formatClientUserCount(total) {
+  const normalizedTotal = Number.isInteger(total) && total >= 0 ? total : 0;
+  const suffix = normalizedTotal > 1 ? 's' : '';
+
+  return `${normalizedTotal} utilisateur${suffix} client${suffix}`;
+}
+
 function PlatformUsersPage() {
   const { toast } = useToast();
   const { data: currentUser } = useGetCurrentUserQuery();
@@ -146,15 +153,15 @@ function PlatformUsersPage() {
   }
 
   if (usersQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Chargement des utilisateurs…</p>;
+    return <p className="text-sm text-muted-foreground">Chargement des utilisateurs clients…</p>;
   }
 
   if (usersQuery.error) {
     return (
       <section className="space-y-3">
-        <h1 className="text-2xl font-semibold">Utilisateurs</h1>
+        <h1 className="text-2xl font-semibold">Utilisateurs clients</h1>
         <p className="text-sm text-destructive" role="alert">
-          Impossible de charger les utilisateurs de la plateforme.
+          Impossible de charger les utilisateurs clients.
         </p>
         <Button onClick={usersQuery.refetch} type="button" variant="outline">
           Réessayer
@@ -212,22 +219,22 @@ function PlatformUsersPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Utilisateurs</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Utilisateurs clients</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Consultez les comptes de la plateforme et appliquez les opérations autorisées par vos permissions Platform.
+          Consultez les utilisateurs rattachés à au moins un espace de travail client et gérez le cycle de vie de leur compte selon vos permissions Platform.
         </p>
       </div>
 
       <section className="rounded-xl border border-border bg-card">
         <div className="border-b border-border p-5">
-          <h2 className="text-lg font-semibold">Comptes de la plateforme</h2>
+          <h2 className="text-lg font-semibold">Utilisateurs clients</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {usersQuery.data?.pagination?.total ?? 0} utilisateur(s)
+            {formatClientUserCount(usersQuery.data?.pagination?.total)}
           </p>
         </div>
 
         {users.length === 0 ? (
-          <p className="p-5 text-sm text-muted-foreground">Aucun utilisateur.</p>
+          <p className="p-5 text-sm text-muted-foreground">Aucun utilisateur client.</p>
         ) : (
           <DataTable
             columns={userColumns}
@@ -288,4 +295,7 @@ function PlatformUsersPage() {
   );
 }
 
-export { PlatformUsersPage };
+export {
+  PlatformUsersPage,
+  formatClientUserCount,
+};
