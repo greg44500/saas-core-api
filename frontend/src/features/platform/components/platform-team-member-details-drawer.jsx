@@ -98,14 +98,18 @@ function PlatformTeamMemberDetailsDrawer({
                 label="Membre depuis"
                 value={formatPlatformUserDate(member.joinedAt)}
               />
-              <DetailRow
-                label="Suspendu le"
-                value={formatPlatformUserDate(member.suspendedAt)}
-              />
-              <DetailRow
-                label="Révoqué le"
-                value={formatPlatformUserDate(member.revokedAt)}
-              />
+              {member.suspendedAt && (
+                <DetailRow
+                  label="Suspendu le"
+                  value={formatPlatformUserDate(member.suspendedAt)}
+                />
+              )}
+              {member.revokedAt && (
+                <DetailRow
+                  label="Révoqué le"
+                  value={formatPlatformUserDate(member.revokedAt)}
+                />
+              )}
               <DetailRow
                 label="Créé le"
                 value={formatPlatformUserDate(member.createdAt)}
