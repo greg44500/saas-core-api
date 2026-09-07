@@ -81,15 +81,11 @@ function PlatformUserDetailsDrawer({
             </dl>
           </section>
 
-          <section className="space-y-3 rounded-xl border border-border bg-card p-4">
-            <div>
-              <h3 className="font-semibold">Actions d’administration</h3>
-            </div>
-            {isSelf ? (
-              <p className="text-sm text-muted-foreground">
-                Les actions sensibles sur votre propre compte sont masquées ici pour éviter une perte d’accès accidentelle.
-              </p>
-            ) : (
+          {!isSelf && (
+            <section className="space-y-3 rounded-xl border border-border bg-card p-4">
+              <div>
+                <h3 className="font-semibold">Actions d’administration</h3>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {user.status === 'active' && (
                   <Button
@@ -118,8 +114,8 @@ function PlatformUserDetailsDrawer({
                   Révoquer les sessions
                 </Button>
               </div>
-            )}
-          </section>
+            </section>
+          )}
         </div>
       )}
     </EntityDetailsDrawer>
