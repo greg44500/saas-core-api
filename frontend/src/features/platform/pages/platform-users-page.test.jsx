@@ -28,7 +28,10 @@ vi.mock('@/features/platform/api/platform-users-api', () => ({
   useRevokePlatformUserSessionsMutation: mocks.useRevokePlatformUserSessionsMutation,
 }));
 
-import { PlatformUsersPage } from '@/features/platform/pages/platform-users-page';
+import {
+  PlatformUsersPage,
+  formatClientUserCount,
+} from '@/features/platform/pages/platform-users-page';
 
 const currentUser = {
   id: '507f1f77bcf86cd799439010',
@@ -119,7 +122,13 @@ describe('PlatformUsersPage', () => {
     vi.clearAllMocks();
   });
 
-  it('affiche l’état de chargement', () => {
+  it('formate explicitement le nombre d’utilisateurs clients', () => {
+    expect(formatClientUserCount(0)).toBe('0 utilisateur client');
+    expect(formatClientUserCount(1)).toBe('1 utilisateur client');
+    expect(formatClientUserCount(2)).toBe('2 utilisateurs clients');
+  });
+
+  it('affiche l’état de chargement client', () => {
     mocks.useListPlatformUsersQuery.mockReturnValue({
       data: undefined,
       error: undefined,
@@ -130,14 +139,22 @@ describe('PlatformUsersPage', () => {
 
     renderPage();
 
-    expect(screen.getByText('Chargement des utilisateurs…')).toBeInTheDocument();
+    expect(
+      screen.getByText('Chargement des utilisateurs clients…'),
+    ).toBeInTheDocument();
   });
 
-  it('affiche les utilisateurs avec le DataTable et pagine côté serveur sans rôle User legacy', async () => {
+  it('affiche les utilisateurs clients avec le DataTable et pagine côté serveur sans rôle User legacy', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(screen.getByRole('heading', { name: 'Utilisateurs' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Utilisateurs clients', level: 1 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Utilisateurs clients', level: 2 }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('21 utilisateurs clients')).toBeInTheDocument();
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
     expect(screen.getByText('jane@example.com')).toBeInTheDocument();
     expect(screen.getByText('Actif')).toBeInTheDocument();
@@ -158,7 +175,7 @@ describe('PlatformUsersPage', () => {
     });
   });
 
-  it('affiche un état vide explicite', () => {
+  it('affiche un état vide explicite pour la population client', () => {
     mocks.useListPlatformUsersQuery.mockReturnValue({
       data: {
         users: [],
@@ -172,10 +189,10 @@ describe('PlatformUsersPage', () => {
 
     renderPage();
 
-    expect(screen.getByText('Aucun utilisateur.')).toBeInTheDocument();
+    expect(screen.getByText('Aucun utilisateur client.')).toBeInTheDocument();
   });
 
-  it('propose un retry lorsque la liste échoue', async () => {
+  it('propose un retry lorsque la liste client échoue', async () => {
     const user = userEvent.setup();
     const refetch = vi.fn();
 
@@ -190,14 +207,14 @@ describe('PlatformUsersPage', () => {
     renderPage();
 
     expect(
-      screen.getByText('Impossible de charger les utilisateurs de la plateforme.'),
+      screen.getByText('Impossible de charger les utilisateurs clients.'),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Réessayer' }));
     expect(refetch).toHaveBeenCalledOnce();
   });
 
-  it('sépare le cycle de vie du compte de la gestion des rôles Platform Team', async () => {
+  it('sépare le cycle de vie du compte client de la gestion des rôles Platform Team', async () => {
     const user = userEvent.setup();
     renderPage();
 
