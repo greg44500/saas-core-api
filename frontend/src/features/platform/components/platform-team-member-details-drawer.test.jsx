@@ -1,5 +1,6 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PlatformTeamMemberDetailsDrawer } from '@/features/platform/components/platform-team-member-details-drawer';
 
@@ -62,9 +63,58 @@ describe('PlatformTeamMemberDetailsDrawer', () => {
     expect(within(drawer).queryByText('Révoqué le')).not.toBeInTheDocument();
     expect(within(drawer).getByText('Créé le')).toBeInTheDocument();
     expect(within(drawer).getByText('Mis à jour le')).toBeInTheDocument();
+    expect(
+      within(drawer).queryByText('Actions d’administration'),
+    ).not.toBeInTheDocument();
   });
 
-  it('identifie explicitement le Fondateur et le membre courant', () => {
+  it('centralise les mutations autorisées dans Actions d’administration', async () => {
+    const user = userEvent.setup();
+    const onRequestAction = vi.fn();
+
+    render(
+      <PlatformTeamMemberDetailsDrawer
+        actionCapabilities={{
+          canChangeRole: true,
+          canReactivate: true,
+          canRevoke: true,
+          canSuspend: false,
+        }}
+        currentUserId="founder-user-id"
+        member={member}
+        onClose={() => {}}
+        onRequestAction={onRequestAction}
+        open
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Marie Martin' });
+
+    expect(
+      within(drawer).getByText('Actions d’administration'),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(drawer).getByRole('button', { name: 'Modifier le rôle' }),
+    );
+    expect(onRequestAction).toHaveBeenLastCalledWith('update-role', member);
+
+    await user.click(
+      within(drawer).getByRole('button', { name: 'Réactiver' }),
+    );
+    expect(onRequestAction).toHaveBeenLastCalledWith('reactivate', member);
+
+    await user.click(
+      within(drawer).getByRole('button', { name: 'Révoquer' }),
+    );
+    expect(onRequestAction).toHaveBeenLastCalledWith('revoke', member);
+
+    expect(
+      within(drawer).queryByRole('button', { name: 'Suspendre' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('identifie le Fondateur sans afficher de section d’administration vide', () => {
     const founder = {
       ...member,
       isFounder: true,
@@ -85,6 +135,7 @@ describe('PlatformTeamMemberDetailsDrawer', () => {
 
     render(
       <PlatformTeamMemberDetailsDrawer
+        actionCapabilities={{}}
         currentUserId="founder-user-id"
         member={founder}
         onClose={() => {}}
@@ -99,5 +150,8 @@ describe('PlatformTeamMemberDetailsDrawer', () => {
     expect(within(drawer).getByText('Fondateur')).toBeInTheDocument();
     expect(within(drawer).getByText('Super administrateur')).toBeInTheDocument();
     expect(within(drawer).queryByText('Suspendu le')).not.toBeInTheDocument();
+    expect(
+      within(drawer).queryByText('Actions d’administration'),
+    ).not.toBeInTheDocument();
   });
 });
