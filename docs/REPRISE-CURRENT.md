@@ -22,7 +22,7 @@ En cas de contradiction :
 
 Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présenté comme `v1.0.0` ni comme automatiquement prêt pour la production.
 
-HEAD connu au moment de cette synthèse :
+Dernier commit **fonctionnel/test** de référence avant la mise à jour de cette synthèse :
 
 ```text
 14cad2399712fba579e391c6f26fec5bd923b1cc
@@ -35,6 +35,8 @@ Commit utilisateur immédiatement précédent :
 04ada82ceaa919afca2697a7435b5a52604c4ee4
 fix: shorten platform invitation tooltips
 ```
+
+La ou les mises à jour documentaires de `REPRISE-CURRENT.md` créent nécessairement des commits supplémentaires : à la reprise, ne pas exiger que `HEAD` soit exactement `14cad239...`. Il faut travailler depuis le HEAD courant après `git pull` et vérifier que l'historique contient bien ce commit fonctionnel de référence.
 
 ---
 
@@ -334,7 +336,7 @@ Révoquer
 
 Les `aria-label` accessibles restent détaillés et contextualisés avec le destinataire.
 
-Le test UX a été réaligné au commit `14cad239...` après le commit utilisateur `04ada82c...`.
+Le test UX a été réaligné au commit fonctionnel `14cad239...` après le commit utilisateur `04ada82c...`.
 
 ---
 
@@ -357,7 +359,7 @@ Cette confirmation était antérieure :
 
 ### Important
 
-**Il n'existe pas encore dans cette conversation de confirmation utilisateur d'une baseline globale exécutée sur le HEAD actuel `14cad239...`.**
+**Il n'existe pas encore dans cette conversation de confirmation utilisateur d'une baseline globale exécutée après l'ensemble des derniers commits fonctionnels jusqu'à `14cad239...`.**
 
 D-018 ne doit donc pas être marqué `VALIDÉ` à partir des anciennes exécutions.
 
@@ -742,7 +744,7 @@ Ordre :
 
 ```text
 1. git pull
-2. vérifier HEAD attendu : 14cad2399712fba579e391c6f26fec5bd923b1cc
+2. travailler depuis le HEAD courant et vérifier que l'historique contient 14cad239...
 3. tests ciblés PlatformInvitation backend
 4. tests backend globaux
 5. tests frontend ciblés D-018/UI
