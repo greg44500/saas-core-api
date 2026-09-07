@@ -1,10 +1,15 @@
-import { Navigate, Outlet } from 'react-router';
+import { Navigate, Outlet, useLocation } from 'react-router';
 
 import { PageLoader } from '@/components/shared/page-loader';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
-import { hasActivePlatformAccess } from '@/features/platform/lib/platform-navigation';
+import {
+  canAccessPlatformPath,
+  getFirstPlatformDestination,
+  hasActivePlatformAccess,
+} from '@/features/platform/lib/platform-navigation';
 
 function PlatformGuard() {
+  const location = useLocation();
   const {
     data: platformAccess,
     error,
@@ -20,7 +25,21 @@ function PlatformGuard() {
     return <Navigate to="/workspaces" replace />;
   }
 
+  if (!canAccessPlatformPath(location.pathname, platformAccess)) {
+    return (
+      <Navigate
+        replace
+        to={getFirstPlatformDestination(platformAccess) ?? '/workspaces'}
+      />
+    );
+  }
+
   return <Outlet />;
 }
 
-export { PlatformGuard, hasActivePlatformAccess };
+export {
+  PlatformGuard,
+  canAccessPlatformPath,
+  getFirstPlatformDestination,
+  hasActivePlatformAccess,
+};
