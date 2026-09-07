@@ -212,7 +212,7 @@ describe('PlatformTeamMembersSection', () => {
 
   afterEach(() => cleanup());
 
-  it('utilise la DataTable partagée pour afficher identité, qualité, rôle et statut', () => {
+  it('utilise la DataTable partagée avec Voir comme seule action de ligne', () => {
     render(<PlatformTeamMembersSection />);
 
     expect(mocks.useListPlatformTeamMembersQuery).toHaveBeenCalledWith({
@@ -235,15 +235,28 @@ describe('PlatformTeamMembersSection', () => {
     expect(screen.getByText('Support technique')).toBeInTheDocument();
     expect(screen.getByText('Suspendu')).toBeInTheDocument();
 
+    const table = screen.getByRole('table');
     expect(
-      screen.getByRole('button', { name: 'Voir Gregory BALLAT' }),
+      within(table).getByRole('button', { name: 'Voir Gregory BALLAT' }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /révoquer Gregory BALLAT/i }),
+      within(table).getByRole('button', { name: 'Voir Marie Martin' }),
+    ).toBeInTheDocument();
+    expect(
+      within(table).queryByRole('button', { name: /Modifier le rôle/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(table).queryByRole('button', { name: /Suspendre/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(table).queryByRole('button', { name: /Réactiver/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(table).queryByRole('button', { name: /Révoquer/i }),
     ).not.toBeInTheDocument();
   });
 
-  it('ouvre le drawer de détails depuis l’action Voir, y compris pour un membre non courant', async () => {
+  it('ouvre le drawer de détails et y expose les actions autorisées', async () => {
     const user = userEvent.setup();
     render(<PlatformTeamMembersSection />);
 
@@ -256,46 +269,49 @@ describe('PlatformTeamMembersSection', () => {
     expect(within(drawer).getByText('marie@example.com')).toBeInTheDocument();
     expect(within(drawer).getByText('Support technique')).toBeInTheDocument();
     expect(within(drawer).getByText('Cycle de vie')).toBeInTheDocument();
-  });
-
-  it('expose des tooltips courts et des libellés accessibles contextualisés', () => {
-    const activeSupport = {
-      ...members[1],
-      status: 'active',
-      suspendedAt: null,
-    };
-
-    mocks.useListPlatformTeamMembersQuery.mockReturnValue(
-      listMembersResult([members[0], activeSupport]),
-    );
-
-    render(<PlatformTeamMembersSection />);
-
-    expect(screen.getAllByText('Voir')).toHaveLength(2);
-    expect(screen.getByText('Modifier le rôle')).toBeInTheDocument();
-    expect(screen.getByText('Suspendre')).toBeInTheDocument();
-    expect(screen.getByText('Révoquer')).toBeInTheDocument();
-
     expect(
-      screen.getByRole('button', { name: 'Voir Marie Martin' }),
+      within(drawer).getByText('Actions d’administration'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Modifier le rôle de Marie Martin' }),
+      within(drawer).getByRole('button', { name: 'Modifier le rôle' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Suspendre Marie Martin' }),
+      within(drawer).getByRole('button', { name: 'Réactiver' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Révoquer Marie Martin' }),
+      within(drawer).getByRole('button', { name: 'Révoquer' }),
     ).toBeInTheDocument();
   });
 
-  it('modifie le rôle d’un membre via la confirmation partagée', async () => {
+  it('n’affiche aucune action d’administration dans le drawer du Fondateur', async () => {
     const user = userEvent.setup();
     render(<PlatformTeamMembersSection />);
 
     await user.click(
-      screen.getByRole('button', { name: 'Modifier le rôle de Marie Martin' }),
+      screen.getByRole('button', { name: 'Voir Gregory BALLAT' }),
+    );
+
+    const drawer = screen.getByRole('dialog', {
+      name: 'Gregory BALLAT (vous)',
+    });
+
+    expect(within(drawer).getByText('Fondateur')).toBeInTheDocument();
+    expect(
+      within(drawer).queryByText('Actions d’administration'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('modifie le rôle d’un membre depuis le drawer via la confirmation partagée', async () => {
+    const user = userEvent.setup();
+    render(<PlatformTeamMembersSection />);
+
+    await user.click(
+      screen.getByRole('button', { name: 'Voir Marie Martin' }),
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Marie Martin' });
+    await user.click(
+      within(drawer).getByRole('button', { name: 'Modifier le rôle' }),
     );
 
     expect(
@@ -317,12 +333,17 @@ describe('PlatformTeamMembersSection', () => {
     );
   });
 
-  it('réactive un membre suspendu après confirmation', async () => {
+  it('réactive un membre suspendu depuis le drawer après confirmation', async () => {
     const user = userEvent.setup();
     render(<PlatformTeamMembersSection />);
 
     await user.click(
-      screen.getByRole('button', { name: 'Réactiver Marie Martin' }),
+      screen.getByRole('button', { name: 'Voir Marie Martin' }),
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Marie Martin' });
+    await user.click(
+      within(drawer).getByRole('button', { name: 'Réactiver' }),
     );
     await user.click(screen.getByRole('button', { name: 'Confirmer' }));
 
