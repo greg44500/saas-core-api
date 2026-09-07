@@ -131,9 +131,47 @@ function getFirstPlatformDestination(platformAccess) {
   return sections[0]?.items?.[0]?.to ?? null;
 }
 
+function getPlatformNavigationItemForPath(pathname) {
+  if (typeof pathname !== 'string' || pathname.length === 0) {
+    return null;
+  }
+
+  const normalizedPathname = pathname.length > 1
+    ? pathname.replace(/\/+$/, '')
+    : pathname;
+
+  return platformNavigationItems.find(({ to }) => (
+    normalizedPathname === to
+    || normalizedPathname.startsWith(`${to}/`)
+  )) ?? null;
+}
+
+function canAccessPlatformPath(pathname, platformAccess) {
+  if (!hasActivePlatformAccess(platformAccess)) {
+    return false;
+  }
+
+  const navigationItem = getPlatformNavigationItemForPath(pathname);
+
+  if (!navigationItem) {
+    // Les routes Platform ajoutées par une application dérivée ne sont pas
+    // connues du registre de navigation Core. Leur autorisation fine reste à
+    // la charge du module d'extension, tandis que ce guard impose au minimum
+    // une appartenance Platform active.
+    return true;
+  }
+
+  return canDisplayPlatformNavigationItem(
+    navigationItem,
+    new Set(platformAccess.permissions),
+  );
+}
+
 export {
+  canAccessPlatformPath,
   canDisplayPlatformNavigationItem,
   getFirstPlatformDestination,
+  getPlatformNavigationItemForPath,
   getVisiblePlatformNavigationSections,
   hasActivePlatformAccess,
   platformNavigationItems,
