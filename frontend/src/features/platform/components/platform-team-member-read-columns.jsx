@@ -19,16 +19,16 @@ function createPlatformTeamMemberReadColumns({
   const compactClasses = compact
     ? {
       member: {
-        headerClassName: 'w-[30%]',
-        cellClassName: 'w-[30%] break-words align-middle',
+        headerClassName: 'w-[28%]',
+        cellClassName: 'w-[28%] break-words align-middle',
       },
       distinction: {
-        headerClassName: 'w-[21%]',
-        cellClassName: 'w-[21%] whitespace-nowrap align-middle',
+        headerClassName: 'w-[25%]',
+        cellClassName: 'w-[25%] align-middle',
       },
       role: {
-        headerClassName: 'w-[29%]',
-        cellClassName: 'w-[29%] break-words align-middle',
+        headerClassName: 'w-[27%]',
+        cellClassName: 'w-[27%] break-words align-middle',
       },
       status: {
         headerClassName: 'w-[20%]',
@@ -59,7 +59,7 @@ function createPlatformTeamMemberReadColumns({
         member.isFounder
           ? <PlatformFounderBadge />
           : (
-            <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+            <span className="inline-block rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs font-semibold text-muted-foreground">
               Membre plateforme
             </span>
           )
