@@ -77,6 +77,8 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
       {
         id: 'recipient',
         header: 'Destinataire',
+        headerClassName: 'w-[28%]',
+        cellClassName: 'w-[28%] min-w-0 break-words align-top',
         cell: (invitation) => (
           <div className="min-w-0">
             <p className="font-medium text-foreground">
@@ -94,17 +96,21 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
       {
         id: 'role',
         header: 'Rôle prévu',
+        headerClassName: 'w-[18%]',
+        cellClassName: 'w-[18%] break-words align-top',
         cell: (invitation) => invitation.role?.name ?? '—',
       },
       {
         id: 'delivery',
         header: 'Envoi',
+        headerClassName: 'w-[24%]',
+        cellClassName: 'w-[24%] min-w-0 break-words align-top',
         cell: (invitation) => (
-          <div className="space-y-1.5">
+          <div className="min-w-0 space-y-1.5">
             <PlatformInvitationDeliveryBadge
               status={invitation.deliveryStatus}
             />
-            <p className="max-w-52 text-xs leading-5 text-muted-foreground">
+            <p className="text-xs leading-5 text-muted-foreground">
               {getInvitationDeliveryTimeLabel(invitation, { now })}
             </p>
           </div>
@@ -113,6 +119,8 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
       {
         id: 'expiresAt',
         header: 'Expiration',
+        headerClassName: 'w-[18%]',
+        cellClassName: 'w-[18%] min-w-0 break-words align-top',
         cell: (invitation) => {
           const expiration = getInvitationExpirationPresentation(
             invitation,
@@ -120,7 +128,7 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
           );
 
           return (
-            <div>
+            <div className="min-w-0">
               <p className="font-medium text-foreground">
                 {expiration.relativeLabel}
               </p>
@@ -140,29 +148,33 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
       {
         id: 'actions',
         header: 'Actions',
-        headerClassName: 'w-px whitespace-nowrap text-right',
-        cellClassName: 'w-px whitespace-nowrap text-right',
+        headerClassName: 'w-[12%] whitespace-nowrap text-right',
+        cellClassName: 'w-[12%] whitespace-nowrap text-right align-top',
         cell: (invitation) => (
           <DataTableActions className="justify-end">
             {canResend && (
               <ActionIconButton
+                className="size-8"
                 Icon={RefreshCw}
                 label={`Renvoyer l’invitation à ${formatInvitationRecipient(invitation)}`}
                 onClick={() => {
                   setActionError(null);
                   setPendingAction({ type: 'resend', invitation });
                 }}
+                tooltipLabel="Renvoyer l’invitation"
                 variant="ghost"
               />
             )}
             {canRevoke && (
               <ActionIconButton
+                className="size-8"
                 Icon={Trash2}
                 label={`Révoquer l’invitation de ${formatInvitationRecipient(invitation)}`}
                 onClick={() => {
                   setActionError(null);
                   setPendingAction({ type: 'revoke', invitation });
                 }}
+                tooltipLabel="Révoquer l’invitation"
                 variant="ghost"
               />
             )}
@@ -258,7 +270,10 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
               <DataTable
                 columns={columns}
                 data={invitations}
+                density="compact"
                 getRowKey={(invitation) => invitation.id}
+                scrollable={false}
+                tableClassName="table-fixed"
               />
             </div>
 
