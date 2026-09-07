@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Contrat Équipe de la Plateforme et RBAC Platform
 
-**Statut :** contrat canonique D-018 — implémentation avancée, gouvernance des rôles personnalisés à finaliser  
-**Dernière mise à jour :** 2026-09-06  
+**Statut :** contrat canonique D-018 — VALIDÉ  
+**Dernière mise à jour :** 2026-09-07  
 **Périmètre :** Core clonable — équipe interne de l’éditeur, autorité Fondateur, rôles, permissions et invitations Platform
 
 ---
@@ -419,12 +419,12 @@ platform:team:member_revoke                    SENSIBLE
 
 ```text
 platform:roles:read                            DÉLÉGABLE
-platform:roles:create                          SENSIBLE
-platform:roles:update                          SENSIBLE
-platform:roles:archive                         SENSIBLE
+platform:roles:create                          RÉSERVÉE
+platform:roles:update                          RÉSERVÉE
+platform:roles:archive                         RÉSERVÉE
 ```
 
-Ces permissions restent nécessaires à l’autorisation technique des endpoints, mais la gouvernance métier impose en plus que les mutations `create`, `update` et `archive` soient effectuées uniquement par le Fondateur ou un Super administrateur.
+Les mutations de définition d’un rôle personnalisé sont réservées au Fondateur ou au Super administrateur. Ces trois permissions ne sont donc ni attribuées au preset `platform_admin`, ni assignables à un rôle personnalisé. La policy métier Founder/SuperAdmin est conservée en seconde barrière de défense.
 
 #### Gestion des Super administrateurs
 
@@ -471,13 +471,15 @@ Super administrateur
 Par défaut :
 
 ```text
-✓ toutes les permissions DÉLÉGABLES
-✓ toutes les permissions SENSIBLES Core selon le preset actif
+✓ permissions DÉLÉGABLES et SENSIBLES explicitement prévues par le preset actif
+✓ platform:roles:read
+✗ platform:roles:create
+✗ platform:roles:update
+✗ platform:roles:archive
 ✗ platform:users:close
 ✗ platform:workspaces:close
 ✗ platform:super_admins:manage
 ✗ protections / transfert du Fondateur
-✗ création / modification / archivage de la définition des rôles personnalisés
 ```
 
 Il peut gérer des membres strictement moins puissants que lui lorsque les permissions correspondantes lui sont attribuées, mais ne peut pas modifier un pair de même niveau, un Super administrateur, le Fondateur ni la définition du catalogue de rôles.
@@ -685,6 +687,7 @@ Le Bloc A doit respecter les invariants suivants :
 16. Un `PlatformTeamMember` possède un seul rôle Platform courant ; aucune permission directe par utilisateur n’est ajoutée.
 17. Les composants frontend masqués ne constituent jamais une barrière de sécurité.
 18. Les contrôles de gouvernance sensibles sont imposés côté backend même lorsqu’une permission runtime est présente.
+19. `platform:roles:create`, `platform:roles:update` et `platform:roles:archive` sont des permissions `RÉSERVÉES` et ne peuvent appartenir à aucun rôle personnalisé.
 
 ---
 
@@ -757,15 +760,16 @@ Billing / Payment réel
 profil entreprise / Organization du client
 MFA / SSO avancé sauf nécessité de sécurité démontrée
 moteur de rétention et purge des AuditLogs
+invitation commerciale d’un client / prospect
 ```
 
-La future politique de rétention / purge des données constitue une dette séparée à cadrer avant le versionnement du Core. Elle ne doit pas être ajoutée opportunément à D-018.
+La future politique de rétention / purge des données constitue une dette séparée à cadrer avant le versionnement du Core. L’invitation commerciale d’un client et l’attribution d’une offre privée de découverte constituent également un domaine séparé de `PlatformInvitation` et ne doivent jamais réutiliser son modèle métier.
 
 ---
 
 ## 15. Découpage d’implémentation
 
-État réel au 2026-09-06 :
+État validé au 2026-09-07 :
 
 ```text
 A1 — cadrage fonctionnel Platform Team                         VALIDÉ
@@ -773,27 +777,20 @@ A2 — catalogue RBAC Platform et règles de délégation           VALIDÉ
 A3 — invitations Platform sécurisées                           VALIDÉ
 A4 — gestion des membres et cycle de vie Platform              VALIDÉ
 A4.1 — Current Platform Context                                VALIDÉ
-A4.2 — rôles personnalisés backend                             IMPLÉMENTÉ, DURCISSEMENT À FAIRE
-A5 — frontend Équipe de la Plateforme                          EN COURS DE CONSOLIDATION
-A5.1 à A5.8 — surfaces principales                             IMPLÉMENTÉES / TESTÉES
-Audit Metadata Contract                                        VALIDÉ PAR TESTS + BUILD
-A6 — audit final sécurité + régression + documentation         À FAIRE
+A4.2 — rôles personnalisés backend                             VALIDÉ
+A5 — frontend Équipe de la Plateforme                          VALIDÉ
+A5.1 à A5.8 — surfaces principales                             VALIDÉ
+Audit Metadata Contract                                        VALIDÉ
+A6 — audit final sécurité + régression + documentation         VALIDÉ
 ```
 
-Le reliquat fonctionnel D-018 porte principalement sur :
-
-- le durcissement de gouvernance des rôles personnalisés défini dans les sections 6 et 12 ;
-- l’UX temporelle des invitations à partir des timestamps réellement disponibles ;
-- la suppression des reliquats frontend legacy liés à `User.platformRole` ;
-- la régression et l’audit sécurité final D-018.
-
-Aucune étape ne doit rendre les droits de `support` ou `admin` plus larges que le contrat courant.
+Le Bloc A / D-018 est clôturé. Toute évolution ultérieure de l’administration Platform doit respecter ce contrat sans réintroduire d’autorité par nom de rôle côté frontend ni affaiblir les barrières backend.
 
 ---
 
 ## 16. Critère de clôture du Bloc A complet
 
-Le Bloc A sera considéré validé lorsque :
+Le critère de clôture est atteint au 2026-09-07 :
 
 - le Fondateur est représenté et protégé explicitement ;
 - plusieurs Super administrateurs sont supportés ;
@@ -802,6 +799,7 @@ Le Bloc A sera considéré validé lorsque :
 - les rôles système et personnalisés sont gérés ;
 - les rôles système sont immuables dans l’administration courante ;
 - seuls le Fondateur et les Super administrateurs peuvent gouverner la définition des rôles personnalisés ;
+- les permissions de gouvernance des rôles personnalisés sont `RÉSERVÉES` ;
 - les rôles personnalisés exigent une justification métier et ne peuvent pas cloner exactement un rôle actif ;
 - les permissions Platform sont granulaires et appliquées côté backend ;
 - le registre applicatif de permissions Platform est actif ;
@@ -810,11 +808,13 @@ Le Bloc A sera considéré validé lorsque :
 - les actions critiques sont auditées ;
 - l’interface utilise le vocabulaire français retenu ;
 - les composants partagés sont réutilisés ;
-- les reliquats frontend legacy d’autorité Platform sont retirés ;
-- tests backend ciblés et globaux sont verts ;
-- tests frontend ciblés et globaux sont verts ;
-- build frontend production est vert ;
-- la documentation canonique est alignée sur le comportement réellement implémenté.
+- les reliquats frontend legacy d’autorité Platform ne constituent plus une source d’autorité ;
+- les tests backend ciblés et globaux ont été confirmés verts ;
+- les tests frontend ciblés et globaux ont été confirmés verts ;
+- le build frontend production a été confirmé vert ;
+- les gates manuels de sécurité D-018 ont été validés.
+
+Gates manuels notamment confirmés : protection du Fondateur, autorité réelle via `/api/platform/me`, refus de gouvernance des rôles personnalisés par un `platform_admin`, refus des permissions `RESERVED`, refus du clone exact, refus d’archivage d’un rôle encore assigné à un membre `ACTIVE` ou `SUSPENDED`, sécurité des invitations, et absence d’autorité Platform pour un utilisateur SaaS ordinaire.
 
 ---
 
@@ -852,6 +852,13 @@ Rôles personnalisés
 → archivage seulement sans membre ACTIVE/SUSPENDED
 → aucune suppression physique dans le workflow courant
 
+Gouvernance des rôles personnalisés
+→ platform:roles:read reste DÉLÉGABLE
+→ platform:roles:create / update / archive sont RÉSERVÉES
+→ absentes du preset platform_admin
+→ non assignables aux rôles personnalisés
+→ policy Founder/SuperAdmin conservée en défense en profondeur
+
 PlatformPermission
 → code-owned uniquement
 → catalogue technique data-driven
@@ -859,7 +866,9 @@ PlatformPermission
 → registre extensible par les SaaS dérivés
 
 PlatformInvitation
-→ invitation dédiée, temporaire, révocable, à usage unique
+→ invitation dédiée aux membres internes de la Plateforme
+→ temporaire, révocable, à usage unique
+→ distincte de toute future invitation commerciale client
 → temporalité UI uniquement à partir de données backend réelles
 
 Interface française
