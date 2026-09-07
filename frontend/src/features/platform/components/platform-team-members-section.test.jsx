@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -70,16 +70,23 @@ const members = [
     id: MEMBER_IDS.founder,
     isFounder: true,
     status: 'active',
+    joinedAt: '2026-08-01T08:00:00.000Z',
+    suspendedAt: null,
+    revokedAt: null,
+    createdAt: '2026-08-01T08:00:00.000Z',
+    updatedAt: '2026-09-01T08:00:00.000Z',
     user: {
       id: 'founder-user-id',
       firstName: 'Gregory',
       lastName: 'BALLAT',
       email: 'gregory@example.com',
+      status: 'active',
     },
     role: {
       id: ROLE_IDS.superAdmin,
       key: 'super_admin',
       name: 'Super administrateur',
+      description: 'Autorité administrative maximale de la Plateforme.',
       isSystem: true,
     },
   },
@@ -87,16 +94,23 @@ const members = [
     id: MEMBER_IDS.support,
     isFounder: false,
     status: 'suspended',
+    joinedAt: '2026-08-20T10:00:00.000Z',
+    suspendedAt: '2026-09-01T08:30:00.000Z',
+    revokedAt: null,
+    createdAt: '2026-08-20T10:00:00.000Z',
+    updatedAt: '2026-09-01T08:30:00.000Z',
     user: {
       id: 'support-user-id',
       firstName: 'Marie',
       lastName: 'Martin',
       email: 'marie@example.com',
+      status: 'active',
     },
     role: {
       id: ROLE_IDS.technicalSupport,
       key: 'technical_support',
       name: 'Support technique',
+      description: 'Diagnostic technique et assistance.',
       isSystem: true,
     },
   },
@@ -222,8 +236,58 @@ describe('PlatformTeamMembersSection', () => {
     expect(screen.getByText('Suspendu')).toBeInTheDocument();
 
     expect(
-      screen.queryByRole('button', { name: /retirer Gregory BALLAT/i }),
+      screen.getByRole('button', { name: 'Voir Gregory BALLAT' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /révoquer Gregory BALLAT/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it('ouvre le drawer de détails depuis l’action Voir, y compris pour un membre non courant', async () => {
+    const user = userEvent.setup();
+    render(<PlatformTeamMembersSection />);
+
+    await user.click(
+      screen.getByRole('button', { name: 'Voir Marie Martin' }),
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Marie Martin' });
+
+    expect(within(drawer).getByText('marie@example.com')).toBeInTheDocument();
+    expect(within(drawer).getByText('Support technique')).toBeInTheDocument();
+    expect(within(drawer).getByText('Cycle de vie')).toBeInTheDocument();
+  });
+
+  it('expose des tooltips courts et des libellés accessibles contextualisés', () => {
+    const activeSupport = {
+      ...members[1],
+      status: 'active',
+      suspendedAt: null,
+    };
+
+    mocks.useListPlatformTeamMembersQuery.mockReturnValue(
+      listMembersResult([members[0], activeSupport]),
+    );
+
+    render(<PlatformTeamMembersSection />);
+
+    expect(screen.getByText('Voir')).toBeInTheDocument();
+    expect(screen.getByText('Modifier le rôle')).toBeInTheDocument();
+    expect(screen.getByText('Suspendre')).toBeInTheDocument();
+    expect(screen.getByText('Révoquer')).toBeInTheDocument();
+
+    expect(
+      screen.getByRole('button', { name: 'Voir Marie Martin' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Modifier le rôle de Marie Martin' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Suspendre Marie Martin' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Révoquer Marie Martin' }),
+    ).toBeInTheDocument();
   });
 
   it('modifie le rôle d’un membre via la confirmation partagée', async () => {
