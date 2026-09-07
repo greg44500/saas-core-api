@@ -2,9 +2,9 @@
 
 > **Statut : document temporaire de développement**
 >
-> Ce fichier est l'unique synthèse de reprise active du projet. Il décrit l'état réel du travail pour reprendre dans une nouvelle conversation. Il n'est pas normatif : en cas de contradiction, le code, les tests validés et les contrats canoniques priment.
+> Ce fichier est l'unique synthèse de reprise active du projet. Il décrit l'état réel du travail afin de reprendre dans une nouvelle conversation. Il n'est pas normatif : en cas de contradiction, le code, les tests réellement validés et les contrats canoniques priment.
 >
-> **Dernière mise à jour : 2026-09-06**
+> **Dernière mise à jour : 2026-09-07**
 
 ---
 
@@ -13,7 +13,7 @@
 En cas de contradiction :
 
 1. code actuel et contraintes de base de données ;
-2. tests automatisés réellement validés ;
+2. tests automatisés réellement exécutés et validés ;
 3. contrats canoniques ;
 4. architecture, sécurité et guidelines canoniques ;
 5. `docs/DEBT.md` ;
@@ -22,20 +22,27 @@ En cas de contradiction :
 
 Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présenté comme `v1.0.0` ni comme automatiquement prêt pour la production.
 
-Dernier HEAD connu au moment de cette synthèse :
+HEAD connu au moment de cette synthèse :
 
 ```text
-44e3b001fa2aeebd73d61d6d9149951eb4c93133
-fix(frontend): restore administration actions title
+14cad2399712fba579e391c6f26fec5bd923b1cc
+test: align platform invitation tooltip labels
+```
+
+Commit utilisateur immédiatement précédent :
+
+```text
+04ada82ceaa919afca2697a7435b5a52604c4ee4
+fix: shorten platform invitation tooltips
 ```
 
 ---
 
 ## 2. Objectif final du Core
 
-Le dépôt `saas-core-api` est un **socle SaaS générique clonable**.
+`saas-core-api` est un **socle SaaS générique clonable et maintenable**.
 
-Le résultat recherché n'est pas d'y intégrer les futurs modules métier, mais de figer un Core stable contenant les capacités communes :
+Le Core doit fournir les capacités transversales :
 
 ```text
 authentification / sessions
@@ -49,65 +56,49 @@ Audit logs
 administration Platform
 lifecycle Account / Workspace
 points d'extension métier
-stratégie de versionnement / upgrade
+versionnement / migrations / upgrade
 E2E Core
 ```
 
-Une fois `v1.0.0` réellement validée :
+Les modules métier réels ne doivent pas être développés directement dans le dépôt Core.
 
-```text
-saas-core-api v1.0.0
-→ clone / dérivation d'un nouveau dépôt SaaS
-→ configuration environnement
-→ ajout des modules métier via les points d'extension du Core
-→ conservation d'une provenance Core permettant les futurs upgrades
-```
-
-Les modules métier ne doivent donc pas être développés directement dans le Core avant cette gate.
+Le produit dérivé doit conserver une filiation Git avec le Core afin de pouvoir recevoir ses futures corrections et versions.
 
 ---
 
-## 3. Roadmap réelle avant `v1.0.0`
+## 3. Roadmap réelle jusqu'au clonage métier
 
-État actuel :
-
-```text
-CORE-FIN-1  reprise et clôture F10.6                         VALIDÉ
-CORE-FIN-2  audit fonctionnel complet                       VALIDÉ
-CORE-FIN-3  corrections révélées par l'audit                VALIDÉ
-CORE-FIN-4  D-001 fermeture Account / Workspace             VALIDÉ
-CORE-FIN-5  D-014 points d'extension métier                 VALIDÉ
-D-018       Équipe de la Plateforme / RBAC / invitations    FINALISATION
-D-019       moteur sécurisé rétention / purge Core          À ENREGISTRER + FAIRE
-D-015       versionnement / migrations / release            PLANIFIÉ
-D-016       Playwright / E2E Core                            PLANIFIÉ
-Audit final architecture / sécurité / qualité               À VENIR
-D-017       dérivation pilote + upgrade Core                PLANIFIÉ
-Release v1.0.0                                               À VENIR
-Clone SaaS réel + modules métier                             APRÈS v1.0.0
-```
-
-Ordre à respecter :
+Ordre actuellement figé :
 
 ```text
-D-018
-→ D-019
-→ D-015
-→ D-016
+D-018  Équipe de la Plateforme / RBAC / invitations
+→ D-019 moteur sécurisé de rétention / purge Core
+→ D-015 versionnement / provenance / migrations / release
+→ D-016 Playwright / E2E Core
 → audit final architecture / sécurité / qualité
-→ D-017 dérivation pilote + upgrade réel
+→ D-017 dérivation pilote + upgrade réel du Core
 → release v1.0.0
-→ clone du vrai SaaS dérivé
-→ modules métier
+→ clone du véritable SaaS métier
+→ cadrage puis développement des modules métier
 ```
 
-`D-017` implique volontairement un **petit clone pilote technique avant la release finale** afin de prouver que la stratégie de dérivation et d'upgrade fonctionne. Ce pilote n'est pas le futur produit métier complet.
+Point important :
+
+```text
+D-017
+= petit clone pilote technique destiné à éprouver dérivation + upgrade
+
+clone métier réel
+= après validation du Core et release v1.0.0
+```
+
+Ne pas confondre ces deux étapes.
 
 ---
 
-## 4. D-014 — Points d'extension métier — VALIDÉ
+## 4. Points d'extension métier déjà validés — D-014
 
-D-014 est clôturée.
+D-014 est `VALIDÉ`.
 
 Points de composition disponibles :
 
@@ -115,7 +106,7 @@ Points de composition disponibles :
 capabilities / relations feature → métriques
 → backend/config/applicationCapability.registry.js
 
-permissions métier / extensions des rôles système Workspace
+permissions métier / extensions rôles système Workspace
 → backend/config/applicationRolePermission.registry.js
 
 routes backend métier
@@ -128,28 +119,28 @@ navigation Workspace métier
 → frontend/src/app/workspace-navigation.js
 ```
 
-La composition reste explicite, auditable et testable. Aucun système d'autodécouverte implicite ou plugin filesystem n'a été ajouté.
+Les futurs modules métier doivent utiliser ces points d'extension au lieu de réécrire les longues listes centrales du Core.
 
-Invariant pour les futurs SaaS dérivés : les modules métier utilisent ces points d'extension au lieu de réécrire les longues listes centrales du Core.
+Aucune autodécouverte filesystem ou architecture plugin implicite n'a été retenue.
 
 ---
 
-## 5. D-018 — Équipe de la Plateforme — architecture figée
+## 5. Architecture D-018 figée
 
 Modèle actif :
 
 ```text
 User
-→ identité / authentification uniquement
+→ identité / authentification
 
 PlatformTeamMember
-→ appartenance à l'équipe interne de la Plateforme
+→ appartenance à l'équipe interne
 
 PlatformRole
 → rôle système ou personnalisé
 
 PlatformPermission
-→ autorité administrative réelle
+→ autorité administrative effective
 
 PlatformInvitation
 → invitation interne sécurisée
@@ -158,151 +149,119 @@ Fondateur
 → qualité historique protégée, distincte du rôle RBAC
 ```
 
-Le RBAC Platform reste strictement distinct du RBAC Workspace.
-
-### Invariants principaux
+Invariants :
 
 ```text
 exactement un Fondateur actif
 Fondateur → toujours Super administrateur
 Super administrateur → pas nécessairement Fondateur
 1 PlatformTeamMember → 1 PlatformRole
-permissions → dérivées du rôle, jamais directement du User
+permissions → dérivées du rôle et de l'état DB courant
+RBAC Platform ≠ RBAC Workspace
 ```
 
 Le Fondateur ne peut pas être rétrogradé, suspendu, révoqué ou fermé via l'administration ordinaire.
 
-Plusieurs Super administrateurs sont possibles, mais le système protège l'invariant d'au moins un Super administrateur actif.
+Plusieurs Super administrateurs sont possibles, mais le dernier Super administrateur actif est protégé.
 
-Les permissions sensibles sont résolues depuis l'état DB courant :
+L'autorisation Platform sensible est résolue depuis MongoDB à chaque requête utile via `resolvePlatformAuthorization()` ; une suspension ou révocation prend donc effet sans attendre l'expiration du JWT.
 
-```text
-requête sensible
-→ resolvePlatformAuthorization()
-→ PlatformTeamMember courant
-→ PlatformRole courant
-→ permissions effectives courantes
-```
-
-Une suspension ou révocation Platform prend donc effet sans attendre l'expiration du JWT.
-
-Le fallback legacy `User.platformRole === super_admin` ne reste qu'une compatibilité backend transitoire pour un utilisateur n'ayant jamais eu de membership Platform. Il ne doit plus servir d'autorité frontend.
+`User.platformRole` reste uniquement un fallback backend de compatibilité historique très limité. Il ne doit plus être une autorité frontend.
 
 ---
 
-## 6. D-018 backend — état actuel
+## 6. D-018 — backend implémenté
 
-### Permissions et rôles système
+### Platform Team / rôles / permissions
 
-Implémentés :
+Implémenté :
 
+- `PlatformTeamMember` ;
+- `PlatformRole` ;
+- rôles système immuables ;
+- rôles personnalisés ;
 - registre de permissions Platform code-owned ;
-- niveaux `DELEGABLE`, `SENSITIVE`, `RESERVED` ;
-- presets système immuables ;
-- extension applicative des permissions Platform ;
-- Super administrateur recevant toutes les permissions actives du registre ;
-- middleware d'autorisation par permission runtime.
+- niveaux de sensibilité ;
+- anti-escalade ;
+- gouvernance Fondateur / Super administrateur ;
+- interdiction des permissions RESERVED dans les rôles personnalisés ;
+- interdiction du clone exact d'un rôle actif ;
+- archivage d'un rôle custom interdit lorsqu'il est encore assigné ;
+- protection du Fondateur ;
+- protection du dernier Super administrateur actif ;
+- audit transactionnel des opérations critiques.
 
-Presets système :
+### Platform Invitations
 
-```text
-Super administrateur
-Administrateur de la Plateforme
-Support technique
-Support commercial
-Support client
-```
+Implémenté :
 
-Ils sont non supprimables, non archivables et non modifiables depuis l'administration normale.
-
-### Invitations Platform
-
-Implémenté et testé :
-
-- modèle séparé des invitations Workspace ;
-- token aléatoire et stockage SHA-256 uniquement ;
+- modèle distinct des invitations Workspace ;
+- token aléatoire ;
+- stockage SHA-256 uniquement ;
 - expiration ;
-- resend avec rotation ;
+- resend avec rotation du secret ;
 - revoke ;
-- acceptance ;
-- contrôle exact de l'email ;
-- aucune session implicite pour un nouvel utilisateur ;
-- `emailVerifiedAt` à l'acceptation ;
-- mutations transactionnelles ;
-- réautorisation dans la transaction ;
+- accept-existing ;
+- accept-new ;
+- contrôle de l'email ;
+- aucune session implicite lors d'une acceptation new-user ;
+- revalidation de l'autorité de l'invitant au moment de l'acceptation ;
 - audit ;
 - rate limiting ;
-- aucun token brut dans l'audit.
+- aucun token brut exposé dans les réponses administratives ou l'audit.
 
-### Cycle de vie des membres
+### Correctif transactionnel découvert pendant le gate manuel
 
-Endpoints :
+Un test manuel d'envoi d'invitation avec MongoDB Atlas a révélé l'erreur runtime :
 
 ```text
-GET    /api/platform/team/members
-PATCH  /api/platform/team/members/:memberId/role
-PATCH  /api/platform/team/members/:memberId/suspend
-PATCH  /api/platform/team/members/:memberId/reactivate
-DELETE /api/platform/team/members/:memberId
+Only servers in a sharded cluster can start a new transaction at the active transaction number
 ```
 
-Protections importantes : protection Fondateur, interdiction d'auto-altération sensible, stricte sous-puissance pour les acteurs ordinaires, protection du dernier Super administrateur actif, audit des mutations.
+La cause identifiée dans le code D-018 était l'utilisation de `Promise.all()` avec plusieurs requêtes partageant **la même session MongoDB transactionnelle**.
 
-### Current Platform Context
+Le correctif a sérialisé les lectures dans :
+
+```text
+création d'invitation
+renvoi d'invitation
+acceptation d'invitation
+```
+
+Les transactions ont été conservées ; aucune sécurité transactionnelle n'a été supprimée.
+
+Tests de régression ajoutés pour protéger l'ordre séquentiel des opérations.
+
+Services Platform adjacents audités : les `Promise.all()` restant autorisés concernent des lectures hors transaction.
+
+---
+
+## 7. D-018 — frontend implémenté
+
+### Autorité et navigation
+
+Source runtime :
 
 ```text
 GET /api/platform/me
+→ platformAccess
 ```
 
-Cet endpoint est maintenant la source frontend du contexte Platform courant. Il utilise l'autorisation runtime backend et peut retourner `platformAccess: null` pour un utilisateur SaaS ordinaire.
+Le frontend ne doit pas décider l'accès Platform à partir de `User.platformRole`.
 
-### Rôles personnalisés — gouvernance durcie
-
-Décisions désormais implémentées :
+La policy partagée :
 
 ```text
-Fondateur OU Super administrateur
-→ créer / modifier / archiver un rôle personnalisé
-
-Administrateur de la Plateforme et rôles inférieurs
-→ jamais gouverner le catalogue de rôles
+frontend/src/features/platform/lib/platform-navigation.js
 ```
 
-Un rôle personnalisé :
+centralise les destinations visibles et la première route réellement autorisée.
 
-- reçoit une clé technique opaque générée uniquement par le backend ;
-- exige une description / justification métier non vide ;
-- utilise uniquement des permissions actives du registre ;
-- ne reçoit jamais de permission RESERVED ;
-- reste soumis à l'anti-escalade ;
-- ne peut pas dupliquer exactement le jeu de permissions d'un autre rôle actif ;
-- peut être archivé uniquement s'il n'est utilisé par aucun membre ACTIVE/SUSPENDED ;
-- n'est jamais supprimé physiquement par le workflow normal.
-
-Les tests backend ciblés `platformRole` ont été confirmés verts pendant le lot.
-
-### Route legacy supprimée
-
-La mutation historique suivante n'existe plus et ne doit jamais être restaurée :
-
-```text
-PATCH /api/platform/users/:id/role
-```
-
----
-
-## 7. D-018 frontend — état actuel
+Un rôle sans `platform:overview:read` n'est pas forcé vers `/platform/overview`.
 
 ### Équipe de la Plateforme
 
-Surface unique :
-
-```text
-Administration de la Plateforme
-→ Équipe de la Plateforme
-```
-
-Routes :
+Routes UI :
 
 ```text
 /platform/team/members
@@ -310,412 +269,442 @@ Routes :
 /platform/team/roles
 ```
 
-Les onglets et actions sont filtrés par permissions runtime. Le backend reste l'autorité finale.
+Composants réutilisables obligatoires conservés : `DataTable`, `DataPagination`, `DataTableActions`, drawers partagés, confirmations, boutons d'action, formulaires et badges.
 
-Les composants partagés restent obligatoires (`DataTable`, drawers partagés, confirmations, champs de formulaire, badges, actions).
+### Ajustements UX du 2026-09-07
 
-### Membres
+#### Colonne « Qualité »
 
-Disponible : consultation, pagination serveur, détail, modification du rôle, suspension, réactivation et révocation selon autorisation.
-
-### Invitations
-
-Disponible : liste, création, rôle prévu, resend, revoke, acceptance destinataire et informations temporelles dérivées uniquement des vrais timestamps backend.
-
-Aucun historique de resend n'est inventé lorsque l'API ne l'expose pas.
-
-### Rôles personnalisés
-
-Le frontend respecte la gouvernance Fondateur / Super administrateur en plus des permissions techniques. Les rôles système restent en lecture seule.
-
-### Navigation et autorité frontend — nettoyage legacy terminé
-
-Décision centrale :
+Le rendu est dérivé des vraies données :
 
 ```text
-User.platformRole
-≠ autorité frontend
+member.isFounder === true
+→ Fondateur
 
-/platform/me → platformAccess
-= source runtime de navigation et d'accès Platform
+member.isFounder === false
+→ Membre plateforme
 ```
 
-Le frontend possède maintenant une policy partagée :
+Il n'existe pas de liste métier statique de qualités.
+
+Le rendu est centralisé dans :
 
 ```text
-frontend/src/features/platform/lib/platform-navigation.js
+frontend/src/features/platform/components/platform-team-member-read-columns.jsx
 ```
 
-Elle centralise :
+Les largeurs compactes ont été rééquilibrées afin de préserver le drawer de détail de l'équipe.
 
-- les sections de navigation Platform ;
-- leur permission requise ;
-- le calcul des sections visibles ;
-- la détection d'un accès Platform actif ;
-- la première destination Platform réellement autorisée.
+#### Drawer User courant
 
-Cette policy est utilisée par le Sidebar, les guards, l'acceptation d'invitation, le login, l'AccountLayout et l'entrée Workspace.
-
-Conséquence importante : un rôle Platform qui n'a pas `overview:read` n'est plus artificiellement envoyé vers `/platform/overview`. Il est dirigé vers sa première route réellement autorisée.
-
-### Reliquats legacy supprimés
-
-Supprimés :
+Dans :
 
 ```text
-updatePlatformUserRole
-PATCH /platform/users/:id/role côté frontend
-contrôle de rôle Platform dans le drawer User
-ancienne constante frontend PLATFORM_ROLE
-isPlatformSuperAdmin comme décision d'autorité frontend
-fixtures de routing fondées sur User.platformRole
+frontend/src/features/platform/components/platform-user-details-drawer.jsx
 ```
 
-Le dernier build a révélé un consommateur transversal oublié dans `WorkspaceEntryPage`. Il a été corrigé pour utiliser `platformAccess` et `getFirstPlatformDestination()` ; son test a été aligné.
+lorsque `user.id === currentUserId`, la section complète `Actions d’administration` n'est plus rendue.
 
-### Drawer utilisateur SaaS
+Le frontend ne se contente donc plus de masquer les boutons en laissant un bloc et un texte inutiles.
 
-Le drawer Platform d'un utilisateur SaaS gère le **compte User** : statut et sessions. Il ne mélange plus cette responsabilité avec l'appartenance à l'Équipe de la Plateforme.
+Pour un autre User administrable, la section reste disponible selon le workflow existant.
 
-Le texte explicatif technique devenu inutile a été retiré. Le titre `Actions d’administration` a été restauré dans le dernier commit.
+#### Tableau des invitations
+
+Le tableau réutilise toujours `DataTable` mais utilise les options existantes de composition :
+
+```text
+density="compact"
+scrollable={false}
+tableClassName="table-fixed"
+```
+
+Les colonnes sont contraintes et les contenus longs peuvent se replier proprement afin d'éviter le scroll horizontal en vue desktop normale.
+
+Aucune variante de DataTable parallèle n'a été créée.
+
+#### Tooltips invitations
+
+Choix final utilisateur :
+
+```text
+Renvoyer
+Révoquer
+```
+
+Les `aria-label` accessibles restent détaillés et contextualisés avec le destinataire.
+
+Le test UX a été réaligné au commit `14cad239...` après le commit utilisateur `04ada82c...`.
 
 ---
 
-## 8. Audit Metadata Contract — validé pendant D-018
+## 8. État réel de validation D-018
 
-Le vocabulaire Audit visible n'est plus maintenu dans des catalogues statiques parallèles côté React.
+### Baseline confirmée avant les derniers correctifs
 
-Principe :
-
-```text
-BACKEND = source canonique actions / ressources / statuts / labels
-FRONTEND = présentation et filtres à partir des metadata API
-```
-
-Endpoints :
+L'utilisateur a confirmé auparavant :
 
 ```text
-GET /api/platform/audit-logs/metadata
-GET /api/workspaces/:workspaceId/audit-logs/metadata
+tests globaux backend/frontend verts
+build frontend OK
 ```
 
-Le fallback frontend est neutre (`Action inconnue`, `Ressource inconnue`, `Statut inconnu`) et n'expose pas une pseudo-traduction construite depuis une valeur technique.
+Cette confirmation était antérieure :
 
-Les tests ciblés et le build associés à cette correction ont été confirmés verts pendant le lot.
+- au correctif transactionnel PlatformInvitation ;
+- aux derniers ajustements UI du 2026-09-07 ;
+- au dernier alignement du test des tooltips.
 
----
+### Important
 
-## 9. État de validation D-018 au moment de la reprise
+**Il n'existe pas encore dans cette conversation de confirmation utilisateur d'une baseline globale exécutée sur le HEAD actuel `14cad239...`.**
 
-Plusieurs barrières ciblées ont été confirmées vertes au cours du lot :
+D-018 ne doit donc pas être marqué `VALIDÉ` à partir des anciennes exécutions.
 
-```text
-backend platformRole
-frontend gouvernance rôles personnalisés
-frontend invitations temporelles
-frontend suppression mutation legacy User.platformRole
-autorité/navigation frontend basée sur platformAccess
-Audit Metadata
-```
-
-Le dernier défaut statique trouvé par le build (`WorkspaceEntryPage` utilisant encore `isPlatformSuperAdmin`) a été corrigé et testé.
-
-L'utilisateur indique le frontend OK après le dernier push.
-
-**Cependant D-018 ne doit pas être marqué VALIDÉ uniquement sur cette phrase.** Il reste une barrière de clôture explicite afin d'avoir une baseline reproductible finale après l'ensemble des modifications.
-
-### Barrière finale D-018 à effectuer / consigner
+### Tests à reprendre au prochain démarrage
 
 Depuis la racine :
+
+```bash
+npx vitest run backend/tests/platformInvitation
+```
+
+Puis :
 
 ```bash
 npx vitest run
 ```
 
-Puis depuis `frontend/` :
+Depuis `frontend/` :
+
+```bash
+npx vitest run src/features/platform/components/platform-team-member-read-columns.test.jsx
+npx vitest run src/features/platform/components/platform-user-details-drawer.test.jsx
+npx vitest run src/features/platform/components/platform-team-invitations-section.test.jsx
+npx vitest run src/features/platform/components/platform-team-invitations-ux.test.jsx
+npx vitest run src/features/platform/components/platform-team-members-section.test.jsx
+```
+
+Puis :
 
 ```bash
 npx vitest run
 npm run build
 ```
 
-Contrôles statiques utiles à rejouer :
+Contrôles legacy utiles :
 
 ```bash
 git grep -n "platformRole" -- frontend/src
 git grep -n "isPlatformSuperAdmin" -- frontend/src
 ```
 
-Résultat attendu : aucune utilisation comme autorité frontend.
-
-### Checklist manuelle D-018 minimale
-
-Vérifier au minimum :
-
-```text
-Utilisateur SaaS ordinaire
-→ /platform/me ne lui donne pas d'accès Platform
-→ entrée Workspace normale
-
-Membre Platform actif
-→ redirection vers première destination autorisée
-
-Membre Platform suspendu/révoqué
-→ perte immédiate des permissions Platform
-
-Fondateur
-→ protections non contournables
-
-Super administrateur
-→ gouvernance rôles personnalisés autorisée
-
-Administrateur de la Plateforme
-→ ne peut pas gouverner le catalogue de rôles personnalisés
-
-Invitation
-→ create / resend / revoke / accept
-→ aucune donnée temporelle inventée
-
-Utilisateur Platform Users drawer
-→ lifecycle User distinct de PlatformTeamMember
-```
-
-Après ces contrôles :
-
-- mettre `docs/DEBT.md` à jour sur l'état réel de D-018 ;
-- aligner le statut de `docs/contracts/PLATFORM-TEAM.md` sur l'implémentation réellement finalisée ;
-- passer D-018 à `VALIDÉ` uniquement si code + tests + manuel + docs concordent.
+Un résultat textuel n'est pas automatiquement une erreur : vérifier qu'aucune occurrence ne sert encore de **source d'autorité frontend**.
 
 ---
 
-## 10. D-019 — Moteur sécurisé de rétention et purge des données Core
+## 9. Gate manuel D-018 restant
 
-### Décision déjà validée
+Un utilisateur SaaS ordinaire a déjà été observé comme incapable de rester sur une route frontend Platform et renvoyé vers l'application normale.
 
-Avant D-015, le registre de dette doit recevoir une nouvelle dette Core :
+Attention :
+
+```text
+/platform/me
+= n'est pas une route React
+
+/api/platform/me
+= endpoint backend à vérifier
+```
+
+Le test manuel d'invitation avait échoué avant le correctif transactionnel. Il doit être rejoué après récupération du HEAD courant et redémarrage du backend.
+
+Checklist minimale encore à valider / consigner :
+
+```text
+Utilisateur SaaS ordinaire
+→ GET /api/platform/me sans accès Platform effectif
+→ navigation Workspace normale
+
+Membre Platform actif
+→ uniquement les sections autorisées
+
+Membre suspendu puis connecté
+→ perte des permissions Platform à la requête suivante
+→ User global reste actif
+
+Membre révoqué
+→ perte des permissions Platform
+→ pas de fallback legacy réactivant les droits
+
+Fondateur
+→ tentative API directe suspend/revoke/change-role refusée
+
+Administrateur de la Plateforme non SuperAdmin
+→ gouvernance rôles personnalisés refusée côté backend
+
+Rôle personnalisé
+→ RESERVED refusée
+→ clone exact refusé
+→ archivage pendant affectation refusé
+
+Invitation
+→ create / resend / revoke / accept
+→ ancien token de resend inutilisable
+→ invitation révoquée inutilisable
+→ aucun token brut dans listing/réponse admin
+```
+
+Les scénarios sensibles doivent inclure des tentatives HTTP directes ; masquer un bouton n'est jamais une barrière de sécurité.
+
+---
+
+## 10. Documentation D-018 encore à aligner après le gate
+
+`docs/DEBT.md` et `docs/contracts/PLATFORM-TEAM.md` ne reflètent pas encore totalement l'état d'implémentation actuel.
+
+Exemples connus :
+
+```text
+DEBT.md
+→ D-018 encore EN COURS
+→ ancien découpage A3/A4/A5/A6 encore marqué À FAIRE
+
+PLATFORM-TEAM.md
+→ statut encore « implémentation avancée »
+→ découpage final encore partiellement provisoire
+```
+
+Ne pas les passer artificiellement à `VALIDÉ` avant :
+
+```text
+HEAD courant testé
++
+gate manuel sécurité conforme
++
+documentation alignée
+```
+
+Une fois ces trois conditions réunies :
+
+1. aligner `docs/DEBT.md` ;
+2. aligner `docs/contracts/PLATFORM-TEAM.md` ;
+3. passer D-018 à `VALIDÉ` ;
+4. conserver `REPRISE-CURRENT.md` comme synthèse temporaire actualisée.
+
+---
+
+## 11. D-019 — prochaine dette Core avant D-015
+
+Après clôture D-018, enregistrer formellement dans `docs/DEBT.md` :
 
 ```text
 D-019 — Moteur sécurisé de rétention et purge des données Core
 ```
 
-Cette dette **n'est pas encore enregistrée dans `docs/DEBT.md` au moment de cette synthèse**. La prochaine conversation doit l'ajouter après la clôture D-018 et avant de commencer D-015.
-
-### Pourquoi D-019 est distincte de D-006
-
-`D-006` reste la dette de politique juridique / produit : quelles durées de conservation s'appliquent réellement à une application dérivée selon ses données, obligations, contrats et fournisseurs.
-
-`D-019` concerne le mécanisme générique sécurisé permettant au Core d'appliquer une politique déjà configurée.
-
-Invariant :
+D-019 n'est pas D-006.
 
 ```text
 D-006
-→ décide quoi conserver, combien de temps, pourquoi
+→ politique juridique / produit : quoi conserver, combien de temps et pourquoi
 
 D-019
-→ applique techniquement et de façon sécurisée une politique configurée
+→ moteur générique sécurisé appliquant une policy déjà configurée
 ```
 
-Il ne faut donc pas coder une durée juridique universelle dans le Core.
+Cible de cadrage avant code :
 
-### Cible D-019 retenue
-
-Le moteur devra être conçu avant implémentation avec priorité sécurité :
-
-- policy de rétention validée et explicite ;
-- éligibilité calculée côté backend ;
-- aucun cutoff arbitraire fourni librement par un utilisateur ;
-- aucune route générique permettant un `deleteMany` arbitraire ;
+- policy de rétention explicite ;
+- éligibilité calculée backend ;
+- aucun cutoff arbitraire fourni par le client ;
+- aucune route de suppression générique ;
 - autorité Platform fortement restreinte ;
 - preview avant purge ;
 - confirmation explicite ;
 - traitement par lots ;
-- audit durable indépendant du contenu purgé, par exemple `AuditPurgeRun` ;
+- audit durable indépendant du contenu purgé ;
 - protection contre deux exécutions concurrentes ;
-- scheduler compatible avec plusieurs instances ;
-- stratégie `nextRunAt` + lock distribué MongoDB à privilégier avant d'introduire Redis uniquement pour ce besoin ;
-- vérification des indexes existants avant ajout ;
+- scheduler compatible multi-instance ;
+- lock distribué MongoDB privilégié avant Redis si suffisant ;
+- indexes vérifiés ;
 - tests sécurité / concurrence / idempotence.
 
-Périmètre V1 à privilégier : Platform-wide, simple, auditable et sans filtres libres par entité ou Workspace.
-
-Les routes exactes ne sont pas encore contractuelles. Le cadrage pourra partir d'une API de type :
-
-```text
-GET   /platform/audit-retention
-PATCH /platform/audit-retention
-POST  /platform/audit-retention/preview
-POST  /platform/audit-retention/purge
-GET   /platform/audit-retention/runs
-```
-
-mais elles doivent être figées dans le contrat avant codage.
-
-D-019 est considérée comme un **blocker Core 1.0** avant D-015.
+D-019 doit être cadrée et documentée **avant d'écrire son code**.
 
 ---
 
-## 11. D-015 — Versionnement, provenance, migrations et release
+## 12. D-015, D-016, audit final et D-017
 
-D-015 ne doit commencer qu'après D-018 et D-019.
+### D-015
 
-À finaliser :
+Versionnement / provenance / migrations / release :
 
-- SemVer appliqué réellement ;
-- provenance Core machine-readable dans les dérivés ;
-- tag Git ;
-- release notes / changelog ;
-- discipline de migrations ;
-- ordre pre/post-deploy ;
-- idempotence explicitée ;
-- contrôles post-migration ;
-- rollback lorsque nécessaire ;
-- variables d'environnement ajoutées/modifiées documentées ;
-- dépendances système documentées ;
-- gate de tests reproductible ;
-- décision sur runner individuel vs orchestrateur/registre de migrations ;
-- procédure d'upgrade Core documentée.
+- SemVer ;
+- tags ;
+- release notes ;
+- changelog si retenu ;
+- migrations et ordre pre/post-deploy ;
+- idempotence ;
+- rollback ;
+- variables d'environnement ;
+- dépendances système ;
+- provenance Core machine-readable dans les produits dérivés ;
+- procédure d'upgrade.
 
-Le but n'est pas uniquement d'écrire `1.0.0` dans `package.json`, mais de pouvoir distribuer et mettre à niveau le Core proprement.
+### D-016
 
----
-
-## 12. D-016 — Playwright / E2E Core
-
-Playwright reste un blocker Core 1.0.
-
-La suite E2E doit couvrir les parcours transversaux critiques plutôt que dupliquer les tests unitaires :
+Playwright / E2E Core :
 
 ```text
-auth / session / refresh / logout
-fermeture Account
-création / accès Workspace
-archivage Workspace
+auth/session
+Account lifecycle
+Workspace lifecycle
 isolation tenant
 RBAC Workspace
 RBAC Platform
-subscription / entitlement / quotas
+subscriptions / entitlements / quotas
 administration Platform critique
-File lorsque activé
-principaux états interdits
+File si capability active
+états interdits
 ```
 
-La commande E2E devra intégrer la gate de release D-015.
+### Audit final
 
----
+Revue architecture / sécurité / qualité avant dérivation pilote.
 
-## 13. Audit final architecture / sécurité / qualité
+### D-017
 
-Après D-015 et D-016, effectuer une revue finale avant dérivation pilote :
-
-- frontières frontend/backend ;
-- séparation responsabilités routes/controllers/services/models ;
-- validation Zod ;
-- permissions et anti-escalade ;
-- multi-tenant ;
-- auth/session ;
-- lifecycle ;
-- audit ;
-- quotas/concurrence ;
-- jobs ;
-- suppression de code legacy ;
-- composants frontend partagés ;
-- duplication ;
-- configuration ;
-- documentation canonique ;
-- dettes Core encore ouvertes.
-
-Aucun écart critique générique ne doit être repoussé vers le premier module métier uniquement pour accélérer la release.
-
----
-
-## 14. D-017 — dérivation pilote et upgrade réel
-
-D-017 est la preuve finale que le Core est réellement clonable et maintenable.
-
-Exercice :
+Exercice pilote obligatoire :
 
 ```text
 release candidate Core
-→ création d'un dépôt SaaS pilote avec historique/provenance
-→ ajout d'un petit module métier représentatif
-→ nouvelle évolution compatible du Core
+→ clone pilote avec historique Git
+→ petit module métier représentatif
+→ évolution compatible du Core
 → nouvelle release candidate
-→ upgrade du pilote depuis upstream Core
-→ migrations/config éventuelles
-→ tests Core + module + E2E
+→ upgrade depuis upstream-core
+→ tests Core + métier + E2E
 → analyse des conflits
 ```
 
-Ce pilote doit rester petit. Toute faiblesse générique révélée par l'exercice doit être corrigée dans le Core avant `v1.0.0`.
+Toute faiblesse générique découverte doit revenir dans le Core avant `v1.0.0`.
 
 ---
 
-## 15. Après `v1.0.0` — vrai clone et modules métier
+## 13. Stratégie canonique de clonage du vrai SaaS métier
 
-Une fois toutes les gates précédentes franchies :
+Référence :
 
 ```text
-1. tag/release v1.0.0 du Core
-2. création du dépôt du SaaS métier
-3. conservation de l'historique / provenance Core
-4. variables d'environnement propres au produit
-5. cadrage fonctionnel du module métier AVANT codage
-6. définition des permissions métier
-7. définition des capabilities / quotas métier
-8. définition des routes backend/frontend
-9. composants réutilisables obligatoires
-10. validation Zod et règles de sécurité
-11. tests unitaires / intégration / E2E métier
-12. exploitation des points d'extension D-014
+docs/derived-saas/DERIVED-SAAS.md
+docs/derived-saas/EXTENSION-POINTS.md
 ```
 
-Le modèle commercial du SaaS dérivé pourra être adapté au produit ; le Core fournit le moteur générique Plan / Subscription / entitlements, pas des prix universels imposés à tous les clones.
+Le clone destiné à être maintenu ne doit pas être créé comme simple GitHub Template indépendant.
+
+Méthode canonique : **conserver l'historique Git du Core**.
+
+Exemple conceptuel après release stable :
+
+```bash
+git clone <URL_SAAS_CORE_API> <nom-du-produit>
+cd <nom-du-produit>
+
+git remote rename origin upstream-core
+git remote add origin <URL_NOUVEAU_DEPOT_PRODUIT>
+
+git push -u origin main
+```
+
+Résultat :
+
+```text
+origin
+→ dépôt du SaaS métier
+
+upstream-core
+→ dépôt maître saas-core-api
+```
+
+Le nom réel du nouveau dépôt sera fourni explicitement au moment du clonage.
+
+Variables d'environnement, secrets, base de données et configuration produit doivent être séparés du Core.
 
 ---
 
-## 16. Composants frontend et règles de structure à préserver
+## 14. Règles pour les futurs modules métier
 
-Réutilisabilité obligatoire :
+### Backend
 
-- `DataTable` ;
-- `DataPagination` ;
-- `DataTableActions` ;
-- `EntityDetailsDrawer` ;
-- `ConfirmationDialog` ;
-- `ActionIconButton` ;
-- `InfoTooltip` ;
-- `SectionTabs` ;
-- `SelectField` ;
-- `CheckboxField` ;
-- `Textarea` ;
-- `InlineIconLink` ;
-- `SmoothCollapse` ;
-- `CollapsibleCard` ;
-- `DistributionBarChart` ;
-- composants de badge partagés lorsqu'une même sémantique est réutilisée.
-
-Règle permanente :
+Structure cible :
 
 ```text
-pages
-→ assemblent
+backend/modules/<domaine>/
+├── routes
+├── controller
+├── service
+├── model
+├── validation
+└── tests
+```
 
+Règles :
+
+- Zod strict ;
+- logique métier dans les services ;
+- isolation Workspace ;
+- RBAC ;
+- entitlement / quotas si nécessaire ;
+- audit ;
+- transactions lorsque l'invariant l'exige ;
+- soft delete si pertinent ;
+- aucune logique métier lourde dans routes/controllers.
+
+### Frontend
+
+Structure cible :
+
+```text
+frontend/src/features/<domaine>/
+├── api
+├── components
+├── hooks si nécessaire
+├── pages
+├── validation / helpers
+└── tests
+```
+
+Règles permanentes :
+
+```text
 useState
 → état UI local
 
 Redux Toolkit
-→ vrai état client global
+→ état client global réel
 
 RTK Query
 → état serveur
 ```
 
-Ne pas recréer un tableau, drawer, formulaire ou dialogue parallèle lorsqu'un composant partagé peut être composé.
+Réutilisation obligatoire des composants partagés existants. Ne jamais créer un second DataTable, système de toast, drawer générique, confirmation générique ou stratégie RTK Query parallèle.
+
+Avant chaque module métier :
+
+1. cadrage fonctionnel ;
+2. règles métier ;
+3. rôles et permissions ;
+4. capabilities / quotas ;
+5. sécurité et validation ;
+6. composants réutilisables ;
+7. routes / contrats API ;
+8. tests ;
+9. checklist manuelle ;
+10. seulement ensuite implémentation.
 
 ---
 
-## 17. Règles permanentes de sécurité
+## 15. Sécurité permanente
 
 Invariant :
 
@@ -739,112 +728,72 @@ Backend = autorité sur :
 
 Validation Zod stricte obligatoire.
 
-MongoDB :
+`sanitizeFilter` reste activé. Les opérateurs MongoDB internes construits par le serveur utilisent `mongoose.trusted()` lorsque nécessaire ; ne jamais neutraliser globalement la protection.
 
-- `sanitizeFilter` reste activé ;
-- ne jamais le contourner ;
-- les opérateurs Mongo internes utilisent la convention `mongoose.trusted()` du projet lorsque nécessaire.
-
-Mutations sensibles : réautorisation dans la transaction si nécessaire, audit, fail-closed et aucune confiance dans une autorité JWT obsolète.
+Mutations sensibles : réautorisation transactionnelle lorsque nécessaire, audit, fail-closed, aucune confiance dans une autorité JWT potentiellement obsolète.
 
 ---
 
-## 18. Conventions de tests
+## 16. Prochaine reprise exacte
 
-### Backend
+La prochaine conversation doit commencer par **revalider puis clôturer D-018**, pas par coder immédiatement un module métier réel.
 
-Depuis la racine :
-
-```bash
-npx vitest run <tests ciblés>
-```
-
-Suite globale uniquement aux barrières de clôture :
-
-```bash
-npx vitest run
-```
-
-### Frontend
-
-L'utilisateur entre dans :
-
-```bash
-cd frontend
-```
-
-Puis :
-
-```bash
-npx vitest run <tests ciblés>
-```
-
-Barrière globale :
-
-```bash
-npx vitest run
-npm run build
-```
-
-Ne pas utiliser de commandes Bash avec continuation `\` sous Windows. Ne pas utiliser `npm --prefix frontend`.
-
----
-
-## 19. Prochaine reprise exacte
-
-La prochaine conversation doit commencer par **finir D-018, pas par lancer D-015 ni un module métier**.
-
-Ordre conseillé :
+Ordre :
 
 ```text
-1. git pull et vérifier HEAD
-2. vérifier que le dernier frontend est stable
-3. exécuter/consigner la barrière globale D-018 backend + frontend + build
-4. faire la checklist manuelle de sécurité D-018
-5. mettre à jour docs/DEBT.md et docs/contracts/PLATFORM-TEAM.md
-6. passer D-018 VALIDÉ si tout concorde
-7. enregistrer D-019 dans docs/DEBT.md comme blocker Core 1.0
-8. cadrer D-019 avant tout code
-9. implémenter et valider D-019
-10. seulement ensuite lancer D-015
-11. D-016 Playwright
-12. audit final
-13. D-017 pilote clone + upgrade
-14. release v1.0.0
-15. clone du vrai SaaS et démarrage des modules métier
+1. git pull
+2. vérifier HEAD attendu : 14cad2399712fba579e391c6f26fec5bd923b1cc
+3. tests ciblés PlatformInvitation backend
+4. tests backend globaux
+5. tests frontend ciblés D-018/UI
+6. tests frontend globaux
+7. build Vite
+8. redémarrer backend
+9. rejouer invitation réelle via environnement de test/Mailtrap
+10. terminer le gate manuel sécurité D-018
+11. aligner DEBT.md + PLATFORM-TEAM.md
+12. passer D-018 VALIDÉ si tout concorde
+13. enregistrer et cadrer D-019
+14. implémenter/valider D-019
+15. D-015
+16. D-016
+17. audit final
+18. D-017 clone pilote + upgrade
+19. release v1.0.0
+20. clone du vrai SaaS métier
+21. cadrage des modules métier avant code
 ```
 
-Ne pas effectuer plusieurs de ces blocs en parallèle : chaque gate doit être fermée avant la suivante.
+Ne pas exécuter plusieurs gates en parallèle.
 
 ---
 
-## 20. Fichiers prioritaires pour la prochaine conversation
+## 17. Fichiers prioritaires à la prochaine conversation
 
 ```text
 docs/REPRISE-CURRENT.md
 docs/DEBT.md
 docs/contracts/PLATFORM-TEAM.md
+docs/derived-saas/DERIVED-SAAS.md
+docs/derived-saas/EXTENSION-POINTS.md
 
+backend/modules/platformInvitation/*
 backend/modules/platformTeam/*
 backend/modules/platformRole/*
-backend/modules/platformInvitation/*
 backend/modules/platform/currentContext/*
 backend/config/applicationPlatformPermission.registry.js
-backend/modules/auditLog/*
 
-frontend/src/features/platform/*
-frontend/src/features/platform-invitation/*
-frontend/src/features/auth/lib/authenticated-destination.js
-frontend/src/features/auth/components/auth-guard.jsx
-frontend/src/features/workspace/pages/workspace-entry-page.jsx
-frontend/src/app/layouts/account-layout.jsx
+frontend/src/features/platform/components/platform-team-invitations-section.jsx
+frontend/src/features/platform/components/platform-team-invitations-ux.test.jsx
+frontend/src/features/platform/components/platform-team-member-read-columns.jsx
+frontend/src/features/platform/components/platform-user-details-drawer.jsx
+frontend/src/features/platform/lib/platform-navigation.js
 frontend/src/components/data-display/data-table.jsx
-frontend/src/components/shared/entity-details-drawer.jsx
 ```
 
 ---
 
-## 21. Ce qu'il ne faut pas faire à la reprise
+## 18. Ce qu'il ne faut pas faire
 
 Ne pas :
 
@@ -852,18 +801,19 @@ Ne pas :
 - réintroduire `User.platformRole` comme autorité frontend ;
 - coder la navigation par nom de rôle ;
 - rendre les rôles système modifiables ;
-- permettre la création libre de permissions depuis l'UI ;
+- créer librement des permissions depuis l'UI ;
 - ajouter des permissions directement sur un User ;
-- passer au multi-rôles sans besoin réel ;
-- coder une durée légale universelle de rétention dans le Core ;
+- supprimer les transactions pour contourner une erreur MongoDB ;
+- utiliser `Promise.all()` pour des opérations partageant la même session transactionnelle ;
+- coder une durée juridique universelle de rétention dans le Core ;
 - exposer une purge générique avec cutoff ou filtre arbitraire ;
 - commencer D-015 avant D-019 ;
-- lancer les vrais modules métier dans le dépôt Core ;
-- créer des composants frontend dupliqués ;
-- déclarer `v1.0.0` avant D-015, D-016, l'audit final et D-017.
+- lancer les modules métier réels dans le dépôt Core ;
+- dupliquer les composants frontend partagés ;
+- déclarer `v1.0.0` avant les gates D-015, D-016, audit final et D-017.
 
 ---
 
-## 22. Résumé de reprise en une phrase
+## 19. Résumé de reprise en une phrase
 
-Le Core a terminé ses fondations génériques et D-018 est en toute fin de consolidation ; la prochaine conversation doit fermer formellement D-018, enregistrer puis réaliser le moteur sécurisé de rétention/purge D-019, traiter ensuite versionnement D-015, Playwright D-016, l'audit final et la dérivation pilote D-017, puis seulement publier `v1.0.0` et cloner le véritable SaaS destiné aux modules métier.
+D-018 est fonctionnellement très avancée et ses derniers correctifs concernent la sécurité transactionnelle des invitations ainsi que plusieurs finitions UX ; la prochaine conversation doit revalider le HEAD courant, terminer le gate manuel et clôturer formellement D-018, puis traiter D-019, D-015, D-016, l'audit final et la dérivation pilote D-017 avant de publier `v1.0.0`, cloner le véritable SaaS métier avec historique Git conservé et commencer les modules métier via les points d'extension déjà validés.
