@@ -7,6 +7,7 @@ import {
     SUBSCRIPTION_PLAN_CHANGE_TYPE,
     SUBSCRIPTION_STATUS,
     SUBSCRIPTION_KIND,
+    SUBSCRIPTION_TERM_TYPE,
 } from '../../constants/subscription.constants.js';
 
 const { Schema, model } = mongoose;
@@ -157,6 +158,22 @@ const subscriptionSchema = new Schema(
         kind: {
             type: String,
             enum: Object.values(SUBSCRIPTION_KIND),
+            required: true,
+        },
+        /**
+         * Distingue une souscription bornée dans le temps d'un accès sans
+         * échéance automatique. Le défaut dépend du rôle fonctionnel afin de
+         * préserver la baseline historique sans rendre une commerciale
+         * accidentellement permanente.
+         */
+        termType: {
+            type: String,
+            enum: Object.values(SUBSCRIPTION_TERM_TYPE),
+            default: function resolveDefaultTermType() {
+                return this.kind === SUBSCRIPTION_KIND.BASELINE
+                    ? SUBSCRIPTION_TERM_TYPE.OPEN_ENDED
+                    : SUBSCRIPTION_TERM_TYPE.FIXED;
+            },
             required: true,
         },
         status: {
