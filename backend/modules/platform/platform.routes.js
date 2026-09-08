@@ -2,6 +2,9 @@ import { Router } from 'express';
 
 import { authenticate } from '../../middlewares/authenticate.js';
 import {
+    platformCommercialInvitationRouter,
+} from '../commercialInvitation/commercialInvitation.routes.js';
+import {
     platformTeamInvitationRouter,
 } from '../platformInvitation/platformInvitation.routes.js';
 import {
@@ -49,6 +52,10 @@ platformRouter.use('/users', platformUsersRouter);
 platformRouter.use('/workspaces', platformWorkspacesRouter);
 platformRouter.use('/plans', platformPlansRouter);
 platformRouter.use('/subscriptions', platformSubscriptionsRouter);
+platformRouter.use(
+    '/commercial-invitations',
+    platformCommercialInvitationRouter,
+);
 platformRouter.use(
     '/entitlement-overrides',
     platformEntitlementOverridesRouter,
