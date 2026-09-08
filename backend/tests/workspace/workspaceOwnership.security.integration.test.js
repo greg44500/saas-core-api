@@ -18,6 +18,14 @@ import {
     transferOwnership,
 } from '../../modules/workspace/workspaceOwnership.controller.js';
 
+/*
+ * Suite d'intégration de sécurité HTTP.
+ *
+ * Elle protège un invariant owner-only : posséder des permissions workspace
+ * génériques ne doit jamais permettre d'atteindre le controller de transfert.
+ * La permission dédiée doit être vérifiée avant les étapes suivantes du flow,
+ * afin qu'un acteur insuffisamment autorisé ne déclenche aucun effet métier.
+ */
 
 const {
     permissions,
