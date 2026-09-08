@@ -22,8 +22,11 @@ const listCommercialInvitationOffers = async () => {
     })
         .select([
             '_id',
+            'systemRole',
             'name',
             'description',
+            'status',
+            'isPublic',
             'displayOrder',
             'trialEnabled',
             'trialDurationDays',
