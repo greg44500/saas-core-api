@@ -35,34 +35,45 @@ const toOfferDto = (snapshot) => ({
     limits: serializeLimits(snapshot.limits),
 });
 
-const toAdminInvitationDto = (invitation) => ({
-    id: invitation._id.toString(),
-    email: invitation.emailCanonical,
-    workspaceName: invitation.workspaceName,
-    status: invitation.status,
-    deliveryStatus: invitation.deliveryStatus,
-    lastDeliveryAttemptAt: invitation.lastDeliveryAttemptAt,
-    deliveredAt: invitation.deliveredAt,
-    expiresAt: invitation.expiresAt,
-    acceptedAt: invitation.acceptedAt,
-    revokedAt: invitation.revokedAt,
-    revokeReason: invitation.revokeReason ?? null,
-    plan: invitation.plan?._id
-        ? {
-            id: invitation.plan._id.toString(),
-            name: invitation.plan.name,
-            status: invitation.plan.status,
-            isPublic: invitation.plan.isPublic,
-        }
-        : {
-            id: invitation.plan?.toString() ?? null,
-        },
-    offer: toOfferDto(invitation.offerSnapshot),
-    workspace: invitation.workspace?.toString() ?? null,
-    subscription: invitation.subscription?.toString() ?? null,
-    createdAt: invitation.createdAt,
-    updatedAt: invitation.updatedAt,
-});
+/**
+ * Sérialise une invitation sans exposer son hash de token.
+ *
+ * `planOverride` est utilisé juste après create/resend car le document retourné
+ * par la livraison n'est pas peuplé. Le listing utilise naturellement le Plan
+ * déjà peuplé par son service.
+ */
+const toAdminInvitationDto = (invitation, planOverride = null) => {
+    const resolvedPlan = planOverride ?? invitation.plan;
+
+    return {
+        id: invitation._id.toString(),
+        email: invitation.emailCanonical,
+        workspaceName: invitation.workspaceName,
+        status: invitation.status,
+        deliveryStatus: invitation.deliveryStatus,
+        lastDeliveryAttemptAt: invitation.lastDeliveryAttemptAt,
+        deliveredAt: invitation.deliveredAt,
+        expiresAt: invitation.expiresAt,
+        acceptedAt: invitation.acceptedAt,
+        revokedAt: invitation.revokedAt,
+        revokeReason: invitation.revokeReason ?? null,
+        plan: resolvedPlan?._id
+            ? {
+                id: resolvedPlan._id.toString(),
+                name: resolvedPlan.name,
+                status: resolvedPlan.status,
+                isPublic: resolvedPlan.isPublic,
+            }
+            : {
+                id: resolvedPlan?.toString() ?? null,
+            },
+        offer: toOfferDto(invitation.offerSnapshot),
+        workspace: invitation.workspace?.toString() ?? null,
+        subscription: invitation.subscription?.toString() ?? null,
+        createdAt: invitation.createdAt,
+        updatedAt: invitation.updatedAt,
+    };
+};
 
 const create = async (req, res) => {
     const { invitation, plan, token } = await createCommercialInvitation({
@@ -86,6 +97,7 @@ const create = async (req, res) => {
         data: {
             invitation: toAdminInvitationDto(
                 deliveredInvitation ?? invitation,
+                plan,
             ),
         },
     });
@@ -100,7 +112,8 @@ const list = async (req, res) => {
     res.status(200).json({
         status: 'success',
         data: {
-            invitations: invitations.map(toAdminInvitationDto),
+            invitations: invitations.map((invitation) =>
+                toAdminInvitationDto(invitation)),
         },
         meta: pagination,
     });
@@ -125,6 +138,7 @@ const resend = async (req, res) => {
         data: {
             invitation: toAdminInvitationDto(
                 deliveredInvitation ?? invitation,
+                plan,
             ),
         },
     });
