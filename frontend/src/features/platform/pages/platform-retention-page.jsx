@@ -152,7 +152,6 @@ function PlatformRetentionPage() {
         ),
         variant: 'destructive',
       });
-      throw error;
     }
   }
 
