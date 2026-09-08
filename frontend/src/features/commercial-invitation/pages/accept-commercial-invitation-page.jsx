@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router';
 
 import { PageLoader } from '@/components/shared/page-loader';
 import { Button } from '@/components/ui/button';
+import { useLogoutMutation } from '@/features/auth/api/auth-api';
 import {
   useAcceptCommercialInvitationMutation,
   usePreviewCommercialInvitationMutation,
@@ -92,6 +93,7 @@ function AcceptCommercialInvitationPage() {
     usePreviewCommercialInvitationMutation();
   const [acceptInvitation, acceptState] =
     useAcceptCommercialInvitationMutation();
+  const [logout, logoutState] = useLogoutMutation();
 
   useEffect(() => {
     clearCommercialInvitationTokenFragment();
@@ -172,6 +174,22 @@ function AcceptCommercialInvitationPage() {
     }
   }
 
+  async function handleAccountSwitch() {
+    try {
+      await logout().unwrap();
+    } finally {
+      /*
+       * Le vault runtime n'est volontairement pas effacé ici : changer de
+       * compte fait partie du même parcours d'acceptation. Le secret reste
+       * absent de l'URL et de history.state, puis sera relu au retour de Login.
+       */
+      navigate('/login', {
+        replace: true,
+        state: authState,
+      });
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -204,16 +222,29 @@ function AcceptCommercialInvitationPage() {
       )}
 
       {authStatus === 'authenticated' ? (
-        <Button
-          className="w-full"
-          disabled={acceptState.isLoading}
-          onClick={handleAcceptance}
-          type="button"
-        >
-          {acceptState.isLoading
-            ? 'Activation de votre accès…'
-            : 'Accepter et créer mon espace'}
-        </Button>
+        <div className="space-y-3">
+          <Button
+            className="w-full"
+            disabled={acceptState.isLoading || logoutState.isLoading}
+            onClick={handleAcceptance}
+            type="button"
+          >
+            {acceptState.isLoading
+              ? 'Activation de votre accès…'
+              : 'Accepter et créer mon espace'}
+          </Button>
+          <Button
+            className="w-full"
+            disabled={acceptState.isLoading || logoutState.isLoading}
+            onClick={handleAccountSwitch}
+            type="button"
+            variant="outline"
+          >
+            {logoutState.isLoading
+              ? 'Changement de compte…'
+              : 'Utiliser un autre compte'}
+          </Button>
+        </div>
       ) : (
         <div className="space-y-3">
           <Button asChild className="w-full">
