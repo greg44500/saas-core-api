@@ -56,6 +56,7 @@ const serializeSubscription = (subscription) => {
     return {
         id: subscription._id.toString(),
         kind: subscription.kind,
+        termType: subscription.termType ?? null,
         status: subscription.status,
         plan: serializePlan(subscription.plan),
         currentPeriodStart: subscription.currentPeriodStart,
@@ -104,6 +105,7 @@ const serializeWorkspaceEffectiveEntitlement = (access) => {
         ],
         limits,
         subscriptionKind: access.subscription.kind,
+        subscriptionTermType: access.subscription.termType ?? null,
         subscriptionStatus: access.subscription.status,
         accessMode: access.accessMode,
         reason: access.reason,
