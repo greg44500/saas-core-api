@@ -29,6 +29,9 @@ describe('listCommercialInvitationOffers', () => {
         const eligibleFree = {
             _id: 'free-private',
             name: 'Découverte',
+            status: PLAN_STATUS.ACTIVE,
+            isPublic: false,
+            systemRole: null,
             trialEnabled: false,
             priceMonthlyExclTaxMinor: 0,
             priceYearlyExclTaxMinor: 0,
@@ -36,6 +39,9 @@ describe('listCommercialInvitationOffers', () => {
         const eligibleTrial = {
             _id: 'trial-private',
             name: 'Beta Premium',
+            status: PLAN_STATUS.ACTIVE,
+            isPublic: false,
+            systemRole: null,
             trialEnabled: true,
             priceMonthlyExclTaxMinor: 7900,
             priceYearlyExclTaxMinor: 79000,
@@ -43,6 +49,9 @@ describe('listCommercialInvitationOffers', () => {
         const eligibleYearlyOnlyTrial = {
             _id: 'trial-yearly-private',
             name: 'Beta annuelle',
+            status: PLAN_STATUS.ACTIVE,
+            isPublic: false,
+            systemRole: null,
             trialEnabled: true,
             priceMonthlyExclTaxMinor: 0,
             priceYearlyExclTaxMinor: 79000,
@@ -50,6 +59,9 @@ describe('listCommercialInvitationOffers', () => {
         const forbiddenFreeTrial = {
             _id: 'trial-free-private',
             name: 'Trial gratuit incohérent',
+            status: PLAN_STATUS.ACTIVE,
+            isPublic: false,
+            systemRole: null,
             trialEnabled: true,
             priceMonthlyExclTaxMinor: 0,
             priceYearlyExclTaxMinor: 0,
@@ -57,6 +69,9 @@ describe('listCommercialInvitationOffers', () => {
         const forbiddenPaidPermanent = {
             _id: 'paid-private',
             name: 'Premium privé',
+            status: PLAN_STATUS.ACTIVE,
+            isPublic: false,
+            systemRole: null,
             trialEnabled: false,
             priceMonthlyExclTaxMinor: 7900,
             priceYearlyExclTaxMinor: 79000,
@@ -83,6 +98,12 @@ describe('listCommercialInvitationOffers', () => {
             isPublic: false,
             systemRole: null,
         });
+        expect(query.select).toHaveBeenCalledWith(
+            expect.stringContaining('status'),
+        );
+        expect(query.select).toHaveBeenCalledWith(
+            expect.stringContaining('isPublic'),
+        );
         expect(result).toEqual([
             eligibleFree,
             eligibleTrial,
