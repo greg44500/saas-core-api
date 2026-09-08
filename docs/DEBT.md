@@ -38,11 +38,9 @@ VALIDÉ
 NON APPLICABLE
 ```
 
-`NON APPLICABLE` doit être justifié dans le produit dérivé concerné.
-
 ---
 
-## 3. Deux gates différentes
+## 3. Gates
 
 ### 3.1 Core 1.0 finalisé
 
@@ -50,9 +48,7 @@ Le Core peut être considéré comme un socle générique stable lorsque ses res
 
 ### 3.2 SaaS dérivé prêt pour la production
 
-Un produit dérivé doit en plus résoudre les dettes qui dépendent de son modèle commercial, de ses traitements de données, de ses providers et de son infrastructure.
-
-Invariant :
+Un produit dérivé doit en plus résoudre les dettes dépendant de son modèle commercial, de ses traitements, providers et infrastructure.
 
 ```text
 Core 1.0 finalisé
@@ -64,24 +60,21 @@ produit dérivé automatiquement production-ready
 
 ## 4. Synthèse des dettes
 
-### 4.1 Blockers connus de la finalisation et de la première dérivation du Core
+### 4.1 Blockers Core 1.0 / première dérivation
 
 | ID | Dette | Statut |
 |---|---|---|
 | D-020 | Invitation commerciale client et offres privées de découverte | EN COURS |
 | D-011 | Préférences utilisateur, apparence et affichage métier | PLANIFIÉ |
+| D-021 | Gate sécurité Auth, invitations et tokens temporaires | PLANIFIÉ |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
 | D-002 | Corbeille et restauration des fichiers | PLANIFIÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
-D-001, D-014, D-018 et D-019 sont clôturées et ne sont plus des blockers actifs.
+D-001, D-014, D-018 et D-019 sont clôturées.
 
-D-020 reste volontairement placé avant D-011 et D-015 : le versionnement ne doit pas figer une release candidate tant que l'onboarding commercial générique déjà identifié comme nécessaire n'est pas implémenté puis validé ou explicitement reclassifié.
-
-D-011 doit être cadrée, implémentée et validée avant D-015 afin que le Core versionné possède déjà un contrat générique stable pour les préférences utilisateur transversales et l'extension future des préférences d'affichage métier.
-
-D-002 reste totalement indépendant de D-020 et D-011, mais il doit être `VALIDÉ` avant D-017 et avant toute première dérivation métier du Core.
+D-020, D-011 et D-021 doivent être clôturées ou explicitement reclassifiées avant D-015. D-002 doit être `VALIDÉ` avant D-017 et avant toute première dérivation métier.
 
 ### 4.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -100,43 +93,14 @@ D-013 configuration / déploiement production
 ```text
 D-008 notifications étendues
 D-009 API Keys / Webhooks
-D-010 authentification avancée
+D-010 authentification avancée — dont Google SSO
 ```
-
-### 4.4 Dettes clôturées conservées pour traçabilité minimale
-
-```text
-D-001 fermeture de compte et cycle de vie Workspace            → VALIDÉ
-D-014 points d'extension métier RBAC/routing                   → VALIDÉ
-D-018 équipe Platform / RBAC / invitations internes            → VALIDÉ
-D-019 moteur sécurisé de rétention / purge Core                → VALIDÉ
-```
-
-Références principales :
-
-```text
-D-014 → docs/derived-saas/DERIVED-SAAS.md + EXTENSION-POINTS.md
-D-018 → docs/contracts/PLATFORM-TEAM.md
-D-019 → docs/contracts/RETENTION.md
-```
-
-L'historique détaillé des dettes clôturées reste disponible dans Git ; il n'est pas nécessaire de maintenir leur ancien cadrage comme dette active.
 
 ---
 
 ## 5. Règles de maintenance
 
-Pour chaque dette active :
-
-- conserver un identifiant stable ;
-- utiliser uniquement un statut autorisé ;
-- indiquer son périmètre ;
-- distinguer le blocage Core 1.0 du blocage production d'un SaaS dérivé ;
-- indiquer le déclencheur lorsque la dette dépend du produit ;
-- définir un critère de clôture vérifiable ;
-- ne pas dupliquer son statut dans un autre document ;
-- lorsqu'elle devient `VALIDÉ`, vérifier code, tests et documentation canonique ;
-- la retirer ensuite des blockers actifs, l'historique restant disponible dans Git.
+Pour chaque dette active : conserver un identifiant stable, un statut autorisé, son périmètre, son caractère bloquant ou non, ses dépendances/déclencheurs et un critère de clôture vérifiable. Ne pas dupliquer son statut dans d'autres documents. L'historique détaillé reste dans Git.
 
 ---
 
@@ -144,164 +108,98 @@ Pour chaque dette active :
 
 **Statut :** PLANIFIÉ  
 **Périmètre :** Core Files  
-**Blocage Core 1.0 / première dérivation :** oui avant D-017 et avant toute première dérivation métier  
-**Blocage production dérivée :** oui pour tout produit dérivé utilisant le sous-système Files  
-**Déclencheur :** décision produit Core du 2026-09-08 — le cycle Files doit être complet avant première dérivation
+**Blocage :** oui avant D-017 et première dérivation métier
 
-Le cycle actuel permet la suppression logique puis la purge différée sécurisée via D-019, mais aucune route utilisateur de listing de corbeille ou de restauration n'est encore exposée.
+Le cycle doit compléter le soft delete/purge D-019 par listing de corbeille et restauration sécurisés : permissions dédiées, isolation Workspace, restauration simple/multiple lorsque pertinente, existence physique, coordination avec purge, quotas, audit, UI `Ressources > Corbeille` avec `DataTable` partagé et tests sécurité/concurrence.
 
-Le bloc D-002 reste séparé de D-020 et ne doit pas être implémenté à l'intérieur du domaine CommercialInvitation.
+Invariant : un fichier soft-deleted dont le contenu physique existe consomme encore `storage_bytes`; une restauration avant purge ne réserve donc pas le stockage une seconde fois.
 
-La future restauration devra définir au minimum :
-
-- permission dédiée de consultation/restauration ;
-- listing de corbeille isolé par Workspace ;
-- restauration d'un fichier et restauration multiple lorsque pertinente ;
-- vérification de l'existence physique du contenu ;
-- impossibilité de restaurer une ressource déjà revendiquée par le moteur de purge D-019 ;
-- comportement vis-à-vis du Plan et du mode remédiation ;
-- audit ;
-- isolation multi-tenant ;
-- UI dédiée `Ressources > Corbeille` réutilisant le `DataTable` partagé ;
-- tests de sécurité et de concurrence.
-
-Invariant de stockage issu du contrat D-019 :
-
-```text
-File soft-deleted + contenu physique encore présent
-→ storage_bytes reste consommé
-```
-
-La restauration avant purge ne doit donc pas effectuer une seconde réservation de `storage_bytes`. Le stockage n'est libéré qu'après purge physique réussie.
-
-La durée d'affichage/restauration doit être dérivée de la policy de rétention applicable ; aucune durée universelle ne doit être inventée par le frontend.
-
-**Critère de clôture :** listing de corbeille et restauration sécurisés, coordination explicite avec D-019, quota cohérent sans double comptage, UI dédiée réutilisable et tests backend/frontend/sécurité/concurrence pertinents validés.
+**Critère de clôture :** cycle utilisateur suppression/restauration cohérent avec D-019, sécurisé, testé et documenté.
 
 ---
 
 ## D-003 — RGPD, cookies, confidentialité et obligations légales
 
 **Statut :** À CADRER  
-**Périmètre :** chaque application dérivée + mécanismes génériques du Core lorsqu'ils deviennent nécessaires  
+**Périmètre :** application dérivée + mécanismes Core nécessaires  
 **Blocage Core 1.0 :** non par défaut  
-**Blocage production dérivée :** oui lorsque les obligations sont applicables
+**Blocage production dérivée :** oui lorsque applicable
 
-Références :
+Références : `docs/compliance/COMPLIANCE.md` et `docs/compliance/rgpd-data-tracker-inventory.md`.
 
-```text
-docs/compliance/COMPLIANCE.md
-docs/compliance/rgpd-data-tracker-inventory.md
-```
-
-Le Core n'impose pas une CMP ou une politique juridique fictive. Les traitements, bases légales, traceurs, sous-traitants, droits, durées et obligations doivent être alignés sur le produit réel.
-
-**Critère de clôture :** conformité technique/documentaire alignée sur les traitements réels et gate pré-production validée.
+**Critère de clôture :** conformité technique/documentaire alignée sur les traitements réels.
 
 ---
 
 ## D-004 — Billing / Payment réel
 
 **Statut :** À CADRER  
-**Périmètre :** application dérivée commercialisée avec paiement réel  
-**Blocage Core 1.0 :** non  
-**Blocage production dérivée :** oui pour une commercialisation payante automatisée
+**Périmètre :** application dérivée payante  
+**Blocage Core 1.0 :** non
 
-Invariant :
-
-```text
-Subscription / entitlement
-≠
-encaissement / facture / autorité financière
-```
-
-À cadrer selon le produit : provider, identité facturée, événements/idempotence, échecs, remboursements, prorata/remises, fiscalité, factures et audit financier.
-
-Les données de carte ne doivent jamais être saisies ou stockées par le Core.
-
-**Critère de clôture :** domaine Billing/Payment sécurisé et testé, provider intégré si nécessaire et fiscalité/facturation validées pour le produit.
+`Subscription / entitlement ≠ encaissement / facture / autorité financière`. À cadrer selon le produit : provider, identité facturée, idempotence, échecs, remboursements, prorata/remises, fiscalité, factures et audit. Les données de carte ne sont jamais stockées par le Core.
 
 ---
 
 ## D-005 — Observabilité technique de production
 
 **Statut :** À CADRER  
-**Périmètre :** chaque déploiement de production  
-**Blocage Core 1.0 :** non  
-**Blocage production dérivée :** oui pour une observabilité minimale adaptée au service
+**Blocage Core 1.0 :** non
 
-`AuditLog` est un journal fonctionnel et de sécurité ; il ne remplace pas le monitoring technique.
-
-À prévoir selon l'infrastructure : erreurs 5xx, latence, MongoDB, SMTP, jobs, pipeline File/antivirus, erreurs frontend, corrélation `requestId`, métriques/alertes et politique de logs.
-
-**Critère de clôture :** instrumentation, alertes et procédures adaptées au déploiement réel.
+`AuditLog` ne remplace pas le monitoring technique. Prévoir selon l'infrastructure : erreurs 5xx, latence, MongoDB, SMTP, jobs, Files/antivirus, frontend, `requestId`, métriques et alertes.
 
 ---
 
 ## D-006 — Rétention, anonymisation et suppression réglementaire
 
 **Statut :** À CADRER  
-**Périmètre :** application dérivée + points d'intégration génériques du Core  
-**Blocage Core 1.0 :** non comme politique juridique universelle  
-**Blocage production dérivée :** oui lorsque applicable
-
-D-019 fournit désormais le moteur générique sécurisé. D-006 reste la définition produit/juridique de ce qui doit être conservé, anonymisé ou supprimé et pendant combien de temps.
+**Blocage Core 1.0 :** non comme politique juridique universelle
 
 ```text
-D-006 = politique
+D-006 = politique produit/juridique
 D-019 = moteur d'exécution générique validé
 ```
-
-**Critère de clôture :** matrice de conservation documentée et mécanismes adaptés au produit configurés/testés.
 
 ---
 
 ## D-007 — Stockage et exploitation des fichiers en production
 
 **Statut :** À CADRER  
-**Périmètre :** Core Files + infrastructure du produit dérivé  
-**Blocage Core 1.0 :** non  
-**Blocage production dérivée :** oui si le produit utilise Files et que le stockage local n'est pas adapté
+**Blocage Core 1.0 :** non
 
-À valider selon le déploiement : provider distant ou volume persistant, sauvegarde/restauration, chiffrement, disponibilité, suppression physique, rétention, supervision antivirus, quotas/coûts et localisation des données.
-
-**Critère de clôture :** provider et procédures d'exploitation validés pour l'environnement réel.
+À valider selon le déploiement : provider/volume persistant, sauvegarde/restauration, chiffrement, disponibilité, suppression physique, rétention, antivirus, quotas/coûts et localisation des données.
 
 ---
 
 ## D-008 — Notifications et communications transactionnelles étendues
 
 **Statut :** CONDITIONNEL  
-**Périmètre :** application dérivée  
 **Blocage Core 1.0 :** non
 
-À cadrer seulement lorsqu'un besoin produit dépasse les emails transactionnels déjà fournis par le Core.
-
-**Critère de clôture :** `NON APPLICABLE` ou mécanismes nécessaires implémentés et testés.
+À traiter seulement si un produit dépasse les emails transactionnels déjà fournis.
 
 ---
 
 ## D-009 — API Keys et Webhooks
 
 **Statut :** CONDITIONNEL  
-**Périmètre :** application dérivée exposant des intégrations externes  
 **Blocage Core 1.0 :** non
 
-Exigences minimales si applicable : secrets jamais en clair, scopes, expiration/révocation, audit, rate limiting, signatures, retry, protection SSRF, validation stricte des URLs et idempotence.
-
-**Critère de clôture :** `NON APPLICABLE` ou domaine dédié sécurisé et testé.
+Si applicable : secrets jamais en clair, scopes, expiration/révocation, audit, rate limiting, signatures, retry, SSRF, validation stricte des URLs et idempotence.
 
 ---
 
 ## D-010 — Authentification avancée
 
 **Statut :** CONDITIONNEL  
-**Périmètre :** application dérivée / évolution Core motivée par plusieurs produits  
+**Périmètre :** application dérivée / évolution Core motivée  
 **Blocage Core 1.0 :** non
 
-MFA, passkeys, SSO entreprise ou nouveaux providers ne doivent pas être ajoutés uniquement par anticipation.
+Google SSO reste volontairement ici et ne bloque pas D-015/v1.0. Son ajout futur devra traiter correctement OpenID Connect/OAuth, liaison d'identité avec un compte local existant, collisions d'email, révocation, coexistence de plusieurs méthodes de connexion et séparation stricte entre identité externe et autorisations internes.
 
-**Critère de clôture :** `NON APPLICABLE` ou mécanisme requis implémenté et testé.
+MFA, passkeys, SSO entreprise ou autres providers ne sont pas ajoutés uniquement par anticipation.
+
+**Critère de clôture :** `NON APPLICABLE` ou mécanisme requis implémenté, sécurisé et testé.
 
 ---
 
@@ -309,132 +207,49 @@ MFA, passkeys, SSO entreprise ou nouveaux providers ne doivent pas être ajouté
 
 **Statut :** PLANIFIÉ  
 **Périmètre :** Core clonable + points d'extension des applications dérivées  
-**Blocage Core 1.0 :** oui, avant D-015  
-**Dépendances :** identité utilisateur, design system frontend, entitlement effectif et RBAC existants  
-**Déclencheur :** décision produit du 2026-09-08 — stabiliser le mécanisme générique de préférences avant le versionnement du Core
+**Blocage Core 1.0 :** oui, avant D-015
 
-Le Core doit fournir un mécanisme de préférences utilisateur centralisé, maintenable et extensible sans confondre personnalisation de l'interface, droits fonctionnels et configuration métier.
-
-Deux familles doivent être distinguées dès le contrat :
+Deux familles :
 
 ```text
 Préférences de confort
-→ apparence et ergonomie personnelles transversales
+→ thème clair/sombre/système, police contrôlée, palette fournie par le propriétaire du produit, futures options ergonomiques/accessibilité
 
 Préférences d'affichage métier
-→ sélection personnelle parmi des éléments métier déjà accessibles
+→ sélection personnelle parmi widgets/cartes/KPI déjà accessibles
 ```
 
-### Préférences de confort
-
-Le cadrage doit prévoir au minimum :
-
-- thème clair / sombre / système si pertinent ;
-- choix d'une police parmi une liste contrôlée et validée par le design system ;
-- choix d'une palette/thème de couleurs parmi des palettes explicitement fournies et intégrées au produit ;
-- aucun choix arbitraire de police ou de couleurs pouvant casser le design system ;
-- possibilité d'ajouter ultérieurement des préférences d'accessibilité ou de densité sans modifier le contrat de base de manière incompatible.
-
-Les palettes ne doivent pas être inventées par le Core : elles seront fournies par le propriétaire du produit puis traduites en tokens du design system.
-
-### Préférences d'affichage métier
-
-Le Core doit préparer une mécanique générique permettant à une application dérivée de déclarer des widgets, cartes, indicateurs ou KPI sélectionnables par l'utilisateur.
-
-Invariant de sécurité et d'UX :
+Invariant :
 
 ```text
-Plan / entitlement effectif
-+
-permissions utilisateur
-→ ensemble réellement accessible
+Plan / entitlement effectif + permissions
+→ ensemble accessible
 
-ensemble réellement accessible
-+
-préférences utilisateur
-→ ensemble visible dans le dashboard
+ensemble accessible + préférences utilisateur
+→ ensemble visible
 ```
 
-Conséquences obligatoires :
+Une préférence ne crée jamais un droit. Une feature/KPI non autorisée n'est pas proposée. Les modules métier doivent pouvoir enregistrer leurs widgets sans coupler le Core à un métier particulier. La persistance serveur/local, validation stricte, fallbacks et compatibilité ascendante doivent être cadrés. Pas de JSON libre non validé. UI réutilisable et design system centralisé.
 
-- une fonctionnalité non incluse dans le Plan ou l'entitlement effectif n'est jamais proposée dans les préférences ;
-- une fonctionnalité à laquelle l'utilisateur n'a pas la permission d'accéder n'est jamais proposée ;
-- masquer un widget ne retire aucun droit ;
-- afficher un widget ne crée aucun droit ;
-- le frontend ne doit jamais utiliser une préférence comme mécanisme d'autorisation ;
-- les composants indisponibles ne doivent pas polluer le Dashboard avec un état artificiel « indisponible » lorsque le produit a décidé qu'ils doivent être absents ;
-- les futurs modules métier doivent pouvoir enregistrer leurs propres widgets/KPI sans coupler le Core à un métier particulier.
-
-Invariant général :
-
-```text
-préférence d'affichage
-≠ permission
-≠ entitlement
-≠ feature flag de sécurité
-≠ suppression de donnée
-```
-
-### Persistance et responsabilité
-
-Le cadrage doit décider explicitement :
-
-- quelles préférences sont persistées côté serveur afin de suivre l'utilisateur entre appareils ;
-- quelles préférences purement locales peuvent rester dans le navigateur ;
-- le schéma de validation strict des valeurs autorisées ;
-- la compatibilité ascendante lors de l'ajout ou du retrait d'une préférence ;
-- la valeur par défaut lorsque la préférence sauvegardée n'existe plus dans une application dérivée ;
-- la stratégie de version du contrat de préférences si elle devient nécessaire.
-
-Le modèle ne doit pas devenir un stockage libre de JSON non validé. Les clés, valeurs, enums et extensions acceptées doivent rester explicitement contrôlés et validés.
-
-### Frontend et réutilisabilité
-
-La page de préférences devra être construite à partir de composants réutilisables et du design system existant. Les pages métier ne devront pas dupliquer la logique de sélection, de persistance ou de validation des préférences.
-
-Le mécanisme de dashboard doit rester raisonnablement limité en V1 : sélection afficher/masquer et, si retenu après cadrage, ordre d'affichage. Un constructeur libre avec redimensionnement arbitraire, grille complexe ou personnalisation visuelle par widget ne doit pas être introduit sans besoin produit explicite.
-
-### Tests attendus
-
-Prévoir au minimum :
-
-- validation stricte backend des préférences persistées ;
-- tests de non-escalade : aucune préférence ne doit contourner Plan, entitlement ou RBAC ;
-- tests frontend des thèmes/polices/palettes autorisés ;
-- tests du filtrage des options de Dashboard selon entitlement + permissions ;
-- tests de fallback lorsqu'un widget, une police ou une palette n'existe plus ;
-- tests de persistance inter-session lorsque la préférence est serveur ;
-- checklist manuelle responsive, lisibilité, contraste et cohérence du design system.
-
-**Critère de clôture :** contrat générique des préférences figé, séparation confort/métier documentée, persistance et validation sécurisées, thèmes/polices/palettes contrôlés, registre extensible des éléments de Dashboard défini, filtrage entitlement + RBAC garanti, composants frontend réutilisables et tests backend/frontend/sécurité pertinents validés avant D-015.
+**Critère de clôture :** contrat générique figé, séparation confort/métier, persistance/validation sécurisées, thèmes/polices/palettes contrôlés, registre dashboard extensible, filtrage entitlement+RBAC et tests pertinents validés avant D-015.
 
 ---
 
 ## D-012 — Tests E2E de chaque application dérivée
 
 **Statut :** À CADRER  
-**Périmètre :** chaque application dérivée  
-**Blocage Core 1.0 :** non — voir D-016 pour les E2E du Core  
-**Blocage production dérivée :** oui
+**Blocage Core 1.0 :** non — voir D-016
 
-Chaque produit dérivé doit couvrir ses parcours métier et transversaux critiques au-delà des tests du Core.
-
-**Critère de clôture :** E2E critiques verts sur une configuration représentative de production.
+Chaque dérivé doit couvrir ses parcours métier/transversaux critiques.
 
 ---
 
 ## D-013 — Configuration et déploiement de production
 
 **Statut :** À CADRER  
-**Périmètre :** chaque application dérivée  
-**Blocage Core 1.0 :** non  
-**Blocage production dérivée :** oui
+**Blocage Core 1.0 :** non
 
-À valider selon l'infrastructure : variables d'environnement/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrations/indexes, SMTP, stockage, antivirus, jobs, health/readiness, logs/monitoring et rollback.
-
-Référence : `docs/operations/OPERATIONS.md`.
-
-**Critère de clôture :** checklist de production spécifique validée, smoke tests et procédures de rollback/restauration testées lorsque nécessaires.
+Variables/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrations/indexes, SMTP, stockage, antivirus, jobs, health/readiness, monitoring et rollback. Référence : `docs/operations/OPERATIONS.md`.
 
 ---
 
@@ -443,39 +258,28 @@ Référence : `docs/operations/OPERATIONS.md`.
 **Statut :** PLANIFIÉ  
 **Périmètre :** Core / distribution  
 **Blocage Core 1.0 :** oui  
-**Dépendances :** D-020 et D-011 doivent être clôturées ou explicitement reclassifiées avant ouverture de la release candidate
+**Dépendances :** D-020, D-011 et D-021 doivent être clôturées ou explicitement reclassifiées avant ouverture de la release candidate
 
-À finaliser avant `v1.0.0` : SemVer réellement appliqué, tags/releases, changelog/release notes, changements de contrats/configuration, migrations et ordre pre/post-deploy, reprise/rollback, provenance machine-readable du Core dans les dérivés et gate de release reproductible.
-
-**Critère de clôture :** release candidate documentée et produit dérivé capable d'identifier de manière fiable la version/commit Core intégré.
+À finaliser avant `v1.0.0` : SemVer, tags/releases, changelog/release notes, changements de contrats/configuration, migrations et ordre pre/post-deploy, reprise/rollback, provenance machine-readable et gate de release reproductible.
 
 ---
 
 ## D-016 — E2E du Core avec Playwright
 
 **Statut :** PLANIFIÉ  
-**Périmètre :** Core  
-**Blocage Core 1.0 :** oui  
-**Dépendances :** finalisation fonctionnelle
+**Blocage Core 1.0 :** oui
 
-Les E2E Core doivent couvrir les parcours transversaux critiques : auth/session/refresh/logout, lifecycle Account/Workspace, isolation tenant, RBAC, subscription/entitlement/quota, administration Platform, Files lorsque applicable et principaux états interdits.
-
-**Critère de clôture :** Playwright installé/documenté, environnement reproductible et parcours Core critiques verts dans la gate de release.
+Couvrir les parcours transversaux critiques : auth/session/refresh/logout, lifecycle Account/Workspace, isolation tenant, RBAC, subscription/entitlement/quota, administration Platform, Files et principaux états interdits.
 
 ---
 
 ## D-017 — Validation réelle de la dérivation et de l'upgrade du Core
 
 **Statut :** PLANIFIÉ  
-**Périmètre :** Core / stratégie de distribution  
-**Blocage Core 1.0 :** oui pour déclarer la stratégie de distribution réellement validée  
+**Blocage Core 1.0 :** oui pour valider réellement la stratégie de distribution  
 **Dépendances :** D-014 validée, puis D-015, D-016 et D-002
 
-Exercice obligatoire : release candidate Core → dépôt pilote dérivé → petit module métier représentatif → évolution Core compatible → upgrade réel → migrations/configuration si applicable → tests Core + métier + E2E → analyse des conflits et de la provenance.
-
-D-002 doit être validée avant cet exercice : la dérivation pilote ne doit pas partir d'un sous-système Files dont le cycle utilisateur suppression/restauration est volontairement incomplet.
-
-**Critère de clôture :** dérivation et upgrade réellement exécutés et documentés, tests verts et corrections génériques remontées au Core si nécessaire.
+Exercice : release candidate Core → dépôt pilote dérivé → petit module métier → évolution Core compatible → upgrade réel → migrations/configuration → tests Core+métier+E2E → analyse des conflits/provenance.
 
 ---
 
@@ -483,71 +287,103 @@ D-002 doit être validée avant cet exercice : la dérivation pilote ne doit pas
 
 **Statut :** EN COURS  
 **Périmètre :** Core — onboarding commercial générique  
-**Blocage Core 1.0 :** oui  
-**Dépendances :** Plan / Subscription / EntitlementOverride / Workspace / User / RBAC Platform existants
+**Blocage Core 1.0 :** oui
 
-Contrat canonique :
+Contrat : `docs/contracts/COMMERCIAL-INVITATIONS.md`.
+
+`PlatformInvitation` reste réservé aux collaborateurs internes ; `CommercialInvitation` aux prospects/futurs clients/bêta-testeurs. Offre privée via Plan non public, snapshot serveur, dérive significative refusée, token aléatoire/hash SHA-256, rotation au resend, révocation, permissions Platform dédiées, acceptation authentifiée et atomique, audit. Les règles trial/open-ended restent celles du contrat canonique.
+
+**Critère de clôture :** validation fonctionnelle manuelle restante + contrat, sécurité, backend/frontend et tests validés.
+
+---
+
+## D-021 — Gate sécurité Auth, invitations et tokens temporaires
+
+**Statut :** PLANIFIÉ  
+**Périmètre :** Core Auth + WorkspaceInvitation + PlatformInvitation + CommercialInvitation et tout lien sensible temporaire  
+**Blocage Core 1.0 :** oui, avant D-015  
+**Dépendances :** Auth/session et domaines d'invitation existants  
+**Déclencheur :** décision sécurité du 2026-09-08 — auditer et homogénéiser les secrets temporaires avant de figer le versionnement du Core
+
+Cette dette est d'abord une **gate d'audit de l'existant**. Elle ne doit pas recréer ce qui est déjà correctement implémenté et testé. Chaque invariant doit être vérifié dans le code, les contraintes DB, les tests et les contrats avant modification.
+
+### Invitations
+
+Toutes les invitations sensibles doivent être temporaires, à usage unique et révocables. Politique cible Core à confirmer par audit :
 
 ```text
-docs/contracts/COMMERCIAL-INVITATIONS.md
-```
-
-Frontière obligatoire :
-
-```text
+WorkspaceInvitation
 PlatformInvitation
-→ collaborateur interne de l'éditeur
-
 CommercialInvitation
-→ nouveau prospect / futur client / bêta-testeur
+→ expiration par défaut : 7 jours
 ```
 
-Le modèle ne réutilise jamais `PlatformInvitation` pour une finalité commerciale client.
+Le délai doit être défini côté serveur et configurable de manière contrôlée si un domaine a un besoin justifié. Un resend doit produire un nouveau secret et invalider/faire tourner l'ancien ; il ne doit pas simplement prolonger un secret déjà distribué.
 
-Décisions figées :
+Exigences : token cryptographiquement aléatoire, secret brut jamais persisté lorsque le modèle permet un hash, expiration vérifiée serveur, single-use atomique, révocation explicite, protection contre replay/concurrence, absence de fuite dans logs/URLs persistantes, audit des transitions sensibles et tests d'expiration.
 
-- une invitation commerciale initiale ne cible pas un utilisateur déjà inscrit au moment de sa création ;
-- aucun mode de rattachement à un workspace existant n'est prévu ;
-- les workspaces existants utilisent `Subscription` / `EntitlementOverride` pour les exceptions commerciales ;
-- offre privée via Plan `isPublic=false`, `status=active`, `systemRole=null` ;
-- prix `0` possible sans devenir la baseline ;
-- le Plan privé ne doit jamais apparaître dans le catalogue public ;
-- capabilities et limites explicitement portées par le Plan ;
-- aucune future capability accordée automatiquement ;
-- une offre gratuite durable n'est pas un trial illimité ;
-- vrai trial temporaire et soumis à `TrialEligibility` ;
-- `termType=fixed|open_ended` explicite la sémantique temporelle ;
-- une open-ended D-020 valide est gratuite, manuelle, sans périodicité et sans `currentPeriodEnd` ;
-- aucun `2099-12-31` ou autre date artificielle pour simuler l'illimité ;
-- snapshot serveur de l'offre ;
-- dérive significative du Plan avant acceptation = refus et nouvelle invitation ;
-- token aléatoire, hash SHA-256 seul persisté, resend avec rotation, revoke explicite ;
-- permissions Platform dédiées ;
-- acceptation authentifiée et atomique avec création du premier Workspace ;
-- audit des transitions sensibles.
+### Forgot / reset password
 
-**Critère de clôture :** contrat d'onboarding commercial validé, permissions Platform dédiées, modèle distinct, acceptation atomique/auditée, sécurité des secrets validée, frontend réutilisable, tests backend/frontend et build réellement verts.
+Politique cible :
+
+```text
+reset password token
+→ durée : 15 minutes
+→ usage unique
+→ nouvelle demande requise après expiration
+```
+
+À vérifier/garantir : token fort, stockage hashé, expiration serveur, consommation atomique, impossibilité de réutilisation, réponse de demande uniforme ne révélant pas l'existence d'un compte, rate limiting, notification après changement de mot de passe et politique explicite d'invalidation des sessions après reset.
+
+### Rate limiting et anti-automation
+
+Auditer séparément `register`, `login`, `forgot-password`, preview/acceptation d'invitations et autres endpoints Auth sensibles.
+
+La première défense reste le rate limiting et les contrôles anti-abus adaptés, idéalement sans dépendre uniquement de l'IP lorsque le contexte permet également une limitation par identité/compte/email normalisé sans créer d'oracle d'énumération.
+
+Un CAPTCHA/challenge anti-bot ne doit **pas** être imposé systématiquement au login par défaut. Il reste une défense complémentaire à déclencher selon le risque : abus automatisé, volume anormal, échecs répétés ou besoin produit démontré. L'intégration future d'un provider anti-bot doit préserver accessibilité, confidentialité et possibilité de remplacement.
+
+Pour l'inscription publique, le besoin de challenge doit être évalué avec les protections existantes : rate limiting, vérification email, prévention des créations massives et protection de `TrialEligibility`. Pour `forgot-password`, empêcher le mail bombing fait partie de la gate.
+
+### Google SSO hors D-021
+
+Google SSO reste dans D-010 et **ne bloque pas** le versionnement Core 1.0. D-021 ne doit pas l'implémenter indirectement.
+
+### Tests attendus
+
+- expiration exacte et refus après expiration ;
+- usage unique et replay refusé ;
+- resend/rotation invalidant l'ancien secret ;
+- révocation ;
+- concurrence sur acceptation/consommation ;
+- anti-enumeration ;
+- rate limits des endpoints sensibles ;
+- reset password expiré après 15 minutes ;
+- comportement sessions après reset ;
+- absence de persistance/log accidentel du secret ;
+- tests backend d'intégration/sécurité et tests frontend pertinents.
+
+**Critère de clôture :** audit documenté de tous les secrets temporaires Core, politique d'expiration homogène ou exceptions justifiées, invitations 7 jours par défaut, reset 15 minutes, single-use/rotation/révocation/replay/concurrence sécurisés, anti-enumeration et rate limiting vérifiés, stratégie anti-bot explicitement décidée, tests verts et documentation canonique synchronisée avant D-015.
 
 ---
 
 ## 6. Éléments volontairement non intégrés comme dette active
 
-Ne sont pas ajoutés par anticipation : packages `@saas-core/*`, provider de paiement imposé au Core, CMP fictive sans traceurs applicables, ou limite universelle du nombre de Workspaces.
-
-Le Core reste techniquement multi-workspace. Un SaaS dérivé peut choisir une autre logique commerciale selon son métier.
+Ne sont pas ajoutés par anticipation : packages `@saas-core/*`, provider de paiement imposé au Core, CMP fictive sans traceurs applicables, limite universelle du nombre de Workspaces ou CAPTCHA/provider anti-bot imposé sans besoin démontré.
 
 ---
 
 ## 7. Ordre de traitement recommandé
 
 ```text
-D-001 fermeture Account / Workspace                         ✅ VALIDÉ
-D-014 points d'extension métier                             ✅ VALIDÉ
-D-018 Équipe de la Plateforme / RBAC / invitations          ✅ VALIDÉ
-D-019 moteur sécurisé de rétention / purge Core             ✅ VALIDÉ
-DOC-CODE-1 documentation source                             ✅ VALIDÉ
+D-001 fermeture Account / Workspace                         VALIDÉ
+D-014 points d'extension métier                             VALIDÉ
+D-018 Équipe Platform / RBAC / invitations                  VALIDÉ
+D-019 moteur sécurisé de rétention / purge Core             VALIDÉ
+DOC-CODE-1 documentation source                             VALIDÉ
 → D-020 invitation commerciale / offre privée découverte    EN COURS
 → D-011 préférences utilisateur / apparence / dashboard     PLANIFIÉ
+→ D-021 gate sécurité Auth / invitations / tokens           PLANIFIÉ
 → D-015 release/version/provenance/migrations               PLANIFIÉ
 → D-016 Playwright E2E Core                                 PLANIFIÉ
 → D-002 corbeille / restauration Files                      PLANIFIÉ — avant première dérivation
@@ -556,32 +392,10 @@ DOC-CODE-1 documentation source                             ✅ VALIDÉ
 → taguer uniquement ensuite la release Core stable
 ```
 
-Aucune première dérivation métier ne doit commencer tant que D-002 n'est pas `VALIDÉ`.
-
-Aucune release `v1.0.0` ne doit être déclarée avant clôture ou reclassification explicite de tous les blockers Core 1.0 applicables, notamment D-020 et D-011 avant D-015.
+Aucune première dérivation métier avant D-002 `VALIDÉ`. Aucune release `v1.0.0` avant clôture/reclassification explicite de tous les blockers Core applicables, notamment D-020, D-011 et D-021 avant D-015.
 
 ---
 
 ## 8. Gate finale d'un SaaS dérivé
 
-Un produit dérivé ne doit pas être considéré prêt pour la production tant que :
-
-```text
-version Core compatible validée
-+
-modules métier validés
-+
-dettes bloquantes applicables traitées
-+
-configuration / infrastructure production validées
-+
-conformité applicable validée
-+
-Billing réel validé si produit payant
-+
-E2E produit verts
-+
-procédures de sauvegarde / rollback / monitoring adaptées
-```
-
-Les dettes conditionnelles non applicables doivent être explicitement classées `NON APPLICABLE` dans la documentation propre au produit.
+Un produit dérivé n'est pas production-ready sans version Core compatible, modules métier validés, dettes applicables traitées, configuration/infrastructure, conformité, Billing si payant, E2E produit et procédures sauvegarde/rollback/monitoring adaptées.
