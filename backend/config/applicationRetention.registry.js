@@ -1,8 +1,11 @@
 import {
+    composeRetentionAdapterExtensions,
+    createRetentionAdapterRegistry,
+} from '../modules/retention/retentionAdapter.registry.js';
+import {
     composeRetentionTargetExtensions,
     createRetentionTargetRegistry,
 } from '../modules/retention/retentionTarget.registry.js';
-
 
 /**
  * Point de composition unique des cibles de rétention de l'application.
@@ -12,6 +15,7 @@ import {
  * créer une cible absente de ce registre.
  */
 const APPLICATION_RETENTION_TARGET_MODULES = Object.freeze([]);
+const APPLICATION_RETENTION_ADAPTER_MODULES = Object.freeze([]);
 
 const ACTIVE_RETENTION_TARGET_REGISTRY =
     createRetentionTargetRegistry({
@@ -20,8 +24,17 @@ const ACTIVE_RETENTION_TARGET_REGISTRY =
         ),
     });
 
+const ACTIVE_RETENTION_ADAPTER_REGISTRY =
+    createRetentionAdapterRegistry({
+        targetRegistry: ACTIVE_RETENTION_TARGET_REGISTRY,
+        adapters: composeRetentionAdapterExtensions(
+            APPLICATION_RETENTION_ADAPTER_MODULES,
+        ),
+    });
 
 export {
+    ACTIVE_RETENTION_ADAPTER_REGISTRY,
     ACTIVE_RETENTION_TARGET_REGISTRY,
+    APPLICATION_RETENTION_ADAPTER_MODULES,
     APPLICATION_RETENTION_TARGET_MODULES,
 };
