@@ -6,8 +6,11 @@ import {
     AUDIT_STATUS,
 } from '../../../constants/auditActions.constants.js';
 import {
+    BILLING_INTERVAL,
+    BILLING_PROVIDER,
     SUBSCRIPTION_KIND,
     SUBSCRIPTION_STATUS,
+    SUBSCRIPTION_TERM_TYPE,
 } from '../../../constants/subscription.constants.js';
 import { AppError } from '../../../utils/appError.js';
 import { createAuditLog } from '../../auditLog/auditLog.service.js';
@@ -39,6 +42,7 @@ const buildSubscriptionLifecycleDto = (subscription) => ({
     workspace: subscription.workspace?.toString() ?? null,
     plan: subscription.plan?.toString() ?? null,
     kind: subscription.kind,
+    termType: subscription.termType ?? null,
     status: subscription.status,
     currentPeriodStart: subscription.currentPeriodStart,
     currentPeriodEnd: subscription.currentPeriodEnd,
@@ -51,19 +55,59 @@ const buildSubscriptionLifecycleDto = (subscription) => ({
     updatedAt: subscription.updatedAt,
 });
 
-const assertActiveCommercialSubscription = ({ subscription, now }) => {
+/**
+ * Vérifie qu'une Subscription commerciale active peut utiliser le cycle de
+ * résiliation demandé.
+ *
+ * Une offre `open_ended` D-020 n'a pas de fin de période à programmer. Elle
+ * peut être résiliée immédiatement, mais uniquement si son contrat gratuit
+ * reste cohérent. Cette vérification empêche qu'un `open_ended` mal configuré
+ * soit traité comme un abonnement permanent valide.
+ */
+const assertActiveCommercialSubscription = ({
+    subscription,
+    now,
+    requireFixedTerm = false,
+}) => {
     if (subscription.kind !== SUBSCRIPTION_KIND.COMMERCIAL) {
         throw new AppError(
             'Seule une souscription commerciale peut utiliser ce cycle de résiliation',
             409,
         );
     }
+
     if (subscription.status !== SUBSCRIPTION_STATUS.ACTIVE) {
         throw new AppError(
             'Cette opération nécessite une souscription commerciale active',
             409,
         );
     }
+
+    if (subscription.termType === SUBSCRIPTION_TERM_TYPE.OPEN_ENDED) {
+        if (requireFixedTerm) {
+            throw new AppError(
+                'Une souscription sans échéance ne peut pas être résiliée en fin de période',
+                409,
+            );
+        }
+
+        if (
+            subscription.currentPeriodEnd !== null
+            || subscription.trialEndsAt !== null
+            || subscription.cancelAtPeriodEnd === true
+            || subscription.billingInterval !== BILLING_INTERVAL.NONE
+            || subscription.priceExclTaxMinor !== 0
+            || subscription.provider !== BILLING_PROVIDER.MANUAL
+        ) {
+            throw new AppError(
+                'La configuration de la souscription sans échéance est incohérente',
+                409,
+            );
+        }
+
+        return;
+    }
+
     if (
         !(subscription.currentPeriodEnd instanceof Date)
         || subscription.currentPeriodEnd <= now
@@ -93,7 +137,11 @@ const scheduleActiveSubscriptionCancellation = async ({
     await mongoose.connection.transaction(async (session) => {
         const subscription = await Subscription.findById(subscriptionId).session(session);
         if (!subscription) throw new AppError('Souscription introuvable', 404);
-        assertActiveCommercialSubscription({ subscription, now });
+        assertActiveCommercialSubscription({
+            subscription,
+            now,
+            requireFixedTerm: true,
+        });
         if (subscription.cancelAtPeriodEnd === true) {
             throw new AppError('L’annulation en fin de période est déjà programmée', 409);
         }
@@ -102,6 +150,9 @@ const scheduleActiveSubscriptionCancellation = async ({
                 _id: subscription._id,
                 kind: SUBSCRIPTION_KIND.COMMERCIAL,
                 status: SUBSCRIPTION_STATUS.ACTIVE,
+                termType: mongoose.trusted({
+                    $ne: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+                }),
                 cancelAtPeriodEnd: false,
                 currentPeriodEnd: mongoose.trusted({ $type: 'date', $gt: now }),
             },
@@ -145,7 +196,11 @@ const resumeScheduledSubscriptionCancellation = async ({
     await mongoose.connection.transaction(async (session) => {
         const subscription = await Subscription.findById(subscriptionId).session(session);
         if (!subscription) throw new AppError('Souscription introuvable', 404);
-        assertActiveCommercialSubscription({ subscription, now });
+        assertActiveCommercialSubscription({
+            subscription,
+            now,
+            requireFixedTerm: true,
+        });
         if (subscription.cancelAtPeriodEnd !== true) {
             throw new AppError('Aucune annulation en fin de période n’est programmée', 409);
         }
@@ -154,6 +209,9 @@ const resumeScheduledSubscriptionCancellation = async ({
                 _id: subscription._id,
                 kind: SUBSCRIPTION_KIND.COMMERCIAL,
                 status: SUBSCRIPTION_STATUS.ACTIVE,
+                termType: mongoose.trusted({
+                    $ne: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+                }),
                 cancelAtPeriodEnd: true,
                 currentPeriodEnd: mongoose.trusted({ $type: 'date', $gt: now }),
             },
@@ -199,22 +257,47 @@ const cancelActiveSubscriptionImmediately = async ({
         const subscription = await Subscription.findById(subscriptionId).session(session);
         if (!subscription) throw new AppError('Souscription introuvable', 404);
         assertActiveCommercialSubscription({ subscription, now: canceledAt });
+
+        const isOpenEnded =
+            subscription.termType === SUBSCRIPTION_TERM_TYPE.OPEN_ENDED;
         const previousPeriodEnd = subscription.currentPeriodEnd;
+
+        const concurrencyFilter = isOpenEnded
+            ? {
+                termType: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+                currentPeriodEnd: null,
+                billingInterval: BILLING_INTERVAL.NONE,
+                priceExclTaxMinor: 0,
+                provider: BILLING_PROVIDER.MANUAL,
+            }
+            : {
+                termType: mongoose.trusted({
+                    $ne: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+                }),
+                currentPeriodEnd: mongoose.trusted({
+                    $type: 'date',
+                    $gt: canceledAt,
+                }),
+            };
+
+        const update = {
+            status: SUBSCRIPTION_STATUS.CANCELED,
+            cancelAtPeriodEnd: false,
+            updatedBy: actorId,
+        };
+
+        if (!isOpenEnded) {
+            update.currentPeriodEnd = canceledAt;
+        }
+
         result = await Subscription.findOneAndUpdate(
             {
                 _id: subscription._id,
                 kind: SUBSCRIPTION_KIND.COMMERCIAL,
                 status: SUBSCRIPTION_STATUS.ACTIVE,
-                currentPeriodEnd: mongoose.trusted({ $type: 'date', $gt: canceledAt }),
+                ...concurrencyFilter,
             },
-            {
-                $set: {
-                    status: SUBSCRIPTION_STATUS.CANCELED,
-                    cancelAtPeriodEnd: false,
-                    currentPeriodEnd: canceledAt,
-                    updatedBy: actorId,
-                },
-            },
+            { $set: update },
             { returnDocument: 'after', runValidators: true, session },
         );
         if (!result) throw new AppError('La souscription a été modifiée concurremment', 409);
@@ -229,6 +312,7 @@ const cancelActiveSubscriptionImmediately = async ({
             metadata: {
                 mode: 'immediate',
                 reason,
+                termType: subscription.termType ?? null,
                 previousStatus: SUBSCRIPTION_STATUS.ACTIVE,
                 newStatus: SUBSCRIPTION_STATUS.CANCELED,
                 previousPeriodEnd,
@@ -256,6 +340,9 @@ const finalizeScheduledCancellations = async ({
     const candidates = await Subscription.find({
         kind: SUBSCRIPTION_KIND.COMMERCIAL,
         status: SUBSCRIPTION_STATUS.ACTIVE,
+        termType: mongoose.trusted({
+            $ne: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+        }),
         cancelAtPeriodEnd: true,
         currentPeriodEnd: mongoose.trusted({ $type: 'date', $lte: now }),
     })
@@ -273,6 +360,9 @@ const finalizeScheduledCancellations = async ({
                     _id: candidate._id,
                     kind: SUBSCRIPTION_KIND.COMMERCIAL,
                     status: SUBSCRIPTION_STATUS.ACTIVE,
+                    termType: mongoose.trusted({
+                        $ne: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+                    }),
                     cancelAtPeriodEnd: true,
                     currentPeriodEnd: mongoose.trusted({ $type: 'date', $lte: now }),
                 },
