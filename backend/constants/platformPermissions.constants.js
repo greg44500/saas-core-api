@@ -2,30 +2,21 @@ import {
     PLATFORM_ROLE,
 } from './platformRoles.constants.js';
 
-
-/**
- * Niveaux de délégation des permissions Platform.
- *
- * Le niveau décrit la manière dont une permission peut être attribuée. Il ne
- * remplace jamais l'autorisation runtime elle-même.
- */
 const PLATFORM_PERMISSION_SENSITIVITY = Object.freeze({
     DELEGABLE: 'delegable',
     SENSITIVE: 'sensitive',
     RESERVED: 'reserved',
 });
 
-
 /**
  * Permissions génériques du périmètre Platform.
  *
- * Les clés historiques trop larges sont temporairement conservées pour la
- * compatibilité des routes existantes. Les nouvelles routes doivent préférer
- * les permissions granulaires qui décrivent l'action réellement effectuée.
+ * Les permissions d'invitation commerciale sont distinctes de TEAM_* : une
+ * invitation client ne doit jamais être interprétée comme une invitation à
+ * rejoindre l'équipe interne de la Plateforme.
  */
 const PLATFORM_PERMISSION = Object.freeze({
     OVERVIEW_READ: 'platform:overview:read',
-
     CAPABILITIES_READ: 'platform:capabilities:read',
 
     PLANS_READ: 'platform:plans:read',
@@ -39,6 +30,15 @@ const PLATFORM_PERMISSION = Object.freeze({
         'platform:subscriptions:grant_trial',
     SUBSCRIPTIONS_CANCEL: 'platform:subscriptions:cancel',
     SUBSCRIPTIONS_RESUME: 'platform:subscriptions:resume',
+
+    COMMERCIAL_INVITATIONS_READ:
+        'platform:commercial_invitations:read',
+    COMMERCIAL_INVITATIONS_CREATE:
+        'platform:commercial_invitations:create',
+    COMMERCIAL_INVITATIONS_RESEND:
+        'platform:commercial_invitations:resend',
+    COMMERCIAL_INVITATIONS_REVOKE:
+        'platform:commercial_invitations:revoke',
 
     ENTITLEMENT_OVERRIDES_READ:
         'platform:entitlement_overrides:read',
@@ -98,21 +98,12 @@ const PLATFORM_PERMISSIONS = Object.freeze(
     Object.values(PLATFORM_PERMISSION),
 );
 
-/**
- * Politique transitoire : aucun élargissement implicite des anciens rôles
- * stockés directement dans User.
- *
- * `super_admin` conserve tous les droits connus. `admin`, `support` et `user`
- * restent sans permission tant que PlatformTeamMember / PlatformRole ne sont
- * pas devenus l'autorité runtime dans A4.
- */
 const DEFAULT_PLATFORM_ROLE_PERMISSIONS = Object.freeze({
     [PLATFORM_ROLE.USER]: Object.freeze([]),
     [PLATFORM_ROLE.SUPPORT]: Object.freeze([]),
     [PLATFORM_ROLE.ADMIN]: Object.freeze([]),
     [PLATFORM_ROLE.SUPER_ADMIN]: PLATFORM_PERMISSIONS,
 });
-
 
 export {
     DEFAULT_PLATFORM_ROLE_PERMISSIONS,
