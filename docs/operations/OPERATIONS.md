@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Guide canonique d’exploitation
 
 **Statut :** document canonique d’opérations  
-**Dernière mise à jour :** 2026-09-05  
+**Dernière mise à jour :** 2026-09-08  
 **Périmètre :** installation, configuration, démarrage, seeds, migrations, jobs, stockage, antivirus, health checks, déploiement et rollback
 
 ---
@@ -308,7 +308,7 @@ Une release Core ne doit pas se contenter de tests unitaires ciblés : les tests
 
 ## 10. Seeds
 
-Un seed sert à initialiser des données attendues. Il ne remplace pas une migration.
+Un seed sert à initialiser ou synchroniser des données système attendues. Il ne remplace pas une migration de données métier.
 
 ### 10.1 Baseline Plan
 
@@ -356,6 +356,20 @@ email déjà présent avec autre rôle
 
 Un seed ne doit jamais servir à promouvoir silencieusement un compte existant vers `super_admin`.
 
+### 10.3 Rôles système Platform
+
+Commande :
+
+```bash
+npm run seed:platform-roles
+```
+
+Ce seed synchronise les presets système du Core et ne modifie pas les rôles Platform personnalisés.
+
+Après l’introduction de D-020, il doit être rejoué afin que les rôles système concernés reçoivent les permissions `platform:commercial_invitations:*`. Le Super administrateur reçoit toutes les permissions actives ; les rôles `platform_admin` et `commercial_support` reçoivent les permissions commerciales explicitement prévues par leurs presets.
+
+Cette synchronisation doit être exécutée après déploiement du code qui connaît les nouvelles permissions, mais avant d’attendre de ces rôles qu’ils utilisent les routes D-020.
+
 ---
 
 ## 11. Migrations
@@ -388,6 +402,7 @@ Le `package.json` expose actuellement plusieurs commandes `migration:*`.
 
 ```text
 migration:subscription-kind
+migration:subscription-term-type
 migration:subscription-lifecycle-indexes
 migration:operational-indexes
 migration:subscription-read-permission
@@ -397,12 +412,48 @@ migration:workspace-member-usage-reconcile
 migration:member-invite-permission
 migration:file-read-permission
 migration:file-delete-permission
+migration:file-storage-usage-reconcile
 migration:workspace-ownership-transfer-permission
 migration:baseline-plan-system-role
 migration:baseline-remove-file-upload
 ```
 
-### 11.3 Règle de release
+### 11.3 Migration D-020 — `subscription-term-type`
+
+D-020 introduit `Subscription.termType` afin de distinguer explicitement :
+
+```text
+fixed
+open_ended
+```
+
+Les documents historiques ne possèdent pas ce champ en base. Avant de rendre le code D-020 autoritatif, exécuter :
+
+```bash
+npm run migration:subscription-term-type
+```
+
+Ordre requis :
+
+```text
+1. migration:subscription-kind déjà appliquée
+2. migration:subscription-term-type
+3. déploiement / activation du code D-020
+4. seed:platform-roles pour synchroniser les permissions système
+```
+
+Backfill :
+
+```text
+kind = baseline   → termType = open_ended
+kind = commercial → termType = fixed
+```
+
+La migration est idempotente et refuse de deviner lorsqu’une Subscription sans `termType` ne possède pas un `kind` exploitable. Dans ce cas, il faut corriger l’état ou exécuter d’abord la migration `subscription-kind`; il ne faut pas forcer une valeur arbitraire.
+
+Le resolver conserve une compatibilité fail-closed avec les anciennes commerciales bornées sans `termType`, mais cette compatibilité ne remplace pas la migration de données attendue.
+
+### 11.4 Règle de release
 
 L’ordre de ces commandes ne doit jamais être deviné par l’exploitant.
 
@@ -419,7 +470,7 @@ contrôle attendu après exécution
 stratégie de reprise en cas d’échec
 ```
 
-### 11.4 Limite actuelle
+### 11.5 Limite actuelle
 
 Le dépôt ne possède pas encore de moteur central de migrations avec historique automatique des migrations appliquées.
 
@@ -954,7 +1005,7 @@ La mise à niveau d’un SaaS dérivé n’est donc pas uniquement une fusion Gi
 
 ## 28. Limites opérationnelles actuelles à ne pas masquer
 
-Au 2026-09-05, les points suivants ne sont pas finalisés comme contrat de production générique :
+Au 2026-09-08, les points suivants ne sont pas finalisés comme contrat de production générique :
 
 ```text
 provider de stockage distant / production
