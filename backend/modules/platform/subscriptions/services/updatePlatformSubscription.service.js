@@ -14,6 +14,7 @@ import {
 import {
     BILLING_INTERVAL,
     DISCOUNT_TYPE,
+    SUBSCRIPTION_TERM_TYPE,
 } from '../../../../constants/subscription.constants.js';
 
 import {
@@ -135,6 +136,12 @@ const normalizeManualOverride = (
  * Le service conserve l'instantané tarifaire de la souscription lorsqu'un
  * changement de plan ou de périodicité intervient.
  *
+ * Une Subscription `open_ended` D-020 représente toutefois un contrat sans
+ * échéance explicitement borné à une offre gratuite manuelle. Le PATCH
+ * générique ne peut donc pas changer son Plan, sa périodicité ni programmer
+ * une annulation en fin de période : ces transitions exigent un workflow
+ * commercial dédié afin de ne pas rendre le contrat temporel incohérent.
+ *
  * @param {object} params
  * @param {string} params.subscriptionId
  * @param {object} params.subscriptionData
@@ -172,6 +179,20 @@ const updatePlatformSubscription = async ({
             throw new AppError(
                 'Souscription introuvable',
                 404,
+            );
+        }
+
+        if (
+            subscription.termType === SUBSCRIPTION_TERM_TYPE.OPEN_ENDED
+            && (
+                subscriptionData.plan !== undefined
+                || subscriptionData.billingInterval !== undefined
+                || subscriptionData.cancelAtPeriodEnd !== undefined
+            )
+        ) {
+            throw new AppError(
+                'Le contrat d’une souscription sans échéance ne peut pas être modifié par le PATCH générique',
+                409,
             );
         }
 
@@ -302,6 +323,8 @@ const updatePlatformSubscription = async ({
             updatedSubscription.plan?.toString()
             ?? null,
 
+        termType:
+            updatedSubscription.termType ?? null,
         status: updatedSubscription.status,
 
         currentPeriodStart:
