@@ -211,10 +211,20 @@ describe('application routing', () => {
 
   it('rend la route publique racine dans PublicLayout', () => {
     renderRoute('/');
-    expect(screen.getByText('SaaS Core')).toBeInTheDocument();
+
     expect(
-      screen.getByRole('heading', { name: 'Fondations UI prêtes' }),
+      screen.getByRole('heading', {
+        name: 'Une base professionnelle pour construire votre application SaaS.',
+      }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Créer un compte' })).toHaveAttribute(
+      'href',
+      '/register',
+    );
+    expect(screen.getAllByRole('link', { name: 'Se connecter' })[0]).toHaveAttribute(
+      'href',
+      '/login',
+    );
   });
 
   it('rend Login pour un visiteur non authentifié', async () => {
