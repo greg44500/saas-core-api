@@ -36,44 +36,42 @@ const toOfferDto = (snapshot) => ({
 });
 
 /**
- * Sérialise une invitation sans exposer son hash de token.
- *
- * `planOverride` est utilisé juste après create/resend car le document retourné
- * par la livraison n'est pas peuplé. Le listing utilise naturellement le Plan
- * déjà peuplé par son service.
+ * Le Plan peut être fourni explicitement après create/resend, car la mise à
+ * jour du statut de livraison retourne un document dont la référence `plan`
+ * n'est pas peuplée. Le DTO reste ainsi identique entre create, resend et list.
  */
-const toAdminInvitationDto = (invitation, planOverride = null) => {
-    const resolvedPlan = planOverride ?? invitation.plan;
-
-    return {
-        id: invitation._id.toString(),
-        email: invitation.emailCanonical,
-        workspaceName: invitation.workspaceName,
-        status: invitation.status,
-        deliveryStatus: invitation.deliveryStatus,
-        lastDeliveryAttemptAt: invitation.lastDeliveryAttemptAt,
-        deliveredAt: invitation.deliveredAt,
-        expiresAt: invitation.expiresAt,
-        acceptedAt: invitation.acceptedAt,
-        revokedAt: invitation.revokedAt,
-        revokeReason: invitation.revokeReason ?? null,
-        plan: resolvedPlan?._id
-            ? {
-                id: resolvedPlan._id.toString(),
-                name: resolvedPlan.name,
-                status: resolvedPlan.status,
-                isPublic: resolvedPlan.isPublic,
-            }
-            : {
-                id: resolvedPlan?.toString() ?? null,
-            },
-        offer: toOfferDto(invitation.offerSnapshot),
-        workspace: invitation.workspace?.toString() ?? null,
-        subscription: invitation.subscription?.toString() ?? null,
-        createdAt: invitation.createdAt,
-        updatedAt: invitation.updatedAt,
-    };
-};
+const toAdminInvitationDto = (
+    invitation,
+    resolvedPlan = invitation.plan,
+) => ({
+    id: invitation._id.toString(),
+    email: invitation.emailCanonical,
+    workspaceName: invitation.workspaceName,
+    reason: invitation.reason,
+    status: invitation.status,
+    deliveryStatus: invitation.deliveryStatus,
+    lastDeliveryAttemptAt: invitation.lastDeliveryAttemptAt,
+    deliveredAt: invitation.deliveredAt,
+    expiresAt: invitation.expiresAt,
+    acceptedAt: invitation.acceptedAt,
+    revokedAt: invitation.revokedAt,
+    revokeReason: invitation.revokeReason ?? null,
+    plan: resolvedPlan?._id
+        ? {
+            id: resolvedPlan._id.toString(),
+            name: resolvedPlan.name,
+            status: resolvedPlan.status,
+            isPublic: resolvedPlan.isPublic,
+        }
+        : {
+            id: resolvedPlan?.toString() ?? null,
+        },
+    offer: toOfferDto(invitation.offerSnapshot),
+    workspace: invitation.workspace?.toString() ?? null,
+    subscription: invitation.subscription?.toString() ?? null,
+    createdAt: invitation.createdAt,
+    updatedAt: invitation.updatedAt,
+});
 
 const create = async (req, res) => {
     const { invitation, plan, token } = await createCommercialInvitation({
@@ -81,6 +79,7 @@ const create = async (req, res) => {
         planId: req.validated.body.planId,
         workspaceName: req.validated.body.workspaceName,
         billingInterval: req.validated.body.billingInterval,
+        reason: req.validated.body.reason,
         actorId: req.user.id,
         ipAddress: req.context.ipAddress,
         userAgent: req.context.userAgent,
@@ -157,9 +156,9 @@ const revoke = async (req, res) => {
 };
 
 /**
- * La preview ne renvoie volontairement pas l'adresse email destinataire. Le
- * bearer token suffit à présenter l'offre, mais une fuite du lien ne doit pas
- * exposer en plus une donnée personnelle inutile à cette étape.
+ * La preview ne renvoie volontairement ni l'adresse email destinataire ni le
+ * motif administratif. Le bearer token suffit à présenter l'offre, mais une
+ * fuite du lien ne doit pas exposer de donnée personnelle ou interne inutile.
  */
 const preview = async (req, res) => {
     const invitation = await previewCommercialInvitation({
