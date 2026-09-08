@@ -16,11 +16,9 @@ import {
 function RegisterPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const commercialInvitationToken = getCommercialInvitationTokenFromLocation(
-    location,
-  );
+  const commercialInvitationToken = getCommercialInvitationTokenFromLocation();
   const commercialInvitationState = commercialInvitationToken
-    ? buildCommercialInvitationAuthState(commercialInvitationToken)
+    ? buildCommercialInvitationAuthState()
     : undefined;
   const [registerAccount, { isLoading }] = useRegisterMutation();
   const {
