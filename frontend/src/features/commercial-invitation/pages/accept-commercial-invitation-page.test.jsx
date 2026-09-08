@@ -41,6 +41,11 @@ vi.mock(
   }),
 );
 
+import {
+  clearCommercialInvitationTokenInMemory,
+  getCommercialInvitationTokenFromLocation,
+  setCommercialInvitationTokenInMemory,
+} from '@/features/commercial-invitation/lib/commercial-invitation';
 import { AcceptCommercialInvitationPage } from '@/features/commercial-invitation/pages/accept-commercial-invitation-page';
 
 const TOKEN = 'a'.repeat(64);
@@ -71,12 +76,7 @@ function LocationStateProbe() {
 
 function renderAcceptance() {
   return render(
-    <MemoryRouter
-      initialEntries={[{
-        pathname: '/commercial-invitations/accept',
-        state: { commercialInvitationToken: TOKEN },
-      }]}
-    >
+    <MemoryRouter initialEntries={['/commercial-invitations/accept']}>
       <Routes>
         <Route
           element={<AcceptCommercialInvitationPage />}
@@ -96,6 +96,8 @@ function renderAcceptance() {
 describe('AcceptCommercialInvitationPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearCommercialInvitationTokenInMemory();
+    setCommercialInvitationTokenInMemory(TOKEN);
     window.history.replaceState({}, '', '/');
     mocks.authStatus = 'unauthenticated';
     mocks.previewState = {
@@ -114,7 +116,7 @@ describe('AcceptCommercialInvitationPage', () => {
     });
   });
 
-  it('prévisualise l’offre sans révéler ni persister le token dans l’URL', async () => {
+  it('prévisualise l’offre avec le token conservé uniquement en runtime', async () => {
     renderAcceptance();
 
     expect(
@@ -126,20 +128,20 @@ describe('AcceptCommercialInvitationPage', () => {
       expect(mocks.preview).toHaveBeenCalledWith(TOKEN);
     });
     expect(window.location.hash).toBe('');
+    expect(getCommercialInvitationTokenFromLocation()).toBe(TOKEN);
   });
 
-  it('transporte le token uniquement dans l’état de navigation vers Login', async () => {
+  it('n’insère pas le token dans history.state lors du passage vers Login', async () => {
     const user = userEvent.setup();
     renderAcceptance();
 
     await user.click(screen.getByRole('link', { name: 'J’ai déjà un compte' }));
 
-    expect(
-      await screen.findByText(`/login|${TOKEN}`),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('/login|none')).toBeInTheDocument();
+    expect(getCommercialInvitationTokenFromLocation()).toBe(TOKEN);
   });
 
-  it('accepte avec une session authentifiée puis ouvre le workspace créé', async () => {
+  it('accepte avec une session authentifiée, efface le secret puis ouvre le workspace', async () => {
     const user = userEvent.setup();
     mocks.authStatus = 'authenticated';
     renderAcceptance();
@@ -154,5 +156,6 @@ describe('AcceptCommercialInvitationPage', () => {
     expect(
       await screen.findByText('/workspaces/workspace-123/dashboard|none'),
     ).toBeInTheDocument();
+    expect(getCommercialInvitationTokenFromLocation()).toBeNull();
   });
 });
