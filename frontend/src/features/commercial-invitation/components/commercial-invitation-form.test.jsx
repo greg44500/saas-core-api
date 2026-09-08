@@ -64,16 +64,15 @@ describe('CommercialInvitationForm', () => {
     );
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith(
-        {
-          email: 'beta@example.com',
-          planId: privateFreePlan.id,
-          workspaceName: 'Beta Workspace',
-          billingInterval: 'none',
-          reason: 'Programme bêta',
-        },
-        expect.anything(),
-      );
+      expect(onSubmit).toHaveBeenCalledOnce();
+    });
+
+    expect(onSubmit.mock.calls[0][0]).toEqual({
+      email: 'beta@example.com',
+      planId: privateFreePlan.id,
+      workspaceName: 'Beta Workspace',
+      billingInterval: 'none',
+      reason: 'Programme bêta',
     });
   });
 });
