@@ -18,6 +18,7 @@ import {
     accept,
     create,
     list,
+    listOffers,
     preview,
     resend,
     revoke,
@@ -35,6 +36,14 @@ import {
  * `/api/platform`; chaque action possède néanmoins sa permission dédiée.
  */
 const platformCommercialInvitationRouter = Router();
+
+platformCommercialInvitationRouter.get(
+    '/offers',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.COMMERCIAL_INVITATIONS_CREATE,
+    ),
+    listOffers,
+);
 
 platformCommercialInvitationRouter.post(
     '/',
