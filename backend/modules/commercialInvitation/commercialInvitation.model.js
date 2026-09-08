@@ -91,6 +91,18 @@ const commercialInvitationSchema = new Schema(
             immutable: true,
         },
         /**
+         * Justification administrative de l'accès privé accordé. Elle reste
+         * interne à la Plateforme et participe à la traçabilité commerciale.
+         */
+        reason: {
+            type: String,
+            required: true,
+            trim: true,
+            minlength: 3,
+            maxlength: 500,
+            immutable: true,
+        },
+        /**
          * Seul le hash SHA-256 du secret est persisté. Il reste modifiable
          * uniquement pour permettre un resend qui invalide l'ancien lien.
          */
