@@ -8,9 +8,11 @@ import {
 import {
   buildCommercialInvitationAuthState,
   clearCommercialInvitationTokenFragment,
+  clearCommercialInvitationTokenInMemory,
   getCommercialInvitationBillingOptions,
   getCommercialInvitationTokenFromLocation,
   isEligibleCommercialInvitationPlan,
+  setCommercialInvitationTokenInMemory,
 } from '@/features/commercial-invitation/lib/commercial-invitation';
 
 const TOKEN = 'a'.repeat(64);
@@ -26,6 +28,7 @@ const privateFreePlan = {
 };
 
 afterEach(() => {
+  clearCommercialInvitationTokenInMemory();
   window.history.replaceState({}, '', '/');
 });
 
@@ -75,39 +78,46 @@ describe('commercial invitation helpers', () => {
     }).map(({ value }) => value)).toEqual(['yearly']);
   });
 
-  it('lit le token depuis le fragment puis permet de le retirer de l’URL', () => {
+  it('capture le token depuis le fragment puis le retire de l’URL', () => {
     window.history.replaceState({}, '', `/commercial-invitations/accept#token=${TOKEN}`);
 
-    expect(getCommercialInvitationTokenFromLocation({ state: null })).toBe(TOKEN);
+    expect(getCommercialInvitationTokenFromLocation()).toBe(TOKEN);
 
     clearCommercialInvitationTokenFragment();
 
     expect(window.location.hash).toBe('');
     expect(window.location.pathname).toBe('/commercial-invitations/accept');
+    expect(getCommercialInvitationTokenFromLocation()).toBe(TOKEN);
   });
 
-  it('reprend le token depuis l’état mémoire React Router après Auth', () => {
-    expect(getCommercialInvitationTokenFromLocation({
-      state: { commercialInvitationToken: TOKEN },
-    })).toBe(TOKEN);
+  it('conserve le token uniquement dans le vault runtime pendant Auth', () => {
+    expect(setCommercialInvitationTokenInMemory(TOKEN)).toBe(TOKEN);
+    expect(getCommercialInvitationTokenFromLocation()).toBe(TOKEN);
 
-    expect(buildCommercialInvitationAuthState(TOKEN)).toEqual({
+    expect(buildCommercialInvitationAuthState()).toEqual({
       from: { pathname: '/commercial-invitations/accept' },
-      commercialInvitationToken: TOKEN,
     });
+    expect(buildCommercialInvitationAuthState()).not.toHaveProperty(
+      'commercialInvitationToken',
+    );
   });
 
-  it('ignore un fragment invalide si l’état mémoire possède encore le token valide', () => {
+  it('ignore un fragment invalide si le vault runtime possède encore le token valide', () => {
+    setCommercialInvitationTokenInMemory(TOKEN);
     window.history.replaceState({}, '', '/commercial-invitations/accept#token=bad-token');
 
-    expect(getCommercialInvitationTokenFromLocation({
-      state: { commercialInvitationToken: TOKEN },
-    })).toBe(TOKEN);
+    expect(getCommercialInvitationTokenFromLocation()).toBe(TOKEN);
   });
 
-  it('refuse un secret de forme invalide', () => {
-    expect(getCommercialInvitationTokenFromLocation({
-      state: { commercialInvitationToken: 'bad-token' },
-    })).toBeNull();
+  it('efface explicitement le secret runtime', () => {
+    setCommercialInvitationTokenInMemory(TOKEN);
+    clearCommercialInvitationTokenInMemory();
+
+    expect(getCommercialInvitationTokenFromLocation()).toBeNull();
+  });
+
+  it('refuse de placer un secret invalide dans le vault', () => {
+    expect(setCommercialInvitationTokenInMemory('bad-token')).toBeNull();
+    expect(getCommercialInvitationTokenFromLocation()).toBeNull();
   });
 });
