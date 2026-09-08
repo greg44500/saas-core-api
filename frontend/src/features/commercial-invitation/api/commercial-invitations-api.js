@@ -14,6 +14,12 @@ const COMMERCIAL_INVITATIONS_LIST_TAG = {
  */
 const commercialInvitationsApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
+    listCommercialInvitationOffers: build.query({
+      query: () => '/platform/commercial-invitations/offers',
+      transformResponse: (response) => response?.data?.plans ?? [],
+      providesTags: ['PlatformCommercialInvitationOffers'],
+    }),
+
     listCommercialInvitations: build.query({
       query: ({ page = 1, limit = 20 } = {}) => ({
         url: '/platform/commercial-invitations',
@@ -100,6 +106,7 @@ const commercialInvitationsApi = baseApi.injectEndpoints({
 export const {
   useAcceptCommercialInvitationMutation,
   useCreateCommercialInvitationMutation,
+  useListCommercialInvitationOffersQuery,
   useListCommercialInvitationsQuery,
   usePreviewCommercialInvitationMutation,
   useResendCommercialInvitationMutation,
