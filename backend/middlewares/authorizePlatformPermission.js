@@ -35,7 +35,7 @@ import {
  * @param {object|null} [options.rolePermissions]
  * @param {Function|null} [options.authorizationResolver]
  * @param {Iterable<string>} [options.knownPermissions]
- * @returns {(...requiredPermissions: string[]) => import('express').RequestHandler}
+ * @returns {Function} Factory créant un middleware Express à partir des permissions requises.
  */
 const createAuthorizePlatformPermission = ({
     rolePermissions = null,
