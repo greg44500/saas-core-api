@@ -7,8 +7,27 @@ import { USER_STATUS } from '../constants/userStatus.constants.js';
 /**
  * Authentifie une requête à partir d'un access token Bearer.
  *
- * Le JWT permet d'identifier le User, mais MongoDB reste la source
- * de vérité concernant l'état actuel du compte.
+ * Le JWT prouve uniquement qu'un token a été signé par l'application et permet
+ * d'identifier le User ciblé. MongoDB reste la source de vérité concernant
+ * l'existence du compte, son statut courant et l'instant du dernier changement
+ * de mot de passe.
+ *
+ * Le middleware applique donc une validation en deux temps :
+ * 1. vérification cryptographique et temporelle du JWT ;
+ * 2. revalidation de l'état courant du User en base.
+ *
+ * Un changement de mot de passe invalide les anciens access tokens via
+ * `passwordChangedAt`, sans dépendre uniquement de leur expiration naturelle.
+ * Les comptes désactivés, en fermeture ou clôturés restent refusés même si le
+ * token présenté est encore cryptographiquement valide.
+ *
+ * En cas de succès, `req.user` devient le User rechargé depuis MongoDB. Ce
+ * contexte doit être établi avant les middlewares d'autorisation Platform ou
+ * workspace. Le middleware n'accorde lui-même aucune permission tenant ou
+ * plateforme.
+ *
+ * Le comportement est fail-closed : toute incohérence entre le token et l'état
+ * courant du compte provoque un refus.
  */
 export const authenticate = async (req, res, next) => {
     const authorizationHeader = req.get('authorization');
