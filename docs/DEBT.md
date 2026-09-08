@@ -69,6 +69,7 @@ produit dérivé automatiquement production-ready
 | ID | Dette | Statut |
 |---|---|---|
 | D-020 | Invitation commerciale client et offres privées de découverte | EN COURS |
+| D-011 | Préférences utilisateur, apparence et affichage métier | PLANIFIÉ |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
 | D-002 | Corbeille et restauration des fichiers | PLANIFIÉ |
@@ -76,9 +77,11 @@ produit dérivé automatiquement production-ready
 
 D-001, D-014, D-018 et D-019 sont clôturées et ne sont plus des blockers actifs.
 
-D-020 reste volontairement placé avant D-015 : le versionnement ne doit pas figer une release candidate tant que l'onboarding commercial générique déjà identifié comme nécessaire n'est pas implémenté puis validé ou explicitement reclassifié.
+D-020 reste volontairement placé avant D-011 et D-015 : le versionnement ne doit pas figer une release candidate tant que l'onboarding commercial générique déjà identifié comme nécessaire n'est pas implémenté puis validé ou explicitement reclassifié.
 
-D-002 reste totalement indépendant de D-020, mais il doit être `VALIDÉ` avant D-017 et avant toute première dérivation métier du Core.
+D-011 doit être cadrée, implémentée et validée avant D-015 afin que le Core versionné possède déjà un contrat générique stable pour les préférences utilisateur transversales et l'extension future des préférences d'affichage métier.
+
+D-002 reste totalement indépendant de D-020 et D-011, mais il doit être `VALIDÉ` avant D-017 et avant toute première dérivation métier du Core.
 
 ### 4.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -98,7 +101,6 @@ D-013 configuration / déploiement production
 D-008 notifications étendues
 D-009 API Keys / Webhooks
 D-010 authentification avancée
-D-011 préférences d'affichage avancées
 ```
 
 ### 4.4 Dettes clôturées conservées pour traçabilité minimale
@@ -303,22 +305,108 @@ MFA, passkeys, SSO entreprise ou nouveaux providers ne doivent pas être ajouté
 
 ---
 
-## D-011 — Préférences d'affichage utilisateur avancées
+## D-011 — Préférences utilisateur, apparence et affichage métier
 
-**Statut :** CONDITIONNEL  
-**Périmètre :** Core clonable / application dérivée  
-**Blocage Core 1.0 :** non
+**Statut :** PLANIFIÉ  
+**Périmètre :** Core clonable + points d'extension des applications dérivées  
+**Blocage Core 1.0 :** oui, avant D-015  
+**Dépendances :** identité utilisateur, design system frontend, entitlement effectif et RBAC existants  
+**Déclencheur :** décision produit du 2026-09-08 — stabiliser le mécanisme générique de préférences avant le versionnement du Core
 
-Invariant :
+Le Core doit fournir un mécanisme de préférences utilisateur centralisé, maintenable et extensible sans confondre personnalisation de l'interface, droits fonctionnels et configuration métier.
+
+Deux familles doivent être distinguées dès le contrat :
+
+```text
+Préférences de confort
+→ apparence et ergonomie personnelles transversales
+
+Préférences d'affichage métier
+→ sélection personnelle parmi des éléments métier déjà accessibles
+```
+
+### Préférences de confort
+
+Le cadrage doit prévoir au minimum :
+
+- thème clair / sombre / système si pertinent ;
+- choix d'une police parmi une liste contrôlée et validée par le design system ;
+- choix d'une palette/thème de couleurs parmi des palettes explicitement fournies et intégrées au produit ;
+- aucun choix arbitraire de police ou de couleurs pouvant casser le design system ;
+- possibilité d'ajouter ultérieurement des préférences d'accessibilité ou de densité sans modifier le contrat de base de manière incompatible.
+
+Les palettes ne doivent pas être inventées par le Core : elles seront fournies par le propriétaire du produit puis traduites en tokens du design system.
+
+### Préférences d'affichage métier
+
+Le Core doit préparer une mécanique générique permettant à une application dérivée de déclarer des widgets, cartes, indicateurs ou KPI sélectionnables par l'utilisateur.
+
+Invariant de sécurité et d'UX :
+
+```text
+Plan / entitlement effectif
++
+permissions utilisateur
+→ ensemble réellement accessible
+
+ensemble réellement accessible
++
+préférences utilisateur
+→ ensemble visible dans le dashboard
+```
+
+Conséquences obligatoires :
+
+- une fonctionnalité non incluse dans le Plan ou l'entitlement effectif n'est jamais proposée dans les préférences ;
+- une fonctionnalité à laquelle l'utilisateur n'a pas la permission d'accéder n'est jamais proposée ;
+- masquer un widget ne retire aucun droit ;
+- afficher un widget ne crée aucun droit ;
+- le frontend ne doit jamais utiliser une préférence comme mécanisme d'autorisation ;
+- les composants indisponibles ne doivent pas polluer le Dashboard avec un état artificiel « indisponible » lorsque le produit a décidé qu'ils doivent être absents ;
+- les futurs modules métier doivent pouvoir enregistrer leurs propres widgets/KPI sans coupler le Core à un métier particulier.
+
+Invariant général :
 
 ```text
 préférence d'affichage
 ≠ permission
 ≠ entitlement
+≠ feature flag de sécurité
 ≠ suppression de donnée
 ```
 
-**Critère de clôture :** besoin réel confirmé puis contrat centralisé et testé, ou `NON APPLICABLE`.
+### Persistance et responsabilité
+
+Le cadrage doit décider explicitement :
+
+- quelles préférences sont persistées côté serveur afin de suivre l'utilisateur entre appareils ;
+- quelles préférences purement locales peuvent rester dans le navigateur ;
+- le schéma de validation strict des valeurs autorisées ;
+- la compatibilité ascendante lors de l'ajout ou du retrait d'une préférence ;
+- la valeur par défaut lorsque la préférence sauvegardée n'existe plus dans une application dérivée ;
+- la stratégie de version du contrat de préférences si elle devient nécessaire.
+
+Le modèle ne doit pas devenir un stockage libre de JSON non validé. Les clés, valeurs, enums et extensions acceptées doivent rester explicitement contrôlés et validés.
+
+### Frontend et réutilisabilité
+
+La page de préférences devra être construite à partir de composants réutilisables et du design system existant. Les pages métier ne devront pas dupliquer la logique de sélection, de persistance ou de validation des préférences.
+
+Le mécanisme de dashboard doit rester raisonnablement limité en V1 : sélection afficher/masquer et, si retenu après cadrage, ordre d'affichage. Un constructeur libre avec redimensionnement arbitraire, grille complexe ou personnalisation visuelle par widget ne doit pas être introduit sans besoin produit explicite.
+
+### Tests attendus
+
+Prévoir au minimum :
+
+- validation stricte backend des préférences persistées ;
+- tests de non-escalade : aucune préférence ne doit contourner Plan, entitlement ou RBAC ;
+- tests frontend des thèmes/polices/palettes autorisés ;
+- tests du filtrage des options de Dashboard selon entitlement + permissions ;
+- tests de fallback lorsqu'un widget, une police ou une palette n'existe plus ;
+- tests de persistance inter-session lorsque la préférence est serveur ;
+- checklist manuelle responsive, lisibilité, contraste et cohérence du design system.
+
+**Critère de clôture :** contrat générique des préférences figé, séparation confort/métier documentée, persistance et validation sécurisées, thèmes/polices/palettes contrôlés, registre extensible des éléments de Dashboard défini, filtrage entitlement + RBAC garanti, composants frontend réutilisables et tests backend/frontend/sécurité pertinents validés avant D-015.
 
 ---
 
@@ -355,7 +443,7 @@ Référence : `docs/operations/OPERATIONS.md`.
 **Statut :** PLANIFIÉ  
 **Périmètre :** Core / distribution  
 **Blocage Core 1.0 :** oui  
-**Dépendances :** D-020 doit être clôturée ou reclassifiée avant ouverture de la release candidate
+**Dépendances :** D-020 et D-011 doivent être clôturées ou explicitement reclassifiées avant ouverture de la release candidate
 
 À finaliser avant `v1.0.0` : SemVer réellement appliqué, tags/releases, changelog/release notes, changements de contrats/configuration, migrations et ordre pre/post-deploy, reprise/rollback, provenance machine-readable du Core dans les dérivés et gate de release reproductible.
 
@@ -459,6 +547,7 @@ D-018 Équipe de la Plateforme / RBAC / invitations          ✅ VALIDÉ
 D-019 moteur sécurisé de rétention / purge Core             ✅ VALIDÉ
 DOC-CODE-1 documentation source                             ✅ VALIDÉ
 → D-020 invitation commerciale / offre privée découverte    EN COURS
+→ D-011 préférences utilisateur / apparence / dashboard     PLANIFIÉ
 → D-015 release/version/provenance/migrations               PLANIFIÉ
 → D-016 Playwright E2E Core                                 PLANIFIÉ
 → D-002 corbeille / restauration Files                      PLANIFIÉ — avant première dérivation
@@ -469,7 +558,7 @@ DOC-CODE-1 documentation source                             ✅ VALIDÉ
 
 Aucune première dérivation métier ne doit commencer tant que D-002 n'est pas `VALIDÉ`.
 
-Aucune release `v1.0.0` ne doit être déclarée avant clôture ou reclassification explicite de tous les blockers Core 1.0 applicables.
+Aucune release `v1.0.0` ne doit être déclarée avant clôture ou reclassification explicite de tous les blockers Core 1.0 applicables, notamment D-020 et D-011 avant D-015.
 
 ---
 
