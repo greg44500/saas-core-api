@@ -50,6 +50,16 @@ describe('getRequestedDestination', () => {
     );
   });
 
+  it('revient au parcours CommercialInvitation après authentification', () => {
+    expect(getRequestedDestination({
+      state: {
+        from: {
+          pathname: '/commercial-invitations/accept',
+        },
+      },
+    }, null)).toBe('/commercial-invitations/accept');
+  });
+
   it('dirige un utilisateur sans accès Platform vers ses workspaces', () => {
     expect(getRequestedDestination({ state: null }, null)).toBe('/workspaces');
   });
