@@ -64,6 +64,25 @@ const completeForgotPasswordRequest = async (
     };
 };
 
+/**
+ * Lance le workflow public de récupération de mot de passe sans révéler
+ * l'existence, le statut ou le provider d'authentification d'un compte.
+ *
+ * Le service renvoie volontairement le même message pour une adresse inconnue,
+ * un compte sans identité locale ou un compte dont la fermeture est engagée.
+ * Une compensation temporelle réduit en parallèle les différences observables
+ * entre ces branches et le chemin qui crée puis envoie réellement un token.
+ *
+ * Seul `createPasswordResetToken` persiste l'empreinte du token ; le token brut
+ * reste en mémoire le temps de construire l'URL et l'email. Le frontend ne
+ * décide jamais si un compte est éligible à la récupération.
+ *
+ * @param {object} input
+ * @param {string} input.email Adresse à canonicaliser avant recherche.
+ * @param {string|null} [input.ipAddress]
+ * @param {string|null} [input.userAgent]
+ * @returns {Promise<{message: string}>}
+ */
 const forgotUserPassword = async ({
     email,
     ipAddress = null,
