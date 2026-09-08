@@ -40,6 +40,20 @@ describe('listCommercialInvitationOffers', () => {
             priceMonthlyExclTaxMinor: 7900,
             priceYearlyExclTaxMinor: 79000,
         };
+        const eligibleYearlyOnlyTrial = {
+            _id: 'trial-yearly-private',
+            name: 'Beta annuelle',
+            trialEnabled: true,
+            priceMonthlyExclTaxMinor: 0,
+            priceYearlyExclTaxMinor: 79000,
+        };
+        const forbiddenFreeTrial = {
+            _id: 'trial-free-private',
+            name: 'Trial gratuit incohérent',
+            trialEnabled: true,
+            priceMonthlyExclTaxMinor: 0,
+            priceYearlyExclTaxMinor: 0,
+        };
         const forbiddenPaidPermanent = {
             _id: 'paid-private',
             name: 'Premium privé',
@@ -54,6 +68,8 @@ describe('listCommercialInvitationOffers', () => {
             lean: vi.fn().mockResolvedValue([
                 eligibleFree,
                 eligibleTrial,
+                eligibleYearlyOnlyTrial,
+                forbiddenFreeTrial,
                 forbiddenPaidPermanent,
             ]),
         };
@@ -70,6 +86,7 @@ describe('listCommercialInvitationOffers', () => {
         expect(result).toEqual([
             eligibleFree,
             eligibleTrial,
+            eligibleYearlyOnlyTrial,
         ]);
     });
 });
