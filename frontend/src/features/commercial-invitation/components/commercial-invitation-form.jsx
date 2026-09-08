@@ -122,7 +122,7 @@ function CommercialInvitationForm({
       )}
 
       <SelectField
-        disabled={!selectedPlan || billingOptions.length <= 1}
+        disabled={!selectedPlan}
         error={errors.billingInterval?.message}
         id="commercial-invitation-billing-interval"
         label="Périodicité de référence"
