@@ -148,7 +148,7 @@ function PlatformRetentionPage() {
         title: 'Enregistrement impossible',
         description: getErrorMessage(
           error,
-          'La policy n’a pas pu être enregistrée. Rechargez l’état avant de réessayer.',
+          'La règle n’a pas pu être enregistrée. Rechargez l’état avant de réessayer.',
         ),
         variant: 'destructive',
       });
@@ -163,7 +163,7 @@ function PlatformRetentionPage() {
       setPreview(null);
       toast({
         title: 'Prévisualisation impossible',
-        description: getErrorMessage(error, 'La preview de rétention a échoué.'),
+        description: getErrorMessage(error, 'La prévisualisation de rétention a échoué.'),
         variant: 'destructive',
       });
     }
@@ -192,7 +192,7 @@ function PlatformRetentionPage() {
         title: 'Purge non exécutée',
         description: getErrorMessage(
           error,
-          'La purge a été refusée. Relancez une preview avant toute nouvelle tentative.',
+          'La purge a été refusée. Relancez une prévisualisation avant toute nouvelle tentative.',
         ),
         variant: 'destructive',
       });
@@ -267,7 +267,7 @@ function PlatformRetentionPage() {
           </div>
         ) : (
           <p className="mb-5 text-sm text-muted-foreground">
-            Aucune policy n’est encore configurée pour cette cible. Le Core n’invente aucune durée juridique par défaut.
+            Aucune règle de conservation n’est encore définie pour cette catégorie de données..
           </p>
         )}
 
@@ -283,8 +283,7 @@ function PlatformRetentionPage() {
       </Section>
 
       <Section
-        description="La preview et le cutoff sont calculés par le backend. Une purge manuelle exige ensuite une confirmation liée à cette preview."
-        title="Prévisualisation et exécution"
+        description="Avant toute suppression, l’application vous montre les données concernées et vous demande de confirmer l’opération."
       >
         <PlatformRetentionPreview
           canExecute={canExecute}
