@@ -38,6 +38,19 @@ describe('platform navigation policy', () => {
     ]);
   });
 
+  it('projette les invitations commerciales uniquement avec leur permission read', () => {
+    expect(visibleDestinations([
+      PLATFORM_PERMISSION.COMMERCIAL_INVITATIONS_READ,
+    ])).toEqual([
+      '/platform/commercial-invitations',
+    ]);
+
+    expect(canAccessPlatformPath('/platform/commercial-invitations', {
+      status: 'active',
+      permissions: [PLATFORM_PERMISSION.PLANS_READ],
+    })).toBe(false);
+  });
+
   it('choisit la première destination réellement autorisée', () => {
     expect(getFirstPlatformDestination({
       status: 'active',
@@ -59,6 +72,9 @@ describe('platform navigation policy', () => {
     expect(
       getPlatformNavigationItemForPath('/platform/plans')?.id,
     ).toBe('plans');
+    expect(
+      getPlatformNavigationItemForPath('/platform/commercial-invitations')?.id,
+    ).toBe('commercial-invitations');
     expect(
       getPlatformNavigationItemForPath('/platform/team/roles')?.id,
     ).toBe('team');
