@@ -37,12 +37,17 @@ export default [
     },
     rules: {
       ...jsdocIntegrityRules,
+      'no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
+      'react-refresh/only-export-components': 'off',
     },
   },
   {
@@ -52,9 +57,6 @@ export default [
         ...globals.browser,
         ...globals.nodeBuiltin,
       },
-    },
-    rules: {
-      'react-refresh/only-export-components': 'off',
     },
   },
 ];
