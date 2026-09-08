@@ -342,3 +342,61 @@ avant validation de D-002
 D-002 reste séparé de D-020. Voir `docs/DEBT.md`.
 
 Invariant D-019 à préserver : un fichier soft-deleted continue à consommer `storage_bytes` tant que le contenu physique existe ; une restauration avant purge ne réserve donc pas ce stockage une seconde fois.
+
+---
+
+## 7. Dettes et contrôles différés à conserver
+
+### 7.1 Dette UI — icônes de navigation
+
+**À traiter ultérieurement — non bloquant pour la reprise immédiate.**
+
+> Modifier les icônes de la navigation pour ne pas avoir deux ou trois fois les mêmes.
+
+Constat actuel : certaines entrées de navigation utilisent visuellement la même icône ou des icônes trop proches, notamment dans le groupe **Offre commerciale** (`Plans`, `Abonnements`, `Invitations commerciales`).
+
+Objectif UX :
+
+```text
+une entrée fonctionnelle importante
+→ une icône identifiable et sémantiquement cohérente
+→ éviter les répétitions qui réduisent la lisibilité de la navigation
+```
+
+Cette dette est purement frontend/UX : elle ne doit entraîner aucune modification des permissions, routes, contrats API ou règles métier.
+
+### 7.2 Dette outillage — Prettier global
+
+Le contrôle Prettier global reste à cadrer dans un chantier d’outillage séparé. Ne pas lancer `prettier --write .` tant qu’une configuration canonique du dépôt n’a pas été décidée.
+
+### 7.3 Contrôles manuels différés
+
+Restent à reconfirmer avant release finale du Core :
+
+- parcours fonctionnel D-020 complet ;
+- HOME-CORE login/register public ;
+- cohérence visuelle globale de la navigation après traitement de la dette d’icônes.
+
+---
+
+## 8. Prochaine reprise de travail
+
+Le prochain bloc à ouvrir dans une nouvelle discussion est :
+
+```text
+D-015 — Versionnement, provenance, releases et discipline de migration du Core
+```
+
+Objectif de la prochaine discussion : **cadrer D-015 avant de modifier le code**, puis seulement implémenter un lot cohérent.
+
+Ordre attendu :
+
+1. relire `docs/REPRISE-CURRENT.md` ;
+2. relire la section D-015 de `docs/DEBT.md` ;
+3. inspecter le dépôt réel (`package.json`, migrations, documentation d’exploitation, éventuels scripts de version/release) ;
+4. définir le contrat de versionnement du Core : SemVer, provenance, changelog/release notes, migrations, ordre pre/post-deploy, rollback et identification du commit/version Core dans un SaaS dérivé ;
+5. proposer un plan d’implémentation D-015 avant tout changement ;
+6. conserver D-020 manuel comme contrôle différé ;
+7. ne pas ouvrir D-002 dans D-015 — D-002 reste un bloc séparé mais obligatoire avant D-017 et avant toute première dérivation métier.
+
+Aucune nouvelle fonctionnalité métier ne doit être ajoutée pendant D-015.
