@@ -52,6 +52,7 @@ const {
         accept: vi.fn((req, res) => res.status(201).json({ status: 'success' })),
         create: vi.fn((req, res) => res.status(201).json({ status: 'success' })),
         list: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
+        listOffers: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         preview: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         resend: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         revoke: vi.fn((req, res) => res.status(204).send()),
@@ -102,6 +103,17 @@ beforeEach(() => {
 });
 
 describe('platformCommercialInvitationRouter', () => {
+    it('protège le catalogue privé de sélection par la permission create', async () => {
+        const response = await request(adminApp)
+            .get('/commercial-invitations/offers');
+
+        expect(response.status).toBe(200);
+        expect(authorizePlatformPermission).toHaveBeenCalledWith(
+            PLATFORM_PERMISSION.COMMERCIAL_INVITATIONS_CREATE,
+        );
+        expect(handlers.listOffers).toHaveBeenCalledOnce();
+    });
+
     it('protège la création par une permission commerciale dédiée et Zod', async () => {
         const response = await request(adminApp)
             .post('/commercial-invitations')
