@@ -5,9 +5,21 @@ import {
 /**
  * Exécute la maintenance périodique des fichiers arrivés à échéance de purge.
  *
- * Le job reste mince : la sélection, la suppression physique, la transition
- * MongoDB et l'audit appartiennent au service File. L'ordonnanceur reçoit toute
- * erreur afin de pouvoir alerter ou relancer l'exécution.
+ * Le runner reste volontairement mince : la sélection des documents éligibles,
+ * la suppression physique, la transition MongoDB, la mise à jour des usages et
+ * l'audit appartiennent au service `purgeDeletedFiles`. Il ne tente donc jamais
+ * de reconstruire ici une stratégie de suppression ou de compensation.
+ *
+ * `now` est injectable afin que la frontière de rétention soit déterministe.
+ * `batchSize` borne le volume confié au service sans modifier ses garanties de
+ * cohérence. Toute erreur est journalisée puis propagée pour que l'ordonnanceur
+ * puisse alerter ou relancer sans confondre un échec avec un succès partiel.
+ *
+ * @param {object} [options]
+ * @param {Date} [options.now] Instant de référence pour l'éligibilité à la purge.
+ * @param {number} [options.batchSize] Taille de lot éventuellement imposée.
+ * @param {{info: Function, error: Function}} [options.logger] Logger opérationnel.
+ * @returns {Promise<object>} Résultat retourné par le service de purge.
  */
 const runPurgeDeletedFilesJob = async ({
     now = new Date(),
