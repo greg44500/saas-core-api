@@ -9,9 +9,10 @@ import { Plan } from '../plan/plan.model.js';
  * jamais transformer un Plan public, baseline ou payant sans trial en offre
  * d'invitation commerciale.
  *
- * Un Plan avec trial reste éligible : la périodicité monthly/yearly sera
- * revalidée lors de la création. Sans trial, D-020 n'autorise qu'une offre
- * privée entièrement gratuite, créée ensuite en Subscription open_ended.
+ * Un Plan avec trial n'est proposé que s'il possède au moins une périodicité
+ * réellement payante ; l'intervalle exact reste revalidé à la création. Sans
+ * trial, D-020 n'autorise qu'une offre privée entièrement gratuite, créée
+ * ensuite en Subscription open_ended.
  */
 const listCommercialInvitationOffers = async () => {
     const plans = await Plan.find({
@@ -35,13 +36,15 @@ const listCommercialInvitationOffers = async () => {
         .sort({ displayOrder: 1, name: 1, _id: 1 })
         .lean();
 
-    return plans.filter((plan) => (
-        plan.trialEnabled === true
-        || (
-            plan.priceMonthlyExclTaxMinor === 0
-            && plan.priceYearlyExclTaxMinor === 0
-        )
-    ));
+    return plans.filter((plan) => {
+        if (plan.trialEnabled === true) {
+            return plan.priceMonthlyExclTaxMinor > 0
+                || plan.priceYearlyExclTaxMinor > 0;
+        }
+
+        return plan.priceMonthlyExclTaxMinor === 0
+            && plan.priceYearlyExclTaxMinor === 0;
+    });
 };
 
 export { listCommercialInvitationOffers };
