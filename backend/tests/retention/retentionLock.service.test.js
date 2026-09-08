@@ -6,6 +6,15 @@ import {
     vi,
 } from 'vitest';
 
+/*
+ * Suite de concurrence logique du moteur de rétention.
+ *
+ * Elle protège la sûreté multi-instance : une seule lease peut être détenue
+ * pour une target, son renouvellement exige encore son ownership et une lease
+ * perdue ou remplacée ne doit jamais être prolongée ou libérée par un worker
+ * devenu obsolète.
+ */
+
 const {
     createIndexesMock,
     updateOneMock,
