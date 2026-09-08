@@ -33,7 +33,7 @@ const escapeHtml = (value) =>
  * Cette séparation permet de tester le contenu indépendamment du transport SMTP
  * et de réutiliser la même architecture pour d'autres emails transactionnels.
  *
- * @param {Object} params
+ * @param {object} params
  * @param {string} params.resetUrl
  * URL complète vers le frontend contenant le token brut de réinitialisation.
  * Cette URL doit avoir été construite en amont à partir d'une origine frontend
