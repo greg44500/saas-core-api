@@ -16,7 +16,8 @@ const commercialInvitationTokenSchema = z
 
 /**
  * Le client administratif choisit une offre existante. Il ne peut pas injecter
- * de capabilities, limites, prix, statut ou dates de Subscription.
+ * de capabilities, limites, prix, statut ou dates de Subscription. Le motif est
+ * obligatoire afin que l'accès privé reste justifiable dans l'audit Platform.
  */
 const createCommercialInvitationBodySchema = z.strictObject({
     email: z.string().trim().email().max(254),
@@ -27,6 +28,7 @@ const createCommercialInvitationBodySchema = z.strictObject({
         BILLING_INTERVAL.MONTHLY,
         BILLING_INTERVAL.YEARLY,
     ]),
+    reason: z.string().trim().min(3).max(500),
 });
 
 const commercialInvitationIdParamsSchema = z.strictObject({
