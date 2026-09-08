@@ -23,6 +23,18 @@ const BILLING_INTERVAL = Object.freeze({
 });
 
 /**
+ * Nature temporelle d'une Subscription.
+ *
+ * `fixed` exige une échéance contractuelle. `open_ended` représente un accès
+ * sans échéance automatique, notamment la baseline ou une offre commerciale
+ * gratuite durable explicitement accordée par la Plateforme.
+ */
+const SUBSCRIPTION_TERM_TYPE = Object.freeze({
+    FIXED: 'fixed',
+    OPEN_ENDED: 'open_ended',
+});
+
+/**
  * Fournisseur responsable de la gestion de la souscription.
  */
 const BILLING_PROVIDER = Object.freeze({
@@ -49,11 +61,6 @@ const SUBSCRIPTION_CANCELLATION_MODE = Object.freeze({
 
 /**
  * Types de changement de plan pouvant être programmés sur une Subscription.
- *
- * Le downgrade est volontairement distinct d'une annulation : il conserve
- * une souscription commerciale et remplace son plan à l'échéance.
- * L'upgrade immédiat dépendra du futur domaine Billing et n'est donc pas
- * représenté comme un changement différé dans ce lot.
  */
 const SUBSCRIPTION_PLAN_CHANGE_TYPE = Object.freeze({
     DOWNGRADE: 'downgrade',
@@ -75,4 +82,5 @@ export {
     SUBSCRIPTION_PLAN_CHANGE_TYPE,
     SUBSCRIPTION_STATUS,
     SUBSCRIPTION_KIND,
+    SUBSCRIPTION_TERM_TYPE,
 };
