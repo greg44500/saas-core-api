@@ -3,8 +3,19 @@ import { SYSTEM_ROLE_KEY } from '../constants/role.constants.js';
 import { Role } from '../modules/role/role.model.js';
 
 /**
- * Les rôles système déjà persistés ne récupèrent pas automatiquement les
- * nouvelles permissions ajoutées au registre applicatif.
+ * Ajoute `file:read` aux rôles système déjà persistés dans les workspaces.
+ *
+ * Avant cette migration, les workspaces créés avant l'introduction de la
+ * permission peuvent conserver des rôles système sans `file:read`, même si le
+ * registre applicatif courant l'accorde désormais. Après exécution, tous les
+ * rôles système connus reçoivent cette permission.
+ *
+ * Les rôles personnalisés sont volontairement exclus : leur politique reste
+ * sous le contrôle de l'administrateur du workspace. `$addToSet` rend la
+ * migration idempotente et sûre à rejouer sans dupliquer la permission.
+ *
+ * @returns {Promise<{matchedRoles: number, updatedRoles: number}>}
+ * Résumé des rôles système examinés et effectivement modifiés.
  */
 const migrateFileReadPermissionToSystemRoles = async () => {
     const result = await Role.collection.updateMany(
