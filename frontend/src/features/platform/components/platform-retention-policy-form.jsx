@@ -26,6 +26,27 @@ function ToggleSetting({ checked, description, disabled, label, onChange }) {
   );
 }
 
+/**
+ * Édite une nouvelle version de policy de rétention pour une target Platform.
+ *
+ * Le composant possède uniquement l'état de formulaire. Les bornes autorisées,
+ * les capabilities de la target et la version courante proviennent du backend ;
+ * `buildRetentionPolicyPayload` transforme ensuite l'état UI en payload explicite.
+ * Le backend reste l'autorité finale sur la validité de la policy et sur les
+ * permissions d'administration.
+ *
+ * La resynchronisation locale est volontairement liée à `currentPolicy.version` :
+ * un refetch qui ne change pas de version ne doit pas écraser une saisie en cours.
+ * Cette policy explique le warning `react-hooks/exhaustive-deps` conservé et
+ * analysé dans le lint frontend.
+ *
+ * @param {object} props
+ * @param {object|null} props.currentPolicy Policy actuellement persistée.
+ * @param {boolean} [props.disabled] Force un affichage en lecture seule.
+ * @param {(payload: object) => Promise<void>} props.onSubmit Persiste la nouvelle version.
+ * @param {boolean} [props.pending] Indique qu'une mutation est en cours.
+ * @param {object} props.target Définition serveur de la target et de ses bornes.
+ */
 function PlatformRetentionPolicyForm({
   currentPolicy,
   disabled = false,
