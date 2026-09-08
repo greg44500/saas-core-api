@@ -75,6 +75,7 @@ describe('workspace subscription overview projection', () => {
         const subscription = {
             _id: new ObjectId(),
             kind: 'commercial',
+            termType: 'fixed',
             status: 'active',
             plan,
             currentPeriodStart: new Date('2026-08-01T00:00:00.000Z'),
@@ -104,6 +105,7 @@ describe('workspace subscription overview projection', () => {
         const result = serializeSubscription(subscription);
 
         expect(result.status).toBe('active');
+        expect(result.termType).toBe('fixed');
         expect(result.plan.isBaseline).toBe(false);
         expect(result.scheduledChange.targetPlan.isBaseline).toBe(false);
         expect(result.scheduledChange.targetBillingInterval).toBe('monthly');
@@ -128,6 +130,7 @@ describe('workspace subscription overview projection', () => {
         const access = {
             subscription: {
                 kind: 'commercial',
+                termType: 'fixed',
                 status: 'active',
             },
             plan: buildPlan(),
@@ -173,6 +176,7 @@ describe('workspace subscription overview projection', () => {
                 storage_bytes: null,
             },
             subscriptionKind: 'commercial',
+            subscriptionTermType: 'fixed',
             subscriptionStatus: 'active',
             accessMode: 'normal',
             reason: null,
@@ -195,6 +199,7 @@ describe('workspace subscription overview projection', () => {
             serializeWorkspaceEffectiveEntitlement({
                 subscription: {
                     kind: 'baseline',
+                    termType: 'open_ended',
                     status: 'active',
                 },
                 plan: buildPlan(),
