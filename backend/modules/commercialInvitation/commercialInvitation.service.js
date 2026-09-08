@@ -13,16 +13,20 @@ import {
     COMMERCIAL_INVITATION_TTL_DAYS,
 } from '../../constants/commercialInvitation.constants.js';
 import {
+    PLAN_STATUS,
+} from '../../constants/plan.constants.js';
+import {
     BILLING_INTERVAL,
 } from '../../constants/subscription.constants.js';
 import {
-    PLAN_STATUS,
-} from '../../constants/plan.constants.js';
-import { canonicalizeEmail } from '../../utils/canonicalizeEmail.js';
+    WORKSPACE_MEMBER_STATUS,
+} from '../../constants/workspaceMember.constants.js';
 import { AppError } from '../../utils/appError.js';
+import { canonicalizeEmail } from '../../utils/canonicalizeEmail.js';
 import { createAuditLog } from '../auditLog/auditLog.service.js';
 import { Plan } from '../plan/plan.model.js';
 import { User } from '../users/user.model.js';
+import { WorkspaceMember } from '../workspaceMember/workspaceMember.model.js';
 import { CommercialInvitation } from './commercialInvitation.model.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -167,6 +171,43 @@ const assertCommercialInvitationOfferIsCurrent = ({ invitation, plan }) => {
     return currentSnapshot;
 };
 
+/**
+ * D-020 peut viser un compte Auth déjà créé tant qu'il ne possède encore aucun
+ * rattachement Workspace courant. L'existence du User n'est donc pas le critère
+ * métier ; le membership actif/suspendu l'est.
+ */
+const assertCommercialInvitationBeneficiaryAvailable = async ({
+    emailCanonical,
+    session,
+}) => {
+    const existingUser = await User.findOne({
+        emailCanonical,
+    })
+        .select('_id')
+        .session(session);
+
+    if (!existingUser) {
+        return;
+    }
+
+    const existingMembership = await WorkspaceMember.exists({
+        user: existingUser._id,
+        status: mongoose.trusted({
+            $in: [
+                WORKSPACE_MEMBER_STATUS.ACTIVE,
+                WORKSPACE_MEMBER_STATUS.SUSPENDED,
+            ],
+        }),
+    }).session(session);
+
+    if (existingMembership) {
+        throw new AppError(
+            'Une invitation commerciale initiale ne peut pas cibler un utilisateur déjà rattaché à un workspace',
+            409,
+        );
+    }
+};
+
 const expirePendingCommercialInvitations = async ({
     emailCanonical = null,
     now = new Date(),
@@ -193,101 +234,124 @@ const createCommercialInvitation = async ({
     planId,
     workspaceName,
     billingInterval,
+    reason,
     actorId,
     ipAddress = null,
     userAgent = null,
     now = new Date(),
 }) => {
-    if (!email || !planId || !workspaceName || !billingInterval || !actorId) {
+    if (
+        !email
+        || !planId
+        || !workspaceName
+        || !billingInterval
+        || !reason
+        || !actorId
+    ) {
         throw new TypeError(
-            'email, planId, workspaceName, billingInterval and actorId are required to create a commercial invitation',
+            'email, planId, workspaceName, billingInterval, reason and actorId are required to create a commercial invitation',
         );
     }
 
     const emailCanonical = canonicalizeEmail(email);
 
-    return mongoose.connection.transaction(async (session) => {
-        /*
-         * D-020 est un parcours d'acquisition initiale, pas un second mécanisme
-         * de gestion commerciale des clients existants. Un compte déjà présent
-         * doit utiliser les mécanismes Subscription/EntitlementOverride prévus.
-         */
-        const existingUser = await User.exists({
-            emailCanonical,
-        }).session(session);
+    try {
+        return await mongoose.connection.transaction(async (session) => {
+            await assertCommercialInvitationBeneficiaryAvailable({
+                emailCanonical,
+                session,
+            });
 
-        if (existingUser) {
-            throw new AppError(
-                'Une invitation commerciale initiale ne peut pas cibler un utilisateur déjà inscrit',
-                409,
+            const plan = await Plan.findById(planId).session(session);
+            assertCommercialInvitationPlan({ plan, billingInterval });
+
+            await expirePendingCommercialInvitations({
+                emailCanonical,
+                now,
+                session,
+            });
+
+            const pendingInvitation = await CommercialInvitation.findOne({
+                emailCanonical,
+                status: COMMERCIAL_INVITATION_STATUS.PENDING,
+            }).session(session);
+
+            if (pendingInvitation) {
+                throw new AppError(
+                    'Une invitation commerciale active existe déjà pour cette adresse',
+                    409,
+                );
+            }
+
+            const token = createCommercialInvitationToken();
+            const expiresAt = new Date(
+                now.getTime() + COMMERCIAL_INVITATION_TTL_DAYS * DAY_IN_MS,
             );
-        }
+            const offerSnapshot = buildOfferSnapshot({
+                plan,
+                billingInterval,
+            });
 
-        const plan = await Plan.findById(planId).session(session);
-        assertCommercialInvitationPlan({ plan, billingInterval });
+            const [invitation] = await CommercialInvitation.create(
+                [
+                    {
+                        emailCanonical,
+                        plan: plan._id,
+                        workspaceName,
+                        reason,
+                        tokenHash: hashCommercialInvitationToken(token),
+                        invitedBy: actorId,
+                        expiresAt,
+                        offerSnapshot,
+                    },
+                ],
+                { session },
+            );
 
-        await expirePendingCommercialInvitations({
-            emailCanonical,
-            now,
-            session,
+            await createAuditLog(
+                {
+                    actor: actorId,
+                    action: AUDIT_ACTION.COMMERCIAL_INVITATION_CREATED,
+                    entityType: AUDIT_ENTITY_TYPE.COMMERCIAL_INVITATION,
+                    entityId: invitation._id,
+                    status: AUDIT_STATUS.SUCCESS,
+                    ipAddress,
+                    userAgent,
+                    metadata: {
+                        beneficiaryEmailCanonical: emailCanonical,
+                        planId: plan._id.toString(),
+                        workspaceName,
+                        reason,
+                        billingInterval,
+                        trialEnabled: offerSnapshot.trialEnabled,
+                        expiresAt,
+                    },
+                },
+                { session },
+            );
+
+            return { invitation, plan, token };
         });
-
-        const pendingInvitation = await CommercialInvitation.findOne({
-            emailCanonical,
-            status: COMMERCIAL_INVITATION_STATUS.PENDING,
-        }).session(session);
-
-        if (pendingInvitation) {
+    } catch (error) {
+        /*
+         * La lecture préalable améliore le message métier, mais l'index unique
+         * reste la vraie protection contre deux créations concurrentes.
+         */
+        if (
+            error?.code === 11000
+            && (
+                error?.keyPattern?.emailCanonical
+                || error?.keyValue?.emailCanonical
+            )
+        ) {
             throw new AppError(
                 'Une invitation commerciale active existe déjà pour cette adresse',
                 409,
             );
         }
 
-        const token = createCommercialInvitationToken();
-        const expiresAt = new Date(
-            now.getTime() + COMMERCIAL_INVITATION_TTL_DAYS * DAY_IN_MS,
-        );
-        const offerSnapshot = buildOfferSnapshot({ plan, billingInterval });
-
-        const [invitation] = await CommercialInvitation.create(
-            [
-                {
-                    emailCanonical,
-                    plan: plan._id,
-                    workspaceName,
-                    tokenHash: hashCommercialInvitationToken(token),
-                    invitedBy: actorId,
-                    expiresAt,
-                    offerSnapshot,
-                },
-            ],
-            { session },
-        );
-
-        await createAuditLog(
-            {
-                actor: actorId,
-                action: AUDIT_ACTION.COMMERCIAL_INVITATION_CREATED,
-                entityType: AUDIT_ENTITY_TYPE.COMMERCIAL_INVITATION,
-                entityId: invitation._id,
-                status: AUDIT_STATUS.SUCCESS,
-                ipAddress,
-                userAgent,
-                metadata: {
-                    beneficiaryEmailCanonical: emailCanonical,
-                    planId: plan._id.toString(),
-                    workspaceName,
-                    billingInterval,
-                    trialEnabled: offerSnapshot.trialEnabled,
-                    expiresAt,
-                },
-            },
-            { session },
-        );
-
-        return { invitation, plan, token };
-    });
+        throw error;
+    }
 };
 
 const listCommercialInvitations = async ({ page = 1, limit = 20 }) => {
@@ -438,7 +502,7 @@ const previewCommercialInvitation = async ({ token, now = new Date() }) => {
         tokenHash,
         status: COMMERCIAL_INVITATION_STATUS.PENDING,
         expiresAt: mongoose.trusted({ $gt: now }),
-    }).select('emailCanonical workspaceName expiresAt offerSnapshot plan');
+    }).select('workspaceName expiresAt offerSnapshot plan');
 
     if (!invitation) {
         throw new AppError('Invitation commerciale invalide ou expirée', 404);
@@ -456,6 +520,7 @@ const previewCommercialInvitation = async ({ token, now = new Date() }) => {
 };
 
 export {
+    assertCommercialInvitationBeneficiaryAvailable,
     assertCommercialInvitationOfferIsCurrent,
     assertCommercialInvitationPlan,
     buildOfferSnapshot,
