@@ -47,9 +47,13 @@ describe('commercial invitation helpers', () => {
       priceMonthlyExclTaxMinor: 7900,
       priceYearlyExclTaxMinor: 79000,
     })).toBe(true);
+    expect(isEligibleCommercialInvitationPlan({
+      ...privateFreePlan,
+      trialEnabled: true,
+    })).toBe(false);
   });
 
-  it('dérive la périodicité du type d’offre au lieu de la laisser libre', () => {
+  it('dérive uniquement les périodicités payantes du trial', () => {
     expect(getCommercialInvitationBillingOptions(privateFreePlan)).toEqual([
       {
         value: 'none',
@@ -60,7 +64,15 @@ describe('commercial invitation helpers', () => {
     expect(getCommercialInvitationBillingOptions({
       ...privateFreePlan,
       trialEnabled: true,
+      priceMonthlyExclTaxMinor: 7900,
+      priceYearlyExclTaxMinor: 79000,
     }).map(({ value }) => value)).toEqual(['monthly', 'yearly']);
+
+    expect(getCommercialInvitationBillingOptions({
+      ...privateFreePlan,
+      trialEnabled: true,
+      priceYearlyExclTaxMinor: 79000,
+    }).map(({ value }) => value)).toEqual(['yearly']);
   });
 
   it('lit le token depuis le fragment puis permet de le retirer de l’URL', () => {
@@ -83,6 +95,14 @@ describe('commercial invitation helpers', () => {
       from: { pathname: '/commercial-invitations/accept' },
       commercialInvitationToken: TOKEN,
     });
+  });
+
+  it('ignore un fragment invalide si l’état mémoire possède encore le token valide', () => {
+    window.history.replaceState({}, '', '/commercial-invitations/accept#token=bad-token');
+
+    expect(getCommercialInvitationTokenFromLocation({
+      state: { commercialInvitationToken: TOKEN },
+    })).toBe(TOKEN);
   });
 
   it('refuse un secret de forme invalide', () => {
