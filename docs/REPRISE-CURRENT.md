@@ -42,9 +42,10 @@ feature/d020-commercial-invitations
 État actuel :
 
 ```text
-D-020 implémenté backend + frontend
-→ prêt pour gate locale réelle
-→ pas encore VALIDÉ
+D-020 backend + frontend implémentés
+→ gate automatisée locale VALIDÉE
+→ validation manuelle ciblée restante
+→ pas encore fusionné dans main
 ```
 
 Roadmap :
@@ -54,7 +55,7 @@ D-018 Équipe Platform / RBAC / invitations internes            ✅ VALIDÉ
 D-019 moteur sécurisé de rétention / purge Core                ✅ VALIDÉ
 DOC-CODE-1 normalisation documentation source                  ✅ VALIDÉ
 HOME-CORE accès public login/register                          🔄 gate locale finale à reconfirmer
-D-020 invitation commerciale / offre privée découverte         🔄 PRÊT POUR GATE LOCALE
+D-020 invitation commerciale / offre privée découverte         🟡 VALIDATION MANUELLE FINALE
 → D-015 versionnement / provenance / migrations / release
 → D-016 Playwright / E2E Core
 → D-002 corbeille / restauration Files                         OBLIGATOIRE AVANT PREMIÈRE DÉRIVATION
@@ -110,8 +111,6 @@ Un endpoint administratif dédié fournit les seules offres réellement compatib
 ```text
 GET /api/platform/commercial-invitations/offers
 ```
-
-Cela évite de détourner la pagination générale des Plans pour alimenter un sélecteur métier.
 
 ### 3.3 Trial et accès gratuit durable
 
@@ -254,17 +253,26 @@ Implémenté avec les patterns Core existants :
 - confirmations partagées ;
 - formulaires React Hook Form + Zod ;
 - actions masquées si permission absente ;
-- aucune duplication d'un système de tableau ou de drawer ;
 - route Platform `/platform/commercial-invitations` ;
 - route bénéficiaire `/commercial-invitations/accept` ;
 - Login/Register compatibles avec le vault runtime ;
-- possibilité de changer de compte avant acceptation.
+- changement de compte avant acceptation.
 
 ---
 
-## 4. Tests ajoutés / adaptés pour D-020
+## 4. Gate automatisée locale — VALIDÉE
 
-Les suites présentes couvrent notamment :
+Le 2026-09-08, la gate locale a été exécutée et confirmée verte :
+
+```text
+backend npm run lint      ✅
+backend npm test          ✅
+frontend npm run lint     ✅
+frontend npm test         ✅
+frontend npm run build    ✅
+```
+
+Les suites couvrent notamment :
 
 - validation Zod stricte ;
 - plan public / privé / baseline ;
@@ -273,10 +281,9 @@ Les suites présentes couvrent notamment :
 - offre privée gratuite durable ;
 - snapshot et dérive du Plan ;
 - bénéficiaire existant sans workspace ;
-- bénéficiaire déjà rattaché à un workspace ;
+- bénéficiaire déjà rattaché ;
 - motif administratif ;
 - token hashé / rotation / URL fragment ;
-- duplicate-key d'une invitation pending ;
 - preview publique rate-limitée ;
 - accept authentifié ;
 - mismatch email ;
@@ -284,7 +291,7 @@ Les suites présentes couvrent notamment :
 - TrialEligibility ;
 - acceptation atomique et concurrence ;
 - resolver `open_ended` ;
-- lifecycle d'annulation `open_ended` ;
+- lifecycle `open_ended` ;
 - migration `termType` ;
 - permissions/presets Platform ;
 - catalogue RTK Query ;
@@ -294,11 +301,65 @@ Les suites présentes couvrent notamment :
 - changement de compte ;
 - acceptation frontend puis navigation vers le workspace.
 
-Ces tests sont présents dans le code mais **ne sont pas déclarés verts tant qu'ils ne sont pas réellement exécutés localement**.
+### 4.1 Prettier
+
+Le script racine `format:check` exécute `prettier --check .`, mais le dépôt ne possède pas encore de configuration Prettier canonique représentant ses conventions historiques. Il signale donc massivement des fichiers hors D-020.
+
+Décision :
+
+```text
+prettier --write .  INTERDIT dans D-020
+format:check global NON BLOQUANT pour D-020
+normalisation Prettier = chantier outillage séparé
+```
 
 ---
 
-## 5. D-002 — gate avant première dérivation
+## 5. Validation manuelle restante avant fusion dans main
+
+D-020 n'est pas encore formellement `VALIDÉ` tant que ce parcours n'est pas contrôlé dans l'application :
+
+```text
+Platform → Invitations commerciales
+→ seules les offres privées compatibles sont proposées
+→ création invitation
+→ email / lien #token
+→ preview
+→ register ou login
+→ retour automatique au parcours
+→ changement de compte possible
+→ acceptation
+→ premier workspace créé
+→ droits issus du Plan privé
+→ invitation passée à accepted
+```
+
+Pour un trial :
+
+```text
+trial démarre à l'acceptation
+aucun moyen de paiement demandé dans ce parcours
+TrialEligibility consommé une seule fois
+```
+
+Pour une offre gratuite durable :
+
+```text
+Subscription commercial = active/open_ended
+aucune TrialEligibility consommée
+```
+
+Après succès de cette validation manuelle :
+
+```text
+D-020 → VALIDÉ
+feature/d020-commercial-invitations → fast-forward dans main
+→ reprise du bloc suivant
+```
+
+---
+
+## 6. D-002 — gate avant première dérivation
 
 Décision figée :
 
@@ -310,69 +371,3 @@ avant validation de D-002
 D-002 reste séparé de D-020. Voir `docs/DEBT.md`.
 
 Invariant D-019 à préserver : un fichier soft-deleted continue à consommer `storage_bytes` tant que le contenu physique existe ; une restauration avant purge ne réserve donc pas ce stockage une seconde fois.
-
----
-
-## 6. Gate locale D-020 à exécuter maintenant
-
-La branche D-020 est prête à être récupérée localement.
-
-Depuis la racine :
-
-```bash
-npm run lint
-npm test
-```
-
-Puis :
-
-```bash
-cd frontend
-npm run lint
-npm test
-npm run build
-```
-
-### 6.1 Note sur Prettier
-
-Le script racine `format:check` exécute actuellement `prettier --check .`, mais le dépôt ne possède pas encore de configuration Prettier canonique permettant de représenter correctement ses conventions historiques, notamment l'indentation backend à 4 espaces et frontend à 2 espaces.
-
-Conséquence : le contrôle global signale massivement des fichiers historiques hors D-020. Il ne constitue donc pas un gate fiable pour D-020 et **`prettier --write .` ne doit pas être exécuté**, car cela provoquerait une refonte cosmétique globale hors périmètre.
-
-La normalisation Prettier globale devra être traitée comme un chantier outillage dédié avant d'en faire une exigence de release bloquante.
-
-Ne pas exécuter la migration `subscription-term-type` sur la base de développement pendant cette première gate de code sauf si l'objectif est explicitement de tester la migration sur une copie/état contrôlé de données.
-
-Après validation automatisée, la vérification manuelle D-020 doit au minimum contrôler :
-
-```text
-Platform → Invitations commerciales
-→ offre publique absente du sélecteur
-→ création invitation privée
-→ email / lien #token
-→ preview
-→ register ou login
-→ retour à l'invitation
-→ changement de compte possible
-→ acceptation
-→ premier workspace créé
-→ droits issus du Plan privé
-→ invitation passée à accepted
-```
-
-Pour un vrai trial, vérifier en plus que la date de trial démarre à l'acceptation et qu'aucun moyen de paiement n'est demandé dans ce parcours.
-
----
-
-## 7. Critère de sortie
-
-Si backend lint + tests, frontend lint + tests + build et la vérification manuelle ciblée sont verts :
-
-```text
-D-020 peut être déclaré VALIDÉ
-→ documentation de reprise mise à jour
-→ intégration dans main
-→ bloc suivant
-```
-
-En cas d'échec, corriger uniquement D-020 ou la régression directement causée par D-020 ; ne pas rouvrir D-018/D-019/DOC-CODE-1 sans preuve d'un défaut réel.
