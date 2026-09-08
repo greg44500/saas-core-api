@@ -10,8 +10,6 @@
 
 Ce document est le registre unique des dettes fonctionnelles, techniques, de conformité, de distribution et de préparation à la production encore actives.
 
-Il ne remplace pas la roadmap fonctionnelle courante. L'historique détaillé des dettes clôturées reste disponible dans Git et dans les contrats canoniques concernés.
-
 Hiérarchie :
 
 ```text
@@ -65,7 +63,7 @@ produit dérivé automatiquement production-ready
 | ID | Dette | Statut |
 |---|---|---|
 | D-020 | Invitation commerciale client et offres privées de découverte | EN COURS |
-| D-011 | Préférences utilisateur, apparence et affichage métier | PLANIFIÉ |
+| D-011 | Design System Core, préférences utilisateur et affichage métier | PLANIFIÉ |
 | D-021 | Gate sécurité Auth, invitations et tokens temporaires | PLANIFIÉ |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
@@ -203,35 +201,193 @@ MFA, passkeys, SSO entreprise ou autres providers ne sont pas ajoutés uniquemen
 
 ---
 
-## D-011 — Préférences utilisateur, apparence et affichage métier
+## D-011 — Design System Core, préférences utilisateur et affichage métier
 
 **Statut :** PLANIFIÉ  
-**Périmètre :** Core clonable + points d'extension des applications dérivées  
-**Blocage Core 1.0 :** oui, avant D-015
+**Périmètre :** Core frontend clonable + préférences utilisateur + points d'extension des applications dérivées  
+**Blocage Core 1.0 :** oui, avant D-015  
+**Dépendances :** design system frontend existant, identité utilisateur, entitlement effectif et RBAC  
+**Déclencheur :** décisions produit du 2026-09-08 — stabiliser avant versionnement le langage visuel du Core, son accessibilité et le mécanisme générique de préférences.
 
-Deux familles :
+D-011 doit être traitée dans l'ordre suivant :
 
 ```text
-Préférences de confort
-→ thème clair/sombre/système, police contrôlée, palette fournie par le propriétaire du produit, futures options ergonomiques/accessibilité
-
-Préférences d'affichage métier
-→ sélection personnelle parmi widgets/cartes/KPI déjà accessibles
+D-011.A Design System Core
+→ D-011.B Préférences de confort
+→ D-011.C Préférences d'affichage métier
 ```
 
-Invariant :
+Le système de préférences ne doit pas précéder la stabilisation du Design System : une préférence choisit parmi des possibilités autorisées par le Design System, elle ne crée pas elle-même des styles arbitraires.
+
+### D-011.A — Stabilisation du Design System Core
+
+Le frontend possède déjà une base Tailwind CSS v4 CSS-first avec `@theme inline`, variables CSS sémantiques, thèmes light/dark et composants shadcn/ui. Cette base doit être auditée et consolidée plutôt que remplacée sans justification.
+
+Le fichier global actuel (`frontend/src/index.css`) peut conserver son nom : son rôle importe davantage que le nom `global.css`. Il doit rester limité aux imports Tailwind, tokens/thèmes, styles HTML globaux, règles transversales d'accessibilité, typographie, `color-scheme` et resets réellement globaux. Il ne doit pas devenir un stockage de styles métier ou de composants.
+
+Le contrat de tokens doit distinguer lorsque pertinent :
 
 ```text
-Plan / entitlement effectif + permissions
-→ ensemble accessible
+tokens primitifs
+→ valeurs physiques contrôlées : palettes, typographie, spacing, radius, shadows, motion...
 
-ensemble accessible + préférences utilisateur
+tokens sémantiques
+→ background, foreground, card/surface, primary, secondary, muted, accent,
+  border, input, ring, destructive, success, warning, info, disabled...
+
+composants UI
+→ consomment les tokens sémantiques plutôt que des couleurs arbitraires
+```
+
+Les tokens spécifiques à un composant ne doivent être ajoutés que lorsqu'ils apportent une vraie valeur ; éviter une explosion de variables dupliquant les variants gérés proprement par shadcn/CVA/Tailwind.
+
+Les couleurs, tailles, radius, ombres et autres valeurs codées en dur dans les composants doivent être auditées. Une valeur ponctuelle n'est pas automatiquement une dette : la migration vers un token doit être justifiée par une responsabilité réellement transverse.
+
+Architecture cible :
+
+```text
+Design tokens
+→ components/ui : primitives du design system
+→ components/shared : compositions réutilisables transversales
+→ features/*/components : composants métier composés à partir des briques précédentes
+```
+
+Aucune page ou feature ne doit recréer localement une primitive générique déjà disponible.
+
+### Accessibilité structurelle obligatoire
+
+L'accessibilité de base n'est **pas une préférence désactivable** et ne doit pas dépendre d'un thème. Le Core doit viser au minimum une conformité cohérente avec WCAG 2.2 AA pour ses composants et parcours concernés.
+
+Doivent notamment être audités/garantis :
+
+- HTML sémantique et accessible names ;
+- navigation clavier ;
+- focus visible et non masqué ;
+- contrastes minimums texte/UI ;
+- labels et descriptions de formulaires ;
+- association des erreurs aux champs et annonces pertinentes ;
+- gestion correcte du focus des Dialog/Drawer/menus ;
+- icônes décoratives ignorées par les technologies d'assistance ;
+- cibles interactives suffisamment utilisables ;
+- zoom/taille de texte sans rupture majeure ;
+- absence d'information portée uniquement par la couleur ;
+- respect de `prefers-reduced-motion` et des préférences système pertinentes ;
+- états loading/empty/error compréhensibles et non ambigus.
+
+Une exigence d'accessibilité structurelle ne doit jamais être retirée pour préserver l'esthétique. L'objectif est un design normal professionnel **et** accessible.
+
+### Mode accessibilité renforcée
+
+D-011.B pourra exposer une préférence `accessibilityMode` ou équivalent, mais elle constitue une **surcouche optionnelle** et non l'activation de l'accessibilité elle-même.
+
+Le profil renforcé pourra, après cadrage, augmenter ou renforcer de manière contrôlée :
+
+```text
+contraste
+lisibilité / taille de texte
+zones interactives
+visibilité du focus
+espacements
+réduction des animations
+réduction des transparences
+distinction des états
+```
+
+Il doit pouvoir se combiner avec le thème/palette choisi lorsque cela reste cohérent :
+
+```text
+thème/palette
++
+préférences de confort
++
+profil accessibilité renforcée
+```
+
+Le système doit également respecter les préférences d'accessibilité fournies par l'OS/navigateur lorsqu'elles sont pertinentes ; une préférence applicative ne doit pas neutraliser un besoin système important sans décision explicite et justifiée.
+
+### États asynchrones et Skeletons
+
+Le Design System doit normaliser les états des composants alimentés par des données serveur :
+
+```text
+LOADING   → Skeleton adapté lorsque pertinent
+SUCCESS   → contenu
+EMPTY     → EmptyState
+ERROR     → ErrorState + retry lorsque pertinent
+FORBIDDEN / non-entitled → généralement composant absent selon RBAC/entitlement
+```
+
+Les Skeletons sont une brique de perception de performance et de stabilité visuelle, pas une décoration. Ils doivent approximer la structure finale sans créer de faux contenu, limiter les changements de layout et respecter `prefers-reduced-motion`/le profil d'accessibilité.
+
+Prévoir une primitive générique réutilisable et seulement les compositions réellement utiles, par exemple `KpiCardSkeleton`, `DataTableSkeleton`, `CardSkeleton` ou `DashboardSectionSkeleton`, en évitant qu'un futur module métier réimplémente sa propre mécanique générique.
+
+`loading`, `empty`, `error`, `forbidden` et `disabled` sont des états distincts et ne doivent jamais être confondus.
+
+### D-011.B — Préférences de confort
+
+Le Core doit fournir un mécanisme contrôlé pour les préférences transversales :
+
+```text
+thème clair / sombre / système
+police parmi une liste contrôlée
+palette parmi les palettes explicitement fournies et intégrées par le propriétaire du produit
+mode accessibilité renforcée
+futures options d'ergonomie/accessibilité uniquement si cadrées
+```
+
+Les palettes ne sont pas inventées automatiquement par le Core. Elles sont traduites en tokens sémantiques du Design System et doivent satisfaire les exigences d'accessibilité applicables.
+
+Une préférence ne stocke jamais une valeur CSS libre, une URL de police arbitraire ou une palette utilisateur non validée. Elle stocke un identifiant contrôlé (`theme`, `paletteId`, `fontFamily`, etc.) validé strictement.
+
+La persistance serveur/local, les valeurs par défaut, le comportement multi-appareils, les fallbacks si une option disparaît et la compatibilité ascendante doivent être explicitement cadrés. Pas de JSON libre non validé.
+
+### D-011.C — Préférences d'affichage métier
+
+Le Core doit préparer un registre extensible permettant aux futurs modules métier de déclarer widgets, cartes, indicateurs ou KPI sélectionnables par l'utilisateur sans coupler le Core à un domaine métier.
+
+Invariant de sécurité et d'UX :
+
+```text
+Plan / entitlement effectif
++
+permissions utilisateur
+→ ensemble réellement accessible
+
+ensemble réellement accessible
++
+préférences utilisateur
 → ensemble visible
 ```
 
-Une préférence ne crée jamais un droit. Une feature/KPI non autorisée n'est pas proposée. Les modules métier doivent pouvoir enregistrer leurs widgets sans coupler le Core à un métier particulier. La persistance serveur/local, validation stricte, fallbacks et compatibilité ascendante doivent être cadrés. Pas de JSON libre non validé. UI réutilisable et design system centralisé.
+Conséquences :
 
-**Critère de clôture :** contrat générique figé, séparation confort/métier, persistance/validation sécurisées, thèmes/polices/palettes contrôlés, registre dashboard extensible, filtrage entitlement+RBAC et tests pertinents validés avant D-015.
+- une préférence ne crée jamais un droit ;
+- une feature/KPI/widget non autorisé n'est jamais proposé dans les préférences ;
+- masquer un widget ne retire aucun droit ;
+- afficher un widget ne crée aucun droit ;
+- le frontend ne doit jamais utiliser les préférences comme autorisation ;
+- les composants non accessibles ne doivent pas polluer le Dashboard avec un faux état « indisponible » lorsque le produit a décidé leur absence.
+
+La V1 reste volontairement limitée à afficher/masquer et, uniquement si le cadrage le justifie, réordonner. Pas de constructeur libre, grille arbitraire, redimensionnement complexe ou personnalisation visuelle par widget sans besoin produit explicite.
+
+### Tests attendus D-011
+
+Prévoir au minimum :
+
+- tests des tokens/thèmes et fallbacks pertinents ;
+- tests des composants UI/shared modifiés ;
+- tests clavier/focus/labels/erreurs pour les composants concernés ;
+- contrôles de contraste des palettes retenues ;
+- tests `prefers-reduced-motion` et mode accessibilité renforcée lorsque implémentés ;
+- tests Skeleton/EmptyState/ErrorState et absence d'ambiguïté avec forbidden ;
+- validation backend stricte des préférences persistées ;
+- tests de non-escalade : aucune préférence ne contourne Plan/entitlement/RBAC ;
+- filtrage des préférences Dashboard selon entitlement + permissions ;
+- fallbacks lorsqu'un widget, une police ou une palette n'existe plus ;
+- persistance inter-session lorsque la préférence est serveur ;
+- checklist manuelle responsive, clavier, zoom, lisibilité, contraste, thème light/dark et cohérence du Design System.
+
+**Critère de clôture :** Design System Core audité et stabilisé, tokens sémantiques et responsabilités globales documentés, accessibilité structurelle non désactivable intégrée, profil d'accessibilité renforcée cadré/implémenté selon le contrat retenu, états asynchrones partagés dont Skeletons cohérents, préférences de confort strictement contrôlées, registre d'affichage métier extensible, filtrage entitlement+RBAC garanti, composants réutilisables et tests backend/frontend/accessibilité/sécurité pertinents validés avant D-015.
 
 ---
 
@@ -305,11 +461,11 @@ Contrat : `docs/contracts/COMMERCIAL-INVITATIONS.md`.
 **Dépendances :** Auth/session et domaines d'invitation existants  
 **Déclencheur :** décision sécurité du 2026-09-08 — auditer et homogénéiser les secrets temporaires avant de figer le versionnement du Core
 
-Cette dette est d'abord une **gate d'audit de l'existant**. Elle ne doit pas recréer ce qui est déjà correctement implémenté et testé. Chaque invariant doit être vérifié dans le code, les contraintes DB, les tests et les contrats avant modification.
+Cette dette est d'abord une **gate d'audit de l'existant**. Elle ne doit pas recréer ce qui est déjà correctement implémenté et testé.
 
 ### Invitations
 
-Toutes les invitations sensibles doivent être temporaires, à usage unique et révocables. Politique cible Core à confirmer par audit :
+Politique cible Core à confirmer par audit :
 
 ```text
 WorkspaceInvitation
@@ -318,13 +474,9 @@ CommercialInvitation
 → expiration par défaut : 7 jours
 ```
 
-Le délai doit être défini côté serveur et configurable de manière contrôlée si un domaine a un besoin justifié. Un resend doit produire un nouveau secret et invalider/faire tourner l'ancien ; il ne doit pas simplement prolonger un secret déjà distribué.
-
-Exigences : token cryptographiquement aléatoire, secret brut jamais persisté lorsque le modèle permet un hash, expiration vérifiée serveur, single-use atomique, révocation explicite, protection contre replay/concurrence, absence de fuite dans logs/URLs persistantes, audit des transitions sensibles et tests d'expiration.
+Exigences : token cryptographiquement aléatoire, secret brut jamais persisté lorsque le modèle permet un hash, expiration serveur, single-use atomique, révocation, resend avec rotation, protection replay/concurrence, absence de fuite logs/URLs persistantes, audit et tests.
 
 ### Forgot / reset password
-
-Politique cible :
 
 ```text
 reset password token
@@ -333,37 +485,17 @@ reset password token
 → nouvelle demande requise après expiration
 ```
 
-À vérifier/garantir : token fort, stockage hashé, expiration serveur, consommation atomique, impossibilité de réutilisation, réponse de demande uniforme ne révélant pas l'existence d'un compte, rate limiting, notification après changement de mot de passe et politique explicite d'invalidation des sessions après reset.
+À vérifier : token fort/hashé, expiration serveur, consommation atomique, anti-enumeration, rate limiting, notification après changement et politique explicite d'invalidation des sessions après reset.
 
 ### Rate limiting et anti-automation
 
-Auditer séparément `register`, `login`, `forgot-password`, preview/acceptation d'invitations et autres endpoints Auth sensibles.
-
-La première défense reste le rate limiting et les contrôles anti-abus adaptés, idéalement sans dépendre uniquement de l'IP lorsque le contexte permet également une limitation par identité/compte/email normalisé sans créer d'oracle d'énumération.
-
-Un CAPTCHA/challenge anti-bot ne doit **pas** être imposé systématiquement au login par défaut. Il reste une défense complémentaire à déclencher selon le risque : abus automatisé, volume anormal, échecs répétés ou besoin produit démontré. L'intégration future d'un provider anti-bot doit préserver accessibilité, confidentialité et possibilité de remplacement.
-
-Pour l'inscription publique, le besoin de challenge doit être évalué avec les protections existantes : rate limiting, vérification email, prévention des créations massives et protection de `TrialEligibility`. Pour `forgot-password`, empêcher le mail bombing fait partie de la gate.
+Auditer séparément `register`, `login`, `forgot-password`, preview/acceptation d'invitations et endpoints Auth sensibles. Le CAPTCHA/challenge anti-bot n'est pas imposé systématiquement au login ; il reste une défense complémentaire/adaptative. L'inscription publique doit être protégée contre création massive de comptes/trials et `forgot-password` contre le mail bombing.
 
 ### Google SSO hors D-021
 
-Google SSO reste dans D-010 et **ne bloque pas** le versionnement Core 1.0. D-021 ne doit pas l'implémenter indirectement.
+Google SSO reste dans D-010 et ne bloque pas Core 1.0.
 
-### Tests attendus
-
-- expiration exacte et refus après expiration ;
-- usage unique et replay refusé ;
-- resend/rotation invalidant l'ancien secret ;
-- révocation ;
-- concurrence sur acceptation/consommation ;
-- anti-enumeration ;
-- rate limits des endpoints sensibles ;
-- reset password expiré après 15 minutes ;
-- comportement sessions après reset ;
-- absence de persistance/log accidentel du secret ;
-- tests backend d'intégration/sécurité et tests frontend pertinents.
-
-**Critère de clôture :** audit documenté de tous les secrets temporaires Core, politique d'expiration homogène ou exceptions justifiées, invitations 7 jours par défaut, reset 15 minutes, single-use/rotation/révocation/replay/concurrence sécurisés, anti-enumeration et rate limiting vérifiés, stratégie anti-bot explicitement décidée, tests verts et documentation canonique synchronisée avant D-015.
+**Critère de clôture :** audit documenté des secrets temporaires, invitations 7 jours par défaut ou exceptions justifiées, reset 15 minutes, single-use/rotation/révocation/replay/concurrence sécurisés, anti-enumeration/rate limiting vérifiés, stratégie anti-bot décidée, tests verts et documentation synchronisée avant D-015.
 
 ---
 
@@ -382,7 +514,9 @@ D-018 Équipe Platform / RBAC / invitations                  VALIDÉ
 D-019 moteur sécurisé de rétention / purge Core             VALIDÉ
 DOC-CODE-1 documentation source                             VALIDÉ
 → D-020 invitation commerciale / offre privée découverte    EN COURS
-→ D-011 préférences utilisateur / apparence / dashboard     PLANIFIÉ
+→ D-011.A stabilisation Design System Core                  PLANIFIÉ
+→ D-011.B préférences de confort                            PLANIFIÉ
+→ D-011.C préférences d'affichage métier                    PLANIFIÉ
 → D-021 gate sécurité Auth / invitations / tokens           PLANIFIÉ
 → D-015 release/version/provenance/migrations               PLANIFIÉ
 → D-016 Playwright E2E Core                                 PLANIFIÉ
