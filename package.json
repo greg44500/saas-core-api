@@ -30,6 +30,7 @@
     "migration:member-invite-permission": "node backend/migrations/runAddMemberInvitePermissionToSystemRolesMigration.js",
     "migration:file-read-permission": "node backend/migrations/runAddFileReadPermissionToSystemRolesMigration.js",
     "migration:file-delete-permission": "node backend/migrations/runAddFileDeletePermissionToSystemRolesMigration.js",
+    "migration:file-storage-usage-reconcile": "node backend/migrations/runReconcileDeletedFileStorageUsageMigration.js",
     "migration:workspace-ownership-transfer-permission": "node backend/migrations/runAddWorkspaceOwnershipTransferPermissionToOwnerRolesMigration.js",
     "migration:baseline-plan-system-role": "node backend/migrations/runBackfillBaselinePlanSystemRoleMigration.js",
     "migration:baseline-remove-file-upload": "node backend/migrations/runRemoveFileUploadFromBaselinePlanMigration.js",
