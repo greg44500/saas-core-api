@@ -16,6 +16,9 @@ import {
     SUBSCRIPTION_TERM_TYPE,
 } from '../../constants/subscription.constants.js';
 import {
+    USER_STATUS,
+} from '../../constants/userStatus.constants.js';
+import {
     WORKSPACE_MEMBER_STATUS,
 } from '../../constants/workspaceMember.constants.js';
 import { AppError } from '../../utils/appError.js';
@@ -38,6 +41,10 @@ import {
 } from './commercialInvitation.service.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+const isValidDate = (value) =>
+    value instanceof Date
+    && !Number.isNaN(value.getTime());
 
 /**
  * Crée la Subscription commerciale correspondant exactement à la proposition
@@ -173,6 +180,9 @@ const createAcceptedCommercialSubscription = async ({
  * token prouve seulement qu'une proposition existe ; l'identité authentifiée
  * reste l'autorité et son email doit correspondre à l'invitation.
  *
+ * Le statut User est relu dans la transaction : une désactivation concurrente
+ * entre `authenticate` et cette mutation ne doit pas pouvoir créer un tenant.
+ *
  * Toutes les écritures sont atomiques : provisioning du tenant, baseline,
  * Subscription commerciale, TrialEligibility éventuel, acceptation et audits.
  */
@@ -189,15 +199,28 @@ const acceptCommercialInvitation = async ({
         );
     }
 
+    if (!isValidDate(now)) {
+        throw new TypeError(
+            'now must be a valid Date to accept a commercial invitation',
+        );
+    }
+
     const tokenHash = hashCommercialInvitationToken(token);
 
     return mongoose.connection.transaction(async (session) => {
         const user = await User.findById(userId)
-            .select('_id emailCanonical')
+            .select('_id emailCanonical status')
             .session(session);
 
         if (!user?.emailCanonical) {
             throw new AppError('Utilisateur introuvable', 401);
+        }
+
+        if (user.status !== USER_STATUS.ACTIVE) {
+            throw new AppError(
+                'Le compte utilisateur n’est pas actif',
+                403,
+            );
         }
 
         const invitation = await CommercialInvitation.findOne({
