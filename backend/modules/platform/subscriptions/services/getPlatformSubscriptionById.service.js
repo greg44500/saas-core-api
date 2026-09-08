@@ -32,7 +32,7 @@ const getPlatformSubscriptionById = async ({
     const subscription = await Subscription
         .findById(subscriptionId)
         .select(
-            '_id workspace plan kind status '
+            '_id workspace plan kind termType status '
             + 'currentPeriodStart currentPeriodEnd trialEndsAt '
             + 'cancelAtPeriodEnd scheduledChange '
             + 'billingInterval currency priceExclTaxMinor '
@@ -98,6 +98,7 @@ const getPlatformSubscriptionById = async ({
             : null,
 
         kind: subscription.kind,
+        termType: subscription.termType ?? null,
         status: subscription.status,
 
         currentPeriodStart:
