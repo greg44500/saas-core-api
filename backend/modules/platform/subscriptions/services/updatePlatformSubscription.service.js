@@ -183,14 +183,12 @@ const updatePlatformSubscription = async ({
             subscriptionData.plan !== undefined
             || subscriptionData.billingInterval !== undefined;
 
-        let targetPlan = null;
-
         if (planMustBeResolved) {
             const targetPlanId =
                 subscriptionData.plan
                 ?? subscription.plan;
 
-            targetPlan = await Plan.findOne({
+            const targetPlan = await Plan.findOne({
                 _id: targetPlanId,
                 status: PLAN_STATUS.ACTIVE,
             }).session(session);
