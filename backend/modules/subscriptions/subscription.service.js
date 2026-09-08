@@ -7,6 +7,7 @@ import {
     BILLING_PROVIDER,
     SUBSCRIPTION_STATUS,
     SUBSCRIPTION_KIND,
+    SUBSCRIPTION_TERM_TYPE,
 } from '../../constants/subscription.constants.js';
 
 import {
@@ -84,6 +85,7 @@ const createFreeSubscriptionForWorkspace = async ({
                 workspace: workspaceId,
                 plan: baselinePlan._id,
                 kind: SUBSCRIPTION_KIND.BASELINE,
+                termType: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
                 status: SUBSCRIPTION_STATUS.ACTIVE,
                 currentPeriodStart,
                 currentPeriodEnd: null,
@@ -109,14 +111,19 @@ const createFreeSubscriptionForWorkspace = async ({
 /**
  * Résout le couple Subscription/Plan qui fait autorité pour un workspace.
  *
- * La priorité est volontairement stricte : subscription commerciale active et
- * encore dans sa période, puis trial commercial non expiré, puis baseline
- * active. Une subscription commerciale expirée ne doit jamais masquer la
- * baseline de repli.
+ * Deux formes commerciales actives sont reconnues :
+ * - `fixed`, dont `currentPeriodEnd` doit encore être dans le futur ;
+ * - `open_ended`, strictement réservé ici à une offre gratuite, manuelle et
+ *   sans périodicité ni échéance.
  *
- * Le service ne compose pas encore les dérogations ni les usages : il fournit
- * uniquement l'autorité de catalogue sur laquelle les couches suivantes
- * construisent l'entitlement effectif.
+ * Les anciennes subscriptions commerciales sans `termType` restent compatibles
+ * uniquement avec le chemin historique `fixed` lorsqu'elles possèdent une
+ * `currentPeriodEnd` future. Une valeur `open_ended` mal configurée ne peut donc
+ * pas retomber silencieusement dans ce chemin et obtenir des droits permanents.
+ *
+ * La priorité reste : commerciale active, trial valide, puis baseline active.
+ * Une subscription commerciale expirée ou incohérente ne masque jamais la
+ * baseline de repli.
  *
  * @param {object} params
  * @param {import('mongoose').Types.ObjectId|string} params.workspaceId
@@ -158,16 +165,36 @@ const getWorkspacePlanEntitlement = async ({
     let commercialSubscription = await buildSubscriptionQuery({
         kind: SUBSCRIPTION_KIND.COMMERCIAL,
         status: SUBSCRIPTION_STATUS.ACTIVE,
-        currentPeriodEnd: mongoose.trusted({
-            $type: 'date',
-            $gt: at,
-        }),
+        termType: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+        currentPeriodEnd: null,
+        trialEndsAt: null,
+        cancelAtPeriodEnd: false,
+        billingInterval: BILLING_INTERVAL.NONE,
+        priceExclTaxMinor: 0,
+        provider: BILLING_PROVIDER.MANUAL,
     });
 
     if (!commercialSubscription) {
         commercialSubscription = await buildSubscriptionQuery({
             kind: SUBSCRIPTION_KIND.COMMERCIAL,
+            status: SUBSCRIPTION_STATUS.ACTIVE,
+            termType: mongoose.trusted({
+                $ne: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+            }),
+            currentPeriodEnd: mongoose.trusted({
+                $type: 'date',
+                $gt: at,
+            }),
+        });
+    }
+
+    if (!commercialSubscription) {
+        commercialSubscription = await buildSubscriptionQuery({
+            kind: SUBSCRIPTION_KIND.COMMERCIAL,
             status: SUBSCRIPTION_STATUS.TRIALING,
+            termType: mongoose.trusted({
+                $ne: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+            }),
             trialEndsAt: mongoose.trusted({
                 $type: 'date',
                 $gt: at,
