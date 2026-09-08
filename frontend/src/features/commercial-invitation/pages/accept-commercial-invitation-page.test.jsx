@@ -15,6 +15,10 @@ const mocks = vi.hoisted(() => ({
     isLoading: false,
   },
   authStatus: 'unauthenticated',
+  logout: vi.fn(),
+  logoutState: {
+    isLoading: false,
+  },
   preview: vi.fn(),
   previewState: {
     data: null,
@@ -25,6 +29,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('react-redux', () => ({
   useSelector: vi.fn(() => mocks.authStatus),
+}));
+
+vi.mock('@/features/auth/api/auth-api', () => ({
+  useLogoutMutation: () => [mocks.logout, mocks.logoutState],
 }));
 
 vi.mock(
@@ -109,10 +117,16 @@ describe('AcceptCommercialInvitationPage', () => {
       error: null,
       isLoading: false,
     };
+    mocks.logoutState = {
+      isLoading: false,
+    };
     mocks.accept.mockReturnValue({
       unwrap: vi.fn().mockResolvedValue({
         workspace: { id: 'workspace-123' },
       }),
+    });
+    mocks.logout.mockReturnValue({
+      unwrap: vi.fn().mockResolvedValue(undefined),
     });
   });
 
@@ -137,6 +151,22 @@ describe('AcceptCommercialInvitationPage', () => {
 
     await user.click(screen.getByRole('link', { name: 'J’ai déjà un compte' }));
 
+    expect(await screen.findByText('/login|none')).toBeInTheDocument();
+    expect(getCommercialInvitationTokenFromLocation()).toBe(TOKEN);
+  });
+
+  it('permet de changer de compte sans persister ni perdre le secret runtime', async () => {
+    const user = userEvent.setup();
+    mocks.authStatus = 'authenticated';
+    renderAcceptance();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Utiliser un autre compte' }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.logout).toHaveBeenCalledOnce();
+    });
     expect(await screen.findByText('/login|none')).toBeInTheDocument();
     expect(getCommercialInvitationTokenFromLocation()).toBe(TOKEN);
   });
