@@ -20,6 +20,19 @@ const CORE_RETENTION_ADAPTERS = Object.freeze([
     auditLogRetentionAdapter,
 ]);
 
+/**
+ * Valide et fige un adapter de rétention avant son enregistrement.
+ *
+ * Le contrat d'extension est volontairement étroit : un adapter peut exposer
+ * uniquement sa cible, une prévisualisation et, si la cible l'autorise, une
+ * exécution par batch. Il ne doit jamais devenir une abstraction générique
+ * permettant de transmettre depuis l'extérieur une collection MongoDB, un
+ * filtre, une projection ou une opération arbitraire.
+ *
+ * Le registre de targets reste l'autorité sur les capabilities autorisées.
+ * Un adapter ne peut donc pas s'octroyer une capacité d'exécution absente de la
+ * définition de sa cible.
+ */
 const normalizeRetentionAdapter = ({ adapter, targetRegistry }) => {
     if (!isRecord(adapter)) {
         throw new TypeError('Retention adapter must be an object');
@@ -69,6 +82,14 @@ const normalizeRetentionAdapter = ({ adapter, targetRegistry }) => {
     });
 };
 
+/**
+ * Extrait les adapters déclarés par les modules applicatifs ajoutés après
+ * clonage du Core.
+ *
+ * La composition ne valide pas encore les droits de la cible : cette étape est
+ * centralisée dans createRetentionAdapterRegistry afin que les adapters Core et
+ * métier passent exactement par la même frontière de validation.
+ */
 const composeRetentionAdapterExtensions = (modules = []) => {
     if (!Array.isArray(modules)) {
         throw new TypeError('Retention adapter modules must be an array');
@@ -97,6 +118,14 @@ const composeRetentionAdapterExtensions = (modules = []) => {
     return adapters;
 };
 
+/**
+ * Construit le registre immuable des adapters de rétention disponibles.
+ *
+ * Chaque target ne peut posséder qu'un seul adapter effectif. Cette unicité
+ * évite qu'un même domaine soit purgé par deux implémentations concurrentes ou
+ * ambiguës. Les extensions métier utilisent le même contrat que les adapters
+ * Core et ne peuvent élargir les responsabilités du moteur de rétention.
+ */
 const createRetentionAdapterRegistry = ({
     targetRegistry,
     adapters = [],
