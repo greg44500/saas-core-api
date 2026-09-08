@@ -19,6 +19,26 @@ const MEMBERS_PAGE_SIZE = 20;
 const selectClassName =
   'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
+/**
+ * Orchestre le transfert d'ownership d'un workspace comme opération sensible.
+ *
+ * Le composant compose les données serveur nécessaires au choix du nouveau
+ * owner et du rôle de remplacement de l'ancien owner, puis exige une nouvelle
+ * confirmation du mot de passe courant et une confirmation explicite des
+ * conséquences avant d'envoyer la mutation.
+ *
+ * Les filtres locaux (membre actif, rôle non-owner) et la validation Zod
+ * améliorent l'UX mais ne sont pas une frontière de sécurité. Le backend reste
+ * l'autorité sur l'identité du propriétaire courant, le mot de passe, l'état du
+ * membership, les rôles autorisés, la transaction et le recalcul des permissions.
+ *
+ * Après succès, la navigation remplace l'historique vers le dashboard car les
+ * droits du demandeur viennent de changer et l'écran courant ne doit pas être
+ * considéré comme encore autorisé par simple continuité d'interface.
+ *
+ * @param {object} props
+ * @param {string} props.workspaceId Workspace dont la propriété est transférée.
+ */
 function WorkspaceOwnershipSection({ workspaceId }) {
   const navigate = useNavigate();
   const { toast } = useToast();
