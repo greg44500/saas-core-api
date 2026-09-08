@@ -44,6 +44,7 @@ Les modules métier réels ne doivent pas être développés directement dans le
 D-018 Équipe Platform / RBAC / invitations internes            ✅ VALIDÉ
 D-019 moteur sécurisé de rétention / purge Core                ✅ VALIDÉ
 DOC-CODE-1 normalisation documentation source                  ✅ VALIDÉ
+HOME-CORE accès public login/register                          🔄 CORRECTIF INTÉGRÉ, GATE FINALE À RECONFIRMER
 → D-020 invitation commerciale client / offre privée Découverte ⏭️ PROCHAIN BLOC
 → D-015 versionnement / provenance / migrations / release
 → D-016 Playwright / E2E Core
@@ -140,15 +141,71 @@ Build                 ✅
 
 ---
 
-## 5. D-020 — PROCHAIN BLOC
+## 5. Correctif générique HOME-CORE — accès Auth depuis `/`
+
+### 5.1 Problème constaté
+
+La route publique `/` affichait encore l'ancienne démonstration du design system F2. Un visiteur ne pouvait accéder à l'authentification qu'en saisissant manuellement `/login` ou `/register` dans la barre d'adresse.
+
+Pour un Core destiné à être cloné puis spécialisé métier, ce comportement n'est pas acceptable : la home publique générique doit fournir un point d'entrée professionnel et neutre vers les parcours Auth sans imposer une identité métier spécifique.
+
+### 5.2 Correction intégrée
+
+`frontend/src/App.jsx` a été transformé en landing publique générique :
+
+- CTA réel `Se connecter` vers `/login` ;
+- CTA réel `Créer un compte` vers `/register` ;
+- conservation du `ThemeToggle` ;
+- design neutre et professionnel basé sur le design system existant ;
+- aucune promesse métier spécifique ;
+- contenu explicitement remplaçable lors de la dérivation d'un SaaS métier ;
+- aucune modification du workflow Auth, des guards ou du backend.
+
+Tests associés :
+
+- `frontend/src/App.test.jsx` vérifie désormais les accès `/login` et `/register` ;
+- `frontend/src/app/router.test.jsx` a été aligné sur la nouvelle landing et ne vérifie plus l'ancienne home F2 ni un texte `SaaS Core` ambigu.
+
+Commits repères :
+
+```text
+2236b8f7e859f9f623129080f47f66a86f6caad6  feat(home): expose auth entry points from public landing
+32f22956234b057377b2ce247701775b85f7b759  test(home): cover public auth navigation
+9717f177e470a391183b3c9ffae33cfacbac6ba7  test(router): align public root assertions with landing
+```
+
+### 5.3 Gate à confirmer avant D-020
+
+Le dernier run frontend complet avait révélé un seul test obsolète dans `router.test.jsx`. Ce test a été corrigé au commit `9717f177...`, mais sa revalidation locale finale n'a pas encore été confirmée dans cette synthèse.
+
+Avant d'ouvrir D-020 :
+
+```text
+frontend lint global     à reconfirmer
+frontend tests globaux   à reconfirmer après 9717f177
+build Vite               à reconfirmer
+```
+
+Contrôle manuel recommandé :
+
+```text
+/ → Créer un compte → /register
+/ → Se connecter    → /login
+```
+
+Ce correctif appartient au Core générique et reste indépendant de D-020.
+
+---
+
+## 6. D-020 — PROCHAIN BLOC
 
 ```text
 D-020 — Invitation commerciale client et offres privées de découverte
 ```
 
-Le blocage documentaire qui empêchait D-020 de commencer est levé.
+Le blocage documentaire qui empêchait D-020 de commencer est levé. D-020 ne doit toutefois démarrer qu'après confirmation de la gate frontend du correctif HOME-CORE ci-dessus.
 
-### 5.1 Frontière obligatoire
+### 6.1 Frontière obligatoire
 
 ```text
 PlatformInvitation
@@ -162,7 +219,7 @@ Il est interdit de réutiliser `PlatformInvitation` comme modèle métier d'invi
 
 Les primitives de sécurité peuvent être réutilisées conceptuellement : token aléatoire, hash, expiration, rotation, revoke, audit et absence de secret brut persistant.
 
-### 5.2 Décisions commerciales déjà figées
+### 6.2 Décisions commerciales déjà figées
 
 - une offre « Découverte commerciale » peut utiliser un Plan privé `isPublic=false` ;
 - un Plan privé peut avoir un prix `0` sans devenir la baseline Free ;
@@ -179,7 +236,7 @@ Les primitives de sécurité peuvent être réutilisées conceptuellement : toke
 - le Super administrateur est l'autorité initiale ;
 - l'architecture doit utiliser des permissions Platform dédiées pour permettre une délégation future sans réécrire la logique métier.
 
-### 5.3 Points à résoudre avant code D-020
+### 6.3 Points à résoudre avant code D-020
 
 1. sémantique exacte d'une offre gratuite sans échéance ;
 2. relation `CommercialInvitation` / Plan privé / Subscription / Workspace ;
@@ -199,7 +256,7 @@ D-020 doit être **cadré avant tout code**.
 
 ---
 
-## 6. Règles permanentes de développement
+## 7. Règles permanentes de développement
 
 ### Backend
 
@@ -233,7 +290,7 @@ RTK Query     → état serveur
 
 ---
 
-## 7. Sécurité permanente
+## 8. Sécurité permanente
 
 Invariant :
 
@@ -254,23 +311,24 @@ Les tokens/secrets d'invitation ne doivent jamais être persistés ou exposés e
 
 ---
 
-## 8. Prochaine reprise exacte
+## 9. Prochaine reprise exacte
 
 ```text
 1. git pull
 2. vérifier le HEAD courant
 3. lire docs/REPRISE-CURRENT.md
 4. considérer D-018, D-019 et DOC-CODE-1 comme VALIDÉS
-5. ne pas ouvrir D-015 ni D-020 par du code immédiatement
-6. commencer D-020 par le cadrage fonctionnel et architectural
-7. figer le contrat CommercialInvitation
-8. seulement ensuite découper D-020 en mini-lots backend/frontend/tests
+5. revalider le correctif HOME-CORE : lint frontend + tests globaux + build + navigation manuelle login/register
+6. ne pas ouvrir D-015
+7. une fois HOME-CORE confirmé vert, commencer D-020 par le cadrage fonctionnel et architectural
+8. figer le contrat CommercialInvitation
+9. seulement ensuite découper D-020 en mini-lots backend/frontend/tests
 ```
 
 D-002 reste hors périmètre et ne doit pas être modifié.
 
 ---
 
-## 9. Résumé de reprise en une phrase
+## 10. Résumé de reprise en une phrase
 
-D-018, D-019 et DOC-CODE-1 sont **VALIDÉS** ; la gate documentaire est désormais permanente et **D-020 est le prochain bloc**, à commencer par le cadrage complet de `CommercialInvitation`, des offres privées et de leur interaction avec Plan, Subscription, Workspace, TrialEligibility, permissions Platform et audit avant toute implémentation.
+D-018, D-019 et DOC-CODE-1 sont **VALIDÉS** ; le correctif générique de home publique avec accès `/login` et `/register` est intégré et doit recevoir une dernière confirmation locale après le patch de `router.test.jsx` ; une fois cette gate verte, **D-020** devient le prochain bloc à cadrer avant toute implémentation.
