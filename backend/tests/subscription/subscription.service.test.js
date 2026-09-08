@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-
 import {
     afterEach,
     describe,
@@ -13,6 +12,7 @@ import {
     BILLING_PROVIDER,
     SUBSCRIPTION_STATUS,
     SUBSCRIPTION_KIND,
+    SUBSCRIPTION_TERM_TYPE,
 } from '../../constants/subscription.constants.js';
 
 import {
@@ -36,7 +36,7 @@ describe('createFreeSubscriptionForWorkspace', () => {
         vi.restoreAllMocks();
     });
 
-    it('crée la souscription baseline dans la transaction reçue', async () => {
+    it('crée la souscription baseline open-ended dans la transaction reçue', async () => {
         const workspaceId = new ObjectId();
         const actorId = new ObjectId();
         const planId = new ObjectId();
@@ -79,6 +79,7 @@ describe('createFreeSubscriptionForWorkspace', () => {
                     workspace: workspaceId,
                     plan: planId,
                     kind: SUBSCRIPTION_KIND.BASELINE,
+                    termType: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
                     status: SUBSCRIPTION_STATUS.ACTIVE,
                     currentPeriodStart: expect.any(Date),
                     currentPeriodEnd: null,
@@ -148,68 +149,20 @@ describe('getWorkspacePlanEntitlement', () => {
         populate: vi.fn().mockResolvedValue(result),
     });
 
-    it('priorise une souscription commerciale en trial encore valide sur la baseline', async () => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date('2026-08-29T12:00:00.000Z'));
+    it('priorise une offre commerciale open-ended strictement cohérente', async () => {
         const workspaceId = new ObjectId();
-        const commercialPlan = { _id: new ObjectId(), key: 'pro' };
+        const commercialPlan = { _id: new ObjectId(), key: 'discovery' };
         const commercialSubscription = {
             _id: new ObjectId(),
             workspace: workspaceId,
             kind: SUBSCRIPTION_KIND.COMMERCIAL,
-            status: SUBSCRIPTION_STATUS.TRIALING,
-            trialEndsAt: new Date('2026-08-30T12:00:00.000Z'),
-            plan: commercialPlan,
-        };
-
-        const findOneSpy = vi.spyOn(Subscription, 'findOne')
-            .mockReturnValueOnce(createQueryMock(null))
-            .mockReturnValueOnce(createQueryMock(commercialSubscription));
-
-        const result = await getWorkspacePlanEntitlement({ workspaceId });
-
-        expect(findOneSpy).toHaveBeenCalledTimes(2);
-        expect(findOneSpy).toHaveBeenNthCalledWith(
-            1,
-            {
-                workspace: workspaceId,
-                kind: SUBSCRIPTION_KIND.COMMERCIAL,
-                status: SUBSCRIPTION_STATUS.ACTIVE,
-                currentPeriodEnd: mongoose.trusted({
-                    $type: 'date',
-                    $gt: new Date('2026-08-29T12:00:00.000Z'),
-                }),
-            },
-        );
-        expect(findOneSpy).toHaveBeenNthCalledWith(
-            2,
-            {
-                workspace: workspaceId,
-                kind: SUBSCRIPTION_KIND.COMMERCIAL,
-                status: SUBSCRIPTION_STATUS.TRIALING,
-                trialEndsAt: mongoose.trusted({
-                    $type: 'date',
-                    $gt: new Date('2026-08-29T12:00:00.000Z'),
-                }),
-            },
-        );
-        expect(result).toEqual({
-            subscription: commercialSubscription,
-            plan: commercialPlan,
-        });
-    });
-
-    it('priorise une souscription commerciale active dont la période est encore ouverte', async () => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date('2026-08-29T12:00:00.000Z'));
-        const workspaceId = new ObjectId();
-        const commercialPlan = { _id: new ObjectId(), key: 'pro' };
-        const commercialSubscription = {
-            _id: new ObjectId(),
-            workspace: workspaceId,
-            kind: SUBSCRIPTION_KIND.COMMERCIAL,
+            termType: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
             status: SUBSCRIPTION_STATUS.ACTIVE,
-            currentPeriodEnd: new Date('2026-09-29T12:00:00.000Z'),
+            currentPeriodEnd: null,
+            trialEndsAt: null,
+            billingInterval: BILLING_INTERVAL.NONE,
+            priceExclTaxMinor: 0,
+            provider: BILLING_PROVIDER.MANUAL,
             plan: commercialPlan,
         };
 
@@ -223,13 +176,131 @@ describe('getWorkspacePlanEntitlement', () => {
             workspace: workspaceId,
             kind: SUBSCRIPTION_KIND.COMMERCIAL,
             status: SUBSCRIPTION_STATUS.ACTIVE,
-            currentPeriodEnd: mongoose.trusted({
-                $type: 'date',
-                $gt: new Date('2026-08-29T12:00:00.000Z'),
-            }),
+            termType: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+            currentPeriodEnd: null,
+            trialEndsAt: null,
+            cancelAtPeriodEnd: false,
+            billingInterval: BILLING_INTERVAL.NONE,
+            priceExclTaxMinor: 0,
+            provider: BILLING_PROVIDER.MANUAL,
         });
+        expect(result).toEqual({
+            subscription: commercialSubscription,
+            plan: commercialPlan,
+        });
+    });
+
+    it('priorise une souscription commerciale en trial encore valide sur la baseline', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-08-29T12:00:00.000Z'));
+        const workspaceId = new ObjectId();
+        const commercialPlan = { _id: new ObjectId(), key: 'pro' };
+        const commercialSubscription = {
+            _id: new ObjectId(),
+            workspace: workspaceId,
+            kind: SUBSCRIPTION_KIND.COMMERCIAL,
+            status: SUBSCRIPTION_STATUS.TRIALING,
+            termType: SUBSCRIPTION_TERM_TYPE.FIXED,
+            trialEndsAt: new Date('2026-08-30T12:00:00.000Z'),
+            plan: commercialPlan,
+        };
+
+        const findOneSpy = vi.spyOn(Subscription, 'findOne')
+            .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(createQueryMock(commercialSubscription));
+
+        const result = await getWorkspacePlanEntitlement({ workspaceId });
+
+        expect(findOneSpy).toHaveBeenCalledTimes(3);
+        expect(findOneSpy).toHaveBeenNthCalledWith(
+            3,
+            {
+                workspace: workspaceId,
+                kind: SUBSCRIPTION_KIND.COMMERCIAL,
+                status: SUBSCRIPTION_STATUS.TRIALING,
+                termType: mongoose.trusted({
+                    $ne: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+                }),
+                trialEndsAt: mongoose.trusted({
+                    $type: 'date',
+                    $gt: new Date('2026-08-29T12:00:00.000Z'),
+                }),
+            },
+        );
+        expect(result).toEqual({
+            subscription: commercialSubscription,
+            plan: commercialPlan,
+        });
+    });
+
+    it('priorise une souscription commerciale fixed dont la période est encore ouverte', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-08-29T12:00:00.000Z'));
+        const workspaceId = new ObjectId();
+        const commercialPlan = { _id: new ObjectId(), key: 'pro' };
+        const commercialSubscription = {
+            _id: new ObjectId(),
+            workspace: workspaceId,
+            kind: SUBSCRIPTION_KIND.COMMERCIAL,
+            termType: SUBSCRIPTION_TERM_TYPE.FIXED,
+            status: SUBSCRIPTION_STATUS.ACTIVE,
+            currentPeriodEnd: new Date('2026-09-29T12:00:00.000Z'),
+            plan: commercialPlan,
+        };
+
+        const findOneSpy = vi.spyOn(Subscription, 'findOne')
+            .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(createQueryMock(commercialSubscription));
+
+        const result = await getWorkspacePlanEntitlement({ workspaceId });
+
+        expect(findOneSpy).toHaveBeenCalledTimes(2);
+        expect(findOneSpy).toHaveBeenNthCalledWith(
+            2,
+            {
+                workspace: workspaceId,
+                kind: SUBSCRIPTION_KIND.COMMERCIAL,
+                status: SUBSCRIPTION_STATUS.ACTIVE,
+                termType: mongoose.trusted({
+                    $ne: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+                }),
+                currentPeriodEnd: mongoose.trusted({
+                    $type: 'date',
+                    $gt: new Date('2026-08-29T12:00:00.000Z'),
+                }),
+            },
+        );
         expect(result.subscription).toBe(commercialSubscription);
         expect(result.plan).toBe(commercialPlan);
+    });
+
+    it('refuse qu’un open-ended incohérent soit traité comme un fixed', async () => {
+        const workspaceId = new ObjectId();
+        const baselinePlan = {
+            _id: new ObjectId(),
+            systemRole: PLAN_SYSTEM_ROLE.BASELINE,
+        };
+        const baselineSubscription = {
+            _id: new ObjectId(),
+            workspace: workspaceId,
+            kind: SUBSCRIPTION_KIND.BASELINE,
+            status: SUBSCRIPTION_STATUS.ACTIVE,
+            plan: baselinePlan,
+        };
+
+        vi.spyOn(Subscription, 'findOne')
+            .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(createQueryMock(baselineSubscription));
+
+        const result = await getWorkspacePlanEntitlement({ workspaceId });
+
+        expect(result).toEqual({
+            subscription: baselineSubscription,
+            plan: baselinePlan,
+        });
     });
 
     it('retombe immédiatement sur la baseline lorsqu’une période payante est arrivée à échéance', async () => {
@@ -247,6 +318,7 @@ describe('getWorkspacePlanEntitlement', () => {
         };
 
         vi.spyOn(Subscription, 'findOne')
+            .mockReturnValueOnce(createQueryMock(null))
             .mockReturnValueOnce(createQueryMock(null))
             .mockReturnValueOnce(createQueryMock(null))
             .mockReturnValueOnce(createQueryMock(baselineSubscription));
@@ -276,13 +348,14 @@ describe('getWorkspacePlanEntitlement', () => {
         const findOneSpy = vi.spyOn(Subscription, 'findOne')
             .mockReturnValueOnce(createQueryMock(null))
             .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(createQueryMock(null))
             .mockReturnValueOnce(createQueryMock(baselineSubscription));
 
         const result = await getWorkspacePlanEntitlement({ workspaceId });
 
-        expect(findOneSpy).toHaveBeenCalledTimes(3);
+        expect(findOneSpy).toHaveBeenCalledTimes(4);
         expect(findOneSpy).toHaveBeenNthCalledWith(
-            3,
+            4,
             {
                 workspace: workspaceId,
                 kind: SUBSCRIPTION_KIND.BASELINE,
@@ -312,6 +385,7 @@ describe('getWorkspacePlanEntitlement', () => {
         vi.spyOn(Subscription, 'findOne')
             .mockReturnValueOnce(createQueryMock(null))
             .mockReturnValueOnce(createQueryMock(null))
+            .mockReturnValueOnce(createQueryMock(null))
             .mockReturnValueOnce(createQueryMock(baselineSubscription));
 
         const result = await getWorkspacePlanEntitlement({ workspaceId });
@@ -324,6 +398,7 @@ describe('getWorkspacePlanEntitlement', () => {
 
     it('refuse un workspace sans souscription utilisable', async () => {
         vi.spyOn(Subscription, 'findOne')
+            .mockReturnValueOnce(createQueryMock(null))
             .mockReturnValueOnce(createQueryMock(null))
             .mockReturnValueOnce(createQueryMock(null))
             .mockReturnValueOnce(createQueryMock(null));
