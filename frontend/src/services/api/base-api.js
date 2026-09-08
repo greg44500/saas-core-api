@@ -32,6 +32,9 @@ const baseApi = createApi({
     'PlatformTeamSummary',
     'PlatformTeamInvitations',
     'PlatformRoles',
+    'PlatformRetentionTargets',
+    'PlatformRetentionState',
+    'PlatformRetentionExecutions',
   ],
   endpoints: () => ({}),
 });

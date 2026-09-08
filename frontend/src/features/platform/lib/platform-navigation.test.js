@@ -3,26 +3,47 @@ import { describe, expect, it } from 'vitest';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 import {
   canAccessPlatformPath,
+  getActivePlatformNavigationGroupId,
   getFirstPlatformDestination,
   getPlatformNavigationItemForPath,
   getVisiblePlatformNavigationSections,
   hasActivePlatformAccess,
 } from '@/features/platform/lib/platform-navigation';
 
+function visibleDestinations(permissions) {
+  return getVisiblePlatformNavigationSections(permissions).flatMap((entry) => (
+    entry.type === 'group'
+      ? entry.items.map((item) => item.to)
+      : [entry.to]
+  ));
+}
+
 describe('platform navigation policy', () => {
-  it('projette uniquement les destinations autorisées', () => {
-    const sections = getVisiblePlatformNavigationSections([
+  it('projette uniquement les destinations autorisées et masque les groupes vides', () => {
+    const entries = getVisiblePlatformNavigationSections([
       PLATFORM_PERMISSION.USERS_READ,
-      PLATFORM_PERMISSION.AUDIT_LOGS_READ,
+      PLATFORM_PERMISSION.RETENTION_READ,
     ]);
 
-    expect(sections.flatMap((section) => section.items.map((item) => item.to))).toEqual([
+    expect(visibleDestinations([
+      PLATFORM_PERMISSION.USERS_READ,
+      PLATFORM_PERMISSION.RETENTION_READ,
+    ])).toEqual([
       '/platform/users',
-      '/platform/audit-logs',
+      '/platform/retention',
+    ]);
+    expect(entries.map((entry) => entry.id)).toEqual([
+      'clients',
+      'security-data',
     ]);
   });
 
   it('choisit la première destination réellement autorisée', () => {
+    expect(getFirstPlatformDestination({
+      status: 'active',
+      permissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
+    })).toBe('/platform/overview');
+
     expect(getFirstPlatformDestination({
       status: 'active',
       permissions: [PLATFORM_PERMISSION.USERS_READ],
@@ -34,26 +55,37 @@ describe('platform navigation policy', () => {
     })).toBe('/platform/team');
   });
 
-  it('résout une route Core Platform vers sa politique de navigation', () => {
+  it('résout les routes Core vers leur item et leur groupe actif', () => {
     expect(
       getPlatformNavigationItemForPath('/platform/plans')?.id,
     ).toBe('plans');
     expect(
       getPlatformNavigationItemForPath('/platform/team/roles')?.id,
     ).toBe('team');
+    expect(
+      getPlatformNavigationItemForPath('/platform/retention')?.id,
+    ).toBe('retention');
+
+    const entries = getVisiblePlatformNavigationSections([
+      PLATFORM_PERMISSION.RETENTION_READ,
+    ]);
+
+    expect(
+      getActivePlatformNavigationGroupId(entries, '/platform/retention'),
+    ).toBe('security-data');
   });
 
-  it('refuse une route Core dont la permission a été retirée', () => {
+  it('refuse la rétention lorsque la permission read a été retirée', () => {
     const platformAccess = {
       status: 'active',
-      permissions: [PLATFORM_PERMISSION.USERS_READ],
+      permissions: [PLATFORM_PERMISSION.AUDIT_LOGS_READ],
     };
 
     expect(
-      canAccessPlatformPath('/platform/users', platformAccess),
+      canAccessPlatformPath('/platform/audit-logs', platformAccess),
     ).toBe(true);
     expect(
-      canAccessPlatformPath('/platform/plans', platformAccess),
+      canAccessPlatformPath('/platform/retention', platformAccess),
     ).toBe(false);
   });
 
@@ -70,6 +102,6 @@ describe('platform navigation policy', () => {
     expect(hasActivePlatformAccess({ status: 'active', permissions: [] })).toBe(false);
     expect(getFirstPlatformDestination(null)).toBeNull();
     expect(getFirstPlatformDestination({ status: 'suspended', permissions: [] })).toBeNull();
-    expect(canAccessPlatformPath('/platform/users', null)).toBe(false);
+    expect(canAccessPlatformPath('/platform/retention', null)).toBe(false);
   });
 });

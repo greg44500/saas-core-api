@@ -40,38 +40,39 @@ describe('PlatformSidebar', () => {
 
   afterEach(() => cleanup());
 
-  it('regroupe les destinations par intention d’administration', () => {
+  it('reprend la structure Platform figée sans dupliquer les onglets Équipe', () => {
     renderSidebar();
 
-    expect(screen.getByRole('group', { name: 'Pilotage' })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Clients' })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Commercial' })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Organisation' })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Supervision' })).toBeInTheDocument();
-
-    expect(screen.getByText('Vue d’ensemble')).toBeInTheDocument();
-    expect(screen.getByText('Utilisateurs')).toBeInTheDocument();
-    expect(screen.getByText('Espaces de travail')).toBeInTheDocument();
-    expect(screen.getByText('Plans')).toBeInTheDocument();
-    expect(screen.getByText('Abonnements')).toBeInTheDocument();
-    expect(screen.getByText('Dérogations')).toBeInTheDocument();
-    expect(screen.getByText('Équipe de la Plateforme')).toBeInTheDocument();
-    expect(screen.getByText('Journaux d’audit')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Vue d’ensemble' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gestion clients' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Offre commerciale' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Équipe Platform' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sécurité & données' })).toBeInTheDocument();
+    expect(screen.getByText('Gestion des membres')).toBeInTheDocument();
+    expect(screen.getByText('Rétention & purge')).toBeInTheDocument();
   });
 
-  it('conserve Équipe de la Plateforme active sur toute la branche team', () => {
-    renderSidebar({ path: '/platform/team/roles' });
+  it('ouvre le groupe de la route active et ne garde qu’un accordéon ouvert', async () => {
+    const user = userEvent.setup();
+    renderSidebar({ path: '/platform/retention' });
 
-    const teamLink = screen.getByRole('link', {
-      name: 'Équipe de la Plateforme',
+    const securityGroup = screen.getByRole('button', {
+      name: 'Sécurité & données',
+    });
+    const clientGroup = screen.getByRole('button', {
+      name: 'Gestion clients',
     });
 
-    expect(teamLink).toHaveAttribute('aria-current', 'page');
-    expect(teamLink.className).toContain('bg-primary');
-    expect(teamLink).toHaveAttribute('href', '/platform/team');
+    expect(securityGroup).toHaveAttribute('aria-expanded', 'true');
+    expect(clientGroup).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(clientGroup);
+
+    expect(clientGroup).toHaveAttribute('aria-expanded', 'true');
+    expect(securityGroup).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('masque une destination lorsque la permission runtime correspondante manque', () => {
+  it('masque entièrement un groupe sans enfant autorisé', () => {
     useGetCurrentPlatformContextQueryMock.mockReturnValue({
       data: {
         status: 'active',
@@ -81,16 +82,27 @@ describe('PlatformSidebar', () => {
 
     renderSidebar();
 
-    expect(screen.getByText('Vue d’ensemble')).toBeInTheDocument();
-    expect(screen.queryByText('Équipe de la Plateforme')).not.toBeInTheDocument();
-    expect(screen.queryByRole('group', { name: 'Organisation' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Vue d’ensemble' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Gestion clients' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sécurité & données' })).not.toBeInTheDocument();
   });
 
-  it('expose des tooltips quand la sidebar est réduite', () => {
+  it('ouvre un flyout en sidebar réduite puis le ferme après navigation', async () => {
+    const user = userEvent.setup();
     renderSidebar({ collapsed: true });
 
-    expect(screen.getByRole('tooltip', { name: 'Vue d’ensemble' })).toBeInTheDocument();
-    expect(screen.getByRole('tooltip', { name: 'Utilisateurs' })).toBeInTheDocument();
+    const securityGroup = screen.getByRole('button', {
+      name: 'Sécurité & données',
+    });
+
+    expect(screen.getByRole('tooltip', { name: 'Sécurité & données' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Rétention & purge' })).not.toBeInTheDocument();
+
+    await user.click(securityGroup);
+    expect(screen.getByRole('link', { name: 'Rétention & purge' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: 'Rétention & purge' }));
+    expect(screen.queryByRole('link', { name: 'Rétention & purge' })).not.toBeInTheDocument();
   });
 
   it('déclenche le changement d’état de la sidebar', async () => {
