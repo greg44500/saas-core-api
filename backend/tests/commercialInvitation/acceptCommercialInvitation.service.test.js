@@ -18,6 +18,9 @@ import {
     COMMERCIAL_INVITATION_STATUS,
 } from '../../constants/commercialInvitation.constants.js';
 import {
+    USER_STATUS,
+} from '../../constants/userStatus.constants.js';
+import {
     acceptCommercialInvitation,
 } from '../../modules/commercialInvitation/acceptCommercialInvitation.service.js';
 import { CommercialInvitation } from '../../modules/commercialInvitation/commercialInvitation.model.js';
@@ -113,6 +116,7 @@ const buildInvitation = ({ trialEnabled = false } = {}) => ({
 const setup = ({
     trialEnabled = false,
     userEmail = 'beta@example.com',
+    userStatus = USER_STATUS.ACTIVE,
     existingMembership = null,
     consumedTrial = false,
     acceptedUpdate = true,
@@ -121,6 +125,7 @@ const setup = ({
     const user = {
         _id: 'user-id',
         emailCanonical: userEmail,
+        status: userStatus,
     };
     const invitation = buildInvitation({ trialEnabled });
     const plan = {
@@ -278,6 +283,18 @@ describe('acceptCommercialInvitation', () => {
         expect(Subscription.create).not.toHaveBeenCalled();
     });
 
+    it('revalide le statut User dans la transaction', async () => {
+        setup({ userStatus: USER_STATUS.DISABLED });
+
+        await expect(acceptCommercialInvitation({
+            token: 'a'.repeat(64),
+            userId: 'user-id',
+        })).rejects.toMatchObject({ statusCode: 403 });
+
+        expect(CommercialInvitation.findOne).not.toHaveBeenCalled();
+        expect(createWorkspaceInSession).not.toHaveBeenCalled();
+    });
+
     it('refuse un utilisateur déjà rattaché à un workspace', async () => {
         setup({ existingMembership: { _id: 'membership-id' } });
 
@@ -300,12 +317,7 @@ describe('acceptCommercialInvitation', () => {
             userId: 'user-id',
         })).rejects.toMatchObject({ statusCode: 409 });
 
-        /*
-         * Le provisioning a lieu avant le contrôle TrialEligibility mais reste
-         * dans la même transaction MongoDB : en production l'erreur annule donc
-         * toutes ces écritures. Ce test vérifie surtout qu'aucune Subscription
-         * commerciale ni acceptation ne sont persistées après le verrou métier.
-         */
+        expect(createWorkspaceInSession).not.toHaveBeenCalled();
         expect(Subscription.create).not.toHaveBeenCalled();
         expect(CommercialInvitation.findOneAndUpdate).not.toHaveBeenCalled();
     });
@@ -317,5 +329,17 @@ describe('acceptCommercialInvitation', () => {
             token: 'a'.repeat(64),
             userId: 'user-id',
         })).rejects.toMatchObject({ statusCode: 409 });
+    });
+
+    it('refuse un instant système invalide avant toute transaction', async () => {
+        setup();
+
+        await expect(acceptCommercialInvitation({
+            token: 'a'.repeat(64),
+            userId: 'user-id',
+            now: new Date('invalid'),
+        })).rejects.toThrow('now must be a valid Date');
+
+        expect(mongoose.connection.transaction).not.toHaveBeenCalled();
     });
 });
