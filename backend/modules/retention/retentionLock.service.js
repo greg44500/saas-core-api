@@ -35,6 +35,15 @@ const assertKnownTarget = (targetKey) => {
 
 let retentionLockIndexesReadyPromise = null;
 
+/**
+ * Garantit que l'index unique protégeant un target de rétention existe avant
+ * toute tentative d'acquisition.
+ *
+ * La promesse est mémorisée pour éviter de relancer createIndexes() à chaque
+ * exécution. En cas d'échec elle est réinitialisée afin qu'une exécution
+ * ultérieure puisse retenter l'initialisation au lieu de rester bloquée sur un
+ * échec ancien.
+ */
 const ensureRetentionLockIndexes = () => {
     if (!retentionLockIndexesReadyPromise) {
         retentionLockIndexesReadyPromise = RetentionLock
@@ -48,6 +57,13 @@ const ensureRetentionLockIndexes = () => {
     return retentionLockIndexesReadyPromise;
 };
 
+/**
+ * Construit un identifiant de détenteur suffisamment distinct pour identifier
+ * une exécution dans un environnement multi-processus ou multi-instance.
+ *
+ * Cet identifiant sert au contrôle d'ownership du lease ; il n'accorde aucun
+ * droit à lui seul et n'est jamais accepté depuis un payload utilisateur.
+ */
 const createRetentionHolderId = (prefix = 'retention') => {
     const safePrefix = String(prefix)
         .replace(/[^a-zA-Z0-9_-]/g, '-')
@@ -72,6 +88,11 @@ const buildLease = ({ targetKey, holderId, leaseId, acquiredAt }) => ({
  *
  * createIndexes() est volontaire : la sûreté multi-instance dépend de l'index
  * unique targetKey même lorsque Mongoose autoIndex est désactivé.
+ *
+ * Un target ne peut être acquis que si aucun lease actif n'existe ou si le
+ * précédent a expiré. Une collision d'index unique est interprétée comme un
+ * échec normal de contention et retourne null, jamais comme une autorisation à
+ * poursuivre sans verrou.
  */
 const acquireRetentionLock = async ({
     targetKey,
@@ -139,6 +160,14 @@ const acquireRetentionLock = async ({
     }
 };
 
+/**
+ * Prolonge uniquement un lease encore actif détenu par le même holder.
+ *
+ * Le triplet targetKey + leaseId + holderId évite qu'une instance ayant perdu
+ * son lease puisse prolonger celui d'un successeur. Un lease déjà expiré ne
+ * peut pas être ressuscité : le service retourne null et l'appelant doit alors
+ * interrompre le traitement protégé.
+ */
 const renewRetentionLock = async ({
     lease,
     now = new Date(),
@@ -182,6 +211,14 @@ const renewRetentionLock = async ({
     };
 };
 
+/**
+ * Libère un lease seulement si l'appelant en possède encore l'identité exacte.
+ *
+ * Cette opération est volontairement sûre à rejouer : un lease absent, déjà
+ * libéré ou remplacé ne provoque aucune libération du lease courant et retourne
+ * false. Cette propriété évite qu'un worker retardé efface le verrou acquis
+ * entre-temps par une autre instance.
+ */
 const releaseRetentionLock = async ({
     lease,
     now = new Date(),
