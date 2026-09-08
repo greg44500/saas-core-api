@@ -59,6 +59,10 @@ const resolvePlanPrice = ({ plan, billingInterval }) => {
  * Une invitation commerciale D-020 cible exclusivement une offre privée
  * ordinaire. Le Plan baseline et les offres publiques ne peuvent pas être
  * détournés en mécanisme d'invitation commerciale.
+ *
+ * Un vrai trial porte sur une périodicité payante. D-020 refuse donc un Plan
+ * `trialEnabled` dont l'intervalle choisi est gratuit, même si une autre
+ * périodicité du même Plan possède un tarif positif.
  */
 const assertCommercialInvitationPlan = ({ plan, billingInterval }) => {
     if (
@@ -83,6 +87,22 @@ const assertCommercialInvitationPlan = ({ plan, billingInterval }) => {
                 409,
             );
         }
+
+        const priceExclTaxMinor = resolvePlanPrice({
+            plan,
+            billingInterval,
+        });
+
+        if (
+            !Number.isInteger(priceExclTaxMinor)
+            || priceExclTaxMinor <= 0
+        ) {
+            throw new AppError(
+                'Un trial commercial doit cibler une périodicité payante',
+                409,
+            );
+        }
+
         return;
     }
 
