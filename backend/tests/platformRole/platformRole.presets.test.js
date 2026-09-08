@@ -78,7 +78,7 @@ describe('system PlatformRole presets', () => {
         );
     });
 
-    it('limite le support commercial au grant trial pour les mutations Subscription', () => {
+    it('limite le support commercial aux mutations commerciales explicitement déléguées', () => {
         const commercialSupport =
             SYSTEM_PLATFORM_ROLE_PRESETS.find(
                 ({ key }) =>
@@ -88,6 +88,18 @@ describe('system PlatformRole presets', () => {
 
         expect(commercialSupport.permissions).toContain(
             PLATFORM_PERMISSION.SUBSCRIPTIONS_GRANT_TRIAL,
+        );
+        expect(commercialSupport.permissions).toContain(
+            PLATFORM_PERMISSION.COMMERCIAL_INVITATIONS_READ,
+        );
+        expect(commercialSupport.permissions).toContain(
+            PLATFORM_PERMISSION.COMMERCIAL_INVITATIONS_CREATE,
+        );
+        expect(commercialSupport.permissions).toContain(
+            PLATFORM_PERMISSION.COMMERCIAL_INVITATIONS_RESEND,
+        );
+        expect(commercialSupport.permissions).toContain(
+            PLATFORM_PERMISSION.COMMERCIAL_INVITATIONS_REVOKE,
         );
         expect(commercialSupport.permissions).not.toContain(
             PLATFORM_PERMISSION.SUBSCRIPTIONS_UPDATE,
