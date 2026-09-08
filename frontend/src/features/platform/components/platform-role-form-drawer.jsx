@@ -46,6 +46,29 @@ function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
 }
 
+/**
+ * Crée ou modifie un rôle Platform personnalisé dans un drawer partagé.
+ *
+ * Le composant orchestre trois niveaux de protection complémentaires :
+ * - `platformAccess` masque l'outil lorsque l'acteur ne peut pas gouverner les rôles ;
+ * - Zod protège localement la forme du payload ;
+ * - le catalogue serveur limite les permissions proposées et vérifie leur
+ *   caractère encore assignable au moment de la soumission.
+ *
+ * Ces contrôles frontend améliorent l'UX mais ne constituent jamais l'autorité
+ * de sécurité. Le backend revérifie l'autorisation de l'acteur, le catalogue,
+ * la délégabilité des permissions et les invariants des rôles système.
+ *
+ * Le drawer ne persiste aucun brouillon global : son état local est réinitialisé
+ * à la fermeture puis reconstruit depuis `role` lorsqu'il est rouvert en édition.
+ *
+ * @param {object} props
+ * @param {'create'|'edit'} [props.mode]
+ * @param {() => void} props.onClose
+ * @param {boolean} props.open
+ * @param {object|null} props.platformAccess Autorisation Platform résolue côté client.
+ * @param {object|null} [props.role] Rôle existant en mode édition.
+ */
 function PlatformRoleFormDrawer({
   mode = 'create',
   onClose,
