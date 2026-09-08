@@ -2,6 +2,8 @@ import {
   commercialInvitationTokenSchema,
 } from '@/features/commercial-invitation/validation/commercial-invitation-schemas';
 
+let commercialInvitationTokenInMemory = null;
+
 function isEligibleCommercialInvitationPlan(plan) {
   if (
     !plan
@@ -55,29 +57,51 @@ function getCommercialInvitationPlanLabel(plan) {
   return `${plan.name} — accès privé gratuit`;
 }
 
-function getCommercialInvitationTokenFromLocation(location) {
+function setCommercialInvitationTokenInMemory(token) {
+  const result = commercialInvitationTokenSchema.safeParse(token ?? '');
+
+  commercialInvitationTokenInMemory = result.success
+    ? result.data
+    : null;
+
+  return commercialInvitationTokenInMemory;
+}
+
+function clearCommercialInvitationTokenInMemory() {
+  commercialInvitationTokenInMemory = null;
+}
+
+/**
+ * Capture le token du fragment lors de l'arrivée depuis l'email puis le garde
+ * uniquement dans le runtime JavaScript. Le secret n'entre ni dans Redux, ni
+ * dans localStorage/sessionStorage, ni dans `history.state`.
+ *
+ * Après nettoyage du fragment, les écrans Login/Register retrouvent ce vault
+ * en mémoire. Un rechargement complet du navigateur détruit volontairement le
+ * secret : l'utilisateur doit alors rouvrir son lien d'invitation.
+ */
+function getCommercialInvitationTokenFromLocation() {
   const hashParams = new URLSearchParams(
     window.location.hash.startsWith('#')
       ? window.location.hash.slice(1)
       : window.location.hash,
   );
+  const tokenFromFragment = hashParams.get('token');
+  const fragmentResult = commercialInvitationTokenSchema.safeParse(
+    tokenFromFragment ?? '',
+  );
 
-  const candidates = [
-    hashParams.get('token'),
-    location?.state?.commercialInvitationToken,
-  ];
-
-  for (const candidate of candidates) {
-    const result = commercialInvitationTokenSchema.safeParse(candidate ?? '');
-    if (result.success) return result.data;
+  if (fragmentResult.success) {
+    return setCommercialInvitationTokenInMemory(fragmentResult.data);
   }
 
-  return null;
+  return commercialInvitationTokenInMemory;
 }
 
 /**
  * Nettoie le fragment sans remplacer l'état React Router de l'entrée courante.
- * Le token déjà copié en mémoire ne doit plus rester visible dans l'URL.
+ * Le token déjà capturé dans le vault runtime ne doit plus rester visible dans
+ * l'URL.
  */
 function clearCommercialInvitationTokenFragment() {
   if (!window.location.hash) return;
@@ -89,20 +113,21 @@ function clearCommercialInvitationTokenFragment() {
   );
 }
 
-function buildCommercialInvitationAuthState(token) {
+function buildCommercialInvitationAuthState() {
   return {
     from: {
       pathname: '/commercial-invitations/accept',
     },
-    commercialInvitationToken: token,
   };
 }
 
 export {
   buildCommercialInvitationAuthState,
   clearCommercialInvitationTokenFragment,
+  clearCommercialInvitationTokenInMemory,
   getCommercialInvitationBillingOptions,
   getCommercialInvitationPlanLabel,
   getCommercialInvitationTokenFromLocation,
   isEligibleCommercialInvitationPlan,
+  setCommercialInvitationTokenInMemory,
 };
