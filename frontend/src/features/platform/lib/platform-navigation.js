@@ -2,20 +2,16 @@ import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-perm
 
 const platformNavigationSections = Object.freeze([
   Object.freeze({
-    id: 'pilotage',
-    label: 'Pilotage',
-    items: Object.freeze([
-      Object.freeze({
-        id: 'overview',
-        label: 'Vue d’ensemble',
-        to: '/platform/overview',
-        permission: PLATFORM_PERMISSION.OVERVIEW_READ,
-      }),
-    ]),
+    type: 'item',
+    id: 'overview',
+    label: 'Vue d’ensemble',
+    to: '/platform/overview',
+    permission: PLATFORM_PERMISSION.OVERVIEW_READ,
   }),
   Object.freeze({
+    type: 'group',
     id: 'clients',
-    label: 'Clients',
+    label: 'Gestion clients',
     items: Object.freeze([
       Object.freeze({
         id: 'users',
@@ -32,8 +28,9 @@ const platformNavigationSections = Object.freeze([
     ]),
   }),
   Object.freeze({
+    type: 'group',
     id: 'commercial',
-    label: 'Commercial',
+    label: 'Offre commerciale',
     items: Object.freeze([
       Object.freeze({
         id: 'plans',
@@ -56,12 +53,13 @@ const platformNavigationSections = Object.freeze([
     ]),
   }),
   Object.freeze({
-    id: 'organisation',
-    label: 'Organisation',
+    type: 'group',
+    id: 'platform-team',
+    label: 'Équipe Platform',
     items: Object.freeze([
       Object.freeze({
         id: 'team',
-        label: 'Équipe de la Plateforme',
+        label: 'Gestion des membres',
         to: '/platform/team',
         anyPermission: Object.freeze([
           PLATFORM_PERMISSION.TEAM_READ,
@@ -71,8 +69,9 @@ const platformNavigationSections = Object.freeze([
     ]),
   }),
   Object.freeze({
-    id: 'supervision',
-    label: 'Supervision',
+    type: 'group',
+    id: 'security-data',
+    label: 'Sécurité & données',
     items: Object.freeze([
       Object.freeze({
         id: 'audit-logs',
@@ -80,12 +79,20 @@ const platformNavigationSections = Object.freeze([
         to: '/platform/audit-logs',
         permission: PLATFORM_PERMISSION.AUDIT_LOGS_READ,
       }),
+      Object.freeze({
+        id: 'retention',
+        label: 'Rétention & purge',
+        to: '/platform/retention',
+        permission: PLATFORM_PERMISSION.RETENTION_READ,
+      }),
     ]),
   }),
 ]);
 
 const platformNavigationItems = Object.freeze(
-  platformNavigationSections.flatMap((section) => section.items),
+  platformNavigationSections.flatMap((entry) => (
+    entry.type === 'group' ? entry.items : [entry]
+  )),
 );
 
 function canDisplayPlatformNavigationItem(item, permissionSet) {
@@ -103,14 +110,19 @@ function canDisplayPlatformNavigationItem(item, permissionSet) {
 function getVisiblePlatformNavigationSections(permissions) {
   const permissionSet = new Set(permissions ?? []);
 
-  return platformNavigationSections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => (
-        canDisplayPlatformNavigationItem(item, permissionSet)
-      )),
-    }))
-    .filter((section) => section.items.length > 0);
+  return platformNavigationSections.flatMap((entry) => {
+    if (entry.type !== 'group') {
+      return canDisplayPlatformNavigationItem(entry, permissionSet)
+        ? [entry]
+        : [];
+    }
+
+    const items = entry.items.filter((item) => (
+      canDisplayPlatformNavigationItem(item, permissionSet)
+    ));
+
+    return items.length > 0 ? [{ ...entry, items }] : [];
+  });
 }
 
 function hasActivePlatformAccess(platformAccess) {
@@ -124,11 +136,14 @@ function getFirstPlatformDestination(platformAccess) {
     return null;
   }
 
-  const sections = getVisiblePlatformNavigationSections(
+  const entries = getVisiblePlatformNavigationSections(
     platformAccess.permissions,
   );
+  const firstEntry = entries[0];
 
-  return sections[0]?.items?.[0]?.to ?? null;
+  return firstEntry?.type === 'group'
+    ? firstEntry.items[0]?.to ?? null
+    : firstEntry?.to ?? null;
 }
 
 function getPlatformNavigationItemForPath(pathname) {
@@ -144,6 +159,16 @@ function getPlatformNavigationItemForPath(pathname) {
     normalizedPathname === to
     || normalizedPathname.startsWith(`${to}/`)
   )) ?? null;
+}
+
+function getActivePlatformNavigationGroupId(navigation, pathname) {
+  const activeItem = getPlatformNavigationItemForPath(pathname);
+  if (!activeItem) return null;
+
+  return navigation.find((entry) => (
+    entry.type === 'group'
+    && entry.items.some((item) => item.id === activeItem.id)
+  ))?.id ?? null;
 }
 
 function canAccessPlatformPath(pathname, platformAccess) {
@@ -170,6 +195,7 @@ function canAccessPlatformPath(pathname, platformAccess) {
 export {
   canAccessPlatformPath,
   canDisplayPlatformNavigationItem,
+  getActivePlatformNavigationGroupId,
   getFirstPlatformDestination,
   getPlatformNavigationItemForPath,
   getVisiblePlatformNavigationSections,
