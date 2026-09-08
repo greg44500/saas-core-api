@@ -10,6 +10,8 @@ import {
 
 const { Schema, model } = mongoose;
 
+const SHA256_HEX_PATTERN = /^[a-f\d]{64}$/i;
+
 const offerSnapshotSchema = new Schema(
     {
         planName: {
@@ -70,12 +72,15 @@ const commercialInvitationSchema = new Schema(
             type: String,
             required: true,
             trim: true,
+            lowercase: true,
             maxlength: 254,
+            immutable: true,
         },
         plan: {
             type: Schema.Types.ObjectId,
             ref: 'Plan',
             required: true,
+            immutable: true,
         },
         workspaceName: {
             type: String,
@@ -83,14 +88,21 @@ const commercialInvitationSchema = new Schema(
             trim: true,
             minlength: 2,
             maxlength: 120,
+            immutable: true,
         },
+        /**
+         * Seul le hash SHA-256 du secret est persisté. Il reste modifiable
+         * uniquement pour permettre un resend qui invalide l'ancien lien.
+         */
         tokenHash: {
             type: String,
             required: true,
-            immutable: true,
             minlength: 64,
             maxlength: 64,
-            match: /^[a-f\d]{64}$/i,
+            match: [
+                SHA256_HEX_PATTERN,
+                'Le hash de l’invitation commerciale est invalide.',
+            ],
         },
         status: {
             type: String,
