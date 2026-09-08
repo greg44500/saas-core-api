@@ -9,6 +9,9 @@ import { Input } from '@/components/ui/input';
 import { useLoginMutation } from '@/features/auth/api/auth-api';
 import { resolveAuthenticatedDestination } from '@/features/auth/lib/authenticated-destination';
 import { loginSchema } from '@/features/auth/validation/auth-schemas';
+import {
+  getCommercialInvitationTokenFromLocation,
+} from '@/features/commercial-invitation/lib/commercial-invitation';
 import { useLazyGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
 
 function getRequestedDestination(location, platformAccess) {
@@ -46,6 +49,9 @@ function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const statusMessage = getLoginStatusMessage(location);
+  const commercialInvitationToken = getCommercialInvitationTokenFromLocation(
+    location,
+  );
   const [login, { isLoading }] = useLoginMutation();
   const [getPlatformContext] = useLazyGetCurrentPlatformContextQuery();
   const {
@@ -81,7 +87,12 @@ function LoginPage() {
       // Workspace reste alors fail-closed.
     }
 
-    navigate(getRequestedDestination(location, platformAccess), { replace: true });
+    navigate(getRequestedDestination(location, platformAccess), {
+      replace: true,
+      state: commercialInvitationToken
+        ? { commercialInvitationToken }
+        : undefined,
+    });
   };
 
   return (
@@ -136,7 +147,13 @@ function LoginPage() {
 
       <p className="text-center text-sm text-muted-foreground">
         Pas encore de compte ?{' '}
-        <Link className="font-medium text-primary hover:underline" to="/register">Créer un compte</Link>
+        <Link
+          className="font-medium text-primary hover:underline"
+          state={location.state}
+          to="/register"
+        >
+          Créer un compte
+        </Link>
       </p>
     </div>
   );
