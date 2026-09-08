@@ -45,6 +45,12 @@ const platformNavigationSections = Object.freeze([
         permission: PLATFORM_PERMISSION.SUBSCRIPTIONS_READ,
       }),
       Object.freeze({
+        id: 'commercial-invitations',
+        label: 'Invitations commerciales',
+        to: '/platform/commercial-invitations',
+        permission: PLATFORM_PERMISSION.COMMERCIAL_INVITATIONS_READ,
+      }),
+      Object.freeze({
         id: 'entitlement-overrides',
         label: 'Dérogations',
         to: '/platform/entitlement-overrides',
