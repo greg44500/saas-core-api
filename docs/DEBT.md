@@ -64,18 +64,21 @@ produit dérivé automatiquement production-ready
 
 ## 4. Synthèse des dettes
 
-### 4.1 Blockers connus de la finalisation Core 1.0
+### 4.1 Blockers connus de la finalisation et de la première dérivation du Core
 
 | ID | Dette | Statut |
 |---|---|---|
-| D-020 | Invitation commerciale client et offres privées de découverte | PLANIFIÉ |
+| D-020 | Invitation commerciale client et offres privées de découverte | EN COURS |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
+| D-002 | Corbeille et restauration des fichiers | PLANIFIÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
 D-001, D-014, D-018 et D-019 sont clôturées et ne sont plus des blockers actifs.
 
-D-020 reste volontairement placé avant D-015 : le versionnement ne doit pas figer une release candidate tant que l'onboarding commercial générique déjà identifié comme nécessaire n'est pas cadré puis implémenté ou explicitement reclassifié.
+D-020 reste volontairement placé avant D-015 : le versionnement ne doit pas figer une release candidate tant que l'onboarding commercial générique déjà identifié comme nécessaire n'est pas implémenté puis validé ou explicitement reclassifié.
+
+D-002 reste totalement indépendant de D-020, mais il doit être `VALIDÉ` avant D-017 et avant toute première dérivation métier du Core.
 
 ### 4.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -92,7 +95,6 @@ D-013 configuration / déploiement production
 ### 4.3 Dettes différées ou conditionnelles
 
 ```text
-D-002 corbeille / restauration Files
 D-008 notifications étendues
 D-009 API Keys / Webhooks
 D-010 authentification avancée
@@ -138,17 +140,41 @@ Pour chaque dette active :
 
 ## D-002 — Corbeille et restauration des fichiers
 
-**Statut :** DIFFÉRÉ  
-**Périmètre :** Core  
-**Blocage Core 1.0 :** non  
-**Blocage production dérivée :** non par défaut  
-**Déclencheur :** besoin produit de restauration après suppression logique
+**Statut :** PLANIFIÉ  
+**Périmètre :** Core Files  
+**Blocage Core 1.0 / première dérivation :** oui avant D-017 et avant toute première dérivation métier  
+**Blocage production dérivée :** oui pour tout produit dérivé utilisant le sous-système Files  
+**Déclencheur :** décision produit Core du 2026-09-08 — le cycle Files doit être complet avant première dérivation
 
-Le cycle actuel permet la suppression logique puis la purge différée, mais aucune route de restauration n'est exposée.
+Le cycle actuel permet la suppression logique puis la purge différée sécurisée via D-019, mais aucune route utilisateur de listing de corbeille ou de restauration n'est encore exposée.
 
-Une restauration devra définir notamment : permission dédiée, accès à la corbeille, existence physique, réservation atomique de `storage_bytes`, comportement vis-à-vis du Plan et du mode remédiation, audit et isolation multi-tenant.
+Le bloc D-002 reste séparé de D-020 et ne doit pas être implémenté à l'intérieur du domaine CommercialInvitation.
 
-**Critère de clôture :** listing de corbeille et restauration sécurisés, quota cohérent, UI dédiée et tests de sécurité/concurrence pertinents.
+La future restauration devra définir au minimum :
+
+- permission dédiée de consultation/restauration ;
+- listing de corbeille isolé par Workspace ;
+- restauration d'un fichier et restauration multiple lorsque pertinente ;
+- vérification de l'existence physique du contenu ;
+- impossibilité de restaurer une ressource déjà revendiquée par le moteur de purge D-019 ;
+- comportement vis-à-vis du Plan et du mode remédiation ;
+- audit ;
+- isolation multi-tenant ;
+- UI dédiée `Ressources > Corbeille` réutilisant le `DataTable` partagé ;
+- tests de sécurité et de concurrence.
+
+Invariant de stockage issu du contrat D-019 :
+
+```text
+File soft-deleted + contenu physique encore présent
+→ storage_bytes reste consommé
+```
+
+La restauration avant purge ne doit donc pas effectuer une seconde réservation de `storage_bytes`. Le stockage n'est libéré qu'après purge physique réussie.
+
+La durée d'affichage/restauration doit être dérivée de la policy de rétention applicable ; aucune durée universelle ne doit être inventée par le frontend.
+
+**Critère de clôture :** listing de corbeille et restauration sécurisés, coordination explicite avec D-019, quota cohérent sans double comptage, UI dédiée réutilisable et tests backend/frontend/sécurité/concurrence pertinents validés.
 
 ---
 
@@ -355,9 +381,11 @@ Les E2E Core doivent couvrir les parcours transversaux critiques : auth/session/
 **Statut :** PLANIFIÉ  
 **Périmètre :** Core / stratégie de distribution  
 **Blocage Core 1.0 :** oui pour déclarer la stratégie de distribution réellement validée  
-**Dépendances :** D-014 validée, puis D-015 et D-016
+**Dépendances :** D-014 validée, puis D-015, D-016 et D-002
 
 Exercice obligatoire : release candidate Core → dépôt pilote dérivé → petit module métier représentatif → évolution Core compatible → upgrade réel → migrations/configuration si applicable → tests Core + métier + E2E → analyse des conflits et de la provenance.
+
+D-002 doit être validée avant cet exercice : la dérivation pilote ne doit pas partir d'un sous-système Files dont le cycle utilisateur suppression/restauration est volontairement incomplet.
 
 **Critère de clôture :** dérivation et upgrade réellement exécutés et documentés, tests verts et corrections génériques remontées au Core si nécessaire.
 
@@ -365,10 +393,16 @@ Exercice obligatoire : release candidate Core → dépôt pilote dérivé → pe
 
 ## D-020 — Invitation commerciale client et offres privées de découverte
 
-**Statut :** PLANIFIÉ  
+**Statut :** EN COURS  
 **Périmètre :** Core — onboarding commercial générique  
-**Blocage Core 1.0 :** oui — prochain blocker à traiter  
+**Blocage Core 1.0 :** oui  
 **Dépendances :** Plan / Subscription / EntitlementOverride / Workspace / User / RBAC Platform existants
+
+Contrat canonique :
+
+```text
+docs/contracts/COMMERCIAL-INVITATIONS.md
+```
 
 Frontière obligatoire :
 
@@ -377,30 +411,34 @@ PlatformInvitation
 → collaborateur interne de l'éditeur
 
 CommercialInvitation
-→ prospect ou futur client utilisateur du SaaS
+→ nouveau prospect / futur client / bêta-testeur
 ```
 
-Le modèle ne doit jamais réutiliser `PlatformInvitation` pour une finalité commerciale client.
+Le modèle ne réutilise jamais `PlatformInvitation` pour une finalité commerciale client.
 
-Décisions déjà figées :
+Décisions figées :
 
-- offre privée possible via Plan `isPublic=false` ;
-- prix `0` possible sans devenir la baseline Free ;
-- capabilities explicitement listées ;
+- une invitation commerciale initiale ne cible pas un utilisateur déjà inscrit au moment de sa création ;
+- aucun mode de rattachement à un workspace existant n'est prévu ;
+- les workspaces existants utilisent `Subscription` / `EntitlementOverride` pour les exceptions commerciales ;
+- offre privée via Plan `isPublic=false`, `status=active`, `systemRole=null` ;
+- prix `0` possible sans devenir la baseline ;
+- le Plan privé ne doit jamais apparaître dans le catalogue public ;
+- capabilities et limites explicitement portées par le Plan ;
 - aucune future capability accordée automatiquement ;
-- une offre gratuite durable n'est pas un « trial illimité » ;
-- le vrai trial reste temporaire avec `trialEndsAt` ;
-- `EntitlementOverride` reste destiné aux exceptions individuelles ;
-- Plan privé = offre réutilisable ;
-- sélection d'une offre existante par l'acteur commercial ;
-- audit acteur/bénéficiaire/offre/raison/dates/acceptation/révocation ;
-- Workspace créé ou rattaché dans le flow d'acceptation pour éviter les orphelins ;
-- autorité initiale Super administrateur mais permissions Platform dédiées pour délégation future ;
-- secrets temporaires hashés, rotatables/révocables et jamais persistés en clair.
+- une offre gratuite durable n'est pas un trial illimité ;
+- vrai trial temporaire et soumis à `TrialEligibility` ;
+- `termType=fixed|open_ended` explicite la sémantique temporelle ;
+- une open-ended D-020 valide est gratuite, manuelle, sans périodicité et sans `currentPeriodEnd` ;
+- aucun `2099-12-31` ou autre date artificielle pour simuler l'illimité ;
+- snapshot serveur de l'offre ;
+- dérive significative du Plan avant acceptation = refus et nouvelle invitation ;
+- token aléatoire, hash SHA-256 seul persisté, resend avec rotation, revoke explicite ;
+- permissions Platform dédiées ;
+- acceptation authentifiée et atomique avec création du premier Workspace ;
+- audit des transitions sensibles.
 
-Point d'architecture à résoudre : le résolveur actuel des Subscriptions commerciales actives attend une `currentPeriodEnd` future. Une offre commerciale gratuite réellement sans échéance doit recevoir une sémantique explicite ; aucune date artificielle lointaine telle que `2099-12-31` ne doit simuler l'illimité.
-
-**Critère de clôture :** contrat d'onboarding commercial validé, permissions Platform dédiées, modèle distinct, acceptation atomique/auditée, sécurité des secrets validée, frontend réutilisable, tests backend/frontend et build verts.
+**Critère de clôture :** contrat d'onboarding commercial validé, permissions Platform dédiées, modèle distinct, acceptation atomique/auditée, sécurité des secrets validée, frontend réutilisable, tests backend/frontend et build réellement verts.
 
 ---
 
@@ -420,15 +458,18 @@ D-014 points d'extension métier                             ✅ VALIDÉ
 D-018 Équipe de la Plateforme / RBAC / invitations          ✅ VALIDÉ
 D-019 moteur sécurisé de rétention / purge Core             ✅ VALIDÉ
 DOC-CODE-1 documentation source                             ✅ VALIDÉ
-→ D-020 invitation commerciale / offre privée découverte    PLANIFIÉ
+→ D-020 invitation commerciale / offre privée découverte    EN COURS
 → D-015 release/version/provenance/migrations               PLANIFIÉ
 → D-016 Playwright E2E Core                                 PLANIFIÉ
+→ D-002 corbeille / restauration Files                      PLANIFIÉ — avant première dérivation
 → audit final architecture / sécurité / qualité
 → D-017 dérivation + upgrade pilote                         PLANIFIÉ
 → taguer uniquement ensuite la release Core stable
 ```
 
-Aucune release `v1.0.0` ne doit être déclarée avant clôture ou reclassification explicite de tous les blockers Core 1.0.
+Aucune première dérivation métier ne doit commencer tant que D-002 n'est pas `VALIDÉ`.
+
+Aucune release `v1.0.0` ne doit être déclarée avant clôture ou reclassification explicite de tous les blockers Core 1.0 applicables.
 
 ---
 
