@@ -8,8 +8,11 @@ import {
 } from 'vitest';
 
 import {
+    BILLING_INTERVAL,
+    BILLING_PROVIDER,
     SUBSCRIPTION_KIND,
     SUBSCRIPTION_STATUS,
+    SUBSCRIPTION_TERM_TYPE,
 } from '../../constants/subscription.constants.js';
 import {
     composeEffectiveEntitlementCapabilities,
@@ -82,6 +85,7 @@ describe('getWorkspaceEffectiveEntitlement', () => {
             _id: new ObjectId(),
             workspace: workspaceId,
             kind: SUBSCRIPTION_KIND.COMMERCIAL,
+            termType: SUBSCRIPTION_TERM_TYPE.FIXED,
             status: SUBSCRIPTION_STATUS.ACTIVE,
             currentPeriodEnd: new Date('2026-10-01T00:00:00.000Z'),
             plan,
@@ -107,13 +111,18 @@ describe('getWorkspaceEffectiveEntitlement', () => {
             appliedOverrides: [],
         };
 
-        const query = createSubscriptionQuery({
+        const openEndedQuery = createSubscriptionQuery({
+            result: null,
+            session,
+        });
+        const fixedQuery = createSubscriptionQuery({
             result: subscription,
             session,
         });
         const findOneSpy = vi
             .spyOn(Subscription, 'findOne')
-            .mockReturnValue(query);
+            .mockReturnValueOnce(openEndedQuery)
+            .mockReturnValueOnce(fixedQuery);
 
         resolveActiveEntitlementOverrides
             .mockResolvedValue(activeOverrides);
@@ -127,16 +136,32 @@ describe('getWorkspaceEffectiveEntitlement', () => {
             session,
         });
 
-        expect(findOneSpy).toHaveBeenCalledWith({
+        expect(findOneSpy).toHaveBeenNthCalledWith(1, {
             workspace: workspaceId,
             kind: SUBSCRIPTION_KIND.COMMERCIAL,
             status: SUBSCRIPTION_STATUS.ACTIVE,
+            termType: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+            currentPeriodEnd: null,
+            trialEndsAt: null,
+            cancelAtPeriodEnd: false,
+            billingInterval: BILLING_INTERVAL.NONE,
+            priceExclTaxMinor: 0,
+            provider: BILLING_PROVIDER.MANUAL,
+        });
+        expect(findOneSpy).toHaveBeenNthCalledWith(2, {
+            workspace: workspaceId,
+            kind: SUBSCRIPTION_KIND.COMMERCIAL,
+            status: SUBSCRIPTION_STATUS.ACTIVE,
+            termType: mongoose.trusted({
+                $ne: SUBSCRIPTION_TERM_TYPE.OPEN_ENDED,
+            }),
             currentPeriodEnd: mongoose.trusted({
                 $type: 'date',
                 $gt: at,
             }),
         });
-        expect(query.session).toHaveBeenCalledWith(session);
+        expect(openEndedQuery.session).toHaveBeenCalledWith(session);
+        expect(fixedQuery.session).toHaveBeenCalledWith(session);
 
         expect(resolveActiveEntitlementOverrides)
             .toHaveBeenCalledWith({
