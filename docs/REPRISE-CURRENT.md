@@ -322,7 +322,6 @@ Depuis la racine :
 ```bash
 npm run lint
 npm test
-npm run format:check
 ```
 
 Puis :
@@ -333,6 +332,14 @@ npm run lint
 npm test
 npm run build
 ```
+
+### 6.1 Note sur Prettier
+
+Le script racine `format:check` exécute actuellement `prettier --check .`, mais le dépôt ne possède pas encore de configuration Prettier canonique permettant de représenter correctement ses conventions historiques, notamment l'indentation backend à 4 espaces et frontend à 2 espaces.
+
+Conséquence : le contrôle global signale massivement des fichiers historiques hors D-020. Il ne constitue donc pas un gate fiable pour D-020 et **`prettier --write .` ne doit pas être exécuté**, car cela provoquerait une refonte cosmétique globale hors périmètre.
+
+La normalisation Prettier globale devra être traitée comme un chantier outillage dédié avant d'en faire une exigence de release bloquante.
 
 Ne pas exécuter la migration `subscription-term-type` sur la base de développement pendant cette première gate de code sauf si l'objectif est explicitement de tester la migration sur une copie/état contrôlé de données.
 
@@ -359,7 +366,7 @@ Pour un vrai trial, vérifier en plus que la date de trial démarre à l'accepta
 
 ## 7. Critère de sortie
 
-Si backend lint + tests + format check, frontend lint + tests + build et la vérification manuelle ciblée sont verts :
+Si backend lint + tests, frontend lint + tests + build et la vérification manuelle ciblée sont verts :
 
 ```text
 D-020 peut être déclaré VALIDÉ
