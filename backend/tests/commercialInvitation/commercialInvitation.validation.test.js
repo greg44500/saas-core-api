@@ -22,28 +22,41 @@ describe('commercialInvitation.validation', () => {
             planId: VALID_ID,
             workspaceName: 'Beta Workspace',
             billingInterval: 'none',
+            reason: 'Programme beta septembre',
         })).toEqual({
             email: 'beta@example.com',
             planId: VALID_ID,
             workspaceName: 'Beta Workspace',
             billingInterval: 'none',
+            reason: 'Programme beta septembre',
         });
     });
 
-    it('refuse toute capability ou condition contractuelle injectée par le client', () => {
+    it('exige une justification de l’accès privé', () => {
         expect(() => createCommercialInvitationBodySchema.parse({
             email: 'beta@example.com',
             planId: VALID_ID,
             workspaceName: 'Beta Workspace',
             billingInterval: 'none',
+        })).toThrow();
+    });
+
+    it('refuse toute capability ou condition contractuelle injectée par le client', () => {
+        const basePayload = {
+            email: 'beta@example.com',
+            planId: VALID_ID,
+            workspaceName: 'Beta Workspace',
+            billingInterval: 'none',
+            reason: 'Programme beta septembre',
+        };
+
+        expect(() => createCommercialInvitationBodySchema.parse({
+            ...basePayload,
             features: ['file_upload'],
         })).toThrow();
 
         expect(() => createCommercialInvitationBodySchema.parse({
-            email: 'beta@example.com',
-            planId: VALID_ID,
-            workspaceName: 'Beta Workspace',
-            billingInterval: 'none',
+            ...basePayload,
             termType: 'open_ended',
         })).toThrow();
     });
