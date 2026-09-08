@@ -36,18 +36,124 @@ import { Role } from '../role/role.model.js';
 import { User } from '../users/user.model.js';
 
 /**
+ * Provisionne toutes les ressources structurelles d'un nouveau workspace dans
+ * une session MongoDB déjà ouverte par l'appelant.
+ *
+ * Cette primitive existe pour permettre à des workflows plus larges, comme
+ * l'acceptation d'une invitation commerciale, d'inclure le provisioning tenant
+ * dans leur propre transaction sans dupliquer les règles Workspace.
+ *
+ * Elle ne démarre jamais une transaction elle-même : l'absence de `session`
+ * est donc une erreur de programmation fail-closed.
+ */
+const createWorkspaceInSession = async ({
+    name,
+    actorId,
+    session,
+    ipAddress = null,
+    userAgent = null,
+}) => {
+    if (!name || !actorId || !session) {
+        throw new TypeError(
+            'name, actorId and session are required to provision a workspace',
+        );
+    }
+
+    /*
+     * Model.create reçoit un tableau afin que Mongoose applique correctement
+     * la session transactionnelle à cette création.
+     */
+    const [workspace] = await Workspace.create(
+        [
+            {
+                name,
+                statusChangedBy: actorId,
+                createdBy: actorId,
+                updatedBy: actorId,
+            },
+        ],
+        { session },
+    );
+
+    const systemRoles = await createSystemRolesForWorkspace({
+        workspaceId: workspace._id,
+        actorId,
+        session,
+    });
+
+    const ownerRole = systemRoles.find(
+        (role) => role.key === SYSTEM_ROLE_KEY.OWNER,
+    );
+
+    if (!ownerRole) {
+        throw new Error(
+            'Owner system role was not created for the workspace',
+        );
+    }
+
+    await WorkspaceMember.create(
+        [
+            {
+                workspace: workspace._id,
+                user: actorId,
+                role: ownerRole._id,
+                createdBy: actorId,
+                updatedBy: actorId,
+            },
+        ],
+        { session },
+    );
+
+    /*
+     * La baseline doit exister avant la réservation de la place owner, car le
+     * moteur de quotas résout toujours la limite depuis l'entitlement du
+     * workspace et jamais depuis une valeur dupliquée localement.
+     */
+    await createFreeSubscriptionForWorkspace({
+        workspaceId: workspace._id,
+        actorId,
+        session,
+    });
+
+    /*
+     * L'owner occupe la première place du workspace dès sa création.
+     */
+    await enforcePlanLimit({
+        workspaceId: workspace._id,
+        metricKey: CORE_PLAN_METRIC.MEMBERS,
+        amount: 1,
+        actorId,
+        session,
+    });
+
+    /*
+     * La création du tenant et sa trace constituent une seule opération :
+     * aucune structure partielle ne doit survivre à un échec d'audit.
+     */
+    await createAuditLog(
+        {
+            actor: actorId,
+            workspace: workspace._id,
+            action: AUDIT_ACTION.WORKSPACE_CREATED,
+            entityType: AUDIT_ENTITY_TYPE.WORKSPACE,
+            entityId: workspace._id,
+            status: AUDIT_STATUS.SUCCESS,
+            ipAddress,
+            userAgent,
+        },
+        { session },
+    );
+
+    return workspace;
+};
+
+/**
  * Crée un workspace complet avec ses rôles système, son membre owner
- * et sa souscription gratuite initiale.
+ * et sa souscription baseline initiale.
  *
- * Ces différentes écritures constituent une seule opération atomique :
- * l'échec de l'une d'elles doit annuler toute la création du workspace.
- *
- * @param {object} params
- * @param {string} params.name
- * @param {import('mongoose').Types.ObjectId} params.actorId
- * @param {string|null} [params.ipAddress]
- * @param {string|null} [params.userAgent]
- * @returns {Promise<import('mongoose').Document>}
+ * Le wrapper ouvre la transaction pour le parcours standard. Les orchestrations
+ * plus larges utilisent `createWorkspaceInSession` afin de partager exactement
+ * les mêmes invariants dans leur propre transaction.
  */
 const createWorkspace = async ({
     name,
@@ -61,97 +167,14 @@ const createWorkspace = async ({
         );
     }
 
-    return mongoose.connection.transaction(async (session) => {
-        /*
-         * Model.create reçoit un tableau afin que Mongoose applique
-         * correctement la session transactionnelle à cette création.
-         */
-        const [workspace] = await Workspace.create(
-            [
-                {
-                    name,
-                    statusChangedBy: actorId,
-                    createdBy: actorId,
-                    updatedBy: actorId,
-                },
-            ],
-            { session },
-        );
-
-        const systemRoles = await createSystemRolesForWorkspace({
-            workspaceId: workspace._id,
+    return mongoose.connection.transaction((session) =>
+        createWorkspaceInSession({
+            name,
             actorId,
             session,
-        });
-
-        const ownerRole = systemRoles.find(
-            (role) => role.key === SYSTEM_ROLE_KEY.OWNER,
-        );
-
-        if (!ownerRole) {
-            throw new Error(
-                'Owner system role was not created for the workspace',
-            );
-        }
-
-        await WorkspaceMember.create(
-            [
-                {
-                    workspace: workspace._id,
-                    user: actorId,
-                    role: ownerRole._id,
-                    createdBy: actorId,
-                    updatedBy: actorId,
-                },
-            ],
-            { session },
-        );
-
-        /*
-         * La souscription gratuite fait partie de la même transaction.
-         * Elle doit exister avant la réservation de la place owner, car le
-         * moteur de quotas résout toujours la limite depuis l'entitlement du
-         * workspace et jamais depuis une valeur dupliquée localement.
-         */
-        await createFreeSubscriptionForWorkspace({
-            workspaceId: workspace._id,
-            actorId,
-            session,
-        });
-
-        /*
-         * L'owner occupe la première place du workspace dès sa création.
-         * Initialiser la métrique dans la transaction évite qu'un futur ajout
-         * de membre dispose artificiellement d'une place supplémentaire.
-         */
-        await enforcePlanLimit({
-            workspaceId: workspace._id,
-            metricKey: CORE_PLAN_METRIC.MEMBERS,
-            amount: 1,
-            actorId,
-            session,
-        });
-
-        /*
-         * La création du tenant et sa trace constituent une seule opération :
-         * aucune structure partielle ne doit survivre à un échec d'audit.
-         */
-        await createAuditLog(
-            {
-                actor: actorId,
-                workspace: workspace._id,
-                action: AUDIT_ACTION.WORKSPACE_CREATED,
-                entityType: AUDIT_ENTITY_TYPE.WORKSPACE,
-                entityId: workspace._id,
-                status: AUDIT_STATUS.SUCCESS,
-                ipAddress,
-                userAgent,
-            },
-            { session },
-        );
-
-        return workspace;
-    });
+            ipAddress,
+            userAgent,
+        }));
 };
 
 /**
@@ -421,6 +444,7 @@ const updateWorkspace = async ({
 
 export {
     createWorkspace,
+    createWorkspaceInSession,
     listUserWorkspaces,
     listWorkspaceMembers,
     updateWorkspace,
