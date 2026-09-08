@@ -3,7 +3,6 @@ import {
     PLATFORM_PERMISSION_SENSITIVITY,
 } from '../constants/platformPermissions.constants.js';
 
-
 const PLATFORM_PERMISSION_KEY_PATTERN =
     /^platform:[a-z0-9_]+(?::[a-z0-9_]+)+$/;
 
@@ -174,6 +173,38 @@ const CORE_PLATFORM_PERMISSION_DEFINITIONS = Object.freeze([
         category: 'subscriptions',
         categoryLabel: 'Abonnements',
         description: 'Retirer une annulation programmée lorsque le cycle le permet.',
+        sensitivity: PLATFORM_PERMISSION_SENSITIVITY.SENSITIVE,
+    }),
+    freezeDefinition({
+        key: PLATFORM_PERMISSION.COMMERCIAL_INVITATIONS_READ,
+        label: 'Consulter les invitations commerciales',
+        category: 'commercial_invitations',
+        categoryLabel: 'Invitations commerciales',
+        description: 'Consulter les propositions commerciales envoyées aux futurs clients.',
+        sensitivity: PLATFORM_PERMISSION_SENSITIVITY.DELEGABLE,
+    }),
+    freezeDefinition({
+        key: PLATFORM_PERMISSION.COMMERCIAL_INVITATIONS_CREATE,
+        label: 'Créer une invitation commerciale',
+        category: 'commercial_invitations',
+        categoryLabel: 'Invitations commerciales',
+        description: 'Proposer un plan privé existant à un futur client.',
+        sensitivity: PLATFORM_PERMISSION_SENSITIVITY.SENSITIVE,
+    }),
+    freezeDefinition({
+        key: PLATFORM_PERMISSION.COMMERCIAL_INVITATIONS_RESEND,
+        label: 'Renvoyer une invitation commerciale',
+        category: 'commercial_invitations',
+        categoryLabel: 'Invitations commerciales',
+        description: 'Faire tourner le secret et renvoyer une invitation commerciale active.',
+        sensitivity: PLATFORM_PERMISSION_SENSITIVITY.SENSITIVE,
+    }),
+    freezeDefinition({
+        key: PLATFORM_PERMISSION.COMMERCIAL_INVITATIONS_REVOKE,
+        label: 'Révoquer une invitation commerciale',
+        category: 'commercial_invitations',
+        categoryLabel: 'Invitations commerciales',
+        description: 'Révoquer une invitation commerciale encore active.',
         sensitivity: PLATFORM_PERMISSION_SENSITIVITY.SENSITIVE,
     }),
     freezeDefinition({
@@ -354,11 +385,6 @@ const CORE_PLATFORM_PERMISSION_DEFINITIONS = Object.freeze([
     }),
 ]);
 
-/**
- * Les permissions historiques trop larges restent reconnues pendant la
- * migration des routes, mais ne sont pas exposées comme permissions à
- * attribuer aux nouveaux rôles Platform.
- */
 const LEGACY_PLATFORM_PERMISSION_KEYS = Object.freeze([
     PLATFORM_PERMISSION.USERS_UPDATE,
     PLATFORM_PERMISSION.WORKSPACES_UPDATE,
@@ -477,7 +503,6 @@ const getPlatformPermissionDefinition = (permissionKey) =>
     ACTIVE_PLATFORM_PERMISSION_REGISTRY.definitions.find(
         ({ key }) => key === permissionKey,
     ) ?? null;
-
 
 export {
     ACTIVE_PLATFORM_PERMISSION_REGISTRY,
