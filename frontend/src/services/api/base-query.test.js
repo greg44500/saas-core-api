@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+/*
+ * Suite de sécurité de la frontière RTK Query.
+ *
+ * Elle protège trois invariants : le Bearer vient uniquement du store mémoire,
+ * un 401 ne déclenche qu'un seul refresh partagé entre requêtes concurrentes,
+ * et le rejeu ne peut jamais entrer dans une boucle infinie de refresh.
+ * Les tests simulent le transport HTTP ; l'autorité de session reste le backend.
+ */
+
 function createApiHarness(accessToken = null) {
   const state = {
     auth: {
