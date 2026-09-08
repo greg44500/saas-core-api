@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Ce fichier est l'unique synthèse de reprise active. Il doit rester court et refléter l'état réel du HEAD courant. Le code, les contraintes DB, les tests validés et les contrats canoniques priment.
+> Ce fichier est l'unique synthèse de reprise active. Il doit rester court et refléter l'état réel de la branche de travail. Le code, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment.
 >
 > **Dernière mise à jour : 2026-09-08**
 
@@ -22,7 +22,7 @@ En cas de contradiction :
 
 Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présenté comme `v1.0.0` ni comme automatiquement prêt pour la production.
 
-À chaque reprise : `git pull`, vérifier le HEAD courant et relire le code réellement présent avant modification.
+À chaque reprise : vérifier le HEAD de `main`, la branche de travail active et le diff réel avant toute modification.
 
 ---
 
@@ -36,223 +36,275 @@ Les modules métier réels ne doivent pas être développés directement dans le
 
 ---
 
-## 3. Roadmap réelle jusqu'au clonage métier
+## 3. État Git et roadmap réelle
 
-État actuel :
+Branche stable au démarrage de D-020 :
+
+```text
+main
+abc2777a587aa7ec8711b5569de9e0d98d0de602
+```
+
+Branche de travail courante :
+
+```text
+feature/d020-commercial-invitations
+```
+
+État des blocs :
 
 ```text
 D-018 Équipe Platform / RBAC / invitations internes            ✅ VALIDÉ
 D-019 moteur sécurisé de rétention / purge Core                ✅ VALIDÉ
 DOC-CODE-1 normalisation documentation source                  ✅ VALIDÉ
-HOME-CORE accès public login/register                          🔄 CORRECTIF INTÉGRÉ, GATE FINALE À RECONFIRMER
-→ D-020 invitation commerciale client / offre privée Découverte ⏭️ PROCHAIN BLOC
+HOME-CORE accès public login/register                          🔄 INTÉGRÉ — gate locale finale à reconfirmer
+D-020 invitation commerciale / offre privée découverte         🔄 EN COURS
 → D-015 versionnement / provenance / migrations / release
 → D-016 Playwright / E2E Core
+→ D-002 corbeille / restauration Files                         OBLIGATOIRE AVANT PREMIÈRE DÉRIVATION
 → audit final architecture / sécurité / qualité
 → D-017 dérivation pilote + upgrade réel du Core
 → release v1.0.0
-→ clone du véritable SaaS métier
-→ cadrage puis développement des modules métier
+→ première dérivation métier
 ```
 
-D-018 et D-019 ne doivent pas être rouverts sans bug démontré ou nouvelle exigence générique.
+D-018, D-019 et DOC-CODE-1 ne doivent pas être rouverts sans bug démontré ou nouvelle exigence générique.
+
+D-002 reste un bloc indépendant de D-020. Il n'est pas implémenté dans la branche D-020, mais il est désormais un **gate obligatoire avant la première dérivation du Core**.
 
 ---
 
-## 4. DOC-CODE-1 — VALIDÉ le 2026-09-08
+## 4. HOME-CORE — correctif intégré, gate locale à reconfirmer
 
-```text
-DOC-CODE-1 — Normalisation de la documentation du code source
-```
+La landing publique générique fournit désormais :
 
-Contrat canonique :
-
-```text
-docs/architecture/CODE-DOCUMENTATION.md
-```
-
-### 4.1 Éléments validés
-
-- politique documentaire canonique et versionnée ;
-- ESLint backend et frontend configurés ;
-- `eslint-plugin-jsdoc` intégré ;
-- dépendances et lockfiles persistés ;
-- lint séparé backend/frontend reproductible après clone ;
-- backend de production documenté par mini-lots sur les frontières critiques ;
-- frontend de production documenté sur les frontières RTK Query, routing et composants métier sensibles ;
-- tests critiques documentés légèrement uniquement lorsque l'invariant le justifie ;
-- aucune règle globale `require-jsdoc` ;
-- aucune documentation artificielle ligne par ligne ;
-- aucune modification de logique métier réalisée pour satisfaire la documentation.
-
-### 4.2 Invariants de documentation permanents
-
-La documentation source doit expliquer, lorsque pertinent :
-
-```text
-responsabilité
-contrat
-invariants
-effets de bord
-frontières de sécurité
-raisons non évidentes
-```
-
-Elle ne doit pas paraphraser le code.
-
-JSDoc est utilisé lorsqu'il améliore réellement un contrat public, réutilisable ou sensible. Le projet reste JavaScript uniquement ; JSDoc ne doit pas devenir du pseudo-TypeScript.
-
-Réutilisabilité et documentation restent deux gates distinctes :
-
-```text
-composant partagé pertinent
-+
-contrat documenté
-```
-
-Aucun second `DataTable`, système de drawer générique, confirmation générique, `InfoTooltip`, toast ou stratégie RTK Query parallèle ne doit être créé sans justification architecturale.
-
-### 4.3 Gate finale confirmée
-
-Validation locale confirmée par l'utilisateur le 2026-09-08 :
-
-```text
-lint backend                 ✅
-lint frontend                ✅
-backend tests globaux        ✅
-frontend tests globaux       ✅
-build Vite production        ✅
-revue documentaire ciblée    ✅
-```
-
-DOC-CODE-1 est donc **clôturé**.
-
-Nouvelle Definition of Done permanente :
-
-```text
-Architecture          ✅
-Sécurité              ✅
-Validation stricte    ✅
-Réutilisabilité       ✅
-Documentation source  ✅
-Tests                 ✅
-Build                 ✅
-```
-
----
-
-## 5. Correctif générique HOME-CORE — accès Auth depuis `/`
-
-### 5.1 Problème constaté
-
-La route publique `/` affichait encore l'ancienne démonstration du design system F2. Un visiteur ne pouvait accéder à l'authentification qu'en saisissant manuellement `/login` ou `/register` dans la barre d'adresse.
-
-Pour un Core destiné à être cloné puis spécialisé métier, ce comportement n'est pas acceptable : la home publique générique doit fournir un point d'entrée professionnel et neutre vers les parcours Auth sans imposer une identité métier spécifique.
-
-### 5.2 Correction intégrée
-
-`frontend/src/App.jsx` a été transformé en landing publique générique :
-
-- CTA réel `Se connecter` vers `/login` ;
-- CTA réel `Créer un compte` vers `/register` ;
-- conservation du `ThemeToggle` ;
-- design neutre et professionnel basé sur le design system existant ;
-- aucune promesse métier spécifique ;
-- contenu explicitement remplaçable lors de la dérivation d'un SaaS métier ;
-- aucune modification du workflow Auth, des guards ou du backend.
-
-Tests associés :
-
-- `frontend/src/App.test.jsx` vérifie désormais les accès `/login` et `/register` ;
-- `frontend/src/app/router.test.jsx` a été aligné sur la nouvelle landing et ne vérifie plus l'ancienne home F2 ni un texte `SaaS Core` ambigu.
+- `Se connecter` vers `/login` ;
+- `Créer un compte` vers `/register` ;
+- `ThemeToggle` ;
+- aucun contenu métier spécifique.
 
 Commits repères :
 
 ```text
-2236b8f7e859f9f623129080f47f66a86f6caad6  feat(home): expose auth entry points from public landing
-32f22956234b057377b2ce247701775b85f7b759  test(home): cover public auth navigation
-9717f177e470a391183b3c9ffae33cfacbac6ba7  test(router): align public root assertions with landing
+2236b8f7e859f9f623129080f47f66a86f6caad6
+32f22956234b057377b2ce247701775b85f7b759
+9717f177e470a391183b3c9ffae33cfacbac6ba7
 ```
 
-### 5.3 Gate à confirmer avant D-020
-
-Le dernier run frontend complet avait révélé un seul test obsolète dans `router.test.jsx`. Ce test a été corrigé au commit `9717f177...`, mais sa revalidation locale finale n'a pas encore été confirmée dans cette synthèse.
-
-Avant d'ouvrir D-020 :
+La gate locale suivante reste à reconfirmer explicitement avant de considérer HOME-CORE clôturé :
 
 ```text
-frontend lint global     à reconfirmer
-frontend tests globaux   à reconfirmer après 9717f177
-build Vite               à reconfirmer
+frontend lint global
+frontend tests globaux
+build Vite
+navigation / → /login
+navigation / → /register
 ```
 
-Contrôle manuel recommandé :
-
-```text
-/ → Créer un compte → /register
-/ → Se connecter    → /login
-```
-
-Ce correctif appartient au Core générique et reste indépendant de D-020.
+Cette absence de confirmation ne doit pas être transformée artificiellement en résultat vert dans la documentation.
 
 ---
 
-## 6. D-020 — PROCHAIN BLOC
+## 5. D-020 — Invitation commerciale client / offre privée
+
+Contrat canonique :
 
 ```text
-D-020 — Invitation commerciale client et offres privées de découverte
+docs/contracts/COMMERCIAL-INVITATIONS.md
 ```
 
-Le blocage documentaire qui empêchait D-020 de commencer est levé. D-020 ne doit toutefois démarrer qu'après confirmation de la gate frontend du correctif HOME-CORE ci-dessus.
-
-### 6.1 Frontière obligatoire
+### 5.1 Frontière fonctionnelle figée
 
 ```text
 PlatformInvitation
 → collaborateur interne de l'éditeur
 
 CommercialInvitation
-→ prospect / futur client utilisateur du SaaS
+→ nouveau prospect / futur client / bêta-testeur
 ```
 
-Il est interdit de réutiliser `PlatformInvitation` comme modèle métier d'invitation commerciale.
+`CommercialInvitation` n'est pas un mécanisme de gestion d'un workspace existant.
 
-Les primitives de sécurité peuvent être réutilisées conceptuellement : token aléatoire, hash, expiration, rotation, revoke, audit et absence de secret brut persistant.
+Règle D-020 :
 
-### 6.2 Décisions commerciales déjà figées
+```text
+invitation commerciale initiale
+→ adresse non encore inscrite lors de la création de l'invitation
+→ inscription via Auth normal
+→ authentification
+→ acceptation
+→ création du premier Workspace
+```
 
-- une offre « Découverte commerciale » peut utiliser un Plan privé `isPublic=false` ;
-- un Plan privé peut avoir un prix `0` sans devenir la baseline Free ;
-- les fonctionnalités sont explicitement listées ;
-- aucune règle dynamique « toutes les fonctionnalités sauf IA » ;
-- une future capability ne doit jamais être accordée automatiquement ;
-- un accès commercial gratuit durable n'est pas un « trial illimité » ;
-- un vrai trial reste temporaire avec `trialEndsAt` ;
-- `EntitlementOverride` reste l'outil d'exception individuelle ;
-- un Plan privé représente une offre réutilisable ;
-- l'acteur commercial choisit une offre existante et ne fabrique pas arbitrairement des capabilities au moment de l'invitation ;
-- l'invitation doit être auditée : acteur, bénéficiaire, offre, raison, dates, acceptation, révocation ;
-- le Workspace doit être créé ou rattaché dans le flow d'acceptation afin d'éviter les workspaces orphelins ;
-- le Super administrateur est l'autorité initiale ;
-- l'architecture doit utiliser des permissions Platform dédiées pour permettre une délégation future sans réécrire la logique métier.
+Un utilisateur déjà géré dans un workspace utilise les mécanismes `Subscription` / `EntitlementOverride` prévus ; aucun mode `attach` n'est introduit dans D-020.
 
-### 6.3 Points à résoudre avant code D-020
+### 5.2 Plan privé
 
-1. sémantique exacte d'une offre gratuite sans échéance ;
-2. relation `CommercialInvitation` / Plan privé / Subscription / Workspace ;
-3. comportement de `TrialEligibility` pour une invitation commerciale manuelle ;
-4. flow existing-user vs new-user ;
-5. création ou rattachement exact du Workspace à l'acceptation ;
-6. états et cycle de vie de `CommercialInvitation` ;
-7. permissions Platform dédiées ;
-8. conditions de resend / rotation / revoke ;
-9. atomicité de l'acceptation ;
-10. audit et absence de secrets ;
-11. impact sur le résolveur Subscription qui attend actuellement une `currentPeriodEnd` future pour les subscriptions commerciales actives.
+Une invitation D-020 ne peut cibler qu'un Plan :
 
-Une date artificielle lointaine telle que `2099-12-31` ne doit pas simuler un accès illimité.
+```text
+status = active
+isPublic = false
+systemRole = null
+```
 
-D-020 doit être **cadré avant tout code**.
+Le Plan privé n'appartient pas au catalogue public. Le catalogue utilisateur reste limité aux Plans publics.
+
+Les capabilities et limites viennent exclusivement du Plan sélectionné. Elles ne sont jamais envoyées comme autorité par le frontend.
+
+### 5.3 Gratuit durable et trial
+
+Le contrat temporel des Subscriptions est désormais explicité par :
+
+```text
+termType = fixed | open_ended
+```
+
+Un vrai trial :
+
+```text
+termType = fixed
+status = trialing
+trialEndsAt requis
+currentPeriodEnd = trialEndsAt
+TrialEligibility consommé atomiquement
+```
+
+Une offre Découverte gratuite durable :
+
+```text
+termType = open_ended
+status = active
+billingInterval = none
+priceExclTaxMinor = 0
+provider = manual
+currentPeriodEnd = null
+trialEndsAt = null
+```
+
+Le resolver reconnaît une commerciale `open_ended` uniquement si l'ensemble de ces invariants est cohérent. Une configuration incohérente échoue fermée et ne masque pas la baseline.
+
+Aucune date artificielle lointaine ne simule l'illimité.
+
+### 5.4 Sécurité de l'invitation
+
+- token aléatoire de 32 octets ;
+- seul son hash SHA-256 est persisté ;
+- token brut jamais loggé ni renvoyé par l'API d'administration ;
+- expiration ;
+- resend = rotation du secret + invalidation de l'ancien ;
+- revoke explicite et audité ;
+- endpoints destinataire rate-limités ;
+- `preview` ne révèle pas l'adresse email ;
+- `accept` exige `authenticate()` et vérifie l'email du compte ;
+- acceptation conditionnelle pour résister aux courses concurrentes.
+
+### 5.5 Snapshot d'offre
+
+L'invitation conserve un snapshot serveur des termes proposés : prix, devise, périodicité, trial, capabilities et limites.
+
+Un simple renommage du Plan ne modifie pas le contrat et reste toléré.
+
+Toute dérive significative des termes entre envoi et acceptation/resend provoque un refus `409` et impose la création d'une nouvelle invitation. Une offre envoyée ne doit jamais changer silencieusement.
+
+### 5.6 Acceptation atomique
+
+L'acceptation exécute dans une seule transaction MongoDB :
+
+```text
+revalidation User + email
+revalidation invitation + Plan + snapshot
+vérification absence de membership existant
+pré-contrôle TrialEligibility si vrai trial
+création Workspace
+création rôles système
+création owner WorkspaceMember
+création baseline Subscription
+initialisation quota members
+création Subscription commerciale
+record TrialEligibility si trial
+CommercialInvitation → accepted
+AuditLog Workspace / Subscription / invitation
+```
+
+`createWorkspaceInSession()` centralise le provisioning tenant et évite toute duplication de logique métier.
+
+### 5.7 Permissions Platform dédiées
+
+```text
+platform:commercial_invitations:read
+platform:commercial_invitations:create
+platform:commercial_invitations:resend
+platform:commercial_invitations:revoke
+```
+
+Ces permissions sont distinctes de `platform:team:*`.
+
+### 5.8 Routes backend D-020
+
+Administration Platform :
+
+```text
+POST /api/platform/commercial-invitations
+GET  /api/platform/commercial-invitations
+POST /api/platform/commercial-invitations/:invitationId/resend
+POST /api/platform/commercial-invitations/:invitationId/revoke
+```
+
+Parcours destinataire :
+
+```text
+POST /api/commercial-invitations/preview
+POST /api/commercial-invitations/accept
+```
+
+`accept` exige Auth. Les tokens sont envoyés dans le body API, pas dans le path.
+
+### 5.9 Tests créés mais non encore déclarés verts
+
+Couverture ajoutée ou adaptée :
+
+- validation Zod CommercialInvitation ;
+- invariants Plan privé / gratuit / trial ;
+- dérive du snapshot ;
+- acceptation atomique ;
+- mismatch email ;
+- refus workspace existant ;
+- TrialEligibility ;
+- concurrence sur acceptation ;
+- resolver `open_ended` ;
+- cycle de résiliation `open_ended` ;
+- wiring routes / permissions / rate limit.
+
+**Important :** aucun workflow GitHub Actions n'est configuré dans le dépôt et les tests D-020 n'ont pas encore été exécutés globalement dans cet environnement. Ils ne doivent donc pas être présentés comme verts avant validation locale réelle.
+
+---
+
+## 6. D-002 — gate avant première dérivation
+
+D-002 ne fait pas partie de l'implémentation D-020.
+
+Décision désormais figée :
+
+```text
+aucune première dérivation métier du Core
+avant validation de D-002
+```
+
+D-002 devra fournir au minimum :
+
+- listing sécurisé de la corbeille par Workspace ;
+- restauration sécurisée d'un ou plusieurs fichiers ;
+- permissions dédiées ;
+- isolation tenant ;
+- coordination avec le moteur D-019 pour empêcher une restauration après claim de purge ;
+- audit ;
+- UI `Ressources > Corbeille` réutilisant le `DataTable` partagé ;
+- tests de sécurité et de concurrence.
+
+Invariant issu de D-019 : un fichier soft-deleted continue à consommer `storage_bytes` tant que son contenu physique existe. Une restauration avant purge ne doit donc pas réserver une seconde fois le même stockage.
+
+La durée effective de rétention reste gouvernée par la policy de rétention ; aucune durée universelle ne doit être inventée par l'UI.
 
 ---
 
@@ -284,51 +336,31 @@ RTK Query     → état serveur
 - pages = assemblage ;
 - appels API via RTK Query ;
 - composants partagés obligatoires lorsqu'ils sont pertinents ;
-- aucune duplication de tableau, drawer, confirmation ou infrastructure transverse sans justification ;
+- `DataTable` partagé obligatoire pour les listings tabulaires pertinents ;
+- aucune duplication de drawer, confirmation, toast ou infrastructure transverse ;
 - backend = autorité finale sur permissions, entitlements et transitions sensibles ;
 - documentation source obligatoire selon le niveau de complexité.
 
 ---
 
-## 8. Sécurité permanente
-
-Invariant :
+## 8. Prochaine reprise exacte
 
 ```text
-ne jamais faire confiance au frontend
-ne jamais faire dépendre la sécurité d'un bouton masqué
+1. vérifier main et feature/d020-commercial-invitations
+2. relire docs/contracts/COMMERCIAL-INVITATIONS.md
+3. considérer D-018, D-019 et DOC-CODE-1 comme VALIDÉS
+4. ne pas ouvrir D-015
+5. ne pas implémenter D-002 dans le lot D-020
+6. terminer les tests backend impactés par termType et le refactor Workspace
+7. exécuter localement lint + tests backend globaux
+8. corriger toute régression avant frontend
+9. implémenter ensuite le frontend D-020 avec RTK Query et composants partagés
+10. revalider frontend lint + tests + build
+11. seulement après validation globale envisager l'intégration de D-020 dans main
 ```
-
-Backend = autorité sur identité, ownership, memberships, permissions, entitlements, quotas, lifecycle, invitations, subscription et transitions sensibles.
-
-Validation Zod stricte obligatoire.
-
-`sanitizeFilter` reste activé. Utiliser `mongoose.trusted()` uniquement pour les opérateurs MongoDB construits intentionnellement par le serveur.
-
-Les mutations sensibles doivent réautoriser depuis l'état courant lorsque nécessaire et conserver un audit approprié.
-
-Les tokens/secrets d'invitation ne doivent jamais être persistés ou exposés en clair.
 
 ---
 
-## 9. Prochaine reprise exacte
+## 9. Résumé en une phrase
 
-```text
-1. git pull
-2. vérifier le HEAD courant
-3. lire docs/REPRISE-CURRENT.md
-4. considérer D-018, D-019 et DOC-CODE-1 comme VALIDÉS
-5. revalider le correctif HOME-CORE : lint frontend + tests globaux + build + navigation manuelle login/register
-6. ne pas ouvrir D-015
-7. une fois HOME-CORE confirmé vert, commencer D-020 par le cadrage fonctionnel et architectural
-8. figer le contrat CommercialInvitation
-9. seulement ensuite découper D-020 en mini-lots backend/frontend/tests
-```
-
-D-002 reste hors périmètre et ne doit pas être modifié.
-
----
-
-## 10. Résumé de reprise en une phrase
-
-D-018, D-019 et DOC-CODE-1 sont **VALIDÉS** ; le correctif générique de home publique avec accès `/login` et `/register` est intégré et doit recevoir une dernière confirmation locale après le patch de `router.test.jsx` ; une fois cette gate verte, **D-020** devient le prochain bloc à cadrer avant toute implémentation.
+D-018, D-019 et DOC-CODE-1 sont validés ; D-020 est **en cours sur `feature/d020-commercial-invitations`** avec un backend commercial distinct, privé, fail-closed et atomique en cours de validation ; D-002 reste séparé mais devient **obligatoire avant toute première dérivation métier du Core**.
