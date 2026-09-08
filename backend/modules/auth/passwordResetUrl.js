@@ -12,7 +12,7 @@ import { env } from '../../config/env.js';
  * Le token reçu ici est le token BRUT destiné à l'utilisateur.
  * Il ne doit jamais être persisté ou écrit dans les logs.
  *
- * @param {Object} params
+ * @param {object} params
  * @param {string} params.token Token opaque brut de réinitialisation.
  *
  * @returns {string} URL complète à intégrer dans l'email.
