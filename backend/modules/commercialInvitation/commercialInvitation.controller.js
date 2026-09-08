@@ -5,6 +5,9 @@ import {
     deliverCommercialInvitation,
 } from './commercialInvitationDelivery.service.js';
 import {
+    listCommercialInvitationOffers,
+} from './commercialInvitationOfferCatalog.service.js';
+import {
     createCommercialInvitation,
     listCommercialInvitations,
     previewCommercialInvitation,
@@ -33,6 +36,23 @@ const toOfferDto = (snapshot) => ({
     trialDurationDays: snapshot.trialDurationDays ?? null,
     features: [...(snapshot.features ?? [])],
     limits: serializeLimits(snapshot.limits),
+});
+
+const toSelectablePlanDto = (plan) => ({
+    id: plan._id.toString(),
+    name: plan.name,
+    description: plan.description ?? null,
+    status: plan.status,
+    isPublic: plan.isPublic,
+    isBaseline: false,
+    displayOrder: plan.displayOrder,
+    trialEnabled: plan.trialEnabled,
+    trialDurationDays: plan.trialDurationDays ?? null,
+    currency: plan.currency,
+    priceMonthlyExclTaxMinor: plan.priceMonthlyExclTaxMinor,
+    priceYearlyExclTaxMinor: plan.priceYearlyExclTaxMinor,
+    features: [...(plan.features ?? [])],
+    limits: serializeLimits(plan.limits),
 });
 
 /**
@@ -115,6 +135,17 @@ const list = async (req, res) => {
                 toAdminInvitationDto(invitation)),
         },
         meta: pagination,
+    });
+};
+
+const listOffers = async (req, res) => {
+    const plans = await listCommercialInvitationOffers();
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            plans: plans.map(toSelectablePlanDto),
+        },
     });
 };
 
@@ -222,9 +253,11 @@ export {
     accept,
     create,
     list,
+    listOffers,
     preview,
     resend,
     revoke,
     toAdminInvitationDto,
     toOfferDto,
+    toSelectablePlanDto,
 };
