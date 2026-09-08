@@ -19,12 +19,6 @@ import {
     deleteWorkspaceFile,
 } from '../../modules/file/fileDelete.service.js';
 import { File } from '../../modules/file/file.model.js';
-import {
-    CORE_PLAN_METRIC,
-} from '../../modules/plan/planCapability.registry.js';
-import {
-    releaseCurrentUsageMetric,
-} from '../../modules/usageMetric/releaseUsageMetric.service.js';
 import { createAuditLog } from '../../modules/auditLog/auditLog.service.js';
 
 const {
@@ -53,10 +47,6 @@ vi.mock('../../modules/file/file.model.js', () => ({
     },
 }));
 
-vi.mock('../../modules/usageMetric/releaseUsageMetric.service.js', () => ({
-    releaseCurrentUsageMetric: vi.fn(),
-}));
-
 vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
 }));
@@ -69,7 +59,7 @@ beforeEach(() => {
 });
 
 describe('deleteWorkspaceFile', () => {
-    it('supprime logiquement le fichier et libère le stockage dans la même transaction', async () => {
+    it('supprime logiquement le fichier sans libérer le stockage avant la purge physique', async () => {
         const now = new Date('2026-08-30T10:00:00.000Z');
         const expectedPurge = new Date(now);
         expectedPurge.setUTCDate(
@@ -83,6 +73,10 @@ describe('deleteWorkspaceFile', () => {
             deletedAt: null,
             deletedBy: null,
             purgeScheduledAt: null,
+            purgeClaimedAt: null,
+            purgeClaimId: null,
+            purgeClaimExpiresAt: null,
+            storageUsageReleasePending: false,
             purgedAt: null,
             updatedBy: null,
             save: vi.fn().mockResolvedValue(undefined),
@@ -111,17 +105,13 @@ describe('deleteWorkspaceFile', () => {
         expect(file.deletedAt).toBe(now);
         expect(file.deletedBy).toBe('507f1f77bcf86cd799439013');
         expect(file.purgeScheduledAt).toEqual(expectedPurge);
+        expect(file.purgeClaimedAt).toBeNull();
+        expect(file.purgeClaimId).toBeNull();
+        expect(file.purgeClaimExpiresAt).toBeNull();
+        expect(file.storageUsageReleasePending).toBe(true);
         expect(file.purgedAt).toBeNull();
         expect(file.updatedBy).toBe('507f1f77bcf86cd799439013');
         expect(file.save).toHaveBeenCalledWith({ session: 'session' });
-
-        expect(releaseCurrentUsageMetric).toHaveBeenCalledWith({
-            workspaceId: '507f1f77bcf86cd799439011',
-            metricKey: CORE_PLAN_METRIC.STORAGE_BYTES,
-            amount: 2_048,
-            actorId: '507f1f77bcf86cd799439013',
-            session: 'session',
-        });
 
         expect(createAuditLog).toHaveBeenCalledWith(
             {
@@ -158,7 +148,6 @@ describe('deleteWorkspaceFile', () => {
             message: 'Fichier introuvable',
         });
 
-        expect(releaseCurrentUsageMetric).not.toHaveBeenCalled();
         expect(createAuditLog).not.toHaveBeenCalled();
     });
 });
