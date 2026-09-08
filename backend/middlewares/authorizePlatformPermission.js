@@ -11,12 +11,31 @@ import {
 
 
 /**
- * Construit un middleware d'autorisation Platform basé sur les permissions
- * effectives rechargées depuis MongoDB.
+ * Construit une factory d'autorisation Platform à partir de permissions
+ * effectives résolues côté backend.
  *
- * La factory conserve l'injection `rolePermissions` pour les tests unitaires et
- * la compatibilité de certaines politiques isolées. En runtime normal,
- * PlatformTeamMember + PlatformRole constituent désormais l'autorité.
+ * En runtime normal, `PlatformTeamMember` et `PlatformRole` sont l'autorité :
+ * le middleware recharge l'autorisation depuis MongoDB et ne fait jamais
+ * confiance à une permission déclarée par le frontend ou à une valeur portée
+ * uniquement par le JWT.
+ *
+ * `knownPermissions` ferme la factory aux permissions enregistrées dans le
+ * registre applicatif. Une faute de configuration est donc détectée au montage
+ * des routes plutôt que transformée silencieusement en règle d'accès ambiguë.
+ *
+ * L'injection `rolePermissions` ou `authorizationResolver` existe pour les tests
+ * et les politiques isolées ; elle ne doit pas devenir un chemin permettant de
+ * contourner l'autorité persistée en production.
+ *
+ * Le middleware retourné exige toutes les permissions demandées, enrichit la
+ * requête avec `req.platformAuthorization` en cas de succès et échoue fermé si
+ * le contexte utilisateur ou les permissions sont insuffisants.
+ *
+ * @param {object} [options]
+ * @param {object|null} [options.rolePermissions]
+ * @param {Function|null} [options.authorizationResolver]
+ * @param {Iterable<string>} [options.knownPermissions]
+ * @returns {(...requiredPermissions: string[]) => import('express').RequestHandler}
  */
 const createAuthorizePlatformPermission = ({
     rolePermissions = null,
