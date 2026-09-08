@@ -24,6 +24,9 @@ import {
 } from './overview/platformOverview.routes.js';
 import { platformPlansRouter } from './plans/platformPlans.routes.js';
 import {
+    platformRetentionRouter,
+} from './retention/platformRetention.routes.js';
+import {
     platformSubscriptionsRouter,
 } from './subscriptions/platformSubscriptions.routes.js';
 import { platformUsersRouter } from './users/platformUsers.routes.js';
@@ -51,6 +54,7 @@ platformRouter.use(
     platformEntitlementOverridesRouter,
 );
 platformRouter.use('/audit-logs', platformAuditLogsRouter);
+platformRouter.use('/retention', platformRetentionRouter);
 platformRouter.use('/team/roles', platformRoleRouter);
 platformRouter.use('/team', platformTeamRouter);
 platformRouter.use('/team', platformTeamInvitationRouter);
