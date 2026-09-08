@@ -1,19 +1,22 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { MemoryRouter } from 'react-router';
 
 import App from '@/App';
 import { ThemeProvider } from '@/components/shared/theme-provider';
 
 function renderApp(storageScope = 'test-user') {
   return render(
-    <ThemeProvider storageScope={storageScope}>
-      <App />
-    </ThemeProvider>,
+    <MemoryRouter>
+      <ThemeProvider storageScope={storageScope}>
+        <App />
+      </ThemeProvider>
+    </MemoryRouter>,
   );
 }
 
-describe('App design system foundation', () => {
+describe('App public landing', () => {
   beforeEach(() => {
     window.localStorage.clear();
     document.documentElement.classList.remove('dark');
@@ -27,18 +30,23 @@ describe('App design system foundation', () => {
     document.documentElement.style.colorScheme = '';
   });
 
-  it('rend les fondations F2 et les variantes principales du bouton', () => {
+  it('expose les accès canoniques vers inscription et connexion', () => {
     renderApp();
 
     expect(
-      screen.getByRole('heading', { name: 'Fondations UI prêtes' }),
+      screen.getByRole('heading', {
+        name: 'Une base professionnelle pour construire votre application SaaS.',
+      }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Action principale' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Secondaire' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Contour' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Destructif' })).toBeInTheDocument();
+
+    const registerLink = screen.getByRole('link', { name: /Créer un compte/i });
+    expect(registerLink).toHaveAttribute('href', '/register');
+
+    const loginLinks = screen.getAllByRole('link', { name: /Se connecter/i });
+    expect(loginLinks.length).toBeGreaterThan(0);
+    loginLinks.forEach((link) => {
+      expect(link).toHaveAttribute('href', '/login');
+    });
   });
 
   it('persiste le thème choisi et le restaure au prochain montage', async () => {
