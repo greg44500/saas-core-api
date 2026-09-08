@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { PageLoader } from '@/components/shared/page-loader';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import {
 import {
   buildCommercialInvitationAuthState,
   clearCommercialInvitationTokenFragment,
+  clearCommercialInvitationTokenInMemory,
   getCommercialInvitationTokenFromLocation,
 } from '@/features/commercial-invitation/lib/commercial-invitation';
 import {
@@ -78,17 +79,15 @@ function CommercialInvitationOfferSummary({ invitation }) {
 }
 
 /**
- * Le secret est lu une seule fois depuis le fragment ou l'état React Router,
- * puis retiré de l'URL. Il circule uniquement dans l'état de navigation du
- * parcours et n'est jamais persisté dans Redux, localStorage ou sessionStorage.
+ * Le secret est capturé une seule fois depuis le fragment dans un vault runtime
+ * puis retiré de l'URL. Il ne passe ni par Redux, ni par les stockages Web, ni
+ * par `history.state`. Un rechargement complet oblige donc à rouvrir le lien
+ * d'invitation, ce qui limite volontairement la persistance du secret.
  */
 function AcceptCommercialInvitationPage() {
   const authStatus = useSelector((state) => state.auth.authStatus);
-  const location = useLocation();
   const navigate = useNavigate();
-  const [token] = useState(() => (
-    getCommercialInvitationTokenFromLocation(location)
-  ));
+  const [token] = useState(() => getCommercialInvitationTokenFromLocation());
   const [previewInvitation, previewState] =
     usePreviewCommercialInvitationMutation();
   const [acceptInvitation, acceptState] =
@@ -115,7 +114,7 @@ function AcceptCommercialInvitationPage() {
             Ce lien n’est pas utilisable
           </h1>
           <p className="text-sm text-muted-foreground">
-            Le lien est incomplet ou incorrect. Demandez une nouvelle invitation à l’équipe qui vous a contacté.
+            Le lien est incomplet, incorrect ou la page a été rechargée après sécurisation du lien. Rouvrez l’invitation reçue par email.
           </p>
         </div>
         <Button asChild className="w-full" variant="outline">
@@ -157,11 +156,12 @@ function AcceptCommercialInvitationPage() {
   }
 
   const invitation = previewState.data;
-  const authState = buildCommercialInvitationAuthState(token);
+  const authState = buildCommercialInvitationAuthState();
 
   async function handleAcceptance() {
     try {
       const result = await acceptInvitation(token).unwrap();
+      clearCommercialInvitationTokenInMemory();
       navigate(`/workspaces/${result.workspace.id}/dashboard`, {
         replace: true,
         state: { commercialInvitationAccepted: true },
