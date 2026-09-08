@@ -31,7 +31,7 @@ const listPlatformSubscriptions = async ({
     ] = await Promise.all([
         Subscription.find({})
             .select(
-                '_id workspace plan kind status '
+                '_id workspace plan kind termType status '
                 + 'currentPeriodStart currentPeriodEnd trialEndsAt '
                 + 'cancelAtPeriodEnd billingInterval currency '
                 + 'priceExclTaxMinor manualOverride createdAt updatedAt',
@@ -71,6 +71,7 @@ const listPlatformSubscriptions = async ({
             }
             : null,
         kind: subscription.kind,
+        termType: subscription.termType ?? null,
         status: subscription.status,
         currentPeriodStart: subscription.currentPeriodStart,
         currentPeriodEnd: subscription.currentPeriodEnd ?? null,
