@@ -7,6 +7,7 @@ import {
     AUDIT_STATUS,
 } from '../../constants/auditActions.constants.js';
 import {
+    COMMERCIAL_INVITATION_DELIVERY_STATUS,
     COMMERCIAL_INVITATION_STATUS,
     COMMERCIAL_INVITATION_TOKEN_BYTES,
     COMMERCIAL_INVITATION_TTL_DAYS,
@@ -21,6 +22,7 @@ import { canonicalizeEmail } from '../../utils/canonicalizeEmail.js';
 import { AppError } from '../../utils/appError.js';
 import { createAuditLog } from '../auditLog/auditLog.service.js';
 import { Plan } from '../plan/plan.model.js';
+import { User } from '../users/user.model.js';
 import { CommercialInvitation } from './commercialInvitation.model.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -98,16 +100,72 @@ const assertCommercialInvitationPlan = ({ plan, billingInterval }) => {
     }
 };
 
+const normalizeFeatures = (features = []) =>
+    [...features].sort((left, right) => left.localeCompare(right));
+
+const normalizeLimits = (limits = {}) => {
+    const entries = limits instanceof Map
+        ? [...limits.entries()]
+        : Object.entries(limits ?? {});
+
+    return Object.fromEntries(
+        entries.sort(([left], [right]) => left.localeCompare(right)),
+    );
+};
+
 const buildOfferSnapshot = ({ plan, billingInterval }) => ({
     planName: plan.name,
     currency: plan.currency,
     billingInterval,
     priceExclTaxMinor: resolvePlanPrice({ plan, billingInterval }),
     trialEnabled: plan.trialEnabled,
-    trialDurationDays: plan.trialDurationDays,
-    features: [...plan.features],
-    limits: Object.fromEntries(plan.limits ?? new Map()),
+    trialDurationDays: plan.trialDurationDays ?? null,
+    features: normalizeFeatures(plan.features),
+    limits: normalizeLimits(plan.limits),
 });
+
+const buildComparableOfferSnapshot = (snapshot) => ({
+    currency: snapshot.currency,
+    billingInterval: snapshot.billingInterval,
+    priceExclTaxMinor: snapshot.priceExclTaxMinor,
+    trialEnabled: snapshot.trialEnabled,
+    trialDurationDays: snapshot.trialDurationDays ?? null,
+    features: normalizeFeatures(snapshot.features),
+    limits: normalizeLimits(snapshot.limits),
+});
+
+/**
+ * Vérifie que les conditions contractuelles d'un Plan n'ont pas changé depuis
+ * l'envoi. Le nom commercial peut évoluer sans modifier les droits proposés ;
+ * prix, trial, périodicité, fonctionnalités et limites restent en revanche des
+ * éléments significatifs et exigent une nouvelle invitation en cas de dérive.
+ */
+const assertCommercialInvitationOfferIsCurrent = ({ invitation, plan }) => {
+    const billingInterval = invitation.offerSnapshot.billingInterval;
+
+    assertCommercialInvitationPlan({ plan, billingInterval });
+
+    const currentSnapshot = buildOfferSnapshot({
+        plan,
+        billingInterval,
+    });
+
+    const invitationContract = JSON.stringify(
+        buildComparableOfferSnapshot(invitation.offerSnapshot),
+    );
+    const currentContract = JSON.stringify(
+        buildComparableOfferSnapshot(currentSnapshot),
+    );
+
+    if (invitationContract !== currentContract) {
+        throw new AppError(
+            'L’offre commerciale a été modifiée depuis l’envoi de cette invitation. Créez une nouvelle invitation.',
+            409,
+        );
+    }
+
+    return currentSnapshot;
+};
 
 const expirePendingCommercialInvitations = async ({
     emailCanonical = null,
@@ -123,13 +181,11 @@ const expirePendingCommercialInvitations = async ({
         filter.emailCanonical = emailCanonical;
     }
 
-    const query = CommercialInvitation.updateMany(
+    return CommercialInvitation.updateMany(
         filter,
         { $set: { status: COMMERCIAL_INVITATION_STATUS.EXPIRED } },
         { session },
     );
-
-    return query;
 };
 
 const createCommercialInvitation = async ({
@@ -151,6 +207,22 @@ const createCommercialInvitation = async ({
     const emailCanonical = canonicalizeEmail(email);
 
     return mongoose.connection.transaction(async (session) => {
+        /*
+         * D-020 est un parcours d'acquisition initiale, pas un second mécanisme
+         * de gestion commerciale des clients existants. Un compte déjà présent
+         * doit utiliser les mécanismes Subscription/EntitlementOverride prévus.
+         */
+        const existingUser = await User.exists({
+            emailCanonical,
+        }).session(session);
+
+        if (existingUser) {
+            throw new AppError(
+                'Une invitation commerciale initiale ne peut pas cibler un utilisateur déjà inscrit',
+                409,
+            );
+        }
+
         const plan = await Plan.findById(planId).session(session);
         assertCommercialInvitationPlan({ plan, billingInterval });
 
@@ -206,6 +278,8 @@ const createCommercialInvitation = async ({
                     beneficiaryEmailCanonical: emailCanonical,
                     planId: plan._id.toString(),
                     workspaceName,
+                    billingInterval,
+                    trialEnabled: offerSnapshot.trialEnabled,
                     expiresAt,
                 },
             },
@@ -265,6 +339,8 @@ const resendCommercialInvitation = async ({
         throw new AppError('Le plan associé à l’invitation est introuvable', 409);
     }
 
+    assertCommercialInvitationOfferIsCurrent({ invitation, plan });
+
     const token = createCommercialInvitationToken();
     const expiresAt = new Date(
         now.getTime() + COMMERCIAL_INVITATION_TTL_DAYS * DAY_IN_MS,
@@ -274,12 +350,13 @@ const resendCommercialInvitation = async ({
         {
             _id: invitation._id,
             status: COMMERCIAL_INVITATION_STATUS.PENDING,
+            tokenHash: invitation.tokenHash,
         },
         {
             $set: {
                 tokenHash: hashCommercialInvitationToken(token),
                 expiresAt,
-                deliveryStatus: 'pending',
+                deliveryStatus: COMMERCIAL_INVITATION_DELIVERY_STATUS.PENDING,
                 lastDeliveryAttemptAt: null,
                 deliveredAt: null,
             },
@@ -361,18 +438,25 @@ const previewCommercialInvitation = async ({ token, now = new Date() }) => {
         tokenHash,
         status: COMMERCIAL_INVITATION_STATUS.PENDING,
         expiresAt: mongoose.trusted({ $gt: now }),
-    })
-        .select('emailCanonical workspaceName expiresAt offerSnapshot plan')
-        .populate({ path: 'plan', select: 'name status isPublic systemRole' });
+    }).select('emailCanonical workspaceName expiresAt offerSnapshot plan');
 
     if (!invitation) {
         throw new AppError('Invitation commerciale invalide ou expirée', 404);
     }
 
+    const plan = await Plan.findById(invitation.plan);
+
+    if (!plan) {
+        throw new AppError('Le plan associé à l’invitation est introuvable', 409);
+    }
+
+    assertCommercialInvitationOfferIsCurrent({ invitation, plan });
+
     return invitation;
 };
 
 export {
+    assertCommercialInvitationOfferIsCurrent,
     assertCommercialInvitationPlan,
     buildOfferSnapshot,
     createCommercialInvitation,
