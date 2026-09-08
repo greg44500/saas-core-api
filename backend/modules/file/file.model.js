@@ -38,6 +38,16 @@ const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
 
 /**
+ * Identifiant interne d'une réclamation de purge.
+ *
+ * Le service utilise randomUUID() afin qu'un worker ne puisse finaliser que
+ * la réclamation qu'il a réellement acquise.
+ */
+const PURGE_CLAIM_ID_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+
+/**
  * Métadonnées relatives à l'analyse antivirus.
  *
  * Le résultat reste indépendant du statut fonctionnel du fichier afin de
@@ -308,6 +318,61 @@ const fileSchema = new Schema(
         },
 
         /**
+         * Instant auquel un worker a atomiquement réclamé le fichier.
+         *
+         * Tant que le fichier reste DELETED et qu'une réclamation existe, une
+         * future restauration D-002 devra refuser la transition vers ACTIVE.
+         */
+        purgeClaimedAt: {
+            type: Date,
+            default: null,
+            select: false,
+        },
+
+        /**
+         * Jeton interne de compare-and-set associé à la réclamation courante.
+         *
+         * Il n'est jamais exposé à l'API et empêche un worker ayant perdu sa
+         * lease de finaliser la réclamation reprise par un autre worker.
+         */
+        purgeClaimId: {
+            type: String,
+            default: null,
+            trim: true,
+            match: [
+                PURGE_CLAIM_ID_PATTERN,
+                "L'identifiant de réclamation de purge est invalide.",
+            ],
+            select: false,
+        },
+
+        /**
+         * Fin de la lease de traitement du worker courant.
+         *
+         * Une lease expirée peut être reprise par un autre worker, mais le
+         * fichier reste considéré comme déjà entré dans le processus de purge.
+         */
+        purgeClaimExpiresAt: {
+            type: Date,
+            default: null,
+            select: false,
+        },
+
+        /**
+         * Indique que la métrique storage_bytes doit être libérée à la purge.
+         *
+         * Ce marqueur protège la transition depuis l'ancien comportement qui
+         * décrémentait la métrique dès le soft-delete. Les nouveaux deletes le
+         * positionnent à true ; la migration D-019.4 le réconcilie pour les
+         * fichiers DELETED historiques avant qu'ils soient purgés.
+         */
+        storageUsageReleasePending: {
+            type: Boolean,
+            default: false,
+            select: false,
+        },
+
+        /**
          * Date effective de suppression du contenu physique.
          */
         purgedAt: {
@@ -430,6 +495,66 @@ fileSchema.pre('validate', function validateFileConsistency() {
             'La purge physique ne peut pas précéder la date de purge planifiée.',
         );
     }
+
+    if (
+        this.storageUsageReleasePending === true
+        && this.status !== FILE_STATUS.DELETED
+    ) {
+        this.invalidate(
+            'storageUsageReleasePending',
+            'La libération différée du stockage ne peut concerner qu’un fichier supprimé.',
+        );
+    }
+
+    const hasPurgeClaimedAt = this.purgeClaimedAt != null;
+    const hasPurgeClaimId = this.purgeClaimId != null;
+    const hasPurgeClaimExpiresAt = this.purgeClaimExpiresAt != null;
+    const hasAnyPurgeClaimData =
+        hasPurgeClaimedAt
+        || hasPurgeClaimId
+        || hasPurgeClaimExpiresAt;
+
+    if (hasAnyPurgeClaimData) {
+        if (this.status !== FILE_STATUS.DELETED) {
+            this.invalidate(
+                'status',
+                'Une réclamation de purge ne peut exister que sur un fichier supprimé.',
+            );
+        }
+
+        if (
+            !hasPurgeClaimedAt
+            || !hasPurgeClaimId
+            || !hasPurgeClaimExpiresAt
+        ) {
+            this.invalidate(
+                'purgeClaimId',
+                'Une réclamation de purge doit être complète.',
+            );
+        }
+
+        if (
+            this.purgeClaimedAt instanceof Date
+            && this.purgeScheduledAt instanceof Date
+            && this.purgeClaimedAt < this.purgeScheduledAt
+        ) {
+            this.invalidate(
+                'purgeClaimedAt',
+                'Un fichier ne peut pas être réclamé avant son échéance de purge.',
+            );
+        }
+
+        if (
+            this.purgeClaimExpiresAt instanceof Date
+            && this.purgeClaimedAt instanceof Date
+            && this.purgeClaimExpiresAt <= this.purgeClaimedAt
+        ) {
+            this.invalidate(
+                'purgeClaimExpiresAt',
+                'La lease de purge doit expirer après sa réclamation.',
+            );
+        }
+    }
 });
 
 
@@ -460,7 +585,7 @@ fileSchema.index({
 
 
 /**
- * Index utilisé par le futur job chargé des purges physiques.
+ * Index utilisé par le job chargé des purges physiques.
  */
 fileSchema.index(
     {
@@ -468,6 +593,23 @@ fileSchema.index(
     },
     {
         name: 'files_pending_purge',
+        partialFilterExpression: {
+            status: FILE_STATUS.DELETED,
+        },
+    },
+);
+
+
+/**
+ * Accélère la reprise des réclamations expirées sans rendre leur jeton public.
+ */
+fileSchema.index(
+    {
+        purgeClaimExpiresAt: 1,
+        purgeScheduledAt: 1,
+    },
+    {
+        name: 'files_purge_claim_recovery',
         partialFilterExpression: {
             status: FILE_STATUS.DELETED,
         },
