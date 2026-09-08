@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { FormField } from '@/components/forms/form-field';
 import { PasswordField } from '@/components/forms/password-field';
@@ -8,9 +8,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRegisterMutation } from '@/features/auth/api/auth-api';
 import { registerSchema } from '@/features/auth/validation/auth-schemas';
+import {
+  buildCommercialInvitationAuthState,
+  getCommercialInvitationTokenFromLocation,
+} from '@/features/commercial-invitation/lib/commercial-invitation';
 
 function RegisterPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const commercialInvitationToken = getCommercialInvitationTokenFromLocation(
+    location,
+  );
+  const commercialInvitationState = commercialInvitationToken
+    ? buildCommercialInvitationAuthState(commercialInvitationToken)
+    : undefined;
   const [registerAccount, { isLoading }] = useRegisterMutation();
   const {
     register,
@@ -33,7 +44,13 @@ function RegisterPage() {
   const onSubmit = async ({ confirmPassword: _confirmPassword, ...payload }) => {
     try {
       await registerAccount(payload).unwrap();
-      navigate('/login', { replace: true, state: { registrationSuccess: true } });
+      navigate('/login', {
+        replace: true,
+        state: {
+          registrationSuccess: true,
+          ...(commercialInvitationState ?? {}),
+        },
+      });
     } catch {
       setError('root.server', {
         type: 'server',
@@ -80,7 +97,13 @@ function RegisterPage() {
 
       <p className="text-center text-sm text-muted-foreground">
         Déjà un compte ?{' '}
-        <Link className="font-medium text-primary hover:underline" to="/login">Se connecter</Link>
+        <Link
+          className="font-medium text-primary hover:underline"
+          state={commercialInvitationState}
+          to="/login"
+        >
+          Se connecter
+        </Link>
       </p>
     </div>
   );
