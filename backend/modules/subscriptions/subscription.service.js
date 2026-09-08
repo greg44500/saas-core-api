@@ -40,7 +40,18 @@ const isValidDate = (value) =>
  * Crée la souscription baseline initiale d'un nouveau workspace.
  *
  * Le nom commercial et la clé technique du plan sont sans influence : seul
- * son rôle système `baseline` permet de résoudre l'offre de référence.
+ * son rôle système `baseline` permet de résoudre l'offre de référence. La
+ * création exige une session MongoDB fournie par l'appelant afin de rester
+ * atomique avec le workflow qui crée le workspace et ses autres ressources.
+ *
+ * Malgré son nom historique, cette fonction crée bien la baseline système et
+ * ne dépend pas du nom commercial « Free ».
+ *
+ * @param {object} params
+ * @param {import('mongoose').Types.ObjectId|string} params.workspaceId
+ * @param {import('mongoose').Types.ObjectId|string} params.actorId
+ * @param {import('mongoose').ClientSession} params.session Session transactionnelle obligatoire.
+ * @returns {Promise<object>} Document Subscription baseline créé.
  */
 const createFreeSubscriptionForWorkspace = async ({
     workspaceId,
@@ -95,6 +106,25 @@ const createFreeSubscriptionForWorkspace = async ({
     return subscription;
 };
 
+/**
+ * Résout le couple Subscription/Plan qui fait autorité pour un workspace.
+ *
+ * La priorité est volontairement stricte : subscription commerciale active et
+ * encore dans sa période, puis trial commercial non expiré, puis baseline
+ * active. Une subscription commerciale expirée ne doit jamais masquer la
+ * baseline de repli.
+ *
+ * Le service ne compose pas encore les dérogations ni les usages : il fournit
+ * uniquement l'autorité de catalogue sur laquelle les couches suivantes
+ * construisent l'entitlement effectif.
+ *
+ * @param {object} params
+ * @param {import('mongoose').Types.ObjectId|string} params.workspaceId
+ * @param {Date} [params.at] Instant auquel résoudre la validité commerciale.
+ * @param {import('mongoose').ClientSession} [params.session]
+ * @returns {Promise<{subscription: object, plan: object}>}
+ * Subscription retenue et plan peuplé correspondant.
+ */
 const getWorkspacePlanEntitlement = async ({
     workspaceId,
     at = new Date(),
@@ -171,6 +201,21 @@ const getWorkspacePlanEntitlement = async ({
     };
 };
 
+/**
+ * Compose l'entitlement effectif d'un workspace à un instant donné.
+ *
+ * Le plan résolu reste la base contractuelle. Les dérogations actives sont
+ * ensuite résolues séparément puis composées avec le registre de capabilities.
+ * Cette fonction ne décide pas encore si les usages réels dépassent les limites
+ * obtenues ; cette responsabilité appartient à `getWorkspaceAccessEntitlement`.
+ *
+ * @param {object} params
+ * @param {import('mongoose').Types.ObjectId|string} params.workspaceId
+ * @param {Date} [params.at] Instant de résolution des périodes et dérogations.
+ * @param {object} [params.registry] Registre de capabilities faisant autorité.
+ * @param {import('mongoose').ClientSession|null} [params.session]
+ * @returns {Promise<object>} Entitlement plan + overrides effectivement composés.
+ */
 const getWorkspaceEffectiveEntitlement = async ({
     workspaceId,
     at = new Date(),
@@ -214,6 +259,25 @@ const getWorkspaceEffectiveEntitlement = async ({
     };
 };
 
+/**
+ * Résout l'entitlement utilisable par les contrôles d'accès du workspace.
+ *
+ * Après composition du plan et des dérogations, le service compare les limites
+ * effectives aux usages réels. Un dépassement ne détruit pas l'entitlement : il
+ * place le workspace en mode `remediation` et expose les limites bloquantes ou
+ * non bloquantes afin que les middlewares et l'UI puissent appliquer le contrat
+ * d'accès prévu par le Core.
+ *
+ * Cette fonction ne remplace ni l'authentification ni le RBAC. Elle qualifie
+ * uniquement l'accès commercial/capacitaire à partir d'un workspace déjà connu.
+ *
+ * @param {object} params
+ * @param {import('mongoose').Types.ObjectId|string} params.workspaceId
+ * @param {import('mongoose').ClientSession|null} [params.session]
+ * @param {Date} [params.at] Instant de référence pour l'entitlement et les usages.
+ * @param {object} [params.registry] Registre de capabilities faisant autorité.
+ * @returns {Promise<object>} Entitlement effectif enrichi du mode d'accès.
+ */
 const getWorkspaceAccessEntitlement = async ({
     workspaceId,
     session = null,
