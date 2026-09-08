@@ -21,6 +21,15 @@ const RETENTION_CAPABILITY_SET = new Set(
     Object.values(RETENTION_CAPABILITY),
 );
 
+const RETENTION_TARGET_DEFINITION_KEYS = Object.freeze([
+    'key',
+    'label',
+    'description',
+    'action',
+    'capabilities',
+    'bounds',
+]);
+
 const RETENTION_BOUND_KEYS = Object.freeze([
     'retentionDays',
     'batchSize',
@@ -75,6 +84,17 @@ const normalizeRetentionTargetDefinition = (definition) => {
         );
     }
 
+    const unknownDefinitionKeys = Object.keys(definition).filter(
+        (definitionKey) =>
+            !RETENTION_TARGET_DEFINITION_KEYS.includes(definitionKey),
+    );
+
+    if (unknownDefinitionKeys.length > 0) {
+        throw new TypeError(
+            `Retention target definition has unknown fields: ${unknownDefinitionKeys.join(', ')}`,
+        );
+    }
+
     const {
         key,
         label,
@@ -126,6 +146,16 @@ const normalizeRetentionTargetDefinition = (definition) => {
     if (unknownCapability) {
         throw new TypeError(
             `Retention target "${key}" has an invalid capability: ${unknownCapability}`,
+        );
+    }
+
+    if (
+        !normalizedCapabilities.includes(
+            RETENTION_CAPABILITY.PREVIEW,
+        )
+    ) {
+        throw new TypeError(
+            `Retention target "${key}" must support preview`,
         );
     }
 

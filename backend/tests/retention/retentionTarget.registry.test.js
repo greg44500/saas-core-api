@@ -98,15 +98,50 @@ describe('retention target registry', () => {
         })).toThrow(/Duplicate retention target/);
     });
 
-    it('refuse une capacité ou une borne inconnue', () => {
+    it('refuse une capacité inconnue ou une cible destructive sans preview', () => {
+        const baseDefinition = {
+            key: 'invalid_target',
+            label: 'Cible invalide',
+            description: 'Définition volontairement invalide.',
+            action: RETENTION_ACTION.DELETE,
+            capabilities: [RETENTION_CAPABILITY.PREVIEW],
+            bounds: {
+                retentionDays: { min: 1, max: 100 },
+                batchSize: { min: 1, max: 10 },
+                maxBatchesPerRun: { min: 1, max: 10 },
+                scheduleIntervalMinutes: {
+                    min: 60,
+                    max: 1440,
+                },
+            },
+        };
+
+        expect(() => createRetentionTargetRegistry({
+            targets: [{
+                ...baseDefinition,
+                capabilities: ['arbitrary_query'],
+            }],
+        })).toThrow(/invalid capability/);
+
+        expect(() => createRetentionTargetRegistry({
+            targets: [{
+                ...baseDefinition,
+                capabilities: [
+                    RETENTION_CAPABILITY.MANUAL_EXECUTION,
+                ],
+            }],
+        })).toThrow(/must support preview/);
+    });
+
+    it('refuse les champs techniques arbitraires dans une définition de cible', () => {
         expect(() => createRetentionTargetRegistry({
             targets: [
                 {
-                    key: 'invalid_target',
-                    label: 'Cible invalide',
+                    key: 'unsafe_target',
+                    label: 'Cible non sûre',
                     description: 'Définition volontairement invalide.',
                     action: RETENTION_ACTION.DELETE,
-                    capabilities: ['arbitrary_query'],
+                    capabilities: [RETENTION_CAPABILITY.PREVIEW],
                     bounds: {
                         retentionDays: { min: 1, max: 100 },
                         batchSize: { min: 1, max: 10 },
@@ -116,8 +151,9 @@ describe('retention target registry', () => {
                             max: 1440,
                         },
                     },
+                    collection: 'users',
                 },
             ],
-        })).toThrow(/invalid capability/);
+        })).toThrow(/unknown fields/);
     });
 });
