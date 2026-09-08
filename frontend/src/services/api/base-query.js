@@ -6,6 +6,14 @@ import {
   sessionTerminated,
 } from '@/features/auth/store/auth-slice';
 
+/**
+ * Frontière HTTP commune de RTK Query.
+ *
+ * Le frontend conserve uniquement l'access token en mémoire Redux. Le refresh
+ * token reste sous l'autorité du backend dans un cookie HttpOnly transmis via
+ * `credentials: 'include'`. Ce module orchestre la réauthentification technique
+ * ; il ne décide d'aucune permission, entitlement ou règle métier.
+ */
 function createRawBaseQuery(baseUrl = '/api') {
   return fetchBaseQuery({
     baseUrl,
@@ -26,6 +34,22 @@ function extractAccessToken(result) {
   return result?.data?.data?.accessToken ?? null;
 }
 
+/**
+ * Construit la base query protégée contre les rafales de refresh concurrentes.
+ *
+ * Un seul appel `/auth/refresh` peut être actif à la fois. Les requêtes ayant
+ * reçu 401 attendent le mutex puis rejouent leur appel avec le nouvel access
+ * token lorsque le refresh réussit. `skipReauth` empêche explicitement qu'un
+ * endpoint technique, notamment le refresh lui-même, déclenche une récursion.
+ *
+ * Si le backend ne retourne pas de nouvel access token, la session frontend est
+ * terminée. Le backend reste l'autorité finale sur la validité des sessions et
+ * des credentials ; ce mécanisme ne transforme jamais un 401 en autorisation.
+ *
+ * @param {object} [options]
+ * @param {string} [options.baseUrl]
+ * @returns {object} Base queries et mutex partagés par la couche API.
+ */
 function createBaseQueryWithReauth({ baseUrl = '/api' } = {}) {
   const rawQuery = createRawBaseQuery(baseUrl);
   const mutex = new Mutex();
