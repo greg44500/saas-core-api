@@ -11,12 +11,6 @@ import {
 } from '../../constants/auditActions.constants.js';
 import { AppError } from '../../utils/appError.js';
 import { createAuditLog } from '../auditLog/auditLog.service.js';
-import {
-    CORE_PLAN_METRIC,
-} from '../plan/planCapability.registry.js';
-import {
-    releaseCurrentUsageMetric,
-} from '../usageMetric/releaseUsageMetric.service.js';
 import { File } from './file.model.js';
 
 const addRetentionDays = (date) => {
@@ -29,8 +23,11 @@ const addRetentionDays = (date) => {
 
 /**
  * Supprime logiquement un fichier actif sans toucher immédiatement au contenu
- * physique. Le quota fonctionnel est libéré dès la suppression logique afin
- * que cette action puisse réellement servir de remédiation.
+ * physique.
+ *
+ * Le stockage reste comptabilisé tant que le contenu existe physiquement dans
+ * la corbeille. La métrique storage_bytes n'est donc libérée qu'au moment où
+ * la purge physique est finalisée avec succès.
  */
 const deleteWorkspaceFile = async ({
     workspaceId,
@@ -73,18 +70,14 @@ const deleteWorkspaceFile = async ({
         file.deletedAt = now;
         file.deletedBy = actorId;
         file.purgeScheduledAt = addRetentionDays(now);
+        file.purgeClaimedAt = null;
+        file.purgeClaimId = null;
+        file.purgeClaimExpiresAt = null;
+        file.storageUsageReleasePending = true;
         file.purgedAt = null;
         file.updatedBy = actorId;
 
         await file.save({ session });
-
-        await releaseCurrentUsageMetric({
-            workspaceId,
-            metricKey: CORE_PLAN_METRIC.STORAGE_BYTES,
-            amount: file.sizeBytes,
-            actorId,
-            session,
-        });
 
         await createAuditLog(
             {
