@@ -43,6 +43,10 @@ const DAY_IN_MS = 24 * 60 * 60 * 1000;
  * Crée la Subscription commerciale correspondant exactement à la proposition
  * déjà vérifiée. Cette primitive n'ouvre pas de transaction : elle participe à
  * celle de l'acceptation afin qu'aucun workspace ou trial partiel ne survive.
+ *
+ * L'éligibilité au trial a déjà été lue avant le provisioning. L'écriture
+ * `recordTrialConsumption` reste toutefois dans cette primitive et son index
+ * unique constitue le garde final contre deux acceptations concurrentes.
  */
 const createAcceptedCommercialSubscription = async ({
     invitation,
@@ -64,18 +68,6 @@ const createAcceptedCommercialSubscription = async ({
         ) {
             throw new AppError(
                 'La durée du trial commercial est invalide',
-                409,
-            );
-        }
-
-        const consumed = await hasConsumedTrial({
-            emailCanonical: user.emailCanonical,
-            session,
-        });
-
-        if (consumed) {
-            throw new AppError(
-                'Cette identité a déjà consommé son trial',
                 409,
             );
         }
@@ -258,6 +250,25 @@ const acceptCommercialInvitation = async ({
             invitation,
             plan,
         });
+
+        /*
+         * Un trial déjà consommé doit être refusé avant d'engager le
+         * provisioning du tenant. L'index unique de TrialEligibility reste le
+         * dernier garde concurrentiel au moment de l'écriture effective.
+         */
+        if (invitation.offerSnapshot.trialEnabled === true) {
+            const consumed = await hasConsumedTrial({
+                emailCanonical: user.emailCanonical,
+                session,
+            });
+
+            if (consumed) {
+                throw new AppError(
+                    'Cette identité a déjà consommé son trial',
+                    409,
+                );
+            }
+        }
 
         const workspace = await createWorkspaceInSession({
             name: invitation.workspaceName,
