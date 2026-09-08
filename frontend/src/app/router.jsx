@@ -105,6 +105,15 @@ function createAppRoutes(applicationRoutes = APPLICATION_FRONTEND_ROUTES) {
             return { Component: AcceptPlatformInvitationPage };
           },
         },
+        {
+          path: 'commercial-invitations/accept',
+          lazy: async () => {
+            const { AcceptCommercialInvitationPage } = await import(
+              '@/features/commercial-invitation/pages/accept-commercial-invitation-page'
+            );
+            return { Component: AcceptCommercialInvitationPage };
+          },
+        },
       ],
     },
     {
@@ -304,6 +313,15 @@ function createAppRoutes(applicationRoutes = APPLICATION_FRONTEND_ROUTES) {
                       '@/features/platform/pages/platform-subscriptions-page'
                     );
                     return { Component: PlatformSubscriptionsPage };
+                  },
+                },
+                {
+                  path: 'commercial-invitations',
+                  lazy: async () => {
+                    const { PlatformCommercialInvitationsPage } = await import(
+                      '@/features/platform/pages/platform-commercial-invitations-page'
+                    );
+                    return { Component: PlatformCommercialInvitationsPage };
                   },
                 },
                 {
