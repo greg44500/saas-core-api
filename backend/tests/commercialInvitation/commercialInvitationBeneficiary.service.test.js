@@ -18,6 +18,18 @@ vi.mock('mongoose', () => ({
     },
 }));
 
+vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
+    createAuditLog: vi.fn(),
+}));
+
+vi.mock('../../modules/commercialInvitation/commercialInvitation.model.js', () => ({
+    CommercialInvitation: {},
+}));
+
+vi.mock('../../modules/plan/plan.model.js', () => ({
+    Plan: {},
+}));
+
 vi.mock('../../modules/users/user.model.js', () => ({
     User: {
         findOne: vi.fn(),
