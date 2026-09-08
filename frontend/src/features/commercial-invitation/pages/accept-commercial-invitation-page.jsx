@@ -79,8 +79,8 @@ function CommercialInvitationOfferSummary({ invitation }) {
 
 /**
  * Le secret est lu une seule fois depuis le fragment ou l'état React Router,
- * puis retiré de l'URL. Il reste uniquement dans l'état mémoire du parcours et
- * n'est jamais persisté dans Redux, localStorage ou sessionStorage.
+ * puis retiré de l'URL. Il circule uniquement dans l'état de navigation du
+ * parcours et n'est jamais persisté dans Redux, localStorage ou sessionStorage.
  */
 function AcceptCommercialInvitationPage() {
   const authStatus = useSelector((state) => state.auth.authStatus);
@@ -125,11 +125,14 @@ function AcceptCommercialInvitationPage() {
     );
   }
 
-  if (authStatus === 'checking' || previewState.isLoading) {
+  if (
+    authStatus === 'checking'
+    || (!previewState.data && !previewState.error)
+  ) {
     return <PageLoader />;
   }
 
-  if (previewState.error || !previewState.data) {
+  if (previewState.error) {
     return (
       <div className="space-y-5">
         <div className="space-y-2">
