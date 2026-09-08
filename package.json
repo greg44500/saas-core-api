@@ -21,6 +21,7 @@
     "seed:super-admin": "node backend/seeds/seedSuperAdmin.js",
     "seed:platform-roles": "node backend/seeds/seedPlatformRoles.js",
     "migration:subscription-kind": "node backend/migrations/runAddSubscriptionKindMigration.js",
+    "migration:subscription-term-type": "node backend/migrations/runAddSubscriptionTermTypeMigration.js",
     "migration:subscription-lifecycle-indexes": "node backend/migrations/runAddSubscriptionLifecycleIndexesMigration.js",
     "migration:operational-indexes": "node backend/migrations/runHardenOperationalIndexesMigration.js",
     "migration:subscription-read-permission": "node backend/migrations/runAddSubscriptionReadPermissionToSystemRolesMigration.js",
