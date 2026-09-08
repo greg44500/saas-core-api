@@ -18,6 +18,9 @@ import cookieParser from 'cookie-parser';
 
 import { authRouter } from './modules/auth/auth.routes.js';
 import {
+    commercialInvitationAcceptanceRouter,
+} from './modules/commercialInvitation/commercialInvitation.routes.js';
+import {
     platformRouter,
 } from './modules/platform/platform.routes.js';
 import {
@@ -52,6 +55,10 @@ app.use('/api/platform', platformRouter);
 app.use(
     '/api/platform-invitations',
     platformInvitationAcceptanceRouter,
+);
+app.use(
+    '/api/commercial-invitations',
+    commercialInvitationAcceptanceRouter,
 );
 app.use('/api/plans', planRouter);
 /*
