@@ -91,8 +91,6 @@ app.use('/platform', platformRouter);
 
 beforeEach(() => {
     authenticate.mockClear();
-    authorizePlatformPermission.mockClear();
-    validateRequest.mockClear();
     permissionMiddleware.mockClear();
     validationMiddleware.mockClear();
     createRetentionPolicyVersion.mockClear();
