@@ -49,9 +49,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const statusMessage = getLoginStatusMessage(location);
-  const commercialInvitationToken = getCommercialInvitationTokenFromLocation(
-    location,
-  );
+  const commercialInvitationToken = getCommercialInvitationTokenFromLocation();
   const [login, { isLoading }] = useLoginMutation();
   const [getPlatformContext] = useLazyGetCurrentPlatformContextQuery();
   const {
@@ -89,9 +87,6 @@ function LoginPage() {
 
     navigate(getRequestedDestination(location, platformAccess), {
       replace: true,
-      state: commercialInvitationToken
-        ? { commercialInvitationToken }
-        : undefined,
     });
   };
 
@@ -149,7 +144,7 @@ function LoginPage() {
         Pas encore de compte ?{' '}
         <Link
           className="font-medium text-primary hover:underline"
-          state={location.state}
+          state={commercialInvitationToken ? location.state : undefined}
           to="/register"
         >
           Créer un compte
