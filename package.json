@@ -14,7 +14,7 @@
     "start": "node backend/server.js",
     "test": "vitest run backend",
     "test:watch": "vitest backend",
-    "lint": "eslint .",
+    "lint": "eslint backend",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "seed:plans": "node backend/seeds/seedPlans.js",
