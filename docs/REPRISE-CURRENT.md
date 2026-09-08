@@ -60,7 +60,8 @@ Les modules métier réels ne doivent pas être développés directement dans le
 
 ```text
 D-019 moteur sécurisé de rétention / purge Core ✅ VALIDÉ
-→ D-020 invitation commerciale client / offre privée Découverte ⏭️ PROCHAIN BLOC
+→ DOC-CODE-1 normalisation de la documentation du code source ⏭️ PROCHAIN BLOC OBLIGATOIRE
+→ D-020 invitation commerciale client / offre privée Découverte
 → D-015 versionnement / provenance / migrations / release
 → D-016 Playwright / E2E Core
 → audit final architecture / sécurité / qualité
@@ -69,6 +70,8 @@ D-019 moteur sécurisé de rétention / purge Core ✅ VALIDÉ
 → clone du véritable SaaS métier
 → cadrage puis développement des modules métier
 ```
+
+`DOC-CODE-1` est un bloc de qualité transversal ajouté avant D-020. Il ne constitue pas une nouvelle fonctionnalité métier : il rétablit une exigence de maintenabilité déjà demandée mais insuffisamment appliquée dans le code source.
 
 Important :
 
@@ -128,166 +131,27 @@ D-006
 → règles juridiques / produit réelles de conservation, anonymisation ou suppression
 ```
 
-Le Core ne code aucune durée juridique universelle pour les données personnelles.
+Invariants validés à ne pas rouvrir sans bug démontré :
 
-### 5.1 Fondations et registre
-
-Architecture validée :
-
-```text
-registre code-owned
-→ targets autorisées
-→ capabilities
-→ action
-→ bornes
-→ adapters
-
-configuration persistée strictement validée
-→ uniquement les paramètres autorisés
-```
-
-Le frontend ne peut jamais fournir :
-
-- collection MongoDB arbitraire ;
-- filtre MongoDB libre ;
-- cutoff arbitraire ;
-- requête générique de suppression.
-
-Première target administrable : `AuditLog`.
-
-### 5.2 Permissions Platform
-
-Permissions validées :
-
-```text
-platform:retention:read     → SENSITIVE
-platform:retention:preview  → SENSITIVE
-platform:retention:update   → RESERVED
-platform:retention:execute  → RESERVED
-```
-
-Attribution système :
-
-```text
-Fondateur / Super administrateur
-→ read + preview + update + execute
-
-Administrateur de la Plateforme
-→ read + preview
-
-Support technique / commercial / client
-→ aucun droit par défaut
-```
-
-Les rôles personnalisés ne peuvent recevoir aucune permission `RESERVED`.
-
-### 5.3 RetentionPolicy / RetentionExecution
-
-Validé :
-
+- registre de targets et adapters code-owned ;
+- configuration persistée strictement validée ;
+- aucune collection/filter/cutoff arbitraire fourni par le frontend ;
+- première target administrable : `AuditLog` ;
+- permissions `platform:retention:read/preview/update/execute` avec `update/execute` RESERVED ;
 - policies versionnées et append-only ;
-- version courante = version la plus élevée ;
-- contrôle optimiste `expectedVersion` ;
-- configuration strictement validée ;
-- aucune durée inventée si aucune policy n'existe ;
-- `RetentionExecution` durable et indépendant des AuditLogs purgés ;
-- contexte d'exécution immuable ;
-- initiateur manuel tracé ;
-- scheduler avec initiateur système ;
-- compteurs, batches, cutoff, statut et erreurs techniques sûres conservés ;
-- aucun contenu d'AuditLog supprimé recopié dans la trace.
-
-### 5.4 Files : soft-delete, purge et quota
-
-Invariant validé :
-
-```text
-ACTIVE
-→ DELETED
-→ purge physique différée
-→ PURGED
-```
-
-Le delete utilisateur reste un soft-delete.
-
-D-002 conserve exclusivement la future corbeille fonctionnelle : listing, restauration, permissions et UX associée.
-
-Quota :
-
-```text
-storage_bytes
-= fichiers actifs + fichiers DELETED encore physiquement stockés
-```
-
-L'espace n'est libéré qu'après purge physique réussie.
-
-La purge File utilise un claim/lease atomique afin d'éviter double traitement et conflit avec une future restauration D-002.
-
-### 5.5 AuditLog, scheduler et concurrence
-
-Validé :
-
-- adapter AuditLog étroit et code-owned ;
-- éligibilité calculée côté serveur ;
-- preview serveur ;
+- `RetentionExecution` durable et indépendante des AuditLogs purgés ;
+- delete File utilisateur = soft-delete ;
+- File `DELETED` compte dans `storage_bytes` tant qu'il existe physiquement ;
+- purge File par claim/lease atomique ;
+- adapter AuditLog étroit ;
+- preview et cutoff calculés côté serveur ;
 - batches bornés ;
-- exécution idempotente ;
 - lock/lease distribué MongoDB ;
-- compatibilité multi-instance ;
-- renouvellement de lock ;
-- reprise après erreur ;
-- exécutions `RUNNING` obsolètes traitées de manière explicite ;
-- scheduler avec identité technique et sans usurpation d'un User SuperAdmin ;
-- comportement fail-closed.
+- scheduler avec identité système ;
+- comportement fail-closed ;
+- frontend Platform via RTK Query, composants partagés et `DataTable` partagé.
 
-La commande planifiée de rétention est potentiellement destructive lorsqu'une policy active existe : elle ne doit jamais être lancée comme simple test manuel.
-
-### 5.6 API Platform
-
-Routes validées sous `/api/platform/retention` :
-
-```text
-GET  /
-GET  /:targetKey
-GET  /:targetKey/executions
-POST /:targetKey/preview
-POST /:targetKey/policy-versions
-POST /:targetKey/executions
-```
-
-Aucune route générique `DELETE` n'existe.
-
-La preview et le cutoff sont calculés côté backend.
-
-La purge manuelle exige une confirmation liée à la preview et le backend revérifie version, impact et état courant avant exécution.
-
-Un conflit ou une preview obsolète produit un refus fail-closed.
-
-### 5.7 Frontend Platform
-
-Page validée :
-
-```text
-Sécurité & données
-└── Journaux d'audit
-└── Rétention & purge
-```
-
-Règles validées :
-
-- RTK Query pour l'état serveur ;
-- `useState` uniquement pour l'état UI transitoire ;
-- aucune nouvelle slice Redux dédiée ;
-- actions masquées lorsqu'elles ne sont pas autorisées ;
-- formulaires et confirmations partagés réutilisés ;
-- historique basé sur le `DataTable` partagé ;
-- aucune collection/filter/cutoff libre exposé ;
-- `409` sur état obsolète → preview invalidée et nouvelle prévisualisation nécessaire ;
-- navigation Platform groupée et cohérente avec la sidebar Workspace.
-
-### 5.8 Validation finale D-019
-
-Le 2026-09-08, l'utilisateur a confirmé :
+Validation confirmée par l'utilisateur le 2026-09-08 :
 
 ```text
 backend ciblé / sécurité      ✅
@@ -305,38 +169,262 @@ Repère frontend final confirmé :
 → verts
 ```
 
-Les principaux commits de la phase finale incluent notamment :
-
-```text
-d9eaa7d  fondations registre / validation
-75a0752  RetentionPolicy / RetentionExecution
-2fb4d71  purge File sécurisée
-07e3a24  moteur AuditLog / scheduler / lock
-64cd562  stabilisation API/read registry tests
-d087558  frontend Platform rétention
-f58c6dd  non-régression colonne Actions Équipe Platform
-b9899c9  wording UI rétention
-```
-
 D-019 ne doit plus être rouvert sauf bug démontré ou nouvelle exigence générique.
 
-### 5.9 Point documentaire à garder en tête
+### 5.1 Point documentaire encore à nettoyer
 
-`docs/DEBT.md` a été rédigé avant la clôture finale D-019 et peut encore contenir une mention historique `D-019 = PLANIFIÉ` tant qu'elle n'a pas été nettoyée dans le registre. Cette mention ne doit pas faire rouvrir D-019 : code + tests validés + `docs/contracts/RETENTION.md` + présente reprise décrivent l'état réel.
-
-Lors du prochain nettoyage documentaire du registre, D-019 doit passer à `VALIDÉ` et sortir de la liste des blockers actifs, l'historique Git conservant sa trace.
+`docs/DEBT.md` peut encore contenir une mention historique `D-019 = PLANIFIÉ`. Cette mention est obsolète et doit être alignée lors du bloc documentaire sans rouvrir la fonctionnalité.
 
 ---
 
-## 6. PROCHAIN BLOC — D-020
+# 6. PROCHAIN BLOC OBLIGATOIRE — DOC-CODE-1
+
+```text
+DOC-CODE-1 — Normalisation de la documentation du code source
+```
+
+## 6.1 Pourquoi ce bloc est nécessaire
+
+La documentation du code de production n'a pas été appliquée de manière suffisamment systématique malgré l'exigence de maintenabilité du projet.
+
+Le principe « commenter uniquement le pourquoi » reste valide, mais il a été interprété de façon trop restrictive. Il ne signifie pas qu'un fichier de production peut rester sans expliquer :
+
+- sa responsabilité ;
+- son contrat ;
+- ses invariants ;
+- ses effets de bord ;
+- ses contraintes de sécurité ;
+- les raisons non évidentes de certains choix.
+
+Pour un Core clonable, le code source doit être compréhensible par un développeur qui n'a pas participé à sa création.
+
+Constat technique actuel à revérifier depuis le HEAD :
+
+- le `package.json` racine expose `"lint": "eslint ."` ;
+- `eslint` n'est pas actuellement déclaré dans les `devDependencies` racine observées ;
+- aucune configuration ESLint versionnée n'a été identifiée lors du constat ;
+- le `frontend/package.json` ne possède pas de script lint ;
+- certaines fonctions critiques disposent de commentaires utiles, mais la couverture documentaire des fichiers de production est hétérogène.
+
+La règle documentaire doit donc devenir **explicite, canonique et vérifiable**, au même niveau que les tests, la sécurité et la réutilisabilité des composants.
+
+---
+
+## 6.2 Politique documentaire cible à figer
+
+Créer un document canonique :
+
+```text
+docs/architecture/CODE-DOCUMENTATION.md
+```
+
+Ce contrat devra établir la règle suivante :
+
+> La documentation explique responsabilité, contrat, invariants, effets de bord et raisons non évidentes. Elle ne paraphrase pas mécaniquement le code.
+
+Documentation minimale attendue par catégorie :
+
+| Type de fichier | Documentation attendue |
+|---|---|
+| Service métier | en-tête de fichier + JSDoc des fonctions publiques/majeures |
+| Model Mongoose | en-tête + invariants/contraintes non évidentes |
+| Validation Zod | en-tête + justification des règles sensibles |
+| Controller | en-tête ; JSDoc si contrat complexe |
+| Routes | en-tête précisant domaine, accès et rôle des middlewares |
+| Middleware | en-tête + contrat + sécurité |
+| Adapter / registry | en-tête + contrat d'extension |
+| Job | en-tête + effets de bord + idempotence + mode d'exécution |
+| Migration | en-tête + objectif + préconditions + idempotence/reprise |
+| RTK Query API | en-tête + responsabilité et frontière serveur |
+| Composant partagé | en-tête/JSDoc + contrat des props pertinentes |
+| Composant métier complexe | en-tête expliquant rôle et responsabilités |
+| Hook/helper réutilisable | JSDoc du contrat |
+| Page React | en-tête si orchestration métier/serveur significative |
+| Constantes triviales | documentation seulement si le sens n'est pas évident |
+| Tests critiques | en-tête léger pour les invariants de sécurité/métier importants |
+| Tests simples | noms `describe/it` suffisamment expressifs ; pas de commentaire obligatoire artificiel |
+
+Interdiction : ajouter des commentaires de faible valeur qui répètent ce que le code dit déjà.
+
+---
+
+## 6.3 JSDoc : règle cible
+
+JSDoc doit être utilisé lorsqu'il améliore réellement le contrat de maintenance, notamment pour :
+
+```text
+services métier exportés
+helpers réutilisables
+hooks
+adapters
+jobs
+migrations
+fonctions de sécurité importantes
+composants partagés
+composants métier complexes
+API techniques réutilisables
+```
+
+Le projet reste JavaScript uniquement. JSDoc doit améliorer la compréhension sans transformer le code en pseudo-TypeScript ni dupliquer inutilement chaque type évident.
+
+Les commentaires doivent prioritairement expliquer le **pourquoi** : sécurité, atomicité, fail-closed, isolation tenant, choix de quota, invariants de lifecycle, raison d'un lock, raison d'une transaction, etc.
+
+---
+
+## 6.4 Réutilisabilité et documentation sont deux gates distinctes
+
+La documentation ne remplace pas la réutilisabilité.
+
+Règle permanente :
+
+```text
+composant réutilisable pertinent
++
+documentation de son contrat
+```
+
+Les composants partagés existants restent obligatoires : `DataTable`, drawers, confirmations, formulaires, `InfoTooltip`, toasts et conventions RTK Query.
+
+Aucun composant dupliqué ne doit être créé sous prétexte de mieux le documenter.
+
+---
+
+## 6.5 Découpage recommandé de DOC-CODE-1
+
+Ne pas traiter tout le dépôt en un commit massif sans contrôle.
+
+### DOC-CODE-1.1 — politique + gate qualité
+
+- inspecter l'outillage actuel ESLint/Prettier ;
+- créer `docs/architecture/CODE-DOCUMENTATION.md` ;
+- définir les règles JSDoc réellement utiles ;
+- installer/configurer ESLint et `eslint-plugin-jsdoc` si l'audit confirme leur absence/incomplétude ;
+- ajouter des scripts lint cohérents racine/frontend ;
+- ne pas activer une règle imposant du JSDoc artificiel à chaque fonction privée ;
+- définir la future gate documentaire.
+
+### DOC-CODE-1.2 — audit et documentation backend production
+
+Priorité aux fichiers livrés/exécutés en production :
+
+```text
+config / constantes structurantes
+middlewares
+modules auth / user / workspace / RBAC
+plans / subscriptions / entitlements / trial
+files / audit logs
+platform / platform team
+retention
+jobs
+migrations
+shared techniques critiques
+```
+
+Pour chaque fichier :
+
+1. comprendre son rôle réel ;
+2. documenter la responsabilité du fichier ;
+3. documenter les contrats publics/majeurs ;
+4. commenter uniquement les invariants/raisons non évidents ;
+5. ne modifier aucune logique métier hors bug démontré.
+
+### DOC-CODE-1.3 — audit et documentation frontend production
+
+Priorité :
+
+```text
+app / router / providers
+services/api / baseQuery
+components/shared
+components/forms
+components/data-display
+features/auth
+features/workspace
+features/subscription/commercial
+features/platform
+hooks / helpers réutilisables
+layouts / navigation
+```
+
+Règles :
+
+- documenter les composants partagés et leurs props pertinentes ;
+- documenter les pages/orchestrateurs complexes ;
+- documenter les helpers et contrats RTK Query ;
+- ne pas commenter chaque `useState`, rendu JSX ou classe Tailwind évidente ;
+- ne créer aucun composant dupliqué.
+
+### DOC-CODE-1.4 — tests critiques
+
+Les tests simples n'ont pas besoin d'un JSDoc systématique.
+
+En revanche, les suites qui protègent des invariants majeurs doivent avoir un en-tête léger lorsque cela améliore la maintenance, par exemple :
+
+```text
+auth/session
+RBAC
+multi-tenant
+subscription/trial
+quota/file
+platform permissions
+retention/concurrence
+lifecycle account/workspace
+```
+
+Le nom des tests doit rester la première source de compréhension.
+
+### DOC-CODE-1.5 — validation finale
+
+Gate minimale :
+
+```text
+lint backend/frontend        ✅
+backend tests globaux        ✅
+frontend tests globaux       ✅
+build Vite                   ✅
+revue documentaire manuelle  ✅
+```
+
+La documentation ne doit provoquer aucune régression fonctionnelle.
+
+---
+
+## 6.6 Critère de clôture DOC-CODE-1
+
+DOC-CODE-1 est fermé seulement lorsque :
+
+- la politique documentaire est canonique et versionnée ;
+- la gate lint/JSDoc est réellement exécutable ;
+- les fichiers de production importants sont documentés selon leur niveau de complexité ;
+- les composants partagés ont un contrat compréhensible ;
+- les tests critiques sont suffisamment explicites ;
+- aucune documentation artificielle ne pollue le code ;
+- tests backend/frontend et build restent verts ;
+- la règle « documentation source » devient un critère permanent de chaque mini-lot futur.
+
+Nouvelle gate permanente après DOC-CODE-1 :
+
+```text
+Architecture          ✅
+Sécurité              ✅
+Validation stricte    ✅
+Réutilisabilité       ✅
+Documentation source  ✅
+Tests                 ✅
+Build                  ✅
+```
+
+---
+
+# 7. D-020 — BLOC SUIVANT APRÈS DOC-CODE-1
 
 ```text
 D-020 — Invitation commerciale client et offres privées de découverte
 ```
 
-D-020 est maintenant le prochain blocker fonctionnel Core avant D-015.
+D-020 ne doit commencer qu'après clôture de DOC-CODE-1.
 
-### 6.1 Frontière obligatoire
+## 7.1 Frontière obligatoire
 
 ```text
 PlatformInvitation
@@ -350,20 +438,7 @@ Il est interdit de réutiliser `PlatformInvitation` comme modèle métier d'invi
 
 Les primitives de sécurité peuvent être réutilisées conceptuellement : token aléatoire, hash, expiration, rotation, revoke, audit, absence de secret brut persistant.
 
-### 6.2 Cas commerciaux déjà identifiés
-
-Le Core doit pouvoir représenter notamment :
-
-```text
-Free standard
-Free personnalisé via EntitlementOverride
-Découverte commerciale temporaire
-Découverte commerciale sans échéance
-Plan privé négocié
-beta / partenaire / early adopter
-```
-
-### 6.3 Décisions déjà figées
+## 7.2 Décisions commerciales déjà figées
 
 - une offre « Découverte commerciale » peut utiliser un Plan privé `isPublic=false` ;
 - un Plan privé peut avoir un prix `0` sans devenir la baseline Free ;
@@ -377,13 +452,10 @@ beta / partenaire / early adopter
 - l'acteur commercial choisit une offre existante et ne fabrique pas arbitrairement des capabilities au moment de l'invitation ;
 - l'invitation doit être auditée : acteur, bénéficiaire, offre, raison, dates, acceptation, révocation ;
 - le Workspace doit être créé ou rattaché dans le flow d'acceptation afin d'éviter les workspaces orphelins ;
-- l'utilisateur accepté devient owner du Workspace cible selon le workflow retenu ;
 - le Super administrateur est l'autorité initiale ;
 - l'architecture doit utiliser des permissions Platform dédiées pour permettre une délégation future sans réécrire la logique métier.
 
-### 6.4 Points de cadrage encore à résoudre AVANT code
-
-Ces points ne doivent pas être improvisés pendant l'implémentation :
+## 7.3 Points à résoudre avant code D-020
 
 1. sémantique exacte d'une offre gratuite sans échéance ;
 2. relation entre CommercialInvitation, Plan privé, Subscription et Workspace ;
@@ -391,91 +463,17 @@ Ces points ne doivent pas être improvisés pendant l'implémentation :
 4. flow existing-user vs new-user ;
 5. création ou rattachement exact du Workspace à l'acceptation ;
 6. état et cycle de vie de `CommercialInvitation` ;
-7. permissions Platform dédiées (`read/create/revoke/resend` ou autre découpage à valider) ;
+7. permissions Platform dédiées ;
 8. conditions de resend/rotation/revoke ;
 9. atomicité de l'acceptation ;
 10. audit et absence de secrets ;
-11. impact sur le résolveur de Subscription qui attend aujourd'hui une `currentPeriodEnd` future pour les subscriptions commerciales actives.
+11. impact sur le résolveur de Subscription qui attend une `currentPeriodEnd` future pour les subscriptions commerciales actives.
 
 Une date artificielle lointaine telle que `2099-12-31` ne doit pas simuler un accès illimité.
 
 ---
 
-## 7. D-020 — méthode de travail recommandée
-
-La prochaine conversation doit commencer par **D-020.1 : cadrage et audit du code actuel**, pas par la création immédiate d'un modèle.
-
-Ordre recommandé :
-
-```text
-D-020.1 — audit + contrat fonctionnel/sécurité
-→ figer le flow et les invariants
-
-D-020.2 — fondations backend non destructives
-→ permissions / constantes / validation / modèle si confirmé
-
-D-020.3 — services métier / acceptation atomique
-→ existing/new user, workspace, subscription, audit
-
-D-020.4 — API Platform + sécurité invitation
-→ create/list/get/resend/revoke/accept selon contrat figé
-
-D-020.5 — frontend Platform
-→ réutilisation composants partagés / RTK Query
-
-D-020.6 — tests globaux / build / clôture documentaire
-```
-
-Le découpage exact peut être ajusté après inspection du HEAD, mais la séparation des responsabilités doit rester stricte.
-
----
-
-## 8. Fichiers / domaines prioritaires à inspecter au démarrage D-020
-
-Les chemins exacts doivent être revérifiés sur le HEAD courant.
-
-Documentation :
-
-```text
-docs/REPRISE-CURRENT.md
-docs/DEBT.md — section D-020
-docs/contracts/COMMERCIAL.md
-docs/contracts/PLATFORM-TEAM.md
-docs/contracts/CORE-CONTRACT.md
-```
-
-Backend :
-
-```text
-Plan
-Subscription
-EntitlementOverride
-Workspace
-WorkspaceMember / ownership
-User
-TrialEligibility
-PlatformPermission / PlatformRole
-PlatformInvitation et ses primitives de sécurité
-AuditLog
-mail / templates d'invitation
-transactions MongoDB existantes
-```
-
-Frontend Platform :
-
-```text
-navigation Platform
-pages Plans
-pages Subscriptions
-Dérogations
-Équipe Platform / invitations
-composants partagés : DataTable, Drawer, ConfirmationDialog, FormField, SelectField, Toast
-RTK Query base API et conventions d'erreurs
-```
-
----
-
-## 9. Règles permanentes de développement
+## 8. Règles permanentes de développement
 
 ### Backend
 
@@ -499,7 +497,8 @@ backend/modules/<domaine>/
 - entitlement / quotas si nécessaire ;
 - audit ;
 - transactions lorsque les invariants l'exigent ;
-- sécurité fail-closed.
+- sécurité fail-closed ;
+- documentation source obligatoire selon `CODE-DOCUMENTATION.md` après sa création.
 
 ### Frontend
 
@@ -525,9 +524,11 @@ Réutilisation obligatoire des composants partagés. Aucun second `DataTable`, s
 
 Les pages assemblent ; elles ne portent pas de logique métier lourde.
 
+La documentation source fait partie de la Definition of Done de tout nouveau fichier de production.
+
 ---
 
-## 10. Sécurité permanente
+## 9. Sécurité permanente
 
 Invariant :
 
@@ -548,27 +549,24 @@ Les tokens/secrets d'invitation ne doivent jamais être persistés ou exposés e
 
 ---
 
-## 11. Ce qu'il ne faut pas faire dans D-020
+## 10. Ce qu'il ne faut pas faire pendant DOC-CODE-1
 
 Ne pas :
 
-- réutiliser `PlatformInvitation` comme `CommercialInvitation` ;
-- commencer par coder avant de figer le flow commercial ;
-- créer un Workspace orphelin au moment de l'envoi ;
-- inventer une date lointaine pour simuler l'illimité ;
-- transformer un accès commercial permanent en trial sans fin ;
-- accorder dynamiquement toutes les capabilities actuelles ou futures ;
-- laisser un commercial fabriquer un Plan arbitraire lors de l'invitation ;
-- stocker le token d'invitation en clair ;
-- autoriser une acceptation non atomique laissant Subscription/Workspace/User incohérents ;
-- modifier D-002 pendant D-020 ;
-- ouvrir D-015 avant clôture D-020 ;
-- ajouter un provider de paiement réel dans D-020 ;
+- commencer D-020 avant clôture de DOC-CODE-1 ;
+- modifier la logique métier sous prétexte de documentation ;
+- ajouter des commentaires qui paraphrasent chaque ligne ;
+- imposer du JSDoc à toutes les petites fonctions privées sans valeur documentaire ;
+- transformer JavaScript + JSDoc en pseudo-TypeScript ;
+- créer de nouveaux composants dupliqués ;
+- réorganiser massivement l'architecture sans besoin démontré ;
+- modifier D-002 ;
+- ouvrir D-015 ;
 - développer des modules métier du futur SaaS dans le Core.
 
 ---
 
-## 12. Prochaine reprise exacte
+## 11. Prochaine reprise exacte
 
 La prochaine conversation doit suivre cet ordre :
 
@@ -576,19 +574,67 @@ La prochaine conversation doit suivre cet ordre :
 1. git pull
 2. vérifier le HEAD courant
 3. lire docs/REPRISE-CURRENT.md
-4. lire docs/DEBT.md — D-020
-5. lire docs/contracts/COMMERCIAL.md
-6. inspecter le code actuel Plan / Subscription / TrialEligibility / Workspace / PlatformInvitation / Platform permissions
-7. identifier les invariants déjà garantis et les éventuelles contraintes de schéma/index
-8. proposer le Gate D-020.1 complet avant toute modification
-9. résoudre explicitement les points de cadrage encore ouverts
-10. seulement après accord, découper puis implémenter le premier mini-lot backend non destructif
+4. considérer D-018 et D-019 comme VALIDÉS
+5. ne pas démarrer D-020 immédiatement
+6. inspecter package.json, frontend/package.json et tout fichier ESLint/Prettier existant
+7. auditer un échantillon représentatif backend/frontend pour mesurer l'état réel de documentation
+8. proposer et figer DOC-CODE-1.1 : politique CODE-DOCUMENTATION + stratégie ESLint/JSDoc
+9. créer la politique canonique seulement après confirmation du périmètre exact
+10. poursuivre ensuite le rattrapage backend/frontend par mini-lots contrôlés
+11. valider lint + tests backend + tests frontend + build
+12. clôturer DOC-CODE-1
+13. seulement ensuite reprendre D-020.1
 ```
 
-Ne pas recommencer D-019 et ne pas ouvrir D-015 pendant D-020.1.
+---
+
+## 12. Fichiers prioritaires à la prochaine conversation
+
+Documentation et outillage :
+
+```text
+docs/REPRISE-CURRENT.md
+docs/DEBT.md
+README.md
+docs/README.md
+package.json
+frontend/package.json
+fichiers ESLint / Prettier éventuels
+```
+
+Échantillon backend de départ à auditer :
+
+```text
+backend/modules/auth
+backend/modules/user
+backend/modules/workspace
+backend/modules/platformRole
+backend/modules/platformInvitation
+backend/modules/subscription
+backend/modules/file
+backend/modules/retention
+backend/jobs
+backend/migrations
+backend/middlewares
+```
+
+Échantillon frontend de départ à auditer :
+
+```text
+frontend/src/services/api
+frontend/src/components/shared
+frontend/src/components/forms
+frontend/src/features/auth
+frontend/src/features/workspace
+frontend/src/features/platform
+frontend/src/features/subscription
+frontend/src/app
+```
+
+Les chemins exacts doivent toujours être revérifiés depuis le HEAD courant avant modification.
 
 ---
 
 ## 13. Résumé de reprise en une phrase
 
-D-018 et D-019 sont **VALIDÉS** ; le Core possède désormais son RBAC Platform interne et un moteur générique de rétention/purge sécurisé, versionné, borné, traçable et administrable — la prochaine conversation doit démarrer **D-020.1**, en auditant le code commercial existant puis en figeant le contrat de `CommercialInvitation` et des offres privées de découverte avant toute implémentation.
+D-018 et D-019 sont **VALIDÉS** ; avant d'ouvrir D-020, le projet doit exécuter **DOC-CODE-1**, un bloc transversal obligatoire qui formalise la politique de documentation du code source, met en place une gate ESLint/JSDoc proportionnée, documente progressivement les fichiers de production backend/frontend sans paraphraser le code ni modifier la logique métier, puis valide lint, tests globaux et build avant de reprendre le cadrage de `CommercialInvitation`.
