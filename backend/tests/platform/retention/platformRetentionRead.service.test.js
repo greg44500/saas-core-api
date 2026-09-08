@@ -12,12 +12,33 @@ const {
     executionFindOneMock,
     getCurrentRetentionPolicyMock,
     lockFindOneMock,
+    retentionTargetDefinition,
 } = vi.hoisted(() => ({
     countDocumentsMock: vi.fn(),
     executionFindMock: vi.fn(),
     executionFindOneMock: vi.fn(),
     getCurrentRetentionPolicyMock: vi.fn(),
     lockFindOneMock: vi.fn(),
+    retentionTargetDefinition: Object.freeze({
+        key: 'audit_log',
+        label: 'Journaux d’audit',
+        description: 'Rétention des journaux d’audit.',
+        action: 'delete',
+        capabilities: Object.freeze([
+            'preview',
+            'scheduled_execution',
+            'manual_execution',
+        ]),
+        bounds: Object.freeze({
+            retentionDays: Object.freeze({ min: 1, max: 36_500 }),
+            batchSize: Object.freeze({ min: 1, max: 500 }),
+            maxBatchesPerRun: Object.freeze({ min: 1, max: 100 }),
+            scheduleIntervalMinutes: Object.freeze({
+                min: 60,
+                max: 525_600,
+            }),
+        }),
+    }),
 }));
 
 vi.mock('mongoose', () => ({
@@ -25,6 +46,19 @@ vi.mock('mongoose', () => ({
         trusted: (value) => value,
     },
 }));
+
+vi.mock(
+    '../../../config/applicationRetention.registry.js',
+    () => ({
+        ACTIVE_RETENTION_TARGET_REGISTRY: {
+            definitions: [retentionTargetDefinition],
+            getTargetDefinition: vi.fn((targetKey) =>
+                targetKey === retentionTargetDefinition.key
+                    ? retentionTargetDefinition
+                    : null),
+        },
+    }),
+);
 
 vi.mock(
     '../../../modules/retention/retentionExecution.model.js',
