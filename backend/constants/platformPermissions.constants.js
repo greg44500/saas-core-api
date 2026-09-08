@@ -65,6 +65,11 @@ const PLATFORM_PERMISSION = Object.freeze({
 
     AUDIT_LOGS_READ: 'platform:audit_logs:read',
 
+    RETENTION_READ: 'platform:retention:read',
+    RETENTION_PREVIEW: 'platform:retention:preview',
+    RETENTION_UPDATE: 'platform:retention:update',
+    RETENTION_EXECUTE: 'platform:retention:execute',
+
     TEAM_READ: 'platform:team:read',
     TEAM_INVITE: 'platform:team:invite',
     TEAM_INVITATION_RESEND:
