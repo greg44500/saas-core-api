@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Contrat D-020 : invitations commerciales et offres privées
 
-**Statut :** EN COURS  
+**Statut :** EN COURS — implémentation prête pour gate locale  
 **Date :** 2026-09-08  
 **Périmètre :** Core clonable
 
@@ -20,7 +20,7 @@ PlatformInvitation != CommercialInvitation != WorkspaceInvitation
 - `WorkspaceInvitation` ajoute un membre dans un workspace existant.
 - `CommercialInvitation` propose un Plan privé dans un parcours d'acquisition initiale et crée le premier workspace du bénéficiaire.
 
-`CommercialInvitation` ne cible jamais un workspace existant. Les ajustements commerciaux d'un workspace existant utilisent les mécanismes `Subscription` et `EntitlementOverride` déjà prévus.
+`CommercialInvitation` ne cible jamais un workspace existant. Les ajustements commerciaux d'un workspace existant utilisent les mécanismes `Subscription` et `EntitlementOverride`.
 
 ## 3. Bénéficiaire éligible
 
@@ -51,6 +51,14 @@ isPublic = true
 
 Un Plan privé Découverte ne doit donc jamais être envoyé au sélecteur public des plans disponibles.
 
+D-020 expose un catalogue administratif dédié :
+
+```text
+GET /api/platform/commercial-invitations/offers
+```
+
+Ce catalogue est filtré par le backend et n'utilise pas la pagination générale des Plans afin de ne pas rendre certaines offres privées invisibles par effet de limite arbitraire.
+
 Une offre privée peut être gratuite sans devenir la baseline. `EntitlementOverride` reste réservé aux exceptions individuelles et ne représente pas une offre réutilisable.
 
 ## 5. Contrats temporels Subscription
@@ -74,6 +82,8 @@ status = trialing
 trialEndsAt = date future
 currentPeriodEnd = trialEndsAt
 ```
+
+D-020 réserve le trial à une périodicité dont le tarif correspondant est strictement positif. Une périodicité gratuite ne peut donc pas être présentée comme un trial payant.
 
 ### 5.2 `open_ended`
 
@@ -148,9 +158,20 @@ Le lien email utilise :
 /commercial-invitations/accept#token=<secret>
 ```
 
-Le fragment URL n'est pas transmis au serveur HTTP par le navigateur. Le frontend doit le lire, conserver le secret uniquement le temps du parcours, puis nettoyer immédiatement l'URL avec `history.replaceState`.
+Le fragment URL n'est pas transmis au serveur HTTP par le navigateur. Le frontend le capture à l'arrivée, le place uniquement dans un vault JavaScript en mémoire vive, puis nettoie immédiatement le fragment avec `history.replaceState`.
 
-Le secret ne doit jamais être placé dans Redux persistant, localStorage, des logs ou une query string.
+Le secret ne doit jamais être placé dans :
+
+- Redux ;
+- `localStorage` ;
+- `sessionStorage` ;
+- `history.state` ;
+- une query string ;
+- les logs.
+
+Le vault runtime permet de traverser le parcours `accept -> login/register -> accept` tant que l'application n'est pas rechargée. Un rechargement complet détruit volontairement le secret et oblige à rouvrir le lien reçu par email.
+
+Le changement de compte pendant l'acceptation conserve le vault runtime, déconnecte la session courante puis retourne vers Login sans exposer le token. Le secret est effacé explicitement après acceptation réussie.
 
 ## 9. Preview publique
 
@@ -175,6 +196,8 @@ Le bénéficiaire :
 3. revient sur le parcours D-020 ;
 4. accepte avec une session authentifiée ;
 5. l'email canonical du User doit correspondre exactement à l'invitation.
+
+Si une mauvaise session est déjà ouverte, le frontend propose explicitement de changer de compte sans perdre le secret runtime. Le backend reste l'autorité finale et refuse toute discordance d'email.
 
 Le service recharge aussi le `User` dans la transaction et exige `status = active`. Une désactivation concurrente après le middleware `authenticate` ne peut donc pas créer un tenant.
 
@@ -270,26 +293,30 @@ SUBSCRIPTION_CREATED
 
 L'audit peut conserver acteur, bénéficiaire, Plan, Workspace, Subscription, motif et dates nécessaires. Il ne conserve jamais le token brut.
 
-## 16. Frontend cible
+## 16. Frontend implémenté
 
 Administration Platform :
 
 - `DataTable` partagé pour la liste ;
-- formulaires/confirmations partagés existants ;
+- drawer de création basé sur les composants partagés ;
+- confirmation de révocation réutilisable ;
 - RTK Query pour l'état serveur ;
-- sélection uniquement parmi les Plans privés exploitables ;
-- resend/revoke conditionnels selon le lifecycle ;
+- catalogue dédié des Plans privés exploitables ;
+- resend/revoke conditionnels selon lifecycle et permissions ;
+- aucun composant de tableau dupliqué ;
 - backend autorité finale.
 
 Parcours `/commercial-invitations/accept` :
 
 - extraction du token depuis le fragment URL ;
+- vault runtime uniquement ;
 - nettoyage immédiat de l'URL ;
 - preview de l'offre ;
 - orientation login/register si nécessaire ;
-- retour au parcours ;
+- retour au parcours après Auth ;
+- changement de compte possible sans persistance du secret ;
 - accept authentifié ;
-- suppression du secret local dès succès, révocation, expiration ou abandon explicite.
+- suppression du secret runtime après succès.
 
 ## 17. Relation avec D-002
 
@@ -299,12 +326,15 @@ D-002 reste un bloc séparé mais obligatoire avant la première dérivation du 
 
 ## 18. Critère de validation D-020
 
-D-020 pourra être déclaré `VALIDÉ` uniquement lorsque :
+L'implémentation D-020 est prête pour la gate locale, mais ne doit pas encore être déclarée `VALIDÉE`.
 
-- backend complet ;
+D-020 pourra passer à `VALIDÉ` uniquement lorsque :
+
 - migration `termType` et procédure opérationnelle documentées ;
 - permissions, presets et audit complets ;
 - tests métier, sécurité, concurrence et routes réellement exécutés et verts ;
-- frontend Platform et parcours d'acceptation intégrés ;
-- lint/tests/build globaux réellement validés ;
+- frontend Platform et parcours d'acceptation réellement testés ;
+- lint backend et frontend verts ;
+- tests backend et frontend globaux verts ;
+- build Vite vert ;
 - documentation canonique alignée avec le code final.
