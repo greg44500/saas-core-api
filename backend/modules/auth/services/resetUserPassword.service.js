@@ -63,7 +63,7 @@ const INVALID_PASSWORD_RESET_TOKEN_MESSAGE =
  * @param {string} input.newPassword Nouveau mot de passe validé.
  * @param {string|null} [input.ipAddress]
  * @param {string|null} [input.userAgent]
- * returns {Promise<{passwordChangedAt: Date}>}
+ * @returns {Promise<{passwordChangedAt: Date}>}
  */
 const resetUserPassword = async ({
     token,
