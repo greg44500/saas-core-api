@@ -7,10 +7,10 @@ import {
 } from 'vitest';
 
 const {
-    initMock,
+    createIndexesMock,
     updateOneMock,
 } = vi.hoisted(() => ({
-    initMock: vi.fn(),
+    createIndexesMock: vi.fn(),
     updateOneMock: vi.fn(),
 }));
 
@@ -22,7 +22,7 @@ vi.mock('../../config/applicationRetention.registry.js', () => ({
 
 vi.mock('../../modules/retention/retentionLock.model.js', () => ({
     RetentionLock: {
-        init: initMock,
+        createIndexes: createIndexesMock,
         collection: {
             updateOne: updateOneMock,
         },
@@ -40,11 +40,11 @@ import {
 
 beforeEach(() => {
     vi.clearAllMocks();
-    initMock.mockResolvedValue(undefined);
+    createIndexesMock.mockResolvedValue(undefined);
 });
 
 describe('retentionLock.service', () => {
-    it('acquiert atomiquement une target libre après initialisation des indexes', async () => {
+    it('acquiert atomiquement une target libre après création explicite des indexes', async () => {
         const now = new Date('2026-09-08T10:00:00.000Z');
         updateOneMock.mockResolvedValue({
             matchedCount: 0,
@@ -57,7 +57,7 @@ describe('retentionLock.service', () => {
             now,
         });
 
-        expect(initMock).toHaveBeenCalledOnce();
+        expect(createIndexesMock).toHaveBeenCalledOnce();
         expect(updateOneMock).toHaveBeenCalledOnce();
 
         const [filter, update, options] = updateOneMock.mock.calls[0];

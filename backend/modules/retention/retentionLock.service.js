@@ -33,6 +33,21 @@ const assertKnownTarget = (targetKey) => {
     }
 };
 
+let retentionLockIndexesReadyPromise = null;
+
+const ensureRetentionLockIndexes = () => {
+    if (!retentionLockIndexesReadyPromise) {
+        retentionLockIndexesReadyPromise = RetentionLock
+            .createIndexes()
+            .catch((error) => {
+                retentionLockIndexesReadyPromise = null;
+                throw error;
+            });
+    }
+
+    return retentionLockIndexesReadyPromise;
+};
+
 const createRetentionHolderId = (prefix = 'retention') => {
     const safePrefix = String(prefix)
         .replace(/[^a-zA-Z0-9_-]/g, '-')
@@ -55,8 +70,8 @@ const buildLease = ({ targetKey, holderId, leaseId, acquiredAt }) => ({
 /**
  * Acquisition atomique fail-closed.
  *
- * RetentionLock.init() est volontaire : la sûreté multi-instance dépend de
- * l'index unique targetKey, il doit exister avant la première acquisition.
+ * createIndexes() est volontaire : la sûreté multi-instance dépend de l'index
+ * unique targetKey même lorsque Mongoose autoIndex est désactivé.
  */
 const acquireRetentionLock = async ({
     targetKey,
@@ -67,7 +82,7 @@ const acquireRetentionLock = async ({
     assertValidHolderId(holderId);
     assertValidDate(now, 'now');
 
-    await RetentionLock.init();
+    await ensureRetentionLockIndexes();
 
     const lease = buildLease({
         targetKey,
@@ -198,6 +213,7 @@ const releaseRetentionLock = async ({
 export {
     acquireRetentionLock,
     createRetentionHolderId,
+    ensureRetentionLockIndexes,
     releaseRetentionLock,
     renewRetentionLock,
 };
