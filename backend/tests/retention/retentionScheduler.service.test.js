@@ -130,6 +130,30 @@ describe('retentionScheduler.service', () => {
         });
     });
 
+    it('retente au prochain passage après une exécution échouée', async () => {
+        getCurrentPolicyMock
+            .mockResolvedValueOnce(policy)
+            .mockResolvedValueOnce(policy);
+        findOneExecutionMock.mockReturnValue(
+            createLastExecutionQuery(null),
+        );
+
+        const result = await runScheduledRetentionTarget({
+            targetKey: 'audit_log',
+            holderId: 'worker-a',
+            now: new Date('2026-09-08T10:00:00.000Z'),
+            clock: () => new Date('2026-09-08T10:00:01.000Z'),
+        });
+
+        expect(findOneExecutionMock).toHaveBeenCalledWith({
+            policy: 'policy-id',
+            trigger: 'scheduled',
+            status: 'succeeded',
+        });
+        expect(executeWithLeaseMock).toHaveBeenCalledOnce();
+        expect(result.status).toBe('executed');
+    });
+
     it('exécute immédiatement une nouvelle policy planifiée sans historique', async () => {
         getCurrentPolicyMock
             .mockResolvedValueOnce(policy)

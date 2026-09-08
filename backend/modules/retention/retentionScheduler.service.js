@@ -2,6 +2,7 @@ import {
     ACTIVE_RETENTION_TARGET_REGISTRY,
 } from '../../config/applicationRetention.registry.js';
 import {
+    RETENTION_EXECUTION_STATUS,
     RETENTION_EXECUTION_TRIGGER,
 } from '../../constants/retention.constants.js';
 import {
@@ -117,6 +118,7 @@ const runScheduledRetentionTarget = async ({
         const lastExecution = await RetentionExecution.findOne({
             policy: normalizedPolicy._id,
             trigger: RETENTION_EXECUTION_TRIGGER.SCHEDULED,
+            status: RETENTION_EXECUTION_STATUS.SUCCEEDED,
         })
             .sort({ startedAt: -1 })
             .lean();
