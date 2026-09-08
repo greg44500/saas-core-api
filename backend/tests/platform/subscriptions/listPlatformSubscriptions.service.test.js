@@ -79,6 +79,7 @@ describe('listPlatformSubscriptions', () => {
                     name: 'Premium',
                 },
                 kind: 'commercial',
+                termType: 'fixed',
                 status: 'active',
                 currentPeriodStart,
                 currentPeriodEnd,
@@ -105,7 +106,7 @@ describe('listPlatformSubscriptions', () => {
 
         expect(Subscription.find).toHaveBeenCalledWith({});
         expect(query.select).toHaveBeenCalledWith(
-            '_id workspace plan kind status '
+            '_id workspace plan kind termType status '
             + 'currentPeriodStart currentPeriodEnd trialEndsAt '
             + 'cancelAtPeriodEnd billingInterval currency '
             + 'priceExclTaxMinor manualOverride createdAt updatedAt',
@@ -140,6 +141,7 @@ describe('listPlatformSubscriptions', () => {
                         name: 'Premium',
                     },
                     kind: 'commercial',
+                    termType: 'fixed',
                     status: 'active',
                     currentPeriodStart,
                     currentPeriodEnd,
@@ -172,6 +174,7 @@ describe('listPlatformSubscriptions', () => {
                 workspace: null,
                 plan: null,
                 kind: 'commercial',
+                termType: 'open_ended',
                 status: 'active',
                 currentPeriodStart: new Date(),
                 currentPeriodEnd: null,
@@ -195,6 +198,7 @@ describe('listPlatformSubscriptions', () => {
 
         expect(result.subscriptions[0].workspace).toBeNull();
         expect(result.subscriptions[0].plan).toBeNull();
+        expect(result.subscriptions[0].termType).toBe('open_ended');
     });
 
     it('retourne zéro page lorsque la collection est vide', async () => {
