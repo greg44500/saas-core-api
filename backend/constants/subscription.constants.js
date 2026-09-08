@@ -61,6 +61,11 @@ const SUBSCRIPTION_CANCELLATION_MODE = Object.freeze({
 
 /**
  * Types de changement de plan pouvant être programmés sur une Subscription.
+ *
+ * Le downgrade est volontairement distinct d'une annulation : il conserve
+ * une souscription commerciale et remplace son plan à l'échéance.
+ * L'upgrade immédiat dépendra du futur domaine Billing et n'est donc pas
+ * représenté comme un changement différé dans ce lot.
  */
 const SUBSCRIPTION_PLAN_CHANGE_TYPE = Object.freeze({
     DOWNGRADE: 'downgrade',
