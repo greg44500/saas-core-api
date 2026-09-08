@@ -1,6 +1,6 @@
 # SAAS-CORE-API — Contrat D-020 : invitations commerciales et offres privées
 
-**Statut :** EN COURS — implémentation prête pour gate locale  
+**Statut :** GATE AUTOMATISÉE VALIDÉE — validation manuelle finale requise  
 **Date :** 2026-09-08  
 **Périmètre :** Core clonable
 
@@ -324,17 +324,32 @@ D-020 ne modifie pas la corbeille Files.
 
 D-002 reste un bloc séparé mais obligatoire avant la première dérivation du Core. Sa restauration devra respecter D-019 : un fichier soft-deleted dont le contenu physique existe encore continue à consommer `storage_bytes`; une restauration avant purge ne réserve donc pas le stockage une seconde fois.
 
-## 18. Critère de validation D-020
+## 18. Validation D-020
 
-L'implémentation D-020 est prête pour la gate locale, mais ne doit pas encore être déclarée `VALIDÉE`.
+La gate automatisée D-020 a été exécutée localement le 2026-09-08 et confirmée verte :
 
-D-020 pourra passer à `VALIDÉ` uniquement lorsque :
+```text
+backend lint       ✅
+backend tests      ✅
+frontend lint      ✅
+frontend tests     ✅
+frontend build     ✅
+```
 
-- migration `termType` et procédure opérationnelle documentées ;
-- permissions, presets et audit complets ;
-- tests métier, sécurité, concurrence et routes réellement exécutés et verts ;
-- frontend Platform et parcours d'acceptation réellement testés ;
-- lint backend et frontend verts ;
-- tests backend et frontend globaux verts ;
-- build Vite vert ;
-- documentation canonique alignée avec le code final.
+Le contrôle global `prettier --check .` n'est pas retenu comme gate D-020 : le dépôt ne possède pas encore de configuration Prettier canonique et ce contrôle signale massivement des fichiers historiques hors périmètre. `prettier --write .` ne doit pas être utilisé pour D-020.
+
+Avant de déclarer D-020 `VALIDÉ` et d'intégrer la branche dans `main`, il reste une validation manuelle ciblée du parcours réel :
+
+- catalogue privé visible uniquement dans la console Platform ;
+- création d'une invitation ;
+- réception/usage du lien `#token` ;
+- preview ;
+- register ou login ;
+- changement de compte ;
+- acceptation ;
+- création du premier workspace ;
+- droits issus du Plan privé ;
+- état final `accepted` ;
+- pour un trial, démarrage de l'horloge à l'acceptation et aucun moyen de paiement demandé.
+
+Après cette validation manuelle, D-020 pourra passer formellement à `VALIDÉ` puis être intégré dans `main` par fast-forward.
