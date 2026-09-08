@@ -280,26 +280,29 @@ function PlatformTeamMembersSection() {
     currentUserId: currentUser?.id,
     markCurrentUser: true,
   });
+  const hasNonFounderMember = members.some((member) => !member.isFounder);
 
-  columns.push({
-    id: 'actions',
-    header: 'Actions',
-    cell: (member) => {
-      const memberName = formatPlatformTeamMemberName(member);
+  if (hasNonFounderMember) {
+    columns.push({
+      id: 'actions',
+      header: 'Actions',
+      cell: (member) => {
+        const memberName = formatPlatformTeamMemberName(member);
 
-      return (
-        <DataTableActions>
-          <ActionIconButton
-            Icon={Eye}
-            label={`Voir ${memberName}`}
-            onClick={() => setSelectedMemberId(member.id)}
-            tooltipLabel="Voir"
-            variant="outline"
-          />
-        </DataTableActions>
-      );
-    },
-  });
+        return (
+          <DataTableActions>
+            <ActionIconButton
+              Icon={Eye}
+              label={`Voir ${memberName}`}
+              onClick={() => setSelectedMemberId(member.id)}
+              tooltipLabel="Voir"
+              variant="outline"
+            />
+          </DataTableActions>
+        );
+      },
+    });
+  }
 
   const selectedMember = members.find(
     (member) => member.id === selectedMemberId,
