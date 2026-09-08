@@ -314,6 +314,15 @@ function createAppRoutes(applicationRoutes = APPLICATION_FRONTEND_ROUTES) {
                     return { Component: PlatformAuditLogsPage };
                   },
                 },
+                {
+                  path: 'retention',
+                  lazy: async () => {
+                    const { PlatformRetentionPage } = await import(
+                      '@/features/platform/pages/platform-retention-page'
+                    );
+                    return { Component: PlatformRetentionPage };
+                  },
+                },
                 ...platformRoutes,
               ],
             },
