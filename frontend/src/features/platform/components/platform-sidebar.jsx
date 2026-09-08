@@ -36,6 +36,7 @@ const PLATFORM_NAVIGATION_ICONS = Object.freeze({
   commercial: CreditCard,
   plans: Tags,
   subscriptions: CreditCard,
+  'commercial-invitations': CreditCard,
   'entitlement-overrides': SlidersHorizontal,
   'platform-team': ShieldCheck,
   team: ShieldCheck,
