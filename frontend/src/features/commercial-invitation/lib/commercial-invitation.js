@@ -13,7 +13,8 @@ function isEligibleCommercialInvitationPlan(plan) {
   }
 
   if (plan.trialEnabled === true) {
-    return true;
+    return plan.priceMonthlyExclTaxMinor > 0
+      || plan.priceYearlyExclTaxMinor > 0;
   }
 
   return plan.priceMonthlyExclTaxMinor === 0
@@ -26,10 +27,17 @@ function getCommercialInvitationBillingOptions(plan) {
   }
 
   if (plan.trialEnabled === true) {
-    return [
-      { value: 'monthly', label: 'Mensuelle' },
-      { value: 'yearly', label: 'Annuelle' },
-    ];
+    const options = [];
+
+    if (plan.priceMonthlyExclTaxMinor > 0) {
+      options.push({ value: 'monthly', label: 'Mensuelle' });
+    }
+
+    if (plan.priceYearlyExclTaxMinor > 0) {
+      options.push({ value: 'yearly', label: 'Annuelle' });
+    }
+
+    return options;
   }
 
   return [
@@ -54,12 +62,17 @@ function getCommercialInvitationTokenFromLocation(location) {
       : window.location.hash,
   );
 
-  const candidate = hashParams.get('token')
-    ?? location?.state?.commercialInvitationToken
-    ?? '';
+  const candidates = [
+    hashParams.get('token'),
+    location?.state?.commercialInvitationToken,
+  ];
 
-  const result = commercialInvitationTokenSchema.safeParse(candidate);
-  return result.success ? result.data : null;
+  for (const candidate of candidates) {
+    const result = commercialInvitationTokenSchema.safeParse(candidate ?? '');
+    if (result.success) return result.data;
+  }
+
+  return null;
 }
 
 /**
