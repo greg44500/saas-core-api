@@ -25,6 +25,7 @@ const baseApi = createApi({
     'PlatformPlanCapabilities',
     'PlatformSubscriptions',
     'PlatformCommercialInvitations',
+    'PlatformCommercialInvitationOffers',
     'PlatformEntitlementOverrides',
     'PlatformEntitlementContext',
     'PlatformAuditLogs',
