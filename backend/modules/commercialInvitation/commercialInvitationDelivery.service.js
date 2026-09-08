@@ -15,6 +15,10 @@ import {
  * Le secret brut ne vit que pendant la tentative de livraison courante. Un
  * échec SMTP ne réexpose jamais le token ; un resend explicite en générera un
  * nouveau et invalidera l'ancien.
+ *
+ * Le libellé présenté provient du snapshot de l'invitation et non du Plan
+ * courant : un simple renommage du catalogue ne doit pas modifier le contenu
+ * d'une proposition déjà envoyée.
  */
 const deliverCommercialInvitation = async ({
     invitation,
@@ -22,7 +26,9 @@ const deliverCommercialInvitation = async ({
     token,
     now = new Date(),
 }) => {
-    if (!invitation?._id || !plan?.name || !token) {
+    const planName = invitation?.offerSnapshot?.planName ?? plan?.name;
+
+    if (!invitation?._id || !planName || !token) {
         throw new TypeError(
             'invitation, plan and token are required to deliver a commercial invitation',
         );
@@ -31,7 +37,7 @@ const deliverCommercialInvitation = async ({
     const invitationUrl = buildCommercialInvitationUrl({ token });
     const email = buildCommercialInvitationEmail({
         invitationUrl,
-        planName: plan.name,
+        planName,
         workspaceName: invitation.workspaceName,
         expiresInDays: COMMERCIAL_INVITATION_TTL_DAYS,
     });
