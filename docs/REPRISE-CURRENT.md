@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse reflète l’état réel de `main`. Le code, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment.
+> Cette synthèse reflète l’état connu de `main`. Le code, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment.
 >
 > **Dernière mise à jour : 2026-09-08**
 
@@ -24,36 +24,29 @@ Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présent
 
 ---
 
-## 2. État Git et roadmap
+## 2. État courant et roadmap corrigée
 
-D-020 a été développé sur :
+D-020 a été développé puis intégré dans `main` après gate automatisée verte. La validation fonctionnelle manuelle complète reste différée.
+
+Depuis cette intégration, deux décisions produit/sécurité ont été ajoutées **avant D-015** :
 
 ```text
-feature/d020-commercial-invitations
+D-011 préférences utilisateur / apparence / affichage métier
+D-021 gate sécurité Auth / invitations / tokens temporaires
 ```
 
-La branche a été intégrée dans `main` par fast-forward après validation automatisée complète.
-
-État actuel :
+Roadmap courante :
 
 ```text
-D-020 backend + frontend implémentés
-→ backend lint/tests verts
-→ frontend lint/tests/build verts
-→ intégré dans main
-→ validation fonctionnelle manuelle complète différée
-```
-
-Roadmap :
-
-```text
-D-018 Équipe Platform / RBAC / invitations internes            ✅ VALIDÉ
-D-019 moteur sécurisé de rétention / purge Core                ✅ VALIDÉ
-DOC-CODE-1 normalisation documentation source                  ✅ VALIDÉ
-HOME-CORE accès public login/register                          🟡 vérification manuelle à reconfirmer
-D-020 invitation commerciale / offre privée découverte         🟡 INTÉGRÉ MAIN — MANUEL DIFFÉRÉ
-→ D-015 versionnement / provenance / migrations / release
-→ D-016 Playwright / E2E Core
+D-018 Équipe Platform / RBAC / invitations internes            VALIDÉ
+D-019 moteur sécurisé de rétention / purge Core                VALIDÉ
+DOC-CODE-1 normalisation documentation source                  VALIDÉ
+HOME-CORE accès public login/register                          vérification manuelle à reconfirmer
+D-020 invitation commerciale / offre privée découverte         INTÉGRÉ MAIN — MANUEL DIFFÉRÉ
+→ D-011 préférences utilisateur / apparence / dashboard        PLANIFIÉ
+→ D-021 gate sécurité Auth / invitations / tokens              PLANIFIÉ
+→ D-015 versionnement / provenance / migrations / release      PLANIFIÉ
+→ D-016 Playwright / E2E Core                                  PLANIFIÉ
 → D-002 corbeille / restauration Files                         OBLIGATOIRE AVANT PREMIÈRE DÉRIVATION
 → audit final architecture / sécurité / qualité
 → D-017 dérivation pilote + upgrade réel du Core
@@ -61,19 +54,15 @@ D-020 invitation commerciale / offre privée découverte         🟡 INTÉGRÉ 
 → première dérivation métier
 ```
 
-D-002 reste indépendant de D-020 et n’est pas implémenté.
+D-015 ne doit donc **plus** être ouvert immédiatement : D-011 puis D-021 doivent d’abord être cadrées et traitées.
 
 ---
 
-## 3. D-020 — contrat intégré
+## 3. D-020 — état intégré à conserver
 
-Contrat canonique :
+Contrat canonique : `docs/contracts/COMMERCIAL-INVITATIONS.md`.
 
-```text
-docs/contracts/COMMERCIAL-INVITATIONS.md
-```
-
-### 3.1 Frontières métier
+Frontières :
 
 ```text
 PlatformInvitation
@@ -86,131 +75,21 @@ WorkspaceInvitation
 → membre d’un workspace existant
 ```
 
-D-020 ne rattache jamais une invitation commerciale à un workspace existant.
+D-020 ne rattache jamais une invitation commerciale à un workspace existant. Les offres privées restent séparées du catalogue public. Les règles `fixed`/trial et `open_ended` gratuit durable restent celles du contrat canonique.
 
-Un compte Auth existant reste éligible uniquement s’il ne possède aucun `WorkspaceMember` `active` ou `suspended`.
-
-### 3.2 Offre privée
-
-Une invitation cible exclusivement :
-
-```text
-Plan.status = active
-Plan.isPublic = false
-Plan.systemRole = null
-```
-
-Le catalogue public utilisateur reste séparé et continue d’exiger `isPublic=true`.
-
-Endpoint administratif dédié :
-
-```text
-GET /api/platform/commercial-invitations/offers
-```
-
-### 3.3 Trial et accès gratuit durable
-
-Vrai trial :
-
-```text
-termType = fixed
-status = trialing
-billingInterval = monthly | yearly avec prix correspondant > 0
-currentPeriodEnd = trialEndsAt
-TrialEligibility consommé à l’acceptation
-```
-
-Accès privé gratuit durable :
-
-```text
-termType = open_ended
-status = active
-billingInterval = none
-priceExclTaxMinor = 0
-provider = manual
-currentPeriodEnd = null
-trialEndsAt = null
-cancelAtPeriodEnd = false
-TrialEligibility non consommé
-```
-
-Le resolver reste fail-closed : une commerciale `open_ended` incohérente retombe sur la baseline.
-
-### 3.4 Migration `termType`
-
-Commande ajoutée :
-
-```bash
-npm run migration:subscription-term-type
-```
-
-Backfill idempotent :
-
-```text
-baseline   → open_ended
-commercial → fixed
-```
-
-Précondition : `subscription-kind` déjà appliquée.
-
-Après déploiement D-020 :
-
-```bash
-npm run seed:platform-roles
-```
-
-pour resynchroniser les permissions des rôles Platform système.
-
-### 3.5 Sécurité du token
+Sécurité du secret commercial déjà implémentée :
 
 ```text
 crypto.randomBytes(32)
 → token brut envoyé uniquement au bénéficiaire
 → SHA-256 persisté
-```
-
-Lien :
-
-```text
-/commercial-invitations/accept#token=<secret>
-```
-
-Frontend :
-
-```text
-fragment capturé
+→ URL fragment #token
 → vault JavaScript runtime
-→ fragment immédiatement supprimé
-→ aucun Redux / localStorage / sessionStorage / history.state / query string
 ```
 
-Le vault permet de traverser Login/Register et de changer de compte sans exposer le secret. Un rechargement complet détruit volontairement le token et impose de rouvrir le lien email.
+Le frontend ne persiste pas ce secret dans Redux, localStorage, sessionStorage, history.state ou query string. L’acceptation est authentifiée et atomique.
 
-### 3.6 Acceptation atomique
-
-Une transaction MongoDB unique couvre :
-
-```text
-User rechargé + active
-→ invitation pending/non expirée
-→ email exact
-→ aucun membership active/suspended
-→ Plan + snapshot revalidés
-→ TrialEligibility précontrôlé si trial
-→ Workspace
-→ rôles système
-→ owner
-→ baseline
-→ quota members
-→ commerciale
-→ TrialEligibility enregistré si trial
-→ invitation accepted
-→ audits
-```
-
-`createWorkspaceInSession()` permet cette composition sans dupliquer le provisioning Workspace existant.
-
-### 3.7 Permissions Platform
+Permissions Platform :
 
 ```text
 platform:commercial_invitations:read
@@ -219,184 +98,160 @@ platform:commercial_invitations:resend
 platform:commercial_invitations:revoke
 ```
 
-### 3.8 Frontend
-
-Implémenté avec les patterns Core existants :
-
-- RTK Query pour les données serveur ;
-- `DataTable` partagé ;
-- `EntityDetailsDrawer` partagé ;
-- confirmations partagées ;
-- React Hook Form + Zod ;
-- actions masquées si permission absente ;
-- route Platform `/platform/commercial-invitations` ;
-- route bénéficiaire `/commercial-invitations/accept` ;
-- Login/Register compatibles avec le vault runtime ;
-- changement de compte avant acceptation.
+Patterns frontend : RTK Query, `DataTable` partagé, `EntityDetailsDrawer` partagé, confirmations partagées, React Hook Form + Zod, actions selon permissions.
 
 ---
 
-## 4. Gate automatisée D-020 — VALIDÉE
+## 4. Gate automatisée D-020
 
-Le 2026-09-08, la gate locale a été exécutée et confirmée verte :
-
-```text
-backend npm run lint      ✅
-backend npm test          ✅
-frontend npm run lint     ✅
-frontend npm test         ✅
-frontend npm run build    ✅
-```
-
-Les suites couvrent notamment :
-
-- validation Zod stricte ;
-- plans public / privé / baseline ;
-- catalogue administratif d’offres éligibles ;
-- trial réellement payant ;
-- offre privée gratuite durable ;
-- snapshot et dérive du Plan ;
-- bénéficiaire existant sans workspace ;
-- bénéficiaire déjà rattaché ;
-- motif administratif ;
-- token hashé / rotation / URL fragment ;
-- preview publique rate-limitée ;
-- accept authentifié ;
-- mismatch email ;
-- User désactivé ;
-- TrialEligibility ;
-- acceptation atomique et concurrence ;
-- resolver/lifecycle `open_ended` ;
-- migration `termType` ;
-- permissions/presets Platform ;
-- RTK Query ;
-- formulaire invitation ;
-- navigation Platform ;
-- vault runtime ;
-- changement de compte ;
-- acceptation frontend puis navigation vers le workspace.
-
-### 4.1 Prettier
-
-Le script racine `format:check` exécute `prettier --check .`, mais le dépôt ne possède pas encore de configuration Prettier canonique représentant ses conventions historiques.
-
-Décision :
+Le 2026-09-08, la gate locale a été confirmée verte :
 
 ```text
-prettier --write .  INTERDIT dans D-020
-format:check global NON BLOQUANT pour D-020
-normalisation Prettier = chantier outillage séparé
+backend npm run lint      OK
+backend npm test          OK
+frontend npm run lint     OK
+frontend npm test         OK
+frontend npm run build    OK
 ```
+
+Le `format:check` Prettier global reste un chantier outillage séparé : ne pas lancer `prettier --write .` sans configuration canonique décidée.
+
+Validation manuelle D-020 encore à conserver avant release finale : création invitation, email/lien, preview, register/login, changement de compte, acceptation, création du premier workspace, droits du Plan privé, état accepted, trial et offre gratuite durable.
 
 ---
 
-## 5. Validation fonctionnelle manuelle — DIFFÉRÉE
+## 5. D-011 — prochain bloc fonctionnel avant versionnement
 
-D-020 est intégré dans `main`, mais la validation manuelle complète du parcours est volontairement différée.
+**Statut : PLANIFIÉ — blocker Core 1.0 avant D-015.**
 
-Checklist à conserver pour la prochaine vérification :
+Objectif : fournir au Core un mécanisme générique de préférences utilisateur sans confondre personnalisation et autorisation.
 
-```text
-Platform → Invitations commerciales
-→ seules les offres privées compatibles sont proposées
-→ création invitation
-→ email / lien #token
-→ preview
-→ register ou login
-→ retour automatique au parcours
-→ changement de compte possible
-→ acceptation
-→ premier workspace créé
-→ droits issus du Plan privé
-→ invitation passée à accepted
-```
-
-Pour un trial :
+Deux familles obligatoires :
 
 ```text
-trial démarre à l’acceptation
-aucun moyen de paiement demandé dans ce parcours
-TrialEligibility consommé une seule fois
+Préférences de confort
+→ thème clair / sombre / système
+→ police parmi une liste contrôlée
+→ palette parmi les palettes fournies par le propriétaire du produit
+→ extensions futures d’ergonomie/accessibilité
+
+Préférences d’affichage métier
+→ choix des widgets / cartes / KPI à afficher
+→ uniquement parmi les éléments déjà accessibles
 ```
 
-Pour une offre gratuite durable :
+Invariant :
 
 ```text
-Subscription commercial = active/open_ended
-aucune TrialEligibility consommée
+Plan / entitlement effectif + permissions
+→ ensemble accessible
+
+ensemble accessible + préférences utilisateur
+→ ensemble visible
 ```
 
-Cette validation manuelle devra être réalisée avant de considérer D-020 comme fonctionnellement clôturé pour une release finale du Core.
+Une préférence ne crée jamais une permission, un entitlement ou une feature. Un KPI/widget inaccessible n’est pas proposé dans les préférences.
+
+Le cadrage D-011 doit déterminer avant code :
+
+- modèle/persistance serveur versus préférences purement locales ;
+- validation Zod stricte et valeurs autorisées ;
+- contrat extensible pour les modules métier ;
+- registre des widgets/KPI ;
+- fallbacks si police/palette/widget disparaît ;
+- intégration design system sans styles arbitraires dans les composants ;
+- composants réutilisables de la page Préférences ;
+- tests backend/frontend et non-escalade entitlement/RBAC.
+
+Le Core ne doit pas devenir un constructeur libre de dashboard en V1. Priorité à afficher/masquer et éventuellement ordonner après cadrage.
 
 ---
 
-## 6. D-002 — gate avant première dérivation
+## 6. D-021 — gate sécurité Auth / invitations / tokens avant versionnement
 
-Décision figée :
+**Statut : PLANIFIÉ — blocker Core 1.0 avant D-015.**
+
+D-021 doit commencer par un **audit de l’existant**. Ne pas recréer des mécanismes déjà corrects.
+
+### 6.1 Invitations
+
+Auditer :
 
 ```text
-aucune première dérivation métier du Core
-avant validation de D-002
+WorkspaceInvitation
+PlatformInvitation
+CommercialInvitation
 ```
 
-D-002 reste séparé de D-020. Voir `docs/DEBT.md`.
+Politique cible : expiration par défaut de **7 jours**, vérifiée serveur, token à usage unique, révocable, rotation au resend, replay refusé et consommation atomique. Le resend doit créer un nouveau secret plutôt que prolonger l’ancien.
 
-Invariant D-019 à préserver : un fichier soft-deleted continue à consommer `storage_bytes` tant que le contenu physique existe ; une restauration avant purge ne réserve donc pas ce stockage une seconde fois.
+À vérifier : génération cryptographique, hash lorsque pertinent, absence de fuite logs/URL persistante, expiration, révocation, concurrence, audit et tests.
+
+### 6.2 Forgot / reset password
+
+Politique cible :
+
+```text
+reset token
+→ expiration 15 minutes
+→ usage unique
+→ nouvelle demande obligatoire après expiration
+```
+
+À auditer : token fort/hashé, expiration serveur, consommation atomique, anti-replay, réponse uniforme anti-enumeration, rate limiting, notification après changement et politique d’invalidation des sessions après reset.
+
+### 6.3 Rate limiting et anti-bot
+
+Auditer au minimum : `register`, `login`, `forgot-password`, preview/acceptation d’invitations et endpoints Auth sensibles.
+
+Le CAPTCHA ne doit pas être ajouté systématiquement au login. Il reste une défense complémentaire/adaptative en cas d’abus automatisé, échecs répétés ou besoin produit démontré. L’inscription publique doit être protégée contre création massive de comptes/trials ; `forgot-password` contre le mail bombing.
+
+### 6.4 Google SSO
+
+Décision : **Google SSO reste D-010, non bloquant pour Core 1.0 et D-015.**
+
+Il ne doit pas être ajouté dans D-021. Son futur cadrage devra traiter OIDC/OAuth, liaison avec compte local, collision d’email, révocation et séparation identité externe / autorisations internes.
 
 ---
 
-## 7. Dettes et contrôles différés à conserver
+## 7. D-002 — gate avant première dérivation
 
-### 7.1 Dette UI — icônes de navigation
+Aucune première dérivation métier avant validation D-002.
 
-**À traiter ultérieurement — non bloquant pour la reprise immédiate.**
-
-> Modifier les icônes de la navigation pour ne pas avoir deux ou trois fois les mêmes.
-
-Constat actuel : certaines entrées de navigation utilisent visuellement la même icône ou des icônes trop proches, notamment dans le groupe **Offre commerciale** (`Plans`, `Abonnements`, `Invitations commerciales`).
-
-Objectif UX :
-
-```text
-une entrée fonctionnelle importante
-→ une icône identifiable et sémantiquement cohérente
-→ éviter les répétitions qui réduisent la lisibilité de la navigation
-```
-
-Cette dette est purement frontend/UX : elle ne doit entraîner aucune modification des permissions, routes, contrats API ou règles métier.
-
-### 7.2 Dette outillage — Prettier global
-
-Le contrôle Prettier global reste à cadrer dans un chantier d’outillage séparé. Ne pas lancer `prettier --write .` tant qu’une configuration canonique du dépôt n’a pas été décidée.
-
-### 7.3 Contrôles manuels différés
-
-Restent à reconfirmer avant release finale du Core :
-
-- parcours fonctionnel D-020 complet ;
-- HOME-CORE login/register public ;
-- cohérence visuelle globale de la navigation après traitement de la dette d’icônes.
+Invariant D-019 : un fichier soft-deleted continue à consommer `storage_bytes` tant que son contenu physique existe ; une restauration avant purge ne réserve pas ce stockage une seconde fois.
 
 ---
 
-## 8. Prochaine reprise de travail
+## 8. Dettes/contrôles différés à conserver
 
-Le prochain bloc à ouvrir dans une nouvelle discussion est :
+- UI navigation : différencier les icônes répétitives sans modifier permissions/routes/API.
+- Prettier global : chantier outillage séparé ; pas de `prettier --write .` global avant convention canonique.
+- D-020 : validation fonctionnelle manuelle complète.
+- HOME-CORE : login/register public à reconfirmer manuellement.
+- D-010 : Google SSO/MFA/passkeys/SSO avancé restent conditionnels et non blockers v1.0.
+
+---
+
+## 9. Prochaine reprise de travail
+
+Le prochain bloc à ouvrir dans une nouvelle conversation est désormais :
 
 ```text
-D-015 — Versionnement, provenance, releases et discipline de migration du Core
+D-011 — Préférences utilisateur, apparence et affichage métier
 ```
 
-Objectif de la prochaine discussion : **cadrer D-015 avant de modifier le code**, puis seulement implémenter un lot cohérent.
-
-Ordre attendu :
+### Méthode obligatoire
 
 1. relire `docs/REPRISE-CURRENT.md` ;
-2. relire la section D-015 de `docs/DEBT.md` ;
-3. inspecter le dépôt réel (`package.json`, migrations, documentation d’exploitation, éventuels scripts de version/release) ;
-4. définir le contrat de versionnement du Core : SemVer, provenance, changelog/release notes, migrations, ordre pre/post-deploy, rollback et identification du commit/version Core dans un SaaS dérivé ;
-5. proposer un plan d’implémentation D-015 avant tout changement ;
-6. conserver D-020 manuel comme contrôle différé ;
-7. ne pas ouvrir D-002 dans D-015 — D-002 reste un bloc séparé mais obligatoire avant D-017 et avant toute première dérivation métier.
+2. relire D-011, D-021 et l’ordre de traitement dans `docs/DEBT.md` ;
+3. inspecter le code réel avant de proposer une architecture ;
+4. identifier les mécanismes déjà présents pour thème, préférences, User, design tokens, dashboard, entitlements et permissions ;
+5. **ne rien coder immédiatement** : produire d’abord un état des lieux et un contrat D-011 ;
+6. distinguer strictement préférences de confort et préférences métier ;
+7. ne jamais transformer une préférence en mécanisme d’autorisation ;
+8. préserver les composants réutilisables existants et le design system ;
+9. proposer le lot backend/frontend/tests avant implémentation ;
+10. après validation D-011, ouvrir D-021 ;
+11. seulement après D-021, reprendre D-015 versionnement.
 
-Aucune nouvelle fonctionnalité métier ne doit être ajoutée pendant D-015.
+Aucune nouvelle fonctionnalité métier ne doit être mélangée à D-011 ou D-021.
