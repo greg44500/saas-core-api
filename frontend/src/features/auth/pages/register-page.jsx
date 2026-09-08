@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { FormField } from '@/components/forms/form-field';
 import { PasswordField } from '@/components/forms/password-field';
@@ -15,7 +15,6 @@ import {
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const commercialInvitationToken = getCommercialInvitationTokenFromLocation();
   const commercialInvitationState = commercialInvitationToken
     ? buildCommercialInvitationAuthState()
