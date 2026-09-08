@@ -93,6 +93,27 @@ describe('commercialInvitation.service offer contract', () => {
         })).not.toThrow();
     });
 
+    it('refuse un intervalle gratuit pour un vrai trial', () => {
+        const plan = buildPrivatePlan({
+            trialEnabled: true,
+            trialDurationDays: 14,
+            priceMonthlyExclTaxMinor: 0,
+            priceYearlyExclTaxMinor: 79000,
+        });
+
+        expect(() => assertCommercialInvitationPlan({
+            plan,
+            billingInterval: BILLING_INTERVAL.MONTHLY,
+        })).toThrow(
+            'Un trial commercial doit cibler une périodicité payante',
+        );
+
+        expect(() => assertCommercialInvitationPlan({
+            plan,
+            billingInterval: BILLING_INTERVAL.YEARLY,
+        })).not.toThrow();
+    });
+
     it('normalise features et limits dans le snapshot', () => {
         const snapshot = buildOfferSnapshot({
             plan: buildPrivatePlan(),
