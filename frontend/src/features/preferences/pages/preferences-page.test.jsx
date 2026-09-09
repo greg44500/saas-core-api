@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PreferencesPage } from '@/features/preferences/pages/preferences-page';
 
+const applyComfortPreferences = vi.hoisted(() => vi.fn());
 const toast = vi.fn();
 const updatePreferences = vi.fn();
 const preferencesQuery = {
@@ -20,6 +21,18 @@ const preferencesQuery = {
   isLoading: false,
   refetch: vi.fn(),
 };
+
+vi.mock('@/components/shared/theme-provider', () => ({
+  useTheme: () => ({
+    applyComfortPreferences,
+    comfortPreferences: {
+      theme: 'dark',
+      fontFamily: 'geist',
+      paletteId: 'core',
+      accessibilityMode: 'standard',
+    },
+  }),
+}));
 
 vi.mock('@/components/shared/toast-provider', () => ({
   useToast: () => ({ toast }),
@@ -72,6 +85,29 @@ describe('PreferencesPage', () => {
       .toBeInTheDocument();
   });
 
+  it('prévisualise une palette puis restaure la préférence sauvegardée sans validation', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<PreferencesPage />);
+
+    await user.click(screen.getByRole('button', { name: 'Core Atlantique' }));
+
+    expect(applyComfortPreferences).toHaveBeenLastCalledWith({
+      theme: 'dark',
+      fontFamily: 'geist',
+      paletteId: 'core',
+      accessibilityMode: 'standard',
+    }, { persistLocal: false });
+
+    unmount();
+
+    expect(applyComfortPreferences).toHaveBeenLastCalledWith({
+      theme: 'system',
+      fontFamily: 'inter',
+      paletteId: 'core',
+      accessibilityMode: 'standard',
+    }, { persistLocal: false });
+  });
+
   it('enregistre uniquement des préférences de confort contrôlées', async () => {
     const user = userEvent.setup();
     render(<PreferencesPage />);
@@ -93,6 +129,12 @@ describe('PreferencesPage', () => {
         accessibilityMode: 'enhanced',
       },
     });
+    expect(applyComfortPreferences).toHaveBeenLastCalledWith({
+      theme: 'dark',
+      fontFamily: 'manrope',
+      paletteId: 'core',
+      accessibilityMode: 'enhanced',
+    }, { persistLocal: false });
   });
 
   it('utilise le skeleton partagé lors du chargement initial', () => {
