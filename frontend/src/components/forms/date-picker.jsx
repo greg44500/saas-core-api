@@ -321,7 +321,7 @@ function DatePicker({
   }
 
   function handleDayKeyDown(event, dayValue) {
-    let nextValue = null;
+    let nextValue;
 
     switch (event.key) {
       case 'ArrowLeft':
