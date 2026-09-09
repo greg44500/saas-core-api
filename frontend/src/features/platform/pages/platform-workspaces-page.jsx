@@ -15,6 +15,7 @@ import {
   useReactivatePlatformWorkspaceMutation,
   useSuspendPlatformWorkspaceMutation,
 } from '@/features/platform/api/platform-workspaces-api';
+import { PlatformTablePageSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PlatformWorkspaceDetailsDrawer } from '@/features/platform/components/platform-workspace-details-drawer';
 import {
   PLATFORM_WORKSPACE_STATUS_REASON,
@@ -138,8 +139,8 @@ function PlatformWorkspacesPage() {
     }
   }
 
-  if (workspacesQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Chargement des workspaces…</p>;
+  if (workspacesQuery.isLoading || (workspacesQuery.isFetching && workspacesQuery.data === undefined)) {
+    return <PlatformTablePageSkeleton columns={6} />;
   }
 
   if (workspacesQuery.error) {
