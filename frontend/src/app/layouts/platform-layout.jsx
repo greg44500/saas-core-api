@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router';
 
-import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { UserMenu } from '@/features/auth/components/user-menu';
 import { PlatformSidebar } from '@/features/platform/components/platform-sidebar';
 
@@ -21,7 +20,6 @@ function PlatformLayout() {
             <p className="font-semibold">Console d’administration globale</p>
 
             <div className="flex items-center gap-2">
-              <ThemeToggle />
               <UserMenu />
             </div>
           </div>
