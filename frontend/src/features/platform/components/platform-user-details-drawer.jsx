@@ -1,4 +1,5 @@
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import { EntityDetailsSkeleton } from '@/components/shared/entity-details-skeleton';
 import { Button } from '@/components/ui/button';
 import {
   formatPlatformUserDate,
@@ -27,6 +28,7 @@ function PlatformUserDetailsDrawer({
 }) {
   const isSelf = Boolean(user?.id && user.id === currentUserId);
   const title = user ? formatPlatformUserName(user) : 'Détails utilisateur';
+  const isInitialLoading = isLoading && !user;
 
   return (
     <EntityDetailsDrawer
@@ -35,11 +37,15 @@ function PlatformUserDetailsDrawer({
       open={open}
       title={title}
     >
-      {isLoading && (
-        <p className="text-sm text-muted-foreground">Chargement des détails…</p>
+      {isInitialLoading && (
+        <EntityDetailsSkeleton
+          label="Chargement des détails de l’utilisateur…"
+          rowsPerSection={[7, 6]}
+          sections={2}
+        />
       )}
 
-      {!isLoading && error && (
+      {!user && !isInitialLoading && error && (
         <div className="space-y-3">
           <p className="text-sm text-destructive" role="alert">
             Impossible de charger les détails de cet utilisateur.
@@ -50,7 +56,7 @@ function PlatformUserDetailsDrawer({
         </div>
       )}
 
-      {!isLoading && !error && user && (
+      {user && (
         <div className="space-y-6">
           <section>
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
