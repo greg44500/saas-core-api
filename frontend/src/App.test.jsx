@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router';
 
 import App from '@/App';
 import { ThemeProvider } from '@/components/shared/theme-provider';
+import { getComfortStorageKey } from '@/lib/appearance-preferences';
 import { createAppStore } from '@/store/store';
 
 function renderApp(storageScope = 'test-user') {
@@ -20,6 +21,14 @@ function renderApp(storageScope = 'test-user') {
       </MemoryRouter>
     </Provider>,
   );
+}
+
+function readStoredComfortPreferences(storageScope) {
+  const storedValue = window.localStorage.getItem(
+    getComfortStorageKey(storageScope),
+  );
+
+  return storedValue ? JSON.parse(storedValue) : null;
 }
 
 describe('App public landing', () => {
@@ -68,7 +77,9 @@ describe('App public landing', () => {
     await user.click(themeToggle);
 
     expect(document.documentElement).toHaveClass('dark');
-    expect(window.localStorage.getItem('saas-core:theme:user-1')).toBe('dark');
+    expect(readStoredComfortPreferences('user-1')).toMatchObject({
+      theme: 'dark',
+    });
 
     firstRender.unmount();
     document.documentElement.classList.remove('dark');
@@ -89,7 +100,9 @@ describe('App public landing', () => {
       screen.getByRole('button', { name: 'Activer le thème sombre' }),
     );
 
-    expect(window.localStorage.getItem('saas-core:theme:user-1')).toBe('dark');
+    expect(readStoredComfortPreferences('user-1')).toMatchObject({
+      theme: 'dark',
+    });
 
     firstRender.unmount();
     document.documentElement.classList.remove('dark');
@@ -97,6 +110,9 @@ describe('App public landing', () => {
     renderApp('user-2');
 
     expect(document.documentElement).not.toHaveClass('dark');
-    expect(window.localStorage.getItem('saas-core:theme:user-2')).toBe('light');
+    expect(readStoredComfortPreferences('user-2')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Activer le thème sombre' }),
+    ).toBeInTheDocument();
   });
 });
