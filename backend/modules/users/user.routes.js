@@ -8,7 +8,12 @@ import {
     updateMe,
 } from './user.controller.js';
 import {
+    getMyPreferences,
+    updateMyPreferences,
+} from './userPreferences.controller.js';
+import {
     requestCurrentUserClosureSchema,
+    updateCurrentUserPreferencesSchema,
     updateCurrentUserProfileSchema,
 } from './user.validation.js';
 
@@ -19,6 +24,19 @@ userRouter.patch(
     authenticate,
     validateRequest({ body: updateCurrentUserProfileSchema }),
     updateMe,
+);
+
+userRouter.get(
+    '/me/preferences',
+    authenticate,
+    getMyPreferences,
+);
+
+userRouter.patch(
+    '/me/preferences',
+    authenticate,
+    validateRequest({ body: updateCurrentUserPreferencesSchema }),
+    updateMyPreferences,
 );
 
 userRouter.get(
