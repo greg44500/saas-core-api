@@ -1,18 +1,24 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router';
 
 import App from '@/App';
 import { ThemeProvider } from '@/components/shared/theme-provider';
+import { createAppStore } from '@/store/store';
 
 function renderApp(storageScope = 'test-user') {
+  const store = createAppStore();
+
   return render(
-    <MemoryRouter>
-      <ThemeProvider storageScope={storageScope}>
-        <App />
-      </ThemeProvider>
-    </MemoryRouter>,
+    <Provider store={store}>
+      <MemoryRouter>
+        <ThemeProvider storageScope={storageScope}>
+          <App />
+        </ThemeProvider>
+      </MemoryRouter>
+    </Provider>,
   );
 }
 
