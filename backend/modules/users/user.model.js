@@ -2,13 +2,15 @@
 
 import mongoose from 'mongoose';
 
+import {
+    ACTIVE_APPEARANCE_PALETTE_IDS,
+} from '../../config/applicationAppearance.registry.js';
 import { PLATFORM_ROLE } from '../../constants/platformRoles.constants.js';
 import { USER_STATUS } from '../../constants/userStatus.constants.js';
 import {
     DEFAULT_USER_COMFORT_PREFERENCES,
     USER_ACCESSIBILITY_MODE,
     USER_FONT_FAMILY,
-    USER_PALETTE,
     USER_THEME,
 } from './userPreferences.constants.js';
 
@@ -28,7 +30,7 @@ const userComfortPreferencesSchema = new mongoose.Schema(
         },
         paletteId: {
             type: String,
-            enum: Object.values(USER_PALETTE),
+            enum: ACTIVE_APPEARANCE_PALETTE_IDS,
             default: DEFAULT_USER_COMFORT_PREFERENCES.paletteId,
             required: true,
         },
