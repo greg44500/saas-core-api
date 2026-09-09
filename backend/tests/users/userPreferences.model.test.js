@@ -26,20 +26,23 @@ describe('User comfort preferences model', () => {
         );
     });
 
-    it('accepte uniquement les identifiants de préférence déclarés', async () => {
-        const user = createUser({
-            preferences: {
-                comfort: {
-                    theme: 'dark',
-                    fontFamily: 'system',
-                    paletteId: 'core',
-                    accessibilityMode: 'enhanced',
+    it.each(['inter', 'geist', 'manrope', 'system'])(
+        'accepte la police contrôlée %s',
+        async (fontFamily) => {
+            const user = createUser({
+                preferences: {
+                    comfort: {
+                        theme: 'dark',
+                        fontFamily,
+                        paletteId: 'core',
+                        accessibilityMode: 'enhanced',
+                    },
                 },
-            },
-        });
+            });
 
-        await expect(user.validate()).resolves.toBeUndefined();
-    });
+            await expect(user.validate()).resolves.toBeUndefined();
+        },
+    );
 
     it('refuse une palette arbitraire', async () => {
         const user = createUser({
