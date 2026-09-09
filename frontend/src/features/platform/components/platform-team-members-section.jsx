@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
+import { DataTableSkeleton } from '@/components/data-display/data-table-skeleton';
 import { SelectField } from '@/components/forms/select-field';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
@@ -195,11 +196,14 @@ function PlatformTeamMembersSection() {
     }
   }
 
-  if (membersQuery.isLoading) {
+  const isInitialMembersLoading = membersQuery.isLoading
+    || (membersQuery.isFetching && membersQuery.data === undefined);
+
+  if (isInitialMembersLoading) {
     return (
-      <p className="mt-5 text-sm text-muted-foreground">
-        Chargement des membres…
-      </p>
+      <div className="mt-5 overflow-hidden rounded-lg border border-border">
+        <DataTableSkeleton columns={5} rows={5} />
+      </div>
     );
   }
 
