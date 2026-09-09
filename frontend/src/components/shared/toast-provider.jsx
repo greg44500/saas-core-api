@@ -155,7 +155,7 @@ function ToastProvider({ children }) {
       {children}
       <div
         aria-label="Notifications"
-        className="pointer-events-none fixed right-4 top-4 z-[100] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3"
+        className="pointer-events-none fixed right-4 top-4 z-[var(--layer-toast)] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3"
       >
         {toasts.map((currentToast) => (
           <ToastItem
