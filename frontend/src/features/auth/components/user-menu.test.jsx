@@ -23,6 +23,7 @@ function renderUserMenu(initialPath = '/workspaces/workspace-1/dashboard') {
     [
       { path: '/workspaces/:workspaceId/dashboard', Component: UserMenu },
       { path: '/account/profile', Component: () => <h1>Profil cible</h1> },
+      { path: '/account/preferences', Component: () => <h1>Préférences cible</h1> },
       { path: '/account/security', Component: () => <h1>Sécurité cible</h1> },
       { path: '/platform/overview', Component: UserMenu },
       { path: '/platform/users', Component: UserMenu },
@@ -89,6 +90,7 @@ describe('UserMenu', () => {
     expect(screen.getByText('Greg Martin')).toBeInTheDocument();
     expect(screen.getByText('greg@example.com')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Profil' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Préférences' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Sécurité' })).toBeEnabled();
     expect(screen.queryByText('Fondateur')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Console d’administration' })).not.toBeInTheDocument();
@@ -163,6 +165,20 @@ describe('UserMenu', () => {
 
     expect(await screen.findByRole('heading', { name: 'Profil cible' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/account/profile');
+    expect(router.state.location.state).toEqual({
+      accountReturnTo: '/workspaces/workspace-1/dashboard',
+    });
+  });
+
+  it('ouvre les préférences en mémorisant la page d’origine', async () => {
+    const user = userEvent.setup();
+    const router = renderUserMenu();
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' }));
+    await user.click(screen.getByRole('button', { name: 'Préférences' }));
+
+    expect(await screen.findByRole('heading', { name: 'Préférences cible' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/account/preferences');
     expect(router.state.location.state).toEqual({
       accountReturnTo: '/workspaces/workspace-1/dashboard',
     });
