@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PalettePicker } from '@/features/preferences/components/palette-picker';
 
 describe('PalettePicker', () => {
-  it('présente la palette sous forme visuelle et conserve une sélection explicite', async () => {
+  it('présente quatre palettes visuelles compactes avec une sélection explicite', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
 
@@ -16,12 +16,20 @@ describe('PalettePicker', () => {
       />,
     );
 
-    const paletteButton = screen.getByRole('button', { name: 'Core Atlantique' });
+    const paletteButtons = [
+      screen.getByRole('button', { name: 'Core Atlantique' }),
+      screen.getByRole('button', { name: 'Refreshing Summer Fun' }),
+      screen.getByRole('button', { name: 'Leafy Green Garden' }),
+      screen.getByRole('button', { name: 'Golden Peachy Glow' }),
+    ];
 
-    expect(paletteButton).toHaveAttribute('aria-pressed', 'true');
-    expect(paletteButton.querySelectorAll('[style]')).toHaveLength(5);
+    expect(paletteButtons).toHaveLength(4);
+    paletteButtons.forEach((button) => {
+      expect(button.querySelectorAll('[style]')).toHaveLength(5);
+    });
+    expect(paletteButtons[0]).toHaveAttribute('aria-pressed', 'true');
 
-    await user.click(paletteButton);
-    expect(onChange).toHaveBeenCalledWith('core');
+    await user.click(paletteButtons[2]);
+    expect(onChange).toHaveBeenCalledWith('leafy-green-garden');
   });
 });
