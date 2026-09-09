@@ -1,0 +1,67 @@
+import { describe, expect, it } from 'vitest';
+
+import { User } from '../../modules/users/user.model.js';
+import {
+    DEFAULT_USER_COMFORT_PREFERENCES,
+} from '../../modules/users/userPreferences.constants.js';
+
+function createUser(overrides = {}) {
+    return new User({
+        firstName: 'Greg',
+        lastName: 'Ballat',
+        email: 'greg@example.com',
+        emailCanonical: 'greg@example.com',
+        ...overrides,
+    });
+}
+
+describe('User comfort preferences model', () => {
+    it('applique des valeurs par défaut contrôlées aux nouveaux utilisateurs', async () => {
+        const user = createUser();
+
+        await user.validate();
+
+        expect(user.preferences.comfort.toObject()).toEqual(
+            DEFAULT_USER_COMFORT_PREFERENCES,
+        );
+    });
+
+    it('accepte uniquement les identifiants de préférence déclarés', async () => {
+        const user = createUser({
+            preferences: {
+                comfort: {
+                    theme: 'dark',
+                    fontFamily: 'system',
+                    paletteId: 'core',
+                    accessibilityMode: 'enhanced',
+                },
+            },
+        });
+
+        await expect(user.validate()).resolves.toBeUndefined();
+    });
+
+    it('refuse une palette arbitraire', async () => {
+        const user = createUser({
+            preferences: {
+                comfort: {
+                    paletteId: '#ff0000',
+                },
+            },
+        });
+
+        await expect(user.validate()).rejects.toThrow();
+    });
+
+    it('refuse un thème hors contrat', async () => {
+        const user = createUser({
+            preferences: {
+                comfort: {
+                    theme: 'sepia',
+                },
+            },
+        });
+
+        await expect(user.validate()).rejects.toThrow();
+    });
+});
