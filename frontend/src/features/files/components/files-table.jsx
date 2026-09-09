@@ -90,6 +90,7 @@ function FilesTable({ canDelete, downloadingFileId, files, onDelete, onDownload 
 
   return (
     <DataTable
+      caption="Fichiers actifs du workspace"
       columns={columns}
       data={files}
       getRowKey={(file) => file.id}
