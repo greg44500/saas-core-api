@@ -52,6 +52,28 @@ describe('PlatformSidebar', () => {
     expect(screen.getByText('Rétention & purge')).toBeInTheDocument();
   });
 
+  it('reste ancrée au viewport et fait défiler sa navigation en mode déployé', () => {
+    renderSidebar();
+
+    expect(screen.getByRole('complementary')).toHaveClass(
+      'sticky',
+      'top-0',
+      'h-svh',
+      'self-start',
+    );
+    expect(
+      screen.getByRole('navigation', { name: 'Navigation de la plateforme' }),
+    ).toHaveClass('min-h-0', 'overflow-y-auto', 'overflow-x-hidden');
+  });
+
+  it('préserve les flyouts hors du cadre en mode réduit', () => {
+    renderSidebar({ collapsed: true });
+
+    expect(
+      screen.getByRole('navigation', { name: 'Navigation de la plateforme' }),
+    ).toHaveClass('overflow-visible');
+  });
+
   it('ouvre le groupe de la route active et ne garde qu’un accordéon ouvert', async () => {
     const user = userEvent.setup();
     renderSidebar({ path: '/platform/retention' });
