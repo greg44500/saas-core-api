@@ -2,6 +2,7 @@ import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
 
+import { APPLICATION_IDENTITY } from '@/app/application-identity';
 import { Tooltip } from '@/components/shared/tooltip';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
@@ -275,8 +276,10 @@ function WorkspaceSidebar({
               collapsed ? 'opacity-0' : 'opacity-100',
             )}
           >
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Workspace</p>
-            <p className="truncate font-semibold text-card-foreground">{workspace.name}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Application</p>
+            <p className="truncate font-semibold text-card-foreground">
+              {APPLICATION_IDENTITY.name}
+            </p>
           </div>
         </div>
         <Button
