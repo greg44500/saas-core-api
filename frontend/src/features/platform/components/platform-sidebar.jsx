@@ -214,11 +214,11 @@ function PlatformSidebar({ collapsed, onToggle }) {
   return (
     <aside
       className={cn(
-        'hidden min-h-screen shrink-0 overflow-visible border-r border-border bg-card transition-[width] duration-300 ease-in-out md:flex md:flex-col',
+        'sticky top-0 hidden h-svh shrink-0 self-start overflow-visible border-r border-border bg-card transition-[width] duration-300 ease-in-out md:flex md:flex-col',
         collapsed ? 'w-20' : 'w-64',
       )}
     >
-      <div className="flex h-16 items-center border-b border-border px-4">
+      <div className="flex h-16 shrink-0 items-center border-b border-border px-4">
         <div className="min-w-0 flex-1 overflow-hidden">
           <p
             aria-hidden={collapsed}
@@ -246,7 +246,13 @@ function PlatformSidebar({ collapsed, onToggle }) {
         </Button>
       </div>
 
-      <nav aria-label="Navigation de la plateforme" className="flex-1 space-y-1 overflow-visible p-3">
+      <nav
+        aria-label="Navigation de la plateforme"
+        className={cn(
+          'min-h-0 flex-1 space-y-1 p-3',
+          collapsed ? 'overflow-visible' : 'overflow-y-auto overflow-x-hidden',
+        )}
+      >
         {visibleNavigation.map((entry) => (
           entry.type === 'group' ? (
             <PlatformNavigationGroup
