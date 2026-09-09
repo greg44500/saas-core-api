@@ -39,7 +39,53 @@ describe('DatePicker', () => {
     expect(onChange).toHaveBeenCalledWith('2026-09-02');
   });
 
-  it('présente le calendrier et ses libellés en français', async () => {
+  it('associe une erreur de saisie au champ', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <DatePicker
+        aria-label="Date du test"
+        id="test-date"
+        onChange={vi.fn()}
+        value=""
+      />,
+    );
+
+    const input = screen.getByLabelText('Date du test');
+    await user.type(input, '31/02/2026');
+    await user.tab();
+
+    const error = screen.getByRole('alert');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input).toHaveAttribute('aria-describedby', error.id);
+  });
+
+  it('ouvre le calendrier sur la date sélectionnée avec des libellés français', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <DatePicker
+        aria-label="Date du test"
+        id="test-date"
+        onChange={vi.fn()}
+        value="2026-09-02"
+      />,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Ouvrir le calendrier' });
+    await user.click(trigger);
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('dialog', { name: 'septembre 2026' })).toBeInTheDocument();
+    expect(screen.getByText('lun.')).toBeInTheDocument();
+
+    const selectedDay = screen.getByRole('button', { name: /mercredi 2 septembre 2026/i });
+    expect(selectedDay).toHaveAttribute('aria-pressed', 'true');
+    expect(selectedDay).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Aujourd’hui' })).toBeInTheDocument();
+  });
+
+  it('permet de naviguer entre les jours au clavier et de fermer avec Escape', async () => {
     const user = userEvent.setup();
 
     render(
@@ -52,11 +98,12 @@ describe('DatePicker', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Ouvrir le calendrier' }));
+    await user.keyboard('{ArrowRight}');
 
-    expect(screen.getByRole('dialog', { name: 'Calendrier' })).toBeInTheDocument();
-    expect(screen.getByText('septembre 2026')).toBeInTheDocument();
-    expect(screen.getByText('lun.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /mercredi 2 septembre 2026/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Aujourd’hui' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /jeudi 3 septembre 2026/i })).toHaveFocus();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ouvrir le calendrier' })).toHaveFocus();
   });
 });
