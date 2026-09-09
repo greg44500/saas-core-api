@@ -7,6 +7,10 @@ import {
   formatWorkspaceStatus,
 } from '@/features/workspace/lib/workspace-presentation';
 
+function isInitialQueryLoading(query) {
+  return query.isLoading || (query.isFetching && query.data === undefined);
+}
+
 function WorkspaceDashboardPage() {
   const {
     workspace,
@@ -23,6 +27,13 @@ function WorkspaceDashboardPage() {
     activity.query.refetch();
     activity.metadataQuery.refetch();
   }
+
+  const membersLoading = isInitialQueryLoading(members.query);
+  const invitationsLoading = isInitialQueryLoading(invitations.query);
+  const filesLoading = isInitialQueryLoading(files.query);
+  const subscriptionLoading = isInitialQueryLoading(subscription.query);
+  const activityLoading = isInitialQueryLoading(activity.query)
+    || isInitialQueryLoading(activity.metadataQuery);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -52,7 +63,7 @@ function WorkspaceDashboardPage() {
             description="Membres actuellement visibles dans le workspace."
             href={`/workspaces/${workspace.id}/members`}
             isError={members.query.isError}
-            isLoading={members.query.isLoading}
+            isLoading={membersLoading}
             label="Membres"
             value={formatDashboardCount(members.total)}
           />
@@ -63,7 +74,7 @@ function WorkspaceDashboardPage() {
             description="Invitations encore en attente de réponse."
             href={`/workspaces/${workspace.id}/members`}
             isError={invitations.query.isError}
-            isLoading={invitations.query.isLoading}
+            isLoading={invitationsLoading}
             label="Invitations en attente"
             value={formatDashboardCount(invitations.total)}
           />
@@ -74,7 +85,7 @@ function WorkspaceDashboardPage() {
             description="Fichiers actifs accessibles dans le workspace."
             href={`/workspaces/${workspace.id}/files`}
             isError={files.query.isError}
-            isLoading={files.query.isLoading}
+            isLoading={filesLoading}
             label="Fichiers actifs"
             value={formatDashboardCount(files.total)}
           />
@@ -83,7 +94,7 @@ function WorkspaceDashboardPage() {
         {permissions.canReadSubscription && (
           <DashboardSubscriptionSummary
             isError={subscription.query.isError}
-            isLoading={subscription.query.isLoading}
+            isLoading={subscriptionLoading}
             subscription={subscription.data}
             workspaceId={workspace.id}
           />
@@ -94,7 +105,7 @@ function WorkspaceDashboardPage() {
         <DashboardRecentActivity
           entries={activity.entries}
           isError={activity.query.isError}
-          isLoading={activity.query.isLoading || activity.metadataQuery.isLoading}
+          isLoading={activityLoading}
           metadata={activity.metadata}
           onRetry={retryActivity}
           workspaceId={workspace.id}
@@ -104,4 +115,4 @@ function WorkspaceDashboardPage() {
   );
 }
 
-export { WorkspaceDashboardPage };
+export { WorkspaceDashboardPage, isInitialQueryLoading };
