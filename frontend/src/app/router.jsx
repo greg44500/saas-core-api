@@ -132,6 +132,15 @@ function createAppRoutes(applicationRoutes = APPLICATION_FRONTEND_ROUTES) {
               },
             },
             {
+              path: 'preferences',
+              lazy: async () => {
+                const { PreferencesPage } = await import(
+                  '@/features/preferences/pages/preferences-page'
+                );
+                return { Component: PreferencesPage };
+              },
+            },
+            {
               path: 'security',
               lazy: async () => {
                 const { SecurityPage } = await import('@/features/account/pages/security-page');
