@@ -18,6 +18,7 @@ import {
   useUpdatePlatformSubscriptionMutation,
 } from '@/features/platform/api/platform-subscriptions-api';
 import { useListPlatformWorkspacesQuery } from '@/features/platform/api/platform-workspaces-api';
+import { PlatformTablePageSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PlatformSubscriptionDetailsDrawer } from '@/features/platform/components/platform-subscription-details-drawer';
 import { PlatformSubscriptionEditForm } from '@/features/platform/components/platform-subscription-edit-form';
 import { PlatformSubscriptionGrantTrialForm } from '@/features/platform/components/platform-subscription-grant-trial-form';
@@ -127,8 +128,8 @@ function PlatformSubscriptionsPage() {
     }
   }
 
-  if (listQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Chargement des souscriptions…</p>;
+  if (listQuery.isLoading || (listQuery.isFetching && listQuery.data === undefined)) {
+    return <PlatformTablePageSkeleton columns={7} showAction />;
   }
 
   if (listQuery.error) {
