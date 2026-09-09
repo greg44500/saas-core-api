@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
+import { DataTableSkeleton } from '@/components/data-display/data-table-skeleton';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { DrawerViewTransition } from '@/components/shared/drawer-view-transition';
 import {
@@ -186,6 +187,8 @@ function PlatformEntitlementOverridesDrilldownContent({
       ),
     },
   ];
+  const initialListLoading = listQuery.isLoading
+    || (listQuery.isFetching && listQuery.data === undefined);
 
   const drawerTitle = view === VIEW.EDIT
     ? 'Modifier la dérogation'
@@ -227,11 +230,13 @@ function PlatformEntitlementOverridesDrilldownContent({
 
           {view === VIEW.LIST && (
             <div className="space-y-5">
-              {listQuery.isLoading && (
-                <p className="text-sm text-muted-foreground">Chargement des dérogations…</p>
+              {initialListLoading && (
+                <div className="overflow-hidden rounded-lg border border-border">
+                  <DataTableSkeleton columns={columns.length} rows={5} />
+                </div>
               )}
 
-              {listQuery.error && (
+              {listQuery.error && !initialListLoading && (
                 <div className="space-y-3">
                   <p className="text-sm text-destructive" role="alert">
                     Impossible de charger les dérogations.
@@ -242,13 +247,13 @@ function PlatformEntitlementOverridesDrilldownContent({
                 </div>
               )}
 
-              {!listQuery.isLoading && !listQuery.error && overrides.length === 0 && (
+              {!initialListLoading && !listQuery.error && overrides.length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   Aucune dérogation ne correspond plus à ce statut.
                 </p>
               )}
 
-              {!listQuery.isLoading && !listQuery.error && overrides.length > 0 && (
+              {!initialListLoading && !listQuery.error && overrides.length > 0 && (
                 <DataTable
                   columns={columns}
                   data={overrides}
@@ -258,17 +263,21 @@ function PlatformEntitlementOverridesDrilldownContent({
                 />
               )}
 
-              <DataPagination
-                disabled={listQuery.isFetching}
-                onPageChange={setPage}
-                page={page}
-                pagination={listQuery.data?.pagination}
-              />
+              {!initialListLoading && (
+                <DataPagination
+                  disabled={listQuery.isFetching}
+                  onPageChange={setPage}
+                  page={page}
+                  pagination={listQuery.data?.pagination}
+                />
+              )}
 
-              <Button onClick={viewAll} type="button" variant="outline">
-                Voir toutes les dérogations
-                <ExternalLink aria-hidden="true" />
-              </Button>
+              {!initialListLoading && (
+                <Button onClick={viewAll} type="button" variant="outline">
+                  Voir toutes les dérogations
+                  <ExternalLink aria-hidden="true" />
+                </Button>
+              )}
             </div>
           )}
 
