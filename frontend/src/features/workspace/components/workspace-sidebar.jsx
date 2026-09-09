@@ -2,6 +2,7 @@ import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
 
+import { Tooltip } from '@/components/shared/tooltip';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 import { cn } from '@/lib/utils';
@@ -46,23 +47,6 @@ function SidebarLabel({ collapsed, children }) {
   );
 }
 
-function SidebarTooltip({ collapsed, label }) {
-  if (!collapsed) return null;
-
-  /*
-   * Le lien/bouton porte déjà un aria-label en mode réduit. Cette bulle reste
-   * donc purement visuelle pour éviter une seconde annonce du même libellé.
-   */
-  return (
-    <span
-      aria-hidden="true"
-      className="pointer-events-none absolute left-full top-1/2 z-[var(--layer-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs font-medium text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
-    >
-      {label}
-    </span>
-  );
-}
-
 function isNavigationItemActive({ item, pathname, workspaceId }) {
   const target = `/workspaces/${workspaceId}/${item.path}`;
   return pathname === target || pathname.startsWith(`${target}/`);
@@ -85,8 +69,7 @@ function WorkspaceNavigationLink({
   workspaceId,
 }) {
   const { Icon } = item;
-
-  return (
+  const link = (
     <NavLink
       aria-label={collapsed ? item.label : undefined}
       className={({ isActive }) => cn(
@@ -101,8 +84,15 @@ function WorkspaceNavigationLink({
     >
       <Icon aria-hidden="true" className="size-4 shrink-0" />
       <SidebarLabel collapsed={collapsed}>{item.label}</SidebarLabel>
-      <SidebarTooltip collapsed={collapsed} label={item.label} />
     </NavLink>
+  );
+
+  if (!collapsed) return link;
+
+  return (
+    <Tooltip content={item.label} side="right" wrapperClassName="flex w-full">
+      {link}
+    </Tooltip>
   );
 }
 
@@ -132,6 +122,36 @@ function WorkspaceNavigationGroup({
     onGroupToggle(group.id);
   }
 
+  const trigger = (
+    <button
+      aria-controls={collapsed ? flyoutId : undefined}
+      aria-expanded={collapsed ? flyoutOpen : expanded}
+      aria-label={collapsed ? group.label : undefined}
+      className={cn(
+        NAV_ITEM_CLASS,
+        'justify-start',
+        active
+          ? 'text-foreground'
+          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+      )}
+      onClick={toggleGroup}
+      ref={triggerRef}
+      type="button"
+    >
+      <Icon aria-hidden="true" className="size-4 shrink-0" />
+      <SidebarLabel collapsed={collapsed}>{group.label}</SidebarLabel>
+      {!collapsed && (
+        <ChevronDown
+          aria-hidden="true"
+          className={cn(
+            'ml-auto size-4 shrink-0 transition-transform duration-200',
+            expanded && 'rotate-180',
+          )}
+        />
+      )}
+    </button>
+  );
+
   return (
     <div
       className="relative"
@@ -148,34 +168,11 @@ function WorkspaceNavigationGroup({
         }
       }}
     >
-      <button
-        aria-controls={collapsed ? flyoutId : undefined}
-        aria-expanded={collapsed ? flyoutOpen : expanded}
-        aria-label={collapsed ? group.label : undefined}
-        className={cn(
-          NAV_ITEM_CLASS,
-          'justify-start',
-          active
-            ? 'text-foreground'
-            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-        )}
-        onClick={toggleGroup}
-        ref={triggerRef}
-        type="button"
-      >
-        <Icon aria-hidden="true" className="size-4 shrink-0" />
-        <SidebarLabel collapsed={collapsed}>{group.label}</SidebarLabel>
-        {!collapsed && (
-          <ChevronDown
-            aria-hidden="true"
-            className={cn(
-              'ml-auto size-4 shrink-0 transition-transform duration-200',
-              expanded && 'rotate-180',
-            )}
-          />
-        )}
-        <SidebarTooltip collapsed={collapsed} label={group.label} />
-      </button>
+      {collapsed ? (
+        <Tooltip content={group.label} side="right" wrapperClassName="flex w-full">
+          {trigger}
+        </Tooltip>
+      ) : trigger}
 
       {!collapsed && (
         <div
@@ -327,7 +324,6 @@ function WorkspaceSidebar({
 
 export {
   SidebarLabel,
-  SidebarTooltip,
   WorkspaceNavigationGroup,
   WorkspaceNavigationLink,
   WorkspaceSidebar,
