@@ -63,4 +63,18 @@ describe('Tooltip', () => {
     await user.hover(button);
     expect(tooltip).toHaveClass('pointer-events-auto');
   });
+
+  it('propose un positionnement latéral réutilisable sans dupliquer la mécanique', () => {
+    render(
+      <Tooltip content="Navigation" side="right" wrapperClassName="flex w-full">
+        <button type="button">Section</button>
+      </Tooltip>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Section' });
+    const tooltip = screen.getByRole('tooltip', { hidden: true });
+
+    expect(button.parentElement).toHaveClass('flex', 'w-full');
+    expect(tooltip).toHaveClass('left-full', 'top-1/2', 'ml-3', '-translate-y-1/2');
+  });
 });
