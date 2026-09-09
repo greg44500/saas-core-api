@@ -44,6 +44,23 @@ describe('User comfort preferences model', () => {
         },
     );
 
+    it.each([
+        'core',
+        'refreshing-summer-fun',
+        'leafy-green-garden',
+        'golden-peachy-glow',
+    ])('accepte la palette Core contrôlée %s', async (paletteId) => {
+        const user = createUser({
+            preferences: {
+                comfort: {
+                    paletteId,
+                },
+            },
+        });
+
+        await expect(user.validate()).resolves.toBeUndefined();
+    });
+
     it('refuse une palette arbitraire', async () => {
         const user = createUser({
             preferences: {
