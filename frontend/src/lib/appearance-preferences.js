@@ -10,6 +10,8 @@ const APPEARANCE_THEME = Object.freeze({
 
 const APPEARANCE_FONT_FAMILY = Object.freeze({
   INTER: 'inter',
+  GEIST: 'geist',
+  MANROPE: 'manrope',
   SYSTEM: 'system',
 });
 
