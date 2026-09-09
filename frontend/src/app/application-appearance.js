@@ -2,26 +2,49 @@ const CORE_APPEARANCE_PALETTES = Object.freeze([
   Object.freeze({
     id: 'core',
     label: 'Core Atlantique',
+    previewColors: Object.freeze([
+      '#137C8B',
+      '#709CA7',
+      '#B8CBD0',
+      '#7A90A4',
+      '#344D59',
+    ]),
   }),
 ]);
 
 const APPEARANCE_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+const APPEARANCE_PREVIEW_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
 /**
  * Point de composition des palettes réellement intégrées dans le produit.
  *
- * Un module dérivé peut fournir `palettes: [{ id, label }]`. Le même `id`
- * doit être déclaré côté backend et disposer de ses tokens CSS via
+ * Un module dérivé fournit `palettes: [{ id, label, previewColors }]`. Le même
+ * `id` doit être déclaré côté backend et disposer de ses tokens CSS via
  * `:root[data-palette="<id>"]` et, si nécessaire, sa variante `.dark`.
+ * `previewColors` reste une métadonnée frontend contrôlée destinée uniquement
+ * à représenter visuellement la palette dans les préférences.
  */
 const APPLICATION_APPEARANCE_MODULES = Object.freeze([]);
+
+function isValidPreviewColors(previewColors) {
+  return Array.isArray(previewColors)
+    && previewColors.length >= 3
+    && previewColors.length <= 6
+    && previewColors.every((color) => (
+      typeof color === 'string'
+      && APPEARANCE_PREVIEW_COLOR_PATTERN.test(color)
+    ));
+}
 
 function composeApplicationPalettes(modules = []) {
   if (!Array.isArray(modules)) {
     throw new TypeError('modules must be an array');
   }
 
-  const palettes = CORE_APPEARANCE_PALETTES.map((palette) => ({ ...palette }));
+  const palettes = CORE_APPEARANCE_PALETTES.map((palette) => ({
+    ...palette,
+    previewColors: [...palette.previewColors],
+  }));
 
   modules.forEach((moduleDefinition, moduleIndex) => {
     if (
@@ -48,6 +71,7 @@ function composeApplicationPalettes(modules = []) {
         || !APPEARANCE_ID_PATTERN.test(palette.id)
         || typeof palette.label !== 'string'
         || !palette.label.trim()
+        || !isValidPreviewColors(palette.previewColors)
       ) {
         throw new TypeError('Invalid appearance palette descriptor');
       }
@@ -59,12 +83,16 @@ function composeApplicationPalettes(modules = []) {
       palettes.push({
         id: palette.id,
         label: palette.label.trim(),
+        previewColors: [...palette.previewColors],
       });
     });
   });
 
   return Object.freeze(
-    palettes.map((palette) => Object.freeze({ ...palette })),
+    palettes.map((palette) => Object.freeze({
+      ...palette,
+      previewColors: Object.freeze([...palette.previewColors]),
+    })),
   );
 }
 
