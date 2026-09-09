@@ -15,12 +15,18 @@ function resolveClassName(className, row, rowIndex) {
  * Les features ne fournissent que leurs données et la définition métier des
  * colonnes afin d'éviter de recréer des tableaux légèrement différents.
  *
+ * Une feature peut nommer le tableau avec `caption`, `aria-label` ou
+ * `aria-labelledby`. Le caption reste visuellement masqué par défaut afin de
+ * ne pas imposer un doublon de titre dans les layouts existants.
+ *
  * @param {object} props
  * @param {Array<object>} props.columns
  * @param {Array<object>} props.data
  * @param {(row: object, rowIndex: number) => string | number} props.getRowKey
  * @param {'default' | 'compact'} [props.density]
  * @param {boolean} [props.scrollable]
+ * @param {string} [props.caption]
+ * @param {string} [props.captionClassName]
  * @param {string} [props.tableClassName]
  * @param {string} [props.headerClassName]
  * @param {string | ((row: object, rowIndex: number) => string)} [props.rowClassName]
@@ -31,9 +37,13 @@ function DataTable({
   getRowKey,
   density = 'default',
   scrollable = true,
+  caption,
+  captionClassName = 'sr-only',
   tableClassName = '',
   headerClassName = 'bg-muted/50 text-muted-foreground',
   rowClassName = '',
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
 }) {
   const headerCellClassName = density === 'compact'
     ? DATA_TABLE_STYLES.compactHeaderCell
@@ -44,7 +54,12 @@ function DataTable({
 
   return (
     <div className={scrollable ? 'overflow-x-auto' : 'overflow-x-hidden'}>
-      <table className={`w-full text-left text-sm ${tableClassName}`.trim()}>
+      <table
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        className={`w-full text-left text-sm ${tableClassName}`.trim()}
+      >
+        {caption && <caption className={captionClassName}>{caption}</caption>}
         <thead className={headerClassName}>
           <tr>
             {columns.map((column) => (
