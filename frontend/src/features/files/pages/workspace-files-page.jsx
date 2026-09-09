@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Upload } from 'lucide-react';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
+import { DataTableSkeleton } from '@/components/data-display/data-table-skeleton';
+import { EmptyState } from '@/components/shared/empty-state';
+import { ErrorState } from '@/components/shared/error-state';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -55,6 +58,14 @@ function WorkspaceFilesPage() {
   });
   const [downloadWorkspaceFile] = useDownloadWorkspaceFileMutation();
   const [deleteWorkspaceFile, deleteState] = useDeleteWorkspaceFileMutation();
+
+  const files = filesQuery.data?.files ?? [];
+  const pagination = filesQuery.data?.pagination;
+  const totalFiles = pagination?.total ?? files.length;
+  const hasFilters = Boolean(category || searchInput.trim());
+  const canUpload = can(WORKSPACE_PERMISSION.FILE_UPLOAD)
+    && hasFeature(WORKSPACE_FEATURE.FILE_UPLOAD);
+  const canDelete = can(WORKSPACE_PERMISSION.FILE_DELETE);
 
   async function handleDownload(file) {
     setDownloadingFileId(file.id);
@@ -130,32 +141,6 @@ function WorkspaceFilesPage() {
     setPage(1);
   }
 
-  if (filesQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Chargement des fichiers…</p>;
-  }
-
-  if (filesQuery.error) {
-    return (
-      <section className="space-y-3">
-        <h1 className="text-2xl font-semibold">Fichiers</h1>
-        <p className="text-sm text-destructive">
-          Impossible de charger les fichiers du workspace.
-        </p>
-        <Button type="button" variant="outline" onClick={filesQuery.refetch}>
-          Réessayer
-        </Button>
-      </section>
-    );
-  }
-
-  const files = filesQuery.data?.files ?? [];
-  const pagination = filesQuery.data?.pagination;
-  const totalFiles = pagination?.total ?? files.length;
-  const hasFilters = Boolean(category || searchInput.trim());
-  const canUpload = can(WORKSPACE_PERMISSION.FILE_UPLOAD)
-    && hasFeature(WORKSPACE_FEATURE.FILE_UPLOAD);
-  const canDelete = can(WORKSPACE_PERMISSION.FILE_DELETE);
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -181,48 +166,64 @@ function WorkspaceFilesPage() {
         <div className="flex items-center justify-between gap-4 border-b border-border p-5">
           <div>
             <h2 className="text-lg font-semibold">Fichiers actifs</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {totalFiles} fichier{totalFiles === 1 ? '' : 's'}
-            </p>
+            {!filesQuery.isLoading && !filesQuery.isError && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {totalFiles} fichier{totalFiles === 1 ? '' : 's'}
+              </p>
+            )}
           </div>
         </div>
 
-        <FileListFilters
-          category={category}
-          onCategoryChange={handleCategoryChange}
-          onClear={clearFilters}
-          onSearchChange={setSearchInput}
-          search={searchInput}
-        />
-
-        {files.length === 0 ? (
-          <div className="p-5">
-            <p className="text-sm font-medium">
-              {hasFilters ? 'Aucun fichier ne correspond aux filtres' : 'Aucun fichier actif'}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {hasFilters
-                ? 'Modifiez ou effacez les filtres pour élargir la recherche.'
-                : 'Aucun fichier n’est actuellement disponible dans ce workspace.'}
-            </p>
-          </div>
+        {filesQuery.isLoading ? (
+          <DataTableSkeleton columns={5} rows={6} />
+        ) : filesQuery.isError ? (
+          <ErrorState
+            description="La liste des fichiers du workspace n’a pas pu être chargée."
+            onRetry={filesQuery.refetch}
+            title="Fichiers indisponibles"
+          />
         ) : (
-          <FilesTable
-            canDelete={canDelete}
-            downloadingFileId={downloadingFileId}
-            files={files}
-            onDelete={openDeleteDialog}
-            onDownload={handleDownload}
-          />
-        )}
+          <>
+            <FileListFilters
+              category={category}
+              onCategoryChange={handleCategoryChange}
+              onClear={clearFilters}
+              onSearchChange={setSearchInput}
+              search={searchInput}
+            />
 
-        <div className="px-5 pb-5">
-          <DataPagination
-            page={page}
-            pagination={pagination}
-            onPageChange={setPage}
-          />
-        </div>
+            {files.length === 0 ? (
+              <EmptyState
+                description={
+                  hasFilters
+                    ? 'Modifiez ou effacez les filtres pour élargir la recherche.'
+                    : 'Aucun fichier n’est actuellement disponible dans ce workspace.'
+                }
+                title={
+                  hasFilters
+                    ? 'Aucun fichier ne correspond aux filtres'
+                    : 'Aucun fichier actif'
+                }
+              />
+            ) : (
+              <FilesTable
+                canDelete={canDelete}
+                downloadingFileId={downloadingFileId}
+                files={files}
+                onDelete={openDeleteDialog}
+                onDownload={handleDownload}
+              />
+            )}
+
+            <div className="px-5 pb-5">
+              <DataPagination
+                page={page}
+                pagination={pagination}
+                onPageChange={setPage}
+              />
+            </div>
+          </>
+        )}
       </section>
 
       {canUpload && (
