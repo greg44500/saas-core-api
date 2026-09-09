@@ -39,6 +39,22 @@ describe('DatePicker', () => {
     expect(onChange).toHaveBeenCalledWith('2026-09-02');
   });
 
+  it('génère un identifiant stable pour le champ lorsque id est omis', () => {
+    render(
+      <DatePicker
+        aria-label="Date générée"
+        onChange={vi.fn()}
+        value=""
+      />,
+    );
+
+    const input = screen.getByLabelText('Date générée');
+    const trigger = screen.getByRole('button', { name: 'Ouvrir le calendrier' });
+
+    expect(input.id).not.toBe('');
+    expect(trigger).toHaveAttribute('aria-controls', `${input.id}-calendar`);
+  });
+
   it('associe une erreur de saisie au champ', async () => {
     const user = userEvent.setup();
 
