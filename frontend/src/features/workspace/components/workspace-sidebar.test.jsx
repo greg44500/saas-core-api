@@ -65,6 +65,31 @@ describe('WorkspaceSidebar', () => {
     expect(screen.queryByRole('button', { name: 'Compte & offre' })).not.toBeInTheDocument();
   });
 
+  it('reste ancrée au viewport et fait défiler sa navigation en mode déployé', () => {
+    renderSidebar([WORKSPACE_PERMISSION.WORKSPACE_READ]);
+
+    expect(screen.getByRole('complementary')).toHaveClass(
+      'sticky',
+      'top-0',
+      'h-svh',
+      'self-start',
+    );
+    expect(
+      screen.getByRole('navigation', { name: 'Navigation du workspace' }),
+    ).toHaveClass('min-h-0', 'overflow-y-auto', 'overflow-x-hidden');
+  });
+
+  it('préserve les tooltips et flyouts hors du cadre en mode réduit', () => {
+    renderSidebar(
+      [WORKSPACE_PERMISSION.WORKSPACE_READ],
+      { collapsed: true },
+    );
+
+    expect(
+      screen.getByRole('navigation', { name: 'Navigation du workspace' }),
+    ).toHaveClass('overflow-visible');
+  });
+
   it('masque la gestion d’équipe quand la permission existe mais pas la feature', () => {
     renderSidebar([
       WORKSPACE_PERMISSION.WORKSPACE_READ,
