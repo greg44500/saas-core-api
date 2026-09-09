@@ -194,6 +194,25 @@ describe('WorkspaceSidebar', () => {
     expect(settingsLink).toHaveAttribute('href', '/workspaces/workspace-1/settings');
   });
 
+  it('réutilise le tooltip partagé pour la navigation réduite', async () => {
+    const user = userEvent.setup();
+
+    renderSidebar(
+      [WORKSPACE_PERMISSION.WORKSPACE_READ],
+      { collapsed: true },
+    );
+
+    const dashboardLink = screen.getByRole('link', { name: 'Tableau de bord' });
+    const tooltip = screen.getByRole('tooltip', { name: 'Tableau de bord', hidden: true });
+
+    await user.hover(dashboardLink);
+    expect(tooltip).toHaveAttribute('aria-hidden', 'false');
+    expect(dashboardLink).toHaveAttribute('aria-describedby', tooltip.id);
+
+    await user.keyboard('{Escape}');
+    expect(tooltip).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('ouvre un flyout explicite en mode réduit et le ferme avec Escape', async () => {
     const user = userEvent.setup();
 
