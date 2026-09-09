@@ -4,7 +4,7 @@
 
 @theme inline {
   /*
-   * D-011.B pourra remplacer cette valeur via un identifiant de police
+   * D-011.B peut remplacer cette valeur via un identifiant de police
    * contrôlé. Le Design System ne consomme qu'une famille applicative.
    */
   --font-sans: var(--font-family-app);
@@ -51,7 +51,7 @@
   --font-family-app: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 
   /*
-   * Les futures palettes D-011.B surchargeront ces tokens sémantiques à partir
+   * Les palettes D-011.B surchargent ces tokens sémantiques à partir
    * d'identifiants contrôlés. Aucune couleur libre n'est exposée à l'utilisateur.
    */
   --background: #f7fafb;
@@ -103,6 +103,14 @@
   --layer-tooltip: 120;
 }
 
+:root[data-font-family="inter"] {
+  --font-family-app: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root[data-font-family="system"] {
+  --font-family-app: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
 .dark {
   color-scheme: dark;
 
@@ -140,6 +148,34 @@
   --disabled-foreground: #aab8bd;
 }
 
+/*
+ * Le profil renforcé complète l'accessibilité structurelle sans modifier les
+ * capacités métier. Il renforce seulement quelques signaux transversaux dont la
+ * géométrie reste compatible avec le Design System normal.
+ */
+:root.a11y-enhanced {
+  --muted-foreground: #405963;
+  --border: #9fb4bc;
+}
+
+:root.dark.a11y-enhanced {
+  --muted-foreground: #d0dfe3;
+  --border: #6d8994;
+}
+
+.a11y-enhanced :focus-visible {
+  outline: 3px solid var(--ring) !important;
+  outline-offset: 3px !important;
+}
+
+.a11y-enhanced *,
+.a11y-enhanced *::before,
+.a11y-enhanced *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -162,8 +198,8 @@
 
 /*
  * L'accessibilité structurelle reste toujours active. La préférence renforcée
- * de D-011.B pourra aller plus loin, mais ne doit jamais être nécessaire pour
- * respecter la préférence système de réduction des mouvements.
+ * va plus loin, mais ne doit jamais être nécessaire pour respecter la
+ * préférence système de réduction des mouvements.
  */
 @media (prefers-reduced-motion: reduce) {
   html {
