@@ -1,4 +1,5 @@
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import { EntityDetailsSkeleton } from '@/components/shared/entity-details-skeleton';
 import { Button } from '@/components/ui/button';
 import {
   formatPlatformSubscriptionBillingInterval,
@@ -38,6 +39,8 @@ function PlatformSubscriptionDetailsDrawer({
   open,
   subscription,
 }) {
+  const isInitialLoading = isLoading && !subscription;
+
   return (
     <EntityDetailsDrawer
       description="Données contractuelles et état administratif de la souscription."
@@ -45,14 +48,20 @@ function PlatformSubscriptionDetailsDrawer({
       open={open}
       title={subscription?.workspace?.name ?? 'Détails de la souscription'}
     >
-      {isLoading && <p className="text-sm text-muted-foreground">Chargement des détails…</p>}
-      {!isLoading && error && (
+      {isInitialLoading && (
+        <EntityDetailsSkeleton
+          label="Chargement des détails de la souscription…"
+          rowsPerSection={[10, 7]}
+          sections={2}
+        />
+      )}
+      {!subscription && !isInitialLoading && error && (
         <div className="space-y-3">
           <p className="text-sm text-destructive" role="alert">Impossible de charger la souscription.</p>
           <Button onClick={onRetry} type="button" variant="outline">Réessayer</Button>
         </div>
       )}
-      {!isLoading && !error && subscription && (
+      {subscription && (
         <div className="space-y-6">
           <section>
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Souscription</h3>
