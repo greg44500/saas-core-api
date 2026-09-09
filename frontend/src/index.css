@@ -107,6 +107,14 @@
   --font-family-app: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
+:root[data-font-family="geist"] {
+  --font-family-app: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root[data-font-family="manrope"] {
+  --font-family-app: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
 :root[data-font-family="system"] {
   --font-family-app: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
