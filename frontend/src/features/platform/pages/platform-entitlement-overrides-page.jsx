@@ -22,6 +22,7 @@ import { useListPlatformWorkspacesQuery } from '@/features/platform/api/platform
 import { PlatformEntitlementOverrideDetailsDrawer } from '@/features/platform/components/platform-entitlement-override-details-drawer';
 import { PlatformEntitlementOverrideForm } from '@/features/platform/components/platform-entitlement-override-form';
 import { PlatformEntitlementOverrideRevokeDialog } from '@/features/platform/components/platform-entitlement-override-revoke-dialog';
+import { PlatformTablePageSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PlatformWorkspaceFeatureOverrides } from '@/features/platform/components/platform-workspace-feature-overrides';
 import {
   ENTITLEMENT_OVERRIDE_LIFECYCLE,
@@ -170,8 +171,14 @@ function PlatformEntitlementOverridesPage() {
     }
   }
 
-  if (listQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Chargement des dérogations…</p>;
+  if (listQuery.isLoading || (listQuery.isFetching && listQuery.data === undefined)) {
+    return (
+      <PlatformTablePageSkeleton
+        columns={7}
+        showAction
+        showFilters
+      />
+    );
   }
 
   if (listQuery.error) {
