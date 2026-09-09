@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 
 import { FormField } from '@/components/forms/form-field';
 import { ErrorState } from '@/components/shared/error-state';
 import { FormSectionSkeleton } from '@/components/shared/form-section-skeleton';
+import { useTheme } from '@/components/shared/theme-provider';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -13,9 +14,9 @@ import {
   useGetCurrentUserPreferencesQuery,
   useUpdateCurrentUserPreferencesMutation,
 } from '@/features/preferences/api/user-preferences-api';
+import { PalettePicker } from '@/features/preferences/components/palette-picker';
 import {
   FONT_FAMILY_OPTIONS,
-  PALETTE_OPTIONS,
   THEME_OPTIONS,
 } from '@/features/preferences/constants/comfort-preference-options';
 import {
@@ -28,6 +29,12 @@ import {
 
 function PreferencesPage() {
   const { toast } = useToast();
+  const {
+    applyComfortPreferences,
+    comfortPreferences: appliedComfortPreferences,
+  } = useTheme();
+  const savedComfortPreferencesRef = useRef(null);
+  const hasPalettePreviewRef = useRef(false);
   const preferencesQuery = useGetCurrentUserPreferencesQuery();
   const [updatePreferences, { isLoading: isSaving }] =
     useUpdateCurrentUserPreferencesMutation();
@@ -49,8 +56,34 @@ function PreferencesPage() {
 
   useEffect(() => {
     if (!comfortPreferences) return;
+
+    savedComfortPreferencesRef.current = comfortPreferences;
     reset(comfortPreferences);
   }, [comfortPreferences, reset]);
+
+  useEffect(() => () => {
+    if (!hasPalettePreviewRef.current || !savedComfortPreferencesRef.current) {
+      return;
+    }
+
+    /*
+     * Une palette cliquée est un aperçu tant que le formulaire n'est pas
+     * enregistré. Quitter la page ne doit donc jamais transformer cet aperçu
+     * en préférence implicite pour le reste de la session.
+     */
+    applyComfortPreferences(savedComfortPreferencesRef.current, {
+      persistLocal: false,
+    });
+  }, [applyComfortPreferences]);
+
+  function previewPalette(paletteId, onFieldChange) {
+    onFieldChange(paletteId);
+    hasPalettePreviewRef.current = true;
+    applyComfortPreferences({
+      ...appliedComfortPreferences,
+      paletteId,
+    }, { persistLocal: false });
+  }
 
   async function onSubmit(values) {
     try {
@@ -58,6 +91,9 @@ function PreferencesPage() {
         comfort: values,
       }).unwrap();
 
+      savedComfortPreferencesRef.current = updatedPreferences.comfort;
+      hasPalettePreviewRef.current = false;
+      applyComfortPreferences(updatedPreferences.comfort, { persistLocal: false });
       reset(updatedPreferences.comfort);
       toast({
         title: 'Préférences enregistrées',
@@ -143,20 +179,18 @@ function PreferencesPage() {
             </FormField>
           </div>
 
-          <FormField
-            error={errors.paletteId?.message}
-            hint="Une seule palette est actuellement fournie par le Core. Les applications dérivées pourront en enregistrer d’autres explicitement."
-            id="paletteId"
-            label="Palette de couleurs"
-          >
-            <Select id="paletteId" {...register('paletteId')}>
-              {PALETTE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
+          <Controller
+            control={control}
+            name="paletteId"
+            render={({ field }) => (
+              <PalettePicker
+                disabled={isSaving}
+                error={errors.paletteId?.message}
+                onChange={(paletteId) => previewPalette(paletteId, field.onChange)}
+                value={field.value}
+              />
+            )}
+          />
         </section>
 
         <section className="space-y-5 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
