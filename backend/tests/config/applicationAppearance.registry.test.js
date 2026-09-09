@@ -1,14 +1,30 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    CORE_APPEARANCE_PALETTE_IDS,
     composeApplicationPaletteIds,
 } from '../../config/applicationAppearance.registry.js';
 
 describe('application appearance registry', () => {
-    it('compose une palette dérivée avec la palette Core', () => {
+    it('déclare les quatre palettes Core contrôlées', () => {
+        expect(CORE_APPEARANCE_PALETTE_IDS).toEqual([
+            'core',
+            'refreshing-summer-fun',
+            'leafy-green-garden',
+            'golden-peachy-glow',
+        ]);
+    });
+
+    it('compose une palette dérivée après les palettes Core', () => {
         expect(composeApplicationPaletteIds([
             { paletteIds: ['brand-blue'] },
-        ])).toEqual(['core', 'brand-blue']);
+        ])).toEqual([
+            'core',
+            'refreshing-summer-fun',
+            'leafy-green-garden',
+            'golden-peachy-glow',
+            'brand-blue',
+        ]);
     });
 
     it('refuse les doublons de palette', () => {
