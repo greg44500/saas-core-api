@@ -1,5 +1,6 @@
 import { Info } from 'lucide-react';
 import {
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -35,22 +36,22 @@ function InfoTooltip({ content, label = 'Plus d’informations', className }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState(null);
 
-  function cancelScheduledClose() {
+  const cancelScheduledClose = useCallback(() => {
     if (closeTimeoutRef.current) {
       window.clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;
     }
-  }
+  }, []);
 
-  function scheduleClose() {
+  const scheduleClose = useCallback(() => {
     cancelScheduledClose();
     closeTimeoutRef.current = window.setTimeout(() => {
       closeTimeoutRef.current = null;
       setOpen(false);
     }, TOOLTIP_CLOSE_DELAY_MS);
-  }
+  }, [cancelScheduledClose]);
 
-  function updatePosition() {
+  const updatePosition = useCallback(() => {
     const trigger = triggerRef.current;
     const tooltip = tooltipRef.current;
 
@@ -85,7 +86,7 @@ function InfoTooltip({ content, label = 'Plus d’informations', className }) {
       left,
       top: clamp(rawTop, VIEWPORT_PADDING, maxTop),
     });
-  }
+  }, []);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -94,7 +95,7 @@ function InfoTooltip({ content, label = 'Plus d’informations', className }) {
     }
 
     updatePosition();
-  }, [open, content]);
+  }, [open, content, updatePosition]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -117,11 +118,11 @@ function InfoTooltip({ content, label = 'Plus d’informations', className }) {
       window.removeEventListener('scroll', handleViewportChange, true);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [open]);
+  }, [cancelScheduledClose, open, updatePosition]);
 
   useEffect(
     () => () => cancelScheduledClose(),
-    [],
+    [cancelScheduledClose],
   );
 
   if (!content) return null;
