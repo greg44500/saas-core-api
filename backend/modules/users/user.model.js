@@ -4,6 +4,58 @@ import mongoose from 'mongoose';
 
 import { PLATFORM_ROLE } from '../../constants/platformRoles.constants.js';
 import { USER_STATUS } from '../../constants/userStatus.constants.js';
+import {
+    DEFAULT_USER_COMFORT_PREFERENCES,
+    USER_ACCESSIBILITY_MODE,
+    USER_FONT_FAMILY,
+    USER_PALETTE,
+    USER_THEME,
+} from './userPreferences.constants.js';
+
+const userComfortPreferencesSchema = new mongoose.Schema(
+    {
+        theme: {
+            type: String,
+            enum: Object.values(USER_THEME),
+            default: DEFAULT_USER_COMFORT_PREFERENCES.theme,
+            required: true,
+        },
+        fontFamily: {
+            type: String,
+            enum: Object.values(USER_FONT_FAMILY),
+            default: DEFAULT_USER_COMFORT_PREFERENCES.fontFamily,
+            required: true,
+        },
+        paletteId: {
+            type: String,
+            enum: Object.values(USER_PALETTE),
+            default: DEFAULT_USER_COMFORT_PREFERENCES.paletteId,
+            required: true,
+        },
+        accessibilityMode: {
+            type: String,
+            enum: Object.values(USER_ACCESSIBILITY_MODE),
+            default: DEFAULT_USER_COMFORT_PREFERENCES.accessibilityMode,
+            required: true,
+        },
+    },
+    {
+        _id: false,
+    },
+);
+
+const userPreferencesSchema = new mongoose.Schema(
+    {
+        comfort: {
+            type: userComfortPreferencesSchema,
+            default: () => ({}),
+            required: true,
+        },
+    },
+    {
+        _id: false,
+    },
+);
 
 const userSchema = new mongoose.Schema(
     {
@@ -48,6 +100,12 @@ const userSchema = new mongoose.Schema(
             type: String,
             enum: Object.values(PLATFORM_ROLE),
             default: PLATFORM_ROLE.USER,
+            required: true,
+        },
+
+        preferences: {
+            type: userPreferencesSchema,
+            default: () => ({}),
             required: true,
         },
 
