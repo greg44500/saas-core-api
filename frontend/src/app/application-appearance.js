@@ -10,6 +10,39 @@ const CORE_APPEARANCE_PALETTES = Object.freeze([
       '#344D59',
     ]),
   }),
+  Object.freeze({
+    id: 'refreshing-summer-fun',
+    label: 'Refreshing Summer Fun',
+    previewColors: Object.freeze([
+      '#8ECAE6',
+      '#219EBC',
+      '#023047',
+      '#FFB703',
+      '#FB8500',
+    ]),
+  }),
+  Object.freeze({
+    id: 'leafy-green-garden',
+    label: 'Leafy Green Garden',
+    previewColors: Object.freeze([
+      '#132A13',
+      '#31572C',
+      '#4F772D',
+      '#90A955',
+      '#ECF39E',
+    ]),
+  }),
+  Object.freeze({
+    id: 'golden-peachy-glow',
+    label: 'Golden Peachy Glow',
+    previewColors: Object.freeze([
+      '#C9CBA3',
+      '#FFE1A8',
+      '#E26D5C',
+      '#723D46',
+      '#472D30',
+    ]),
+  }),
 ]);
 
 const APPEARANCE_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
