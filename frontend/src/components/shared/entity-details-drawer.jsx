@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { useDialogFocus } from '@/hooks/use-dialog-focus';
 
 const DRAWER_TRANSITION_MS = 300;
 
@@ -21,17 +22,12 @@ const DRAWER_TRANSITION_MS = 300;
  * @param {string} props.title
  */
 function EntityDetailsDrawer({ children, description, onClose, open, title }) {
+  const drawerRef = useRef(null);
   const closeButtonRef = useRef(null);
-  const previousFocusRef = useRef(null);
-  const onCloseRef = useRef(onClose);
   const titleId = useId();
   const descriptionId = useId();
   const [isMounted, setIsMounted] = useState(open);
   const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
 
   useEffect(() => {
     if (open) {
@@ -43,9 +39,11 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
 
     if (!isMounted) return undefined;
 
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+      ?? false;
     const timeoutId = window.setTimeout(() => {
       setIsMounted(false);
-    }, DRAWER_TRANSITION_MS);
+    }, reduceMotion ? 0 : DRAWER_TRANSITION_MS);
 
     return () => {
       window.clearTimeout(timeoutId);
@@ -64,44 +62,25 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
     };
   }, [isMounted, open]);
 
-  useEffect(() => {
-    if (!open) return undefined;
-
-    previousFocusRef.current = document.activeElement;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    closeButtonRef.current?.focus();
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        onCloseRef.current?.();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener('keydown', handleKeyDown);
-      previousFocusRef.current?.focus?.();
-    };
-  }, [open]);
+  useDialogFocus({
+    open: open && isMounted,
+    containerRef: drawerRef,
+    initialFocusRef: closeButtonRef,
+    onClose,
+  });
 
   if (!isMounted) return null;
 
   return (
     <div
-      className={`fixed inset-x-0 bottom-0 top-16 z-[90] ${open ? 'pointer-events-auto' : 'pointer-events-none'}`}
+      className={`fixed inset-x-0 bottom-0 top-16 z-[var(--layer-drawer)] ${open ? 'pointer-events-auto' : 'pointer-events-none'}`}
     >
-      <button
-        aria-label="Fermer le panneau de détails"
-        className={`absolute inset-0 bg-black/45 transition-opacity duration-300 ease-in-out will-change-opacity motion-reduce:transition-none ${
+      <div
+        aria-hidden="true"
+        className={`absolute inset-0 bg-overlay/45 transition-opacity duration-300 ease-in-out will-change-opacity motion-reduce:transition-none ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
         onClick={onClose}
-        title="Fermer le panneau"
-        type="button"
       />
 
       <aside
@@ -112,7 +91,9 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
         className={`absolute inset-y-0 right-0 flex w-full max-w-xl min-w-0 transform-gpu flex-col overflow-hidden border-l border-border bg-background text-foreground shadow-lg transition-transform duration-300 ease-in-out will-change-transform motion-reduce:transition-none ${
           isVisible ? 'translate-x-0' : 'translate-x-full'
         }`}
+        ref={drawerRef}
         role="dialog"
+        tabIndex={-1}
       >
         <header className="flex min-w-0 items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
