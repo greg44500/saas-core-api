@@ -16,6 +16,7 @@ import {
   useListPlatformUsersQuery,
   useRevokePlatformUserSessionsMutation,
 } from '@/features/platform/api/platform-users-api';
+import { PlatformTablePageSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PlatformUserDetailsDrawer } from '@/features/platform/components/platform-user-details-drawer';
 import {
   formatPlatformUserDate,
@@ -152,8 +153,8 @@ function PlatformUsersPage() {
     }
   }
 
-  if (usersQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Chargement des utilisateurs clients…</p>;
+  if (usersQuery.isLoading || (usersQuery.isFetching && usersQuery.data === undefined)) {
+    return <PlatformTablePageSkeleton columns={5} />;
   }
 
   if (usersQuery.error) {
