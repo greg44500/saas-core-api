@@ -7,10 +7,23 @@ import {
   useState,
 } from 'react';
 
-function Tooltip({ children, content }) {
+import { cn } from '@/lib/utils';
+
+const TOOLTIP_SIDE_CLASS = Object.freeze({
+  top: 'bottom-full left-1/2 mb-2 -translate-x-1/2',
+  right: 'left-full top-1/2 ml-3 -translate-y-1/2',
+});
+
+function Tooltip({
+  children,
+  content,
+  side = 'top',
+  wrapperClassName,
+}) {
   const tooltipId = useId();
   const [visible, setVisible] = useState(false);
   const pointerInteractionRef = useRef(false);
+  const sideClassName = TOOLTIP_SIDE_CLASS[side] ?? TOOLTIP_SIDE_CLASS.top;
 
   useEffect(() => {
     if (!visible) return undefined;
@@ -37,7 +50,7 @@ function Tooltip({ children, content }) {
 
   return (
     <span
-      className="relative inline-flex"
+      className={cn('relative inline-flex', wrapperClassName)}
       onBlurCapture={() => setVisible(false)}
       onClickCapture={() => setVisible(false)}
       onFocusCapture={() => {
@@ -56,9 +69,11 @@ function Tooltip({ children, content }) {
       {describedChild}
       <span
         aria-hidden={!visible}
-        className={`absolute bottom-full left-1/2 z-[var(--layer-tooltip)] mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md transition-opacity duration-150 motion-reduce:transition-none ${
-          visible ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
-        }`}
+        className={cn(
+          'absolute z-[var(--layer-tooltip)] whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md transition-opacity duration-150 motion-reduce:transition-none',
+          sideClassName,
+          visible ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
+        )}
         id={tooltipId}
         role="tooltip"
       >
@@ -68,4 +83,4 @@ function Tooltip({ children, content }) {
   );
 }
 
-export { Tooltip };
+export { TOOLTIP_SIDE_CLASS, Tooltip };
