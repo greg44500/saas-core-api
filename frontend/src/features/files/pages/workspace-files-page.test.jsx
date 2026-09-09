@@ -113,7 +113,7 @@ describe('WorkspaceFilesPage', () => {
     });
     expect(screen.getByRole('heading', { name: 'Fichiers' })).toBeInTheDocument();
 
-    const table = screen.getByRole('table');
+    const table = screen.getByRole('table', { name: 'Fichiers actifs du workspace' });
     const fileName = within(table).getByText('contrat.pdf');
     expect(fileName).toBeInTheDocument();
     expect(fileName).toHaveAttribute('title', 'contrat.pdf');
@@ -125,6 +125,22 @@ describe('WorkspaceFilesPage', () => {
     expect(
       screen.getByRole('button', { name: 'Télécharger contrat.pdf' }),
     ).toBeInTheDocument();
+  });
+
+  it('conserve le shell et affiche un skeleton de tableau pendant le chargement', () => {
+    mocks.useListWorkspaceFilesQuery.mockReturnValue({
+      data: undefined,
+      error: undefined,
+      isLoading: true,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(screen.getByRole('heading', { name: 'Fichiers' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Fichiers actifs' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Chargement du tableau…');
+    expect(screen.queryByRole('searchbox', { name: 'Rechercher un fichier' })).not.toBeInTheDocument();
   });
 
   it('filtre les catégories côté serveur et revient à la première page', async () => {
@@ -334,6 +350,7 @@ describe('WorkspaceFilesPage', () => {
     renderPage();
     await user.click(screen.getByRole('button', { name: 'Réessayer' }));
 
+    expect(screen.getByRole('alert')).toHaveTextContent('Fichiers indisponibles');
     expect(screen.getByText('Impossible de charger les fichiers du workspace.')).toBeInTheDocument();
     expect(refetch).toHaveBeenCalledTimes(1);
   });
