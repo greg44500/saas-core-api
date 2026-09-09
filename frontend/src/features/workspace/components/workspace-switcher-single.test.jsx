@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { vi } from 'vitest';
+import { test, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router';
 
 const useListWorkspacesQueryMock = vi.hoisted(() => vi.fn());
