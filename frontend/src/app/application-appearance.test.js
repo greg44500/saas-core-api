@@ -1,12 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  CORE_APPEARANCE_PALETTES,
   composeApplicationPalettes,
 } from '@/app/application-appearance';
 
 describe('application appearance registry', () => {
-  it('compose les palettes dérivées avec la palette Core et leurs aperçus contrôlés', () => {
-    expect(composeApplicationPalettes([
+  it('déclare les quatre palettes Core avec cinq couleurs de prévisualisation', () => {
+    expect(CORE_APPEARANCE_PALETTES.map((palette) => palette.id)).toEqual([
+      'core',
+      'refreshing-summer-fun',
+      'leafy-green-garden',
+      'golden-peachy-glow',
+    ]);
+
+    CORE_APPEARANCE_PALETTES.forEach((palette) => {
+      expect(palette.previewColors).toHaveLength(5);
+    });
+  });
+
+  it('compose les palettes dérivées après les palettes Core et leurs aperçus contrôlés', () => {
+    const palettes = composeApplicationPalettes([
       {
         palettes: [
           {
@@ -16,24 +30,15 @@ describe('application appearance registry', () => {
           },
         ],
       },
-    ])).toEqual([
-      {
-        id: 'core',
-        label: 'Core Atlantique',
-        previewColors: [
-          '#137C8B',
-          '#709CA7',
-          '#B8CBD0',
-          '#7A90A4',
-          '#344D59',
-        ],
-      },
-      {
-        id: 'brand-blue',
-        label: 'Marque bleue',
-        previewColors: ['#0F172A', '#1D4ED8', '#60A5FA'],
-      },
     ]);
+
+    expect(palettes).toHaveLength(5);
+    expect(palettes.slice(0, 4)).toEqual(CORE_APPEARANCE_PALETTES);
+    expect(palettes[4]).toEqual({
+      id: 'brand-blue',
+      label: 'Marque bleue',
+      previewColors: ['#0F172A', '#1D4ED8', '#60A5FA'],
+    });
   });
 
   it('refuse un identifiant libre, un aperçu invalide ou un doublon', () => {
