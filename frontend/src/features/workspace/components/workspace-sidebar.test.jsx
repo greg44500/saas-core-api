@@ -203,7 +203,10 @@ describe('WorkspaceSidebar', () => {
     );
 
     const dashboardLink = screen.getByRole('link', { name: 'Tableau de bord' });
-    const tooltip = screen.getByRole('tooltip', { name: 'Tableau de bord', hidden: true });
+    const tooltip = screen.getByRole('tooltip', { hidden: true });
+
+    expect(tooltip).toHaveTextContent('Tableau de bord');
+    expect(tooltip).toHaveAttribute('aria-hidden', 'true');
 
     await user.hover(dashboardLink);
     expect(tooltip).toHaveAttribute('aria-hidden', 'false');
