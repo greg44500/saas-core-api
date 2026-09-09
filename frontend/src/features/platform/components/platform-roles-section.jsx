@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
+import { DataTableSkeleton } from '@/components/data-display/data-table-skeleton';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { InfoTooltip } from '@/components/shared/info-tooltip';
@@ -181,6 +182,9 @@ function PlatformRolesSection() {
     }
   }
 
+  const initialLoading = rolesQuery.isLoading
+    || (rolesQuery.isFetching && rolesQuery.data === undefined);
+
   return (
     <div className="mt-5 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -199,13 +203,13 @@ function PlatformRolesSection() {
         )}
       </div>
 
-      {rolesQuery.isLoading && (
-        <p className="text-sm text-muted-foreground">
-          Chargement des rôles…
-        </p>
+      {initialLoading && (
+        <div className="overflow-hidden rounded-lg border border-border">
+          <DataTableSkeleton columns={columns.length} rows={5} />
+        </div>
       )}
 
-      {rolesQuery.isError && (
+      {rolesQuery.isError && !initialLoading && (
         <div className="space-y-3">
           <p className="text-sm text-destructive" role="alert">
             Impossible de charger les rôles de la Plateforme.
@@ -220,13 +224,13 @@ function PlatformRolesSection() {
         </div>
       )}
 
-      {!rolesQuery.isLoading && !rolesQuery.isError && roles.length === 0 && (
+      {!initialLoading && !rolesQuery.isError && roles.length === 0 && (
         <p className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
           Aucun rôle disponible.
         </p>
       )}
 
-      {!rolesQuery.isLoading && !rolesQuery.isError && roles.length > 0 && (
+      {!initialLoading && !rolesQuery.isError && roles.length > 0 && (
         <>
           <div className="overflow-hidden rounded-lg border border-border">
             <DataTable
