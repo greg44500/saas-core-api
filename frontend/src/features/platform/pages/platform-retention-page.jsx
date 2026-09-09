@@ -13,6 +13,7 @@ import {
   usePreviewPlatformRetentionMutation,
 } from '@/features/platform/api/platform-retention-api';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
+import { PlatformLoadingSkeletons } from '@/features/platform/components/platform-loading-skeletons';
 import { PlatformRetentionExecutionsTable } from '@/features/platform/components/platform-retention-executions-table';
 import { PlatformRetentionPolicyForm } from '@/features/platform/components/platform-retention-policy-form';
 import { PlatformRetentionPreview } from '@/features/platform/components/platform-retention-preview';
@@ -207,8 +208,8 @@ function PlatformRetentionPage() {
     ]);
   }
 
-  if (targetsLoading) {
-    return <p className="text-sm text-muted-foreground">Chargement des politiques de rétention…</p>;
+  if (targetsLoading || (targetKey && stateFetching && state === undefined)) {
+    return <PlatformLoadingSkeletons.PlatformRetentionSkeleton />;
   }
 
   if (!selectedTarget) {
