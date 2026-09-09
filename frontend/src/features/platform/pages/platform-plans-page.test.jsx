@@ -98,7 +98,7 @@ describe('PlatformPlansPage', () => {
     vi.clearAllMocks();
   });
 
-  it('affiche l’état de chargement', () => {
+  it('affiche le skeleton du tableau au chargement', () => {
     mocks.useListPlatformPlansQuery.mockReturnValue({
       data: undefined,
       error: undefined,
@@ -108,7 +108,7 @@ describe('PlatformPlansPage', () => {
     });
 
     renderPage();
-    expect(screen.getByText('Chargement des plans…')).toBeInTheDocument();
+    expect(screen.getByText('Chargement du tableau…')).toBeInTheDocument();
   });
 
   it('affiche le DataTable sans identifiant technique et pagine côté serveur', async () => {
