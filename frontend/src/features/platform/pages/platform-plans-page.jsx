@@ -15,6 +15,7 @@ import {
   useListPlatformPlansQuery,
   useUpdatePlatformPlanMutation,
 } from '@/features/platform/api/platform-plans-api';
+import { PlatformTablePageSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PlatformPlanDetailsDrawer } from '@/features/platform/components/platform-plan-details-drawer';
 import { PlatformPlanForm } from '@/features/platform/components/platform-plan-form';
 import {
@@ -110,8 +111,8 @@ function PlatformPlansPage() {
     }
   }
 
-  if (plansQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Chargement des plans…</p>;
+  if (plansQuery.isLoading || (plansQuery.isFetching && plansQuery.data === undefined)) {
+    return <PlatformTablePageSkeleton columns={7} showAction />;
   }
 
   if (plansQuery.error) {
