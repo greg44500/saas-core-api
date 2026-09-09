@@ -14,6 +14,10 @@ import { EffectivePlanCapabilities } from '@/features/subscription/components/ef
 import { EndTrialToFreeDialog } from '@/features/subscription/components/end-trial-to-free-dialog';
 import { SubscriptionSummaryCard } from '@/features/subscription/components/subscription-summary-card';
 import { TrialProgress } from '@/features/subscription/components/trial-progress';
+import {
+  PlanCardsSkeleton,
+  WorkspaceSubscriptionSkeleton,
+} from '@/features/subscription/components/workspace-subscription-skeleton';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 
 function getApiMessage(error, fallback) {
@@ -32,11 +36,14 @@ function WorkspaceSubscriptionPage() {
   const [startOrChangeTrial, trialMutation] = useStartOrChangeWorkspaceTrialMutation();
   const [endTrialToFree, endTrialMutation] = useEndWorkspaceTrialToFreeMutation();
 
-  if (subscriptionQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Chargement de l’abonnement…</p>;
+  const isInitialSubscriptionLoading = subscriptionQuery.data === undefined
+    && (subscriptionQuery.isLoading || subscriptionQuery.isFetching);
+
+  if (isInitialSubscriptionLoading) {
+    return <WorkspaceSubscriptionSkeleton />;
   }
 
-  if (subscriptionQuery.error) {
+  if (subscriptionQuery.error && subscriptionQuery.data === undefined) {
     return (
       <section className="space-y-3">
         <h1 className="text-2xl font-semibold">Abonnement</h1>
@@ -52,6 +59,8 @@ function WorkspaceSubscriptionPage() {
   const baselinePlan = subscription?.baseline?.plan ?? null;
   const baselinePlanName = baselinePlan?.name ?? 'plan de référence';
   const trialConsumed = subscription?.trialEligibility?.consumed === true;
+  const isInitialPlansLoading = plansQuery.data === undefined
+    && (plansQuery.isLoading || plansQuery.isFetching);
 
   /*
    * Le statut persistant `trialing` ne suffit pas. Un essai expiré peut rester
@@ -262,18 +271,16 @@ function WorkspaceSubscriptionPage() {
           )}
         </div>
 
-        {plansQuery.isLoading && (
-          <p className="text-sm text-muted-foreground">Chargement des offres…</p>
-        )}
+        {isInitialPlansLoading && <PlanCardsSkeleton />}
 
-        {plansQuery.error && (
+        {plansQuery.error && plansQuery.data === undefined && (
           <div className="space-y-2 rounded-xl border border-border bg-card p-5">
             <p className="text-sm text-destructive">Impossible de charger le catalogue des plans.</p>
             <Button type="button" variant="outline" onClick={plansQuery.refetch}>Réessayer</Button>
           </div>
         )}
 
-        {!plansQuery.isLoading && !plansQuery.error && (
+        {plansQuery.data !== undefined && (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {(plansQuery.data ?? []).map((plan) => (
               <PlanCard key={plan.id} plan={plan}>
