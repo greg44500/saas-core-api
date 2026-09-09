@@ -18,6 +18,15 @@ describe('appearance preferences contract', () => {
       .toBe('manrope');
   });
 
+  it.each([
+    'core',
+    'refreshing-summer-fun',
+    'leafy-green-garden',
+    'golden-peachy-glow',
+  ])('conserve la palette déclarée %s', (paletteId) => {
+    expect(normalizeComfortPreferences({ paletteId }).paletteId).toBe(paletteId);
+  });
+
   it('retombe sur les valeurs contrôlées pour des valeurs arbitraires', () => {
     expect(normalizeComfortPreferences({
       theme: 'sepia',
