@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable } from '@/components/data-display/data-table';
+import { DataTableSkeleton } from '@/components/data-display/data-table-skeleton';
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
 import { Button } from '@/components/ui/button';
 import { useListPlatformTeamMembersQuery } from '@/features/platform/api/platform-team-api';
@@ -26,6 +27,8 @@ function PlatformTeamMembersDrawer({ onClose, open }) {
     totalPages: members.length > 0 ? 1 : 0,
   };
   const columns = createPlatformTeamMemberReadColumns({ compact: true });
+  const initialLoading = membersQuery.isLoading
+    || (membersQuery.isFetching && membersQuery.data === undefined);
 
   return (
     <EntityDetailsDrawer
@@ -34,13 +37,17 @@ function PlatformTeamMembersDrawer({ onClose, open }) {
       open={open}
       title="Équipe de la Plateforme"
     >
-      {membersQuery.isLoading && (
-        <p className="text-sm text-muted-foreground">
-          Chargement des membres…
-        </p>
+      {initialLoading && (
+        <div className="overflow-hidden rounded-lg border border-border">
+          <DataTableSkeleton
+            columns={columns.length}
+            density="compact"
+            rows={5}
+          />
+        </div>
       )}
 
-      {membersQuery.error && (
+      {membersQuery.error && !initialLoading && (
         <div className="space-y-3">
           <p className="text-sm text-destructive" role="alert">
             Impossible de charger le détail de l’équipe de la Plateforme.
@@ -55,13 +62,13 @@ function PlatformTeamMembersDrawer({ onClose, open }) {
         </div>
       )}
 
-      {!membersQuery.isLoading && !membersQuery.error && members.length === 0 && (
+      {!initialLoading && !membersQuery.error && members.length === 0 && (
         <p className="text-sm text-muted-foreground">
           Aucun membre actif ou suspendu dans l’équipe de la Plateforme.
         </p>
       )}
 
-      {!membersQuery.isLoading && !membersQuery.error && members.length > 0 && (
+      {!initialLoading && !membersQuery.error && members.length > 0 && (
         <>
           <div className="overflow-hidden rounded-lg border border-border">
             <DataTable
