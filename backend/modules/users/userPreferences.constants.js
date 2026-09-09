@@ -6,6 +6,8 @@ const USER_THEME = Object.freeze({
 
 const USER_FONT_FAMILY = Object.freeze({
     INTER: 'inter',
+    GEIST: 'geist',
+    MANROPE: 'manrope',
     SYSTEM: 'system',
 });
 
