@@ -32,6 +32,7 @@ import {
   formatCommercialInvitationStatus,
 } from '@/features/commercial-invitation/lib/commercial-invitation-formatters';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
+import { PlatformTablePageSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 
 const PAGE_SIZE = 20;
@@ -142,11 +143,15 @@ function PlatformCommercialInvitationsPage() {
     }
   }
 
-  if (invitationsQuery.isLoading) {
+  if (
+    invitationsQuery.isLoading
+    || (invitationsQuery.isFetching && invitationsQuery.data === undefined)
+  ) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Chargement des invitations commerciales…
-      </p>
+      <PlatformTablePageSkeleton
+        columns={6}
+        showAction={canCreate}
+      />
     );
   }
 
