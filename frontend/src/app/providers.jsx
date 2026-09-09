@@ -5,6 +5,9 @@ import { appRouter } from '@/app/router';
 import { ThemeProvider } from '@/components/shared/theme-provider';
 import { ToastProvider } from '@/components/shared/toast-provider';
 import { SessionBootstrap } from '@/features/auth/components/session-bootstrap';
+import {
+  UserPreferencesBootstrap,
+} from '@/features/preferences/components/user-preferences-bootstrap';
 import { appStore } from '@/store/store';
 
 function AppProviders({
@@ -17,7 +20,9 @@ function AppProviders({
       <ThemeProvider storageScope={themeScope}>
         <ToastProvider>
           <SessionBootstrap>
-            <RouterProvider router={router} />
+            <UserPreferencesBootstrap>
+              <RouterProvider router={router} />
+            </UserPreferencesBootstrap>
           </SessionBootstrap>
         </ToastProvider>
       </ThemeProvider>
