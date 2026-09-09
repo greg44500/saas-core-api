@@ -19,6 +19,11 @@ function WorkspaceDashboardPage() {
     activity,
   } = useWorkspaceDashboardData();
 
+  function retryActivity() {
+    activity.query.refetch();
+    activity.metadataQuery.refetch();
+  }
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <header className="space-y-2">
@@ -91,6 +96,7 @@ function WorkspaceDashboardPage() {
           isError={activity.query.isError}
           isLoading={activity.query.isLoading || activity.metadataQuery.isLoading}
           metadata={activity.metadata}
+          onRetry={retryActivity}
           workspaceId={workspace.id}
         />
       )}
