@@ -11,7 +11,7 @@ function WorkspaceLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background text-foreground md:flex">
+    <div className="min-h-svh bg-background text-foreground md:flex">
       <WorkspaceSidebar
         collapsed={sidebarCollapsed}
         navigation={workspaceNavigation}
