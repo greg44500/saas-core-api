@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { FormField } from '@/components/forms/form-field';
+import { FormSectionSkeleton } from '@/components/shared/form-section-skeleton';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,7 +55,7 @@ function WorkspaceOwnershipSection({ workspaceId }) {
     limit: MEMBERS_PAGE_SIZE,
   });
   const {
-    data: roles = [],
+    data: rolesData,
     isError: isRolesError,
     isFetching: isRolesFetching,
   } = useListWorkspaceRolesQuery(workspaceId);
@@ -78,6 +79,7 @@ function WorkspaceOwnershipSection({ workspaceId }) {
   });
 
   const members = membersData?.members ?? [];
+  const roles = rolesData ?? [];
   const pagination = membersData?.pagination;
   const candidateMembers = useMemo(
     () =>
@@ -92,6 +94,11 @@ function WorkspaceOwnershipSection({ workspaceId }) {
   );
 
   const isReferenceDataLoading = isMembersFetching || isRolesFetching;
+  const isInitialReferenceDataLoading = (
+    isMembersFetching && membersData === undefined
+  ) || (
+    isRolesFetching && rolesData === undefined
+  );
   const isReferenceDataError = isMembersError || isRolesError;
 
   const onSubmit = async (values) => {
@@ -118,6 +125,16 @@ function WorkspaceOwnershipSection({ workspaceId }) {
       });
     }
   };
+
+  if (isInitialReferenceDataLoading) {
+    return (
+      <FormSectionSkeleton
+        fields={3}
+        label="Chargement des données nécessaires au transfert de propriété…"
+        variant="sensitive"
+      />
+    );
+  }
 
   return (
     <section className="space-y-5 rounded-xl border border-destructive/40 bg-card p-6 text-card-foreground">
