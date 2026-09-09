@@ -7,9 +7,10 @@ describe('StatusBadge', () => {
   afterEach(() => cleanup());
 
   it.each([
-    ['success', 'Réussie', 'text-success', 'bg-success/15'],
-    ['destructive', 'Échouée', 'text-destructive', 'bg-destructive/15'],
-    ['warning', 'À vérifier', 'text-warning', 'bg-warning/15'],
+    ['success', 'Réussie', 'text-foreground', 'bg-success/20'],
+    ['destructive', 'Échouée', 'text-foreground', 'bg-destructive/20'],
+    ['warning', 'À vérifier', 'text-foreground', 'bg-warning/20'],
+    ['info', 'Information', 'text-foreground', 'bg-info/20'],
     ['neutral', 'Archivée', 'text-muted-foreground', 'bg-muted'],
   ])(
     'centralise le ton %s sans imposer le libellé métier',
