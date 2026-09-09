@@ -19,7 +19,7 @@ function PlatformLayout() {
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
             <p className="font-semibold">Console d’administration globale</p>
 
-            <AuthenticatedUserIdentity secondaryText="Console Platform" />
+            <AuthenticatedUserIdentity />
           </div>
         </header>
 
