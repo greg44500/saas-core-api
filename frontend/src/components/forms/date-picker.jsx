@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -82,6 +82,91 @@ function getCalendarDays(visibleMonth) {
   ];
 }
 
+function isValueInMonth(value, visibleMonth) {
+  const date = parseIsoDate(value);
+
+  return Boolean(
+    date
+    && date.getFullYear() === visibleMonth.getFullYear()
+    && date.getMonth() === visibleMonth.getMonth(),
+  );
+}
+
+function getFirstAvailableDateInMonth(visibleMonth, min, max) {
+  const daysInMonth = new Date(
+    visibleMonth.getFullYear(),
+    visibleMonth.getMonth() + 1,
+    0,
+    12,
+  ).getDate();
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const value = toIsoDate(new Date(
+      visibleMonth.getFullYear(),
+      visibleMonth.getMonth(),
+      day,
+      12,
+    ));
+
+    if (isDateWithinBounds(value, min, max)) return value;
+  }
+
+  return null;
+}
+
+function getInitialCalendarFocusValue({ value, visibleMonth, min, max }) {
+  if (
+    value
+    && isValueInMonth(value, visibleMonth)
+    && isDateWithinBounds(value, min, max)
+  ) {
+    return value;
+  }
+
+  const todayValue = toIsoDate(new Date());
+  if (
+    isValueInMonth(todayValue, visibleMonth)
+    && isDateWithinBounds(todayValue, min, max)
+  ) {
+    return todayValue;
+  }
+
+  return getFirstAvailableDateInMonth(visibleMonth, min, max);
+}
+
+function shiftDateByDays(value, offset) {
+  const date = parseIsoDate(value);
+  if (!date) return null;
+
+  date.setDate(date.getDate() + offset);
+  return toIsoDate(date);
+}
+
+function shiftDateByMonths(value, offset) {
+  const date = parseIsoDate(value);
+  if (!date) return null;
+
+  const targetMonth = new Date(
+    date.getFullYear(),
+    date.getMonth() + offset,
+    1,
+    12,
+  );
+  const lastDay = new Date(
+    targetMonth.getFullYear(),
+    targetMonth.getMonth() + 1,
+    0,
+    12,
+  ).getDate();
+
+  return toIsoDate(new Date(
+    targetMonth.getFullYear(),
+    targetMonth.getMonth(),
+    Math.min(date.getDate(), lastDay),
+    12,
+  ));
+}
+
 function DatePicker({
   id,
   value = '',
@@ -93,12 +178,20 @@ function DatePicker({
   placeholder = 'jj/mm/aaaa',
   'aria-label': ariaLabel,
 }) {
+  const generatedId = useId();
   const rootRef = useRef(null);
+  const calendarRef = useRef(null);
+  const calendarButtonRef = useRef(null);
   const selectedDate = parseIsoDate(value);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => formatFrenchDate(value));
   const [invalid, setInvalid] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => selectedDate ?? new Date());
+  const [focusedDayValue, setFocusedDayValue] = useState(null);
+  const rootId = id ?? generatedId;
+  const errorId = `${rootId}-error`;
+  const calendarId = `${rootId}-calendar`;
+  const calendarTitleId = `${rootId}-calendar-title`;
 
   useEffect(() => {
     setDraft(formatFrenchDate(value));
@@ -117,8 +210,17 @@ function DatePicker({
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, []);
 
+  useEffect(() => {
+    if (!open || !focusedDayValue) return;
+
+    calendarRef.current
+      ?.querySelector(`[data-date="${focusedDayValue}"]`)
+      ?.focus();
+  }, [focusedDayValue, open, visibleMonth]);
+
   const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
   const monthLabel = monthFormatter.format(visibleMonth);
+  const todayValue = toIsoDate(new Date());
 
   function commitDraft() {
     if (!draft.trim()) {
@@ -138,24 +240,130 @@ function DatePicker({
     onChange(parsedValue);
   }
 
+  function closeCalendar({ restoreTriggerFocus = false } = {}) {
+    setOpen(false);
+    if (restoreTriggerFocus) calendarButtonRef.current?.focus();
+  }
+
+  function openCalendar() {
+    const nextFocusValue = getInitialCalendarFocusValue({
+      value,
+      visibleMonth,
+      min,
+      max,
+    });
+
+    setFocusedDayValue(nextFocusValue);
+    setOpen(true);
+  }
+
+  function toggleCalendar() {
+    if (open) {
+      closeCalendar();
+      return;
+    }
+
+    openCalendar();
+  }
+
   function selectDate(date) {
     const nextValue = toIsoDate(date);
     if (!isDateWithinBounds(nextValue, min, max)) return;
 
     setDraft(formatFrenchDate(nextValue));
     setInvalid(false);
+    setFocusedDayValue(nextValue);
     setOpen(false);
     onChange(nextValue);
+    calendarButtonRef.current?.focus();
+  }
+
+  function focusDate(nextValue) {
+    if (!nextValue || !isDateWithinBounds(nextValue, min, max)) return;
+
+    const nextDate = parseIsoDate(nextValue);
+    if (!nextDate) return;
+
+    setVisibleMonth(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1, 12));
+    setFocusedDayValue(nextValue);
   }
 
   function moveMonth(offset) {
-    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1, 12));
+    const nextMonth = new Date(
+      visibleMonth.getFullYear(),
+      visibleMonth.getMonth() + offset,
+      1,
+      12,
+    );
+
+    setVisibleMonth(nextMonth);
+    setFocusedDayValue(getInitialCalendarFocusValue({
+      value,
+      visibleMonth: nextMonth,
+      min,
+      max,
+    }));
+  }
+
+  function handleDayKeyDown(event, dayValue) {
+    let nextValue = null;
+
+    switch (event.key) {
+      case 'ArrowLeft':
+        nextValue = shiftDateByDays(dayValue, -1);
+        break;
+      case 'ArrowRight':
+        nextValue = shiftDateByDays(dayValue, 1);
+        break;
+      case 'ArrowUp':
+        nextValue = shiftDateByDays(dayValue, -7);
+        break;
+      case 'ArrowDown':
+        nextValue = shiftDateByDays(dayValue, 7);
+        break;
+      case 'Home': {
+        const date = parseIsoDate(dayValue);
+        const mondayOffset = date ? (date.getDay() + 6) % 7 : 0;
+        nextValue = shiftDateByDays(dayValue, -mondayOffset);
+        break;
+      }
+      case 'End': {
+        const date = parseIsoDate(dayValue);
+        const mondayOffset = date ? (date.getDay() + 6) % 7 : 0;
+        nextValue = shiftDateByDays(dayValue, 6 - mondayOffset);
+        break;
+      }
+      case 'PageUp':
+        nextValue = shiftDateByMonths(dayValue, -1);
+        break;
+      case 'PageDown':
+        nextValue = shiftDateByMonths(dayValue, 1);
+        break;
+      case 'Escape':
+        event.preventDefault();
+        closeCalendar({ restoreTriggerFocus: true });
+        return;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    focusDate(nextValue);
   }
 
   return (
-    <div className={cn('relative', className)} ref={rootRef}>
+    <div
+      className={cn('relative', className)}
+      onBlurCapture={(event) => {
+        if (open && !event.currentTarget.contains(event.relatedTarget)) {
+          setOpen(false);
+        }
+      }}
+      ref={rootRef}
+    >
       <div className="relative">
         <input
+          aria-describedby={invalid ? errorId : undefined}
           aria-invalid={invalid || undefined}
           aria-label={ariaLabel}
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -169,17 +377,20 @@ function DatePicker({
           }}
           onKeyDown={(event) => {
             if (event.key === 'Enter') commitDraft();
-            if (event.key === 'Escape') setOpen(false);
+            if (event.key === 'Escape') closeCalendar();
           }}
           placeholder={placeholder}
           type="text"
           value={draft}
         />
         <button
-          aria-label="Ouvrir le calendrier"
+          aria-controls={calendarId}
+          aria-expanded={open}
+          aria-label={open ? 'Fermer le calendrier' : 'Ouvrir le calendrier'}
           className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
           disabled={disabled}
-          onClick={() => setOpen((current) => !current)}
+          onClick={toggleCalendar}
+          ref={calendarButtonRef}
           type="button"
         >
           <CalendarDays aria-hidden="true" className="size-4" />
@@ -187,22 +398,24 @@ function DatePicker({
       </div>
 
       {invalid && (
-        <p className="mt-1.5 text-xs text-destructive" role="alert">
+        <p className="mt-1.5 text-xs text-destructive" id={errorId} role="alert">
           Saisissez une date valide au format jj/mm/aaaa.
         </p>
       )}
 
       {open && (
         <div
-          aria-label="Calendrier"
-          className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-lg"
+          aria-labelledby={calendarTitleId}
+          className="absolute left-0 top-full z-[var(--layer-dropdown)] mt-2 w-72 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-lg"
+          id={calendarId}
+          ref={calendarRef}
           role="dialog"
         >
           <div className="mb-3 flex items-center justify-between gap-2">
             <Button aria-label="Mois précédent" onClick={() => moveMonth(-1)} size="icon" type="button" variant="ghost">
               <ChevronLeft aria-hidden="true" />
             </Button>
-            <p className="text-sm font-semibold capitalize">{monthLabel}</p>
+            <p className="text-sm font-semibold capitalize" id={calendarTitleId}>{monthLabel}</p>
             <Button aria-label="Mois suivant" onClick={() => moveMonth(1)} size="icon" type="button" variant="ghost">
               <ChevronRight aria-hidden="true" />
             </Button>
@@ -220,13 +433,14 @@ function DatePicker({
 
               const dayValue = toIsoDate(date);
               const selected = dayValue === value;
-              const today = dayValue === toIsoDate(new Date());
+              const today = dayValue === todayValue;
               const outOfBounds = !isDateWithinBounds(dayValue, min, max);
 
               return (
                 <button
                   aria-current={today ? 'date' : undefined}
                   aria-label={fullDateFormatter.format(date)}
+                  aria-pressed={selected}
                   className={cn(
                     'flex size-9 items-center justify-center rounded-md text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     selected
@@ -234,9 +448,12 @@ function DatePicker({
                       : 'hover:bg-accent hover:text-accent-foreground',
                     outOfBounds && 'cursor-not-allowed opacity-40',
                   )}
+                  data-date={dayValue}
                   disabled={outOfBounds}
                   key={dayValue}
                   onClick={() => selectDate(date)}
+                  onKeyDown={(event) => handleDayKeyDown(event, dayValue)}
+                  tabIndex={dayValue === focusedDayValue ? 0 : -1}
                   type="button"
                 >
                   {date.getDate()}
@@ -246,7 +463,13 @@ function DatePicker({
           </div>
 
           <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-            <Button onClick={() => selectDate(new Date())} size="sm" type="button" variant="ghost">
+            <Button
+              disabled={!isDateWithinBounds(todayValue, min, max)}
+              onClick={() => selectDate(new Date())}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
               Aujourd’hui
             </Button>
             <Button
@@ -255,6 +478,7 @@ function DatePicker({
                 setInvalid(false);
                 setOpen(false);
                 onChange('');
+                calendarButtonRef.current?.focus();
               }}
               size="sm"
               type="button"
@@ -272,7 +496,10 @@ function DatePicker({
 export {
   DatePicker,
   formatFrenchDate,
+  getInitialCalendarFocusValue,
   parseFrenchDate,
   parseIsoDate,
+  shiftDateByDays,
+  shiftDateByMonths,
   toIsoDate,
 };
