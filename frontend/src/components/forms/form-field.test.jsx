@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { DatePicker } from '@/components/forms/date-picker';
 import { FormField } from '@/components/forms/form-field';
 import { Input } from '@/components/ui/input';
 
@@ -30,5 +31,19 @@ describe('FormField', () => {
       'aria-describedby',
       'external-help code-message',
     );
+  });
+
+  it('relaie aussi les attributs accessibles vers un champ composite', () => {
+    render(
+      <FormField id="start-date" label="Date de début" error="La date est obligatoire.">
+        <DatePicker id="start-date" onChange={vi.fn()} value="" />
+      </FormField>,
+    );
+
+    const input = screen.getByLabelText('Date de début');
+    const error = screen.getByRole('alert');
+
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input).toHaveAttribute('aria-describedby', error.id);
   });
 });
