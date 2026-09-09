@@ -215,7 +215,7 @@ function WorkspaceNavigationGroup({
                 item={item}
                 key={item.id}
                 onNavigate={() => onFlyoutChange(null)}
-                workspaceId={workspace.id}
+                workspaceId={workspaceId}
               />
             ))}
           </div>
