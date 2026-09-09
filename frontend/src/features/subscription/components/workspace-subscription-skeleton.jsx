@@ -16,12 +16,15 @@ function SubscriptionSectionSkeleton({ rows = 3 }) {
   );
 }
 
-function PlanCardsSkeleton({ cards = 3 }) {
+function PlanCardsSkeleton({ announce = true, cards = 3 }) {
   const cardCount = Number.isInteger(cards) && cards > 0 ? cards : 1;
 
   return (
-    <div aria-live="polite" role="status">
-      <span className="sr-only">Chargement des offres…</span>
+    <div
+      aria-live={announce ? 'polite' : undefined}
+      role={announce ? 'status' : undefined}
+    >
+      {announce && <span className="sr-only">Chargement des offres…</span>}
       <div aria-hidden="true" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: cardCount }, (_, index) => (
           <article
@@ -72,7 +75,7 @@ function WorkspaceSubscriptionSkeleton() {
             <Skeleton className="h-7 w-48" />
             <Skeleton className="h-4 w-full max-w-xl" />
           </div>
-          <PlanCardsSkeleton />
+          <PlanCardsSkeleton announce={false} />
         </section>
       </div>
     </div>
