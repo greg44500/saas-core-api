@@ -63,6 +63,7 @@ function WorkspaceFilesPage() {
   const pagination = filesQuery.data?.pagination;
   const totalFiles = pagination?.total ?? files.length;
   const hasFilters = Boolean(category || searchInput.trim());
+  const hasLoadError = Boolean(filesQuery.error);
   const canUpload = can(WORKSPACE_PERMISSION.FILE_UPLOAD)
     && hasFeature(WORKSPACE_FEATURE.FILE_UPLOAD);
   const canDelete = can(WORKSPACE_PERMISSION.FILE_DELETE);
@@ -166,7 +167,7 @@ function WorkspaceFilesPage() {
         <div className="flex items-center justify-between gap-4 border-b border-border p-5">
           <div>
             <h2 className="text-lg font-semibold">Fichiers actifs</h2>
-            {!filesQuery.isLoading && !filesQuery.isError && (
+            {!filesQuery.isLoading && !hasLoadError && (
               <p className="mt-1 text-xs text-muted-foreground">
                 {totalFiles} fichier{totalFiles === 1 ? '' : 's'}
               </p>
@@ -176,9 +177,9 @@ function WorkspaceFilesPage() {
 
         {filesQuery.isLoading ? (
           <DataTableSkeleton columns={5} rows={6} />
-        ) : filesQuery.isError ? (
+        ) : hasLoadError ? (
           <ErrorState
-            description="La liste des fichiers du workspace n’a pas pu être chargée."
+            description="Impossible de charger les fichiers du workspace."
             onRetry={filesQuery.refetch}
             title="Fichiers indisponibles"
           />
