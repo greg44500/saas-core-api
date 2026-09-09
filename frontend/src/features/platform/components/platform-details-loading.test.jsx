@@ -43,7 +43,10 @@ describe('Platform details loading contract', () => {
   it('conserve une donnée déjà disponible pendant un refetch', () => {
     renderUserDrawer({ isLoading: true, drawerUser: user });
 
-    expect(screen.getByText('Marie Martin')).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Marie Martin' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('marie@example.com')).toBeInTheDocument();
     expect(
       screen.queryByText('Chargement des détails de l’utilisateur…'),
     ).not.toBeInTheDocument();
