@@ -7,7 +7,7 @@ import { InfoTooltip } from '@/components/shared/info-tooltip';
 describe('InfoTooltip', () => {
   afterEach(() => cleanup());
 
-  it('relie l’explication au bouton utilisable au clavier', async () => {
+  it('relie l’explication au bouton utilisable au clavier et se ferme avec Escape', async () => {
     const user = userEvent.setup();
 
     render(
@@ -24,9 +24,13 @@ describe('InfoTooltip', () => {
     expect(document.activeElement).toBe(trigger);
     expect(tooltip).toHaveTextContent('Explication de la métrique');
     expect(trigger).toHaveAttribute('aria-describedby', tooltip.id);
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 
-  it('rend la bulle dans le body pour échapper aux conteneurs overflow', async () => {
+  it('rend une bulle survolable dans le body pour échapper aux conteneurs overflow', async () => {
     const user = userEvent.setup();
 
     render(
@@ -43,6 +47,7 @@ describe('InfoTooltip', () => {
     const tooltip = screen.getByRole('tooltip');
     expect(tooltip.parentElement).toBe(document.body);
     expect(tooltip).toHaveClass('fixed');
-    expect(tooltip).toHaveClass('z-[110]');
+    expect(tooltip).toHaveClass('z-[var(--layer-tooltip)]');
+    expect(tooltip).toHaveClass('pointer-events-auto');
   });
 });
