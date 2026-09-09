@@ -1,4 +1,9 @@
-const CORE_APPEARANCE_PALETTE_IDS = Object.freeze(['core']);
+const CORE_APPEARANCE_PALETTE_IDS = Object.freeze([
+    'core',
+    'refreshing-summer-fun',
+    'leafy-green-garden',
+    'golden-peachy-glow',
+]);
 const APPEARANCE_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
 /**
