@@ -2,10 +2,10 @@ import { cn } from '@/lib/utils';
 
 const STATUS_BADGE_TONE_CLASS = Object.freeze({
   neutral: 'bg-muted text-muted-foreground',
-  warning: 'bg-warning/20 text-foreground',
-  destructive: 'bg-destructive/20 text-foreground',
-  success: 'bg-success/20 text-foreground',
-  info: 'bg-info/20 text-foreground',
+  warning: 'bg-warning/15 text-warning',
+  destructive: 'bg-destructive/15 text-destructive',
+  success: 'bg-success/15 text-success',
+  info: 'bg-info/15 text-info',
 });
 
 /**
@@ -13,9 +13,8 @@ const STATUS_BADGE_TONE_CLASS = Object.freeze({
  *
  * Le composant centralise la forme et les tons ; les features choisissent le
  * sens du libellé mais ne réécrivent pas les couleurs d'état dans chaque
- * tableau ou carte. Les fonds colorés restent subtils, tandis que le texte
- * utilise le foreground du thème afin de conserver une lisibilité AA dans les
- * variantes light/dark actuelles.
+ * tableau ou carte. Les valeurs de tokens associées garantissent la lisibilité
+ * des tons light/dark actuels sans neutraliser leur sémantique visuelle.
  */
 function StatusBadge({
   children,
