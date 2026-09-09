@@ -77,7 +77,7 @@ describe('UserMenu', () => {
     expect(getInitials({ email: 'user@example.com' })).toBe('U');
   });
 
-  it('affiche l’identité et les actions du compte', async () => {
+  it('affiche l’identité et les actions du compte avec des boutons natifs', async () => {
     const user = userEvent.setup();
     renderUserMenu();
 
@@ -85,13 +85,14 @@ describe('UserMenu', () => {
       screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' }),
     );
 
+    expect(screen.getByRole('group', { name: 'Menu utilisateur' })).toBeInTheDocument();
     expect(screen.getByText('Greg Martin')).toBeInTheDocument();
     expect(screen.getByText('greg@example.com')).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: 'Profil' })).toBeEnabled();
-    expect(screen.getByRole('menuitem', { name: 'Sécurité' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Profil' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Sécurité' })).toBeEnabled();
     expect(screen.queryByText('Fondateur')).not.toBeInTheDocument();
-    expect(screen.queryByRole('menuitem', { name: 'Console d’administration' })).not.toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: 'Déconnexion' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Console d’administration' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Déconnexion' })).toBeEnabled();
   });
 
   it('affiche la qualité Fondateur séparément du rôle Platform', async () => {
@@ -116,24 +117,25 @@ describe('UserMenu', () => {
     expect(screen.getByText('Super administrateur')).toBeInTheDocument();
   });
 
-  it('se ferme lors d’un clic à l’extérieur et avec Escape', async () => {
+  it('se ferme lors d’un clic à l’extérieur et avec Escape en restaurant le focus', async () => {
     const user = userEvent.setup();
     renderUserMenu();
 
     const trigger = screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' });
 
     await user.click(trigger);
-    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Menu utilisateur' })).toBeInTheDocument();
 
     await user.click(document.body);
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Menu utilisateur' })).not.toBeInTheDocument();
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
     await user.click(trigger);
-    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Menu utilisateur' })).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Menu utilisateur' })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 
   it('se ferme lorsqu’une navigation extérieure change de route', async () => {
@@ -143,12 +145,12 @@ describe('UserMenu', () => {
     await user.click(
       screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' }),
     );
-    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Menu utilisateur' })).toBeInTheDocument();
 
     await router.navigate('/platform/users');
 
     await waitFor(() => {
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+      expect(screen.queryByRole('group', { name: 'Menu utilisateur' })).not.toBeInTheDocument();
     });
   });
 
@@ -157,7 +159,7 @@ describe('UserMenu', () => {
     const router = renderUserMenu();
 
     await user.click(screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Profil' }));
+    await user.click(screen.getByRole('button', { name: 'Profil' }));
 
     expect(await screen.findByRole('heading', { name: 'Profil cible' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/account/profile');
@@ -183,7 +185,7 @@ describe('UserMenu', () => {
     await user.click(
       screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' }),
     );
-    await user.click(screen.getByRole('menuitem', { name: 'Console d’administration' }));
+    await user.click(screen.getByRole('button', { name: 'Console d’administration' }));
 
     expect(router.state.location.pathname).toBe('/platform/overview');
   });
@@ -207,7 +209,7 @@ describe('UserMenu', () => {
     );
 
     expect(
-      screen.queryByRole('menuitem', { name: 'Console d’administration' }),
+      screen.queryByRole('button', { name: 'Console d’administration' }),
     ).not.toBeInTheDocument();
   });
 
@@ -218,7 +220,7 @@ describe('UserMenu', () => {
     await user.click(
       screen.getByRole('button', { name: 'Ouvrir le menu utilisateur' }),
     );
-    await user.click(screen.getByRole('menuitem', { name: 'Déconnexion' }));
+    await user.click(screen.getByRole('button', { name: 'Déconnexion' }));
 
     expect(logoutMock).toHaveBeenCalledTimes(1);
     expect(unwrapMock).toHaveBeenCalledTimes(1);
