@@ -11,6 +11,8 @@ import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platf
 import { PlatformAccessSummary } from '@/features/platform/components/platform-access-summary';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 
+const USER_MENU_POPOVER_ID = 'user-menu-popover';
+
 function getInitials(user) {
   const firstInitial = user?.firstName?.trim()?.charAt(0) ?? '';
   const lastInitial = user?.lastName?.trim()?.charAt(0) ?? '';
@@ -27,6 +29,7 @@ function UserMenu() {
   const navigate = useNavigate();
   const location = useLocation();
   const rootRef = useRef(null);
+  const triggerRef = useRef(null);
   const [open, setOpen] = useState(false);
   const { data: user, isLoading } = useGetCurrentUserQuery();
   const { data: platformAccess } = useGetCurrentPlatformContextQuery();
@@ -36,10 +39,8 @@ function UserMenu() {
     if (!open) return undefined;
 
     /*
-     * Le menu doit se comporter comme un vrai popover de navigation : une
-     * interaction extérieure ou Escape le referme sans imposer un second clic
-     * sur l'avatar. Les listeners n'existent que pendant l'ouverture afin de
-     * ne pas ajouter d'écoute globale permanente à l'application.
+     * Ce composant est un disclosure contenant des actions natives, pas un
+     * widget ARIA `menu`. Tab conserve donc son comportement navigateur normal.
      */
     function handlePointerDown(event) {
       if (!rootRef.current?.contains(event.target)) {
@@ -49,7 +50,9 @@ function UserMenu() {
 
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
+        event.preventDefault();
         setOpen(false);
+        triggerRef.current?.focus();
       }
     }
 
@@ -103,12 +106,13 @@ function UserMenu() {
   return (
     <div className="relative" ref={rootRef}>
       <Button
+        aria-controls={open ? USER_MENU_POPOVER_ID : undefined}
         aria-expanded={open}
-        aria-haspopup="menu"
-        aria-label="Ouvrir le menu utilisateur"
+        aria-label={open ? 'Fermer le menu utilisateur' : 'Ouvrir le menu utilisateur'}
         className="rounded-full"
         disabled={isLoading || isLoggingOut}
         onClick={() => setOpen((current) => !current)}
+        ref={triggerRef}
         size="icon"
         type="button"
         variant="outline"
@@ -120,8 +124,10 @@ function UserMenu() {
 
       {open && (
         <div
-          className="absolute right-0 z-50 mt-2 w-64 rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-lg"
-          role="menu"
+          aria-label="Menu utilisateur"
+          className="absolute right-0 z-[var(--layer-dropdown)] mt-2 w-64 rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-lg"
+          id={USER_MENU_POPOVER_ID}
+          role="group"
         >
           <div className="border-b border-border px-3 py-2">
             <p className="truncate text-sm font-semibold">{displayName}</p>
@@ -135,7 +141,6 @@ function UserMenu() {
             <button
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => navigateFromMenu('/account/profile', { preserveReturnDestination: true })}
-              role="menuitem"
               type="button"
             >
               <UserRound aria-hidden="true" className="size-4" />
@@ -144,7 +149,6 @@ function UserMenu() {
             <button
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => navigateFromMenu('/account/security', { preserveReturnDestination: true })}
-              role="menuitem"
               type="button"
             >
               <ShieldCheck aria-hidden="true" className="size-4" />
@@ -154,7 +158,6 @@ function UserMenu() {
               <button
                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => navigateFromMenu('/platform/overview')}
-                role="menuitem"
                 type="button"
               >
                 <Gauge aria-hidden="true" className="size-4" />
@@ -168,7 +171,6 @@ function UserMenu() {
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               disabled={isLoggingOut}
               onClick={handleLogout}
-              role="menuitem"
               type="button"
             >
               <LogOut aria-hidden="true" className="size-4" />
@@ -181,4 +183,4 @@ function UserMenu() {
   );
 }
 
-export { UserMenu, getInitials, getLocationPath };
+export { USER_MENU_POPOVER_ID, UserMenu, getInitials, getLocationPath };
