@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
+import {
+    ACTIVE_APPEARANCE_PALETTE_IDS,
+} from '../../config/applicationAppearance.registry.js';
 import { passwordSchema } from '../../shared/validation/password.validation.js';
 import {
     USER_ACCESSIBILITY_MODE,
     USER_FONT_FAMILY,
-    USER_PALETTE,
     USER_THEME,
 } from './userPreferences.constants.js';
 
@@ -35,7 +37,7 @@ const userComfortPreferencesInputSchema = z
     .strictObject({
         theme: z.enum(Object.values(USER_THEME)).optional(),
         fontFamily: z.enum(Object.values(USER_FONT_FAMILY)).optional(),
-        paletteId: z.enum(Object.values(USER_PALETTE)).optional(),
+        paletteId: z.enum(ACTIVE_APPEARANCE_PALETTE_IDS).optional(),
         accessibilityMode: z
             .enum(Object.values(USER_ACCESSIBILITY_MODE))
             .optional(),
