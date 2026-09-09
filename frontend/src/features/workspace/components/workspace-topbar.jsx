@@ -1,4 +1,3 @@
-import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { UserMenu } from '@/features/auth/components/user-menu';
 import { WorkspaceSwitcher } from '@/features/workspace/components/workspace-switcher';
 
@@ -10,7 +9,6 @@ function WorkspaceTopbar({ workspace }) {
           <WorkspaceSwitcher currentWorkspace={workspace} />
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <ThemeToggle />
           <UserMenu />
         </div>
       </div>
