@@ -1,5 +1,5 @@
 import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
 
 import { Button } from '@/components/ui/button';
@@ -49,10 +49,14 @@ function SidebarLabel({ collapsed, children }) {
 function SidebarTooltip({ collapsed, label }) {
   if (!collapsed) return null;
 
+  /*
+   * Le lien/bouton porte déjà un aria-label en mode réduit. Cette bulle reste
+   * donc purement visuelle pour éviter une seconde annonce du même libellé.
+   */
   return (
     <span
-      className="pointer-events-none absolute left-full top-1/2 z-[60] ml-3 -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs font-medium text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
-      role="tooltip"
+      aria-hidden="true"
+      className="pointer-events-none absolute left-full top-1/2 z-[var(--layer-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs font-medium text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
     >
       {label}
     </span>
@@ -113,9 +117,11 @@ function WorkspaceNavigationGroup({
   workspaceId,
 }) {
   const { Icon } = group;
+  const triggerRef = useRef(null);
   const active = group.items.some((item) =>
     isNavigationItemActive({ item, pathname: location.pathname, workspaceId }));
   const flyoutOpen = collapsed && openFlyoutGroupId === group.id;
+  const flyoutId = `workspace-navigation-${group.id}-flyout`;
 
   function toggleGroup() {
     if (collapsed) {
@@ -127,8 +133,23 @@ function WorkspaceNavigationGroup({
   }
 
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onBlurCapture={(event) => {
+        if (flyoutOpen && !event.currentTarget.contains(event.relatedTarget)) {
+          onFlyoutChange(null);
+        }
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && flyoutOpen) {
+          event.preventDefault();
+          onFlyoutChange(null);
+          triggerRef.current?.focus();
+        }
+      }}
+    >
       <button
+        aria-controls={collapsed ? flyoutId : undefined}
         aria-expanded={collapsed ? flyoutOpen : expanded}
         aria-label={collapsed ? group.label : undefined}
         className={cn(
@@ -139,6 +160,7 @@ function WorkspaceNavigationGroup({
             : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
         )}
         onClick={toggleGroup}
+        ref={triggerRef}
         type="button"
       >
         <Icon aria-hidden="true" className="size-4 shrink-0" />
@@ -180,7 +202,12 @@ function WorkspaceNavigationGroup({
       )}
 
       {flyoutOpen && (
-        <div className="absolute left-full top-0 z-[70] ml-3 w-64 rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-lg">
+        <div
+          aria-label={group.label}
+          className="absolute left-full top-0 z-[var(--layer-flyout)] ml-3 w-64 rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-lg"
+          id={flyoutId}
+          role="group"
+        >
           <p className="px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {group.label}
           </p>
