@@ -128,7 +128,7 @@ describe('PlatformUsersPage', () => {
     expect(formatClientUserCount(2)).toBe('2 utilisateurs clients');
   });
 
-  it('affiche l’état de chargement client', () => {
+  it('affiche le skeleton du tableau au chargement client', () => {
     mocks.useListPlatformUsersQuery.mockReturnValue({
       data: undefined,
       error: undefined,
@@ -139,9 +139,7 @@ describe('PlatformUsersPage', () => {
 
     renderPage();
 
-    expect(
-      screen.getByText('Chargement des utilisateurs clients…'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Chargement du tableau…')).toBeInTheDocument();
   });
 
   it('affiche les utilisateurs clients avec le DataTable et pagine côté serveur sans rôle User legacy', async () => {
