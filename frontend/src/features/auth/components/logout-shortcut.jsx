@@ -18,7 +18,7 @@ function LogoutShortcut() {
   }
 
   return (
-    <Tooltip content="Déconnexion">
+    <Tooltip content="Déconnexion" side="bottom-end">
       <Button
         aria-label="Déconnexion"
         disabled={isLoading}
