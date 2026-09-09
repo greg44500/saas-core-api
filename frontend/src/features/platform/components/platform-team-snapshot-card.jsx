@@ -5,6 +5,7 @@ import { DistributionBarChart } from '@/components/data-display/distribution-bar
 import { DashboardSection } from '@/components/shared/dashboard-section';
 import { MetricDrilldownButton } from '@/components/shared/metric-drilldown-button';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
 import { useGetPlatformTeamSummaryQuery } from '@/features/platform/api/platform-team-api';
 import { PlatformTeamMembersDrawer } from '@/features/platform/components/platform-team-members-drawer';
@@ -31,15 +32,29 @@ function PlatformTeamSnapshotSection() {
   }
 
   let snapshotCard;
+  const isInitialSummaryLoading = summaryQuery.isLoading
+    || (summaryQuery.isFetching && summaryQuery.data === undefined);
 
-  if (summaryQuery.isLoading) {
+  if (isInitialSummaryLoading) {
     snapshotCard = (
       <CollapsibleCard
         description="Synthèse des membres internes actuels de la Plateforme."
         summary={(
-          <p className="text-sm text-muted-foreground">
-            Chargement de l’équipe…
-          </p>
+          <div aria-live="polite" role="status">
+            <span className="sr-only">Chargement de l’équipe…</span>
+            <div
+              aria-hidden="true"
+              className="grid grid-cols-2 gap-4 sm:grid-cols-4"
+            >
+              {Array.from({ length: 4 }, (_, index) => (
+                <div className="space-y-2" key={`team-metric-${index}`}>
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-6 w-12" />
+                </div>
+              ))}
+            </div>
+            <Skeleton className="mt-4 h-9 w-28" />
+          </div>
         )}
         title="Équipe de la Plateforme"
       />
