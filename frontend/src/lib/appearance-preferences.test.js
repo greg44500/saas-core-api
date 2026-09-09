@@ -11,6 +11,13 @@ describe('appearance preferences contract', () => {
     window.localStorage.clear();
   });
 
+  it('conserve les polices déclarées par le contrat', () => {
+    expect(normalizeComfortPreferences({ fontFamily: 'geist' }).fontFamily)
+      .toBe('geist');
+    expect(normalizeComfortPreferences({ fontFamily: 'manrope' }).fontFamily)
+      .toBe('manrope');
+  });
+
   it('retombe sur les valeurs contrôlées pour des valeurs arbitraires', () => {
     expect(normalizeComfortPreferences({
       theme: 'sepia',
