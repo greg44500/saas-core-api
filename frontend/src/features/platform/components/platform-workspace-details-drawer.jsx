@@ -1,4 +1,5 @@
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import { EntityDetailsSkeleton } from '@/components/shared/entity-details-skeleton';
 import { Button } from '@/components/ui/button';
 import {
   PLATFORM_WORKSPACE_STATUS,
@@ -41,6 +42,8 @@ function PlatformWorkspaceDetailsDrawer({
   open,
   workspace,
 }) {
+  const isInitialLoading = isLoading && !workspace;
+
   return (
     <EntityDetailsDrawer
       description="État administratif et informations de cycle de vie exposés par l’administration Platform."
@@ -48,9 +51,15 @@ function PlatformWorkspaceDetailsDrawer({
       open={open}
       title={workspace?.name ?? 'Détails du workspace'}
     >
-      {isLoading && <p className="text-sm text-muted-foreground">Chargement des détails…</p>}
+      {isInitialLoading && (
+        <EntityDetailsSkeleton
+          label="Chargement des détails du workspace…"
+          rowsPerSection={10}
+          sections={1}
+        />
+      )}
 
-      {!isLoading && error && (
+      {!workspace && !isInitialLoading && error && (
         <div className="space-y-3">
           <p className="text-sm text-destructive" role="alert">
             Impossible de charger les détails de ce workspace.
@@ -61,7 +70,7 @@ function PlatformWorkspaceDetailsDrawer({
         </div>
       )}
 
-      {!isLoading && !error && workspace && (
+      {workspace && (
         <div className="space-y-6">
           <section>
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
