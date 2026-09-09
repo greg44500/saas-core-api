@@ -1,7 +1,6 @@
 import { ArrowLeft } from 'lucide-react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 
-import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { UserMenu } from '@/features/auth/components/user-menu';
 import { getAuthenticatedHome } from '@/features/auth/lib/authenticated-destination';
@@ -41,7 +40,6 @@ function AccountLayout() {
           </div>
 
           <div className="flex items-center gap-2">
-            <ThemeToggle />
             <UserMenu />
           </div>
         </div>
