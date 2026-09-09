@@ -1,5 +1,6 @@
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable } from '@/components/data-display/data-table';
+import { DataTableSkeleton } from '@/components/data-display/data-table-skeleton';
 import {
   formatRetentionDate,
   getRetentionExecutionStatusLabel,
@@ -59,11 +60,17 @@ function PlatformRetentionExecutionsTable({
   page,
   pagination,
 }) {
+  const hasExecutions = Array.isArray(executions) && executions.length > 0;
+
   return (
     <div>
-      {(!executions || executions.length === 0) ? (
+      {loading && !hasExecutions ? (
+        <div className="overflow-hidden rounded-lg border border-border">
+          <DataTableSkeleton columns={columns.length} rows={5} />
+        </div>
+      ) : !hasExecutions ? (
         <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          {loading ? 'Chargement des exécutions…' : 'Aucune exécution de rétention.'}
+          Aucune exécution de rétention.
         </div>
       ) : (
         <DataTable
