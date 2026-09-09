@@ -1,4 +1,5 @@
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import { EntityDetailsSkeleton } from '@/components/shared/entity-details-skeleton';
 import { InlineIconLink } from '@/components/shared/inline-icon-link';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,11 +48,17 @@ function PlatformEntitlementOverrideDetails({
   onViewWorkspace,
   override,
 }) {
-  if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Chargement de la dérogation…</p>;
+  if (!override && isLoading) {
+    return (
+      <EntityDetailsSkeleton
+        label="Chargement de la dérogation…"
+        rowsPerSection={[8, 4]}
+        sections={2}
+      />
+    );
   }
 
-  if (error) {
+  if (!override && error) {
     return (
       <div className="space-y-3">
         <p className="text-sm text-destructive" role="alert">
