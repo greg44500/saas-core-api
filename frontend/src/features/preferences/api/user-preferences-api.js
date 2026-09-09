@@ -15,18 +15,22 @@ const userPreferencesApi = baseApi.injectEndpoints({
       }),
       transformResponse: (response) => response?.data?.preferences ?? null,
       async onQueryStarted(_payload, { dispatch, queryFulfilled }) {
-        const { data } = await queryFulfilled;
+        try {
+          const { data } = await queryFulfilled;
 
-        dispatch(
-          userPreferencesApi.util.updateQueryData(
-            'getCurrentUserPreferences',
-            undefined,
-            (draft) => {
-              if (!draft || !data) return;
-              Object.assign(draft, data);
-            },
-          ),
-        );
+          dispatch(
+            userPreferencesApi.util.updateQueryData(
+              'getCurrentUserPreferences',
+              undefined,
+              (draft) => {
+                if (!draft || !data) return;
+                Object.assign(draft, data);
+              },
+            ),
+          );
+        } catch {
+          // Le composant appelant reste responsable du message d'échec.
+        }
       },
     }),
   }),
