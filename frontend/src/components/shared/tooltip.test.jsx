@@ -77,4 +77,17 @@ describe('Tooltip', () => {
     expect(button.parentElement).toHaveClass('flex', 'w-full');
     expect(tooltip).toHaveClass('left-full', 'top-1/2', 'ml-3', '-translate-y-1/2');
   });
+
+  it('propose un positionnement sous le trigger aligné à droite pour éviter le débordement du viewport', () => {
+    render(
+      <Tooltip content="Déconnexion" side="bottom-end">
+        <button type="button">Quitter</button>
+      </Tooltip>,
+    );
+
+    const tooltip = screen.getByRole('tooltip', { hidden: true });
+
+    expect(tooltip).toHaveClass('right-0', 'top-full', 'mt-2');
+    expect(tooltip).not.toHaveClass('left-1/2', '-translate-x-1/2');
+  });
 });
