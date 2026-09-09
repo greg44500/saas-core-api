@@ -1,3 +1,7 @@
+import {
+  ACTIVE_APPEARANCE_PALETTE_IDS,
+} from '@/app/application-appearance';
+
 const APPEARANCE_THEME = Object.freeze({
   SYSTEM: 'system',
   LIGHT: 'light',
@@ -42,7 +46,7 @@ function normalizeComfortPreferences(preferences) {
     fontFamily: isAllowedValue(source.fontFamily, APPEARANCE_FONT_FAMILY)
       ? source.fontFamily
       : DEFAULT_COMFORT_PREFERENCES.fontFamily,
-    paletteId: isAllowedValue(source.paletteId, APPEARANCE_PALETTE)
+    paletteId: ACTIVE_APPEARANCE_PALETTE_IDS.includes(source.paletteId)
       ? source.paletteId
       : DEFAULT_COMFORT_PREFERENCES.paletteId,
     accessibilityMode: isAllowedValue(
