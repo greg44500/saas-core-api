@@ -213,7 +213,7 @@ D-011 doit être traitée dans l'ordre suivant :
 
 ```text
 D-011.A Design System Core                    VALIDÉ — 2026-09-09
-→ D-011.B Préférences de confort              PLANIFIÉ
+D-011.B Préférences de confort                VALIDÉ — 2026-09-09
 → D-011.C Préférences d'affichage métier      PLANIFIÉ
 ```
 
@@ -280,22 +280,11 @@ Une exigence d'accessibilité structurelle ne doit jamais être retirée pour pr
 
 ### Mode accessibilité renforcée
 
-D-011.B pourra exposer une préférence `accessibilityMode` ou équivalent, mais elle constitue une **surcouche optionnelle** et non l'activation de l'accessibilité elle-même.
+D-011.B expose désormais une préférence contrôlée `accessibilityMode`. Elle constitue une **surcouche optionnelle** et non l'activation de l'accessibilité elle-même.
 
-Le profil renforcé pourra, après cadrage, augmenter ou renforcer de manière contrôlée :
+Le profil renforcé peut augmenter de manière contrôlée le contraste de surfaces secondaires, la visibilité des bordures et du focus, et réduire certaines animations/transitions applicatives. Le respect global de `prefers-reduced-motion` reste toujours actif indépendamment de cette préférence.
 
-```text
-contraste
-lisibilité / taille de texte
-zones interactives
-visibilité du focus
-espacements
-réduction des animations
-réduction des transparences
-distinction des états
-```
-
-Il doit pouvoir se combiner avec le thème/palette choisi lorsque cela reste cohérent :
+Il se combine avec le thème/palette choisi lorsque cela reste cohérent :
 
 ```text
 thème/palette
@@ -305,7 +294,7 @@ préférences de confort
 profil accessibilité renforcée
 ```
 
-Le système doit également respecter les préférences d'accessibilité fournies par l'OS/navigateur lorsqu'elles sont pertinentes ; une préférence applicative ne doit pas neutraliser un besoin système important sans décision explicite et justifiée.
+Une préférence applicative ne doit pas neutraliser un besoin système important sans décision explicite et justifiée.
 
 ### États asynchrones et Skeletons
 
@@ -329,21 +318,46 @@ Le socle partagé comprend notamment la primitive `Skeleton`, `DataTableSkeleton
 
 ### D-011.B — Préférences de confort
 
-Le Core doit fournir un mécanisme contrôlé pour les préférences transversales :
+**Sous-phase : VALIDÉE le 2026-09-09.** Gate locale finale frontend et backend verte (`lint`, tests globaux et build frontend) et validation UI manuelle confirmée avant fusion fast-forward dans `main`.
+
+Le Core fournit désormais un mécanisme contrôlé pour les préférences transversales :
 
 ```text
-thème clair / sombre / système
-police parmi une liste contrôlée
-palette parmi les palettes explicitement fournies et intégrées par le propriétaire du produit
-mode accessibilité renforcée
-futures options d'ergonomie/accessibilité uniquement si cadrées
+theme             → system | light | dark
+fontFamily        → inter | geist | manrope | system
+paletteId         → palette enregistrée dans le registre Core
+accessibilityMode → standard | enhanced
 ```
 
-Les palettes ne sont pas inventées automatiquement par le Core. Elles sont traduites en tokens sémantiques du Design System et doivent satisfaire les exigences d'accessibilité applicables.
+La persistance authentifiée repose sur `User.preferences.comfort`, avec endpoints `GET /api/users/me/preferences` et `PATCH /api/users/me/preferences`, validation Zod stricte, enums contrôlés, normalisation des comptes plus anciens et absence de migration destructive obligatoire.
 
-Une préférence ne stocke jamais une valeur CSS libre, une URL de police arbitraire ou une palette utilisateur non validée. Elle stocke un identifiant contrôlé (`theme`, `paletteId`, `fontFamily`, etc.) validé strictement.
+Une préférence ne stocke jamais une valeur CSS libre, une URL de police arbitraire, une palette utilisateur non validée ou un JSON libre. Elle stocke uniquement des identifiants contrôlés.
 
-La persistance serveur/local, les valeurs par défaut, le comportement multi-appareils, les fallbacks si une option disparaît et la compatibilité ascendante doivent être explicitement cadrés. Pas de JSON libre non validé.
+Le frontend distingue :
+
+```text
+utilisateur anonyme     → stockage local contrôlé
+utilisateur authentifié → préférences serveur du compte
+```
+
+Le stockage local courant utilise `saas-core:comfort:<scope>`. L'ancienne clé `saas-core:theme:<scope>` reste uniquement lisible pour compatibilité ascendante.
+
+Polices intégrées : Inter par défaut, Geist, Manrope et System. Les dépendances Fontsource correspondantes sont verrouillées dans le lockfile.
+
+Palettes Core intégrées :
+
+```text
+Core Atlantique
+Refreshing Summer Fun
+Leafy Green Garden
+Golden Peachy Glow
+```
+
+Les mini-palettes utilisent des métadonnées frontend contrôlées. Les couleurs réelles restent traduites vers les tokens sémantiques du Design System. Les couleurs d'état restent indépendantes des palettes de marque.
+
+La page `/account/preferences` propose thème, police, palette et accessibilité renforcée. Le clic sur une palette produit un aperçu immédiat, mais seule la sauvegarde explicite persiste le choix serveur ; quitter sans enregistrer restaure la préférence sauvegardée.
+
+Les ajustements transversaux de shell réalisés dans le même lot sont factorisés : identité applicative `SaaS Core`, affichage statique du workspace lorsqu'un seul est accessible, bloc partagé d'identité authentifiée, qualité Platform issue du contexte réel, raccourci Déconnexion, tooltip `bottom-end`, sidebars Workspace/Platform liées au viewport avec scroll interne de navigation si nécessaire. Ces éléments ne créent aucune nouvelle source d'autorisation.
 
 ### D-011.C — Préférences d'affichage métier
 
@@ -376,19 +390,16 @@ La V1 reste volontairement limitée à afficher/masquer et, uniquement si le cad
 
 ### Tests attendus D-011
 
-Pour D-011.A, les tests des composants/shared, clavier/focus/labels et états Skeleton/Empty/Error concernés sont validés par la gate du 2026-09-09.
+D-011.A et D-011.B sont validés par leurs gates locales respectives, leurs tests ciblés/globaux et leur validation manuelle.
 
-Pour D-011.B/C, prévoir encore au minimum :
+Pour D-011.C, prévoir encore au minimum :
 
-- tests des thèmes/palettes/fallbacks retenus ;
-- contrôles de contraste des palettes retenues ;
-- tests du mode accessibilité renforcée lorsqu'implémenté ;
 - validation backend stricte des préférences persistées si persistance serveur ;
 - tests de non-escalade : aucune préférence ne contourne Plan/entitlement/RBAC ;
 - filtrage des préférences Dashboard selon entitlement + permissions ;
-- fallbacks lorsqu'un widget, une police ou une palette n'existe plus ;
+- fallbacks lorsqu'un widget enregistré n'existe plus ;
 - persistance inter-session lorsque la préférence est serveur ;
-- checklist manuelle responsive, clavier, zoom, lisibilité, contraste, thème light/dark et cohérence du Design System.
+- checklist manuelle responsive, clavier, zoom, lisibilité, thème light/dark et cohérence du Design System.
 
 **Critère de clôture :** Design System Core audité et stabilisé, tokens sémantiques et responsabilités globales documentés, accessibilité structurelle non désactivable intégrée, profil d'accessibilité renforcée cadré/implémenté selon le contrat retenu, états asynchrones partagés dont Skeletons cohérents, préférences de confort strictement contrôlées, registre d'affichage métier extensible, filtrage entitlement+RBAC garanti, composants réutilisables et tests backend/frontend/accessibilité/sécurité pertinents validés avant D-015.
 
@@ -518,7 +529,7 @@ D-019 moteur sécurisé de rétention / purge Core             VALIDÉ
 DOC-CODE-1 documentation source                             VALIDÉ
 → D-020 invitation commerciale / offre privée découverte    EN COURS
 D-011.A stabilisation Design System Core                    VALIDÉ
-→ D-011.B préférences de confort                            PLANIFIÉ
+D-011.B préférences de confort                              VALIDÉ
 → D-011.C préférences d'affichage métier                    PLANIFIÉ
 → D-021 gate sécurité Auth / invitations / tokens           PLANIFIÉ
 → D-015 release/version/provenance/migrations               PLANIFIÉ
