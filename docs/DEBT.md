@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Registre canonique des dettes actives
 
 **Statut :** source de vérité documentaire pour les dettes non résolues  
-**Dernière mise à jour :** 2026-09-08  
+**Dernière mise à jour :** 2026-09-09  
 **Périmètre :** Core clonable et, lorsque précisé, applications dérivées
 
 ---
@@ -63,7 +63,7 @@ produit dérivé automatiquement production-ready
 | ID | Dette | Statut |
 |---|---|---|
 | D-020 | Invitation commerciale client et offres privées de découverte | EN COURS |
-| D-011 | Design System Core, préférences utilisateur et affichage métier | PLANIFIÉ |
+| D-011 | Design System Core, préférences utilisateur et affichage métier | EN COURS |
 | D-021 | Gate sécurité Auth, invitations et tokens temporaires | PLANIFIÉ |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
@@ -203,7 +203,7 @@ MFA, passkeys, SSO entreprise ou autres providers ne sont pas ajoutés uniquemen
 
 ## D-011 — Design System Core, préférences utilisateur et affichage métier
 
-**Statut :** PLANIFIÉ  
+**Statut :** EN COURS  
 **Périmètre :** Core frontend clonable + préférences utilisateur + points d'extension des applications dérivées  
 **Blocage Core 1.0 :** oui, avant D-015  
 **Dépendances :** design system frontend existant, identité utilisateur, entitlement effectif et RBAC  
@@ -212,20 +212,22 @@ MFA, passkeys, SSO entreprise ou autres providers ne sont pas ajoutés uniquemen
 D-011 doit être traitée dans l'ordre suivant :
 
 ```text
-D-011.A Design System Core
-→ D-011.B Préférences de confort
-→ D-011.C Préférences d'affichage métier
+D-011.A Design System Core                    VALIDÉ — 2026-09-09
+→ D-011.B Préférences de confort              PLANIFIÉ
+→ D-011.C Préférences d'affichage métier      PLANIFIÉ
 ```
 
 Le système de préférences ne doit pas précéder la stabilisation du Design System : une préférence choisit parmi des possibilités autorisées par le Design System, elle ne crée pas elle-même des styles arbitraires.
 
 ### D-011.A — Stabilisation du Design System Core
 
-Le frontend possède déjà une base Tailwind CSS v4 CSS-first avec `@theme inline`, variables CSS sémantiques, thèmes light/dark et composants shadcn/ui. Cette base doit être auditée et consolidée plutôt que remplacée sans justification.
+**Sous-phase : VALIDÉE le 2026-09-09.** Validation manuelle réalisée, puis gate frontend locale `npm run lint`, `npm test` (183 fichiers / 585 tests) et `npm run build` verte. Le lot n'a nécessité aucune modification backend ni nouvelle dépendance.
 
-Le fichier global actuel (`frontend/src/index.css`) peut conserver son nom : son rôle importe davantage que le nom `global.css`. Il doit rester limité aux imports Tailwind, tokens/thèmes, styles HTML globaux, règles transversales d'accessibilité, typographie, `color-scheme` et resets réellement globaux. Il ne doit pas devenir un stockage de styles métier ou de composants.
+Le frontend possède une base Tailwind CSS v4 CSS-first avec `@theme inline`, variables CSS sémantiques, thèmes light/dark et composants shadcn/ui. Cette base a été consolidée plutôt que remplacée.
 
-Le contrat de tokens doit distinguer lorsque pertinent :
+Le fichier global actuel (`frontend/src/index.css`) conserve son nom : son rôle importe davantage que le nom `global.css`. Il reste limité aux imports Tailwind, tokens/thèmes, styles HTML globaux, règles transversales d'accessibilité, typographie, `color-scheme` et resets réellement globaux. Il ne devient pas un stockage de styles métier ou de composants.
+
+Le contrat de tokens distingue lorsque pertinent :
 
 ```text
 tokens primitifs
@@ -239,11 +241,11 @@ composants UI
 → consomment les tokens sémantiques plutôt que des couleurs arbitraires
 ```
 
-Les tokens spécifiques à un composant ne doivent être ajoutés que lorsqu'ils apportent une vraie valeur ; éviter une explosion de variables dupliquant les variants gérés proprement par shadcn/CVA/Tailwind.
+Les tokens spécifiques à un composant ne sont ajoutés que lorsqu'ils apportent une vraie valeur ; éviter une explosion de variables dupliquant les variants gérés proprement par shadcn/CVA/Tailwind.
 
-Les couleurs, tailles, radius, ombres et autres valeurs codées en dur dans les composants doivent être auditées. Une valeur ponctuelle n'est pas automatiquement une dette : la migration vers un token doit être justifiée par une responsabilité réellement transverse.
+Les couleurs, tailles, radius, ombres et autres valeurs codées en dur dans les composants ont été auditées avec le principe suivant : une valeur ponctuelle n'est pas automatiquement une dette ; la migration vers un token doit être justifiée par une responsabilité réellement transverse.
 
-Architecture cible :
+Architecture validée :
 
 ```text
 Design tokens
@@ -256,9 +258,9 @@ Aucune page ou feature ne doit recréer localement une primitive générique dé
 
 ### Accessibilité structurelle obligatoire
 
-L'accessibilité de base n'est **pas une préférence désactivable** et ne doit pas dépendre d'un thème. Le Core doit viser au minimum une conformité cohérente avec WCAG 2.2 AA pour ses composants et parcours concernés.
+L'accessibilité de base n'est **pas une préférence désactivable** et ne dépend pas d'un thème. Le Core vise au minimum une conformité cohérente avec WCAG 2.2 AA pour ses composants et parcours concernés.
 
-Doivent notamment être audités/garantis :
+Doivent notamment rester garantis :
 
 - HTML sémantique et accessible names ;
 - navigation clavier ;
@@ -307,7 +309,7 @@ Le système doit également respecter les préférences d'accessibilité fournie
 
 ### États asynchrones et Skeletons
 
-Le Design System doit normaliser les états des composants alimentés par des données serveur :
+Le Design System normalise les états des composants alimentés par des données serveur :
 
 ```text
 LOADING   → Skeleton adapté lorsque pertinent
@@ -317,11 +319,13 @@ ERROR     → ErrorState + retry lorsque pertinent
 FORBIDDEN / non-entitled → généralement composant absent selon RBAC/entitlement
 ```
 
-Les Skeletons sont une brique de perception de performance et de stabilité visuelle, pas une décoration. Ils doivent approximer la structure finale sans créer de faux contenu, limiter les changements de layout et respecter `prefers-reduced-motion`/le profil d'accessibilité.
+Les Skeletons sont une brique de perception de performance et de stabilité visuelle, pas une décoration. Ils approximent la structure finale sans créer de faux contenu, limitent les changements de layout et respectent `prefers-reduced-motion`.
 
-Prévoir une primitive générique réutilisable et seulement les compositions réellement utiles, par exemple `KpiCardSkeleton`, `DataTableSkeleton`, `CardSkeleton` ou `DashboardSectionSkeleton`, en évitant qu'un futur module métier réimplémente sa propre mécanique générique.
+Règle RTK Query : un Skeleton est réservé au chargement initial lorsqu'aucune donnée n'est encore disponible. Lors d'un refetch avec donnée existante, le contenu réel reste affiché.
 
-`loading`, `empty`, `error`, `forbidden` et `disabled` sont des états distincts et ne doivent jamais être confondus.
+Le socle partagé comprend notamment la primitive `Skeleton`, `DataTableSkeleton`, `PageLoader`, `FormSectionSkeleton`, `EntityDetailsSkeleton` et les compositions Platform/Subscription nécessaires. Une future feature accessible par Plan/entitlement ou délégation doit réutiliser la composition correspondant à sa géométrie ; l'entitlement décide l'accès, pas le type de Skeleton.
+
+`loading`, `empty`, `error`, `forbidden` et `disabled` restent des états distincts et ne doivent jamais être confondus.
 
 ### D-011.B — Préférences de confort
 
@@ -372,15 +376,14 @@ La V1 reste volontairement limitée à afficher/masquer et, uniquement si le cad
 
 ### Tests attendus D-011
 
-Prévoir au minimum :
+Pour D-011.A, les tests des composants/shared, clavier/focus/labels et états Skeleton/Empty/Error concernés sont validés par la gate du 2026-09-09.
 
-- tests des tokens/thèmes et fallbacks pertinents ;
-- tests des composants UI/shared modifiés ;
-- tests clavier/focus/labels/erreurs pour les composants concernés ;
+Pour D-011.B/C, prévoir encore au minimum :
+
+- tests des thèmes/palettes/fallbacks retenus ;
 - contrôles de contraste des palettes retenues ;
-- tests `prefers-reduced-motion` et mode accessibilité renforcée lorsque implémentés ;
-- tests Skeleton/EmptyState/ErrorState et absence d'ambiguïté avec forbidden ;
-- validation backend stricte des préférences persistées ;
+- tests du mode accessibilité renforcée lorsqu'implémenté ;
+- validation backend stricte des préférences persistées si persistance serveur ;
 - tests de non-escalade : aucune préférence ne contourne Plan/entitlement/RBAC ;
 - filtrage des préférences Dashboard selon entitlement + permissions ;
 - fallbacks lorsqu'un widget, une police ou une palette n'existe plus ;
@@ -514,7 +517,7 @@ D-018 Équipe Platform / RBAC / invitations                  VALIDÉ
 D-019 moteur sécurisé de rétention / purge Core             VALIDÉ
 DOC-CODE-1 documentation source                             VALIDÉ
 → D-020 invitation commerciale / offre privée découverte    EN COURS
-→ D-011.A stabilisation Design System Core                  PLANIFIÉ
+D-011.A stabilisation Design System Core                    VALIDÉ
 → D-011.B préférences de confort                            PLANIFIÉ
 → D-011.C préférences d'affichage métier                    PLANIFIÉ
 → D-021 gate sécurité Auth / invitations / tokens           PLANIFIÉ
