@@ -96,7 +96,7 @@ describe('PlatformWorkspacesPage', () => {
     vi.clearAllMocks();
   });
 
-  it('affiche l’état de chargement', () => {
+  it('affiche le skeleton du tableau au chargement', () => {
     mocks.useListPlatformWorkspacesQuery.mockReturnValue({
       data: undefined,
       error: undefined,
@@ -106,7 +106,7 @@ describe('PlatformWorkspacesPage', () => {
     });
 
     renderPage();
-    expect(screen.getByText('Chargement des workspaces…')).toBeInTheDocument();
+    expect(screen.getByText('Chargement du tableau…')).toBeInTheDocument();
   });
 
   it('affiche les workspaces et pagine côté serveur', async () => {
