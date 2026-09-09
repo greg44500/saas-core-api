@@ -2,12 +2,8 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router';
 
-vi.mock('@/components/shared/theme-toggle', () => ({
-  ThemeToggle: () => <button type="button">Thème</button>,
-}));
-
-vi.mock('@/features/auth/components/user-menu', () => ({
-  UserMenu: () => <button type="button">Compte</button>,
+vi.mock('@/features/auth/components/authenticated-user-identity', () => ({
+  AuthenticatedUserIdentity: () => <div>Identité utilisateur</div>,
 }));
 
 vi.mock('@/features/platform/components/platform-sidebar', () => ({
@@ -19,7 +15,7 @@ import { PlatformLayout } from '@/app/layouts/platform-layout';
 describe('PlatformLayout', () => {
   afterEach(() => cleanup());
 
-  it('affiche un intitulé unique pour la console d’administration', () => {
+  it('affiche un intitulé unique et le bloc d’identité partagé', () => {
     render(
       <MemoryRouter initialEntries={['/platform/overview']}>
         <Routes>
@@ -34,6 +30,7 @@ describe('PlatformLayout', () => {
     expect(
       screen.getByText('Console d’administration globale'),
     ).toBeInTheDocument();
+    expect(screen.getByText('Identité utilisateur')).toBeInTheDocument();
     expect(screen.queryByText('Console Platform')).not.toBeInTheDocument();
   });
 });
