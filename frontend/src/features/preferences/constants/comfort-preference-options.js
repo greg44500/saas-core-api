@@ -14,6 +14,8 @@ const THEME_OPTIONS = Object.freeze([
 
 const FONT_FAMILY_OPTIONS = Object.freeze([
   { value: APPEARANCE_FONT_FAMILY.INTER, label: 'Inter' },
+  { value: APPEARANCE_FONT_FAMILY.GEIST, label: 'Geist' },
+  { value: APPEARANCE_FONT_FAMILY.MANROPE, label: 'Manrope' },
   { value: APPEARANCE_FONT_FAMILY.SYSTEM, label: 'Police du système' },
 ]);
 
