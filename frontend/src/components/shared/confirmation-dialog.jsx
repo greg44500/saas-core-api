@@ -1,15 +1,7 @@
-import { useEffect, useId, useRef } from 'react';
+import { useId, useRef } from 'react';
 
 import { Button } from '@/components/ui/button';
-
-const FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',');
+import { useDialogFocus } from '@/hooks/use-dialog-focus';
 
 /**
  * Cadre partagé des confirmations bloquantes du Core.
@@ -35,67 +27,19 @@ function ConfirmationDialog({
   const descriptionId = useId();
   const dialogRef = useRef(null);
   const cancelButtonRef = useRef(null);
-  const previousFocusRef = useRef(null);
-  const onCancelRef = useRef(onCancel);
 
-  useEffect(() => {
-    onCancelRef.current = onCancel;
-  }, [onCancel]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-
-    previousFocusRef.current = document.activeElement;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    cancelButtonRef.current?.focus();
-
-    function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onCancelRef.current?.();
-        return;
-      }
-
-      if (event.key !== 'Tab') return;
-
-      const focusableElements = Array.from(
-        dialogRef.current?.querySelectorAll(FOCUSABLE_SELECTOR) ?? [],
-      );
-
-      if (focusableElements.length === 0) {
-        event.preventDefault();
-        dialogRef.current?.focus();
-        return;
-      }
-
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-
-      if (event.shiftKey && document.activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
-      } else if (!event.shiftKey && document.activeElement === lastElement) {
-        event.preventDefault();
-        firstElement.focus();
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener('keydown', handleKeyDown);
-      previousFocusRef.current?.focus?.();
-    };
-  }, [open]);
+  useDialogFocus({
+    open,
+    containerRef: dialogRef,
+    initialFocusRef: cancelButtonRef,
+    onClose: onCancel,
+  });
 
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[95] grid place-items-center bg-black/50 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[var(--layer-modal)] grid place-items-center bg-overlay/50 px-4 backdrop-blur-sm"
       role="presentation"
     >
       <section
