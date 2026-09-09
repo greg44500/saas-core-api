@@ -167,6 +167,14 @@ function shiftDateByMonths(value, offset) {
   ));
 }
 
+function mergeDescribedBy(...values) {
+  const ids = values
+    .flatMap((entry) => entry?.split(/\s+/) ?? [])
+    .filter(Boolean);
+
+  return [...new Set(ids)].join(' ') || undefined;
+}
+
 function DatePicker({
   id,
   value = '',
@@ -177,6 +185,8 @@ function DatePicker({
   className,
   placeholder = 'jj/mm/aaaa',
   'aria-label': ariaLabel,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
 }) {
   const generatedId = useId();
   const rootRef = useRef(null);
@@ -192,6 +202,11 @@ function DatePicker({
   const errorId = `${rootId}-error`;
   const calendarId = `${rootId}-calendar`;
   const calendarTitleId = `${rootId}-calendar-title`;
+  const inputDescribedBy = mergeDescribedBy(
+    ariaDescribedBy,
+    invalid ? errorId : undefined,
+  );
+  const inputInvalid = invalid ? true : ariaInvalid;
 
   useEffect(() => {
     setDraft(formatFrenchDate(value));
@@ -363,8 +378,8 @@ function DatePicker({
     >
       <div className="relative">
         <input
-          aria-describedby={invalid ? errorId : undefined}
-          aria-invalid={invalid || undefined}
+          aria-describedby={inputDescribedBy}
+          aria-invalid={inputInvalid}
           aria-label={ariaLabel}
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={disabled}
@@ -497,6 +512,7 @@ export {
   DatePicker,
   formatFrenchDate,
   getInitialCalendarFocusValue,
+  mergeDescribedBy,
   parseFrenchDate,
   parseIsoDate,
   shiftDateByDays,
