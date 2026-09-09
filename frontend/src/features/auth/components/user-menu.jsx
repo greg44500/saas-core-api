@@ -1,4 +1,10 @@
-import { Gauge, LogOut, ShieldCheck, UserRound } from 'lucide-react';
+import {
+  Gauge,
+  LogOut,
+  Settings2,
+  ShieldCheck,
+  UserRound,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
@@ -145,6 +151,14 @@ function UserMenu() {
             >
               <UserRound aria-hidden="true" className="size-4" />
               Profil
+            </button>
+            <button
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => navigateFromMenu('/account/preferences', { preserveReturnDestination: true })}
+              type="button"
+            >
+              <Settings2 aria-hidden="true" className="size-4" />
+              Préférences
             </button>
             <button
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
