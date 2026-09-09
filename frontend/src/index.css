@@ -119,6 +119,70 @@
   --font-family-app: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+/*
+ * Les couleurs sources sont conservées dans chaque identité de palette, puis
+ * réparties sur les tokens selon leur contraste et leur responsabilité UI.
+ */
+:root[data-palette="refreshing-summer-fun"] {
+  --background: #f4fafc;
+  --foreground: #023047;
+  --card: #ffffff;
+  --card-foreground: #023047;
+  --popover: #ffffff;
+  --popover-foreground: #023047;
+  --primary: #023047;
+  --primary-foreground: #ffffff;
+  --secondary: #fb8500;
+  --secondary-foreground: #023047;
+  --muted: #e7f5fa;
+  --muted-foreground: #0d5970;
+  --accent: #ffb703;
+  --accent-foreground: #023047;
+  --border: #8ecae6;
+  --input: #8ecae6;
+  --ring: #219ebc;
+}
+
+:root[data-palette="leafy-green-garden"] {
+  --background: #f8faef;
+  --foreground: #132a13;
+  --card: #ffffff;
+  --card-foreground: #132a13;
+  --popover: #ffffff;
+  --popover-foreground: #132a13;
+  --primary: #31572c;
+  --primary-foreground: #ffffff;
+  --secondary: #90a955;
+  --secondary-foreground: #132a13;
+  --muted: #f1f6d9;
+  --muted-foreground: #31572c;
+  --accent: #ecf39e;
+  --accent-foreground: #132a13;
+  --border: #90a955;
+  --input: #90a955;
+  --ring: #4f772d;
+}
+
+:root[data-palette="golden-peachy-glow"] {
+  --background: #fcf8f1;
+  --foreground: #472d30;
+  --card: #ffffff;
+  --card-foreground: #472d30;
+  --popover: #ffffff;
+  --popover-foreground: #472d30;
+  --primary: #723d46;
+  --primary-foreground: #ffffff;
+  --secondary: #c9cba3;
+  --secondary-foreground: #472d30;
+  --muted: #f6eee3;
+  --muted-foreground: #723d46;
+  --accent: #ffe1a8;
+  --accent-foreground: #472d30;
+  --border: #c9cba3;
+  --input: #c9cba3;
+  --ring: #e26d5c;
+}
+
 .dark {
   color-scheme: dark;
 
@@ -156,6 +220,66 @@
   --disabled-foreground: #aab8bd;
 }
 
+:root.dark[data-palette="refreshing-summer-fun"] {
+  --background: #011f2d;
+  --foreground: #f4fbfe;
+  --card: #023047;
+  --card-foreground: #f4fbfe;
+  --popover: #023047;
+  --popover-foreground: #f4fbfe;
+  --primary: #8ecae6;
+  --primary-foreground: #023047;
+  --secondary: #fb8500;
+  --secondary-foreground: #023047;
+  --muted: #0b4156;
+  --muted-foreground: #c6e9f5;
+  --accent: #ffb703;
+  --accent-foreground: #023047;
+  --border: #219ebc;
+  --input: #219ebc;
+  --ring: #ffb703;
+}
+
+:root.dark[data-palette="leafy-green-garden"] {
+  --background: #0c1b0c;
+  --foreground: #f4f8dd;
+  --card: #132a13;
+  --card-foreground: #f4f8dd;
+  --popover: #132a13;
+  --popover-foreground: #f4f8dd;
+  --primary: #90a955;
+  --primary-foreground: #132a13;
+  --secondary: #4f772d;
+  --secondary-foreground: #ffffff;
+  --muted: #254520;
+  --muted-foreground: #d9e6a2;
+  --accent: #ecf39e;
+  --accent-foreground: #132a13;
+  --border: #4f772d;
+  --input: #4f772d;
+  --ring: #90a955;
+}
+
+:root.dark[data-palette="golden-peachy-glow"] {
+  --background: #2f1d20;
+  --foreground: #fff8ec;
+  --card: #472d30;
+  --card-foreground: #fff8ec;
+  --popover: #472d30;
+  --popover-foreground: #fff8ec;
+  --primary: #ffe1a8;
+  --primary-foreground: #472d30;
+  --secondary: #c9cba3;
+  --secondary-foreground: #472d30;
+  --muted: #5a353b;
+  --muted-foreground: #f3d9c0;
+  --accent: #e26d5c;
+  --accent-foreground: #251517;
+  --border: #723d46;
+  --input: #723d46;
+  --ring: #ffe1a8;
+}
+
 /*
  * Le profil renforcé complète l'accessibilité structurelle sans modifier les
  * capacités métier. Il renforce seulement quelques signaux transversaux dont la
@@ -169,6 +293,36 @@
 :root.dark.a11y-enhanced {
   --muted-foreground: #d0dfe3;
   --border: #6d8994;
+}
+
+:root[data-palette="refreshing-summer-fun"].a11y-enhanced {
+  --muted-foreground: #023047;
+  --border: #219ebc;
+}
+
+:root[data-palette="leafy-green-garden"].a11y-enhanced {
+  --muted-foreground: #132a13;
+  --border: #4f772d;
+}
+
+:root[data-palette="golden-peachy-glow"].a11y-enhanced {
+  --muted-foreground: #472d30;
+  --border: #723d46;
+}
+
+:root.dark[data-palette="refreshing-summer-fun"].a11y-enhanced {
+  --muted-foreground: #f4fbfe;
+  --border: #8ecae6;
+}
+
+:root.dark[data-palette="leafy-green-garden"].a11y-enhanced {
+  --muted-foreground: #f4f8dd;
+  --border: #90a955;
+}
+
+:root.dark[data-palette="golden-peachy-glow"].a11y-enhanced {
+  --muted-foreground: #fff8ec;
+  --border: #c9cba3;
 }
 
 .a11y-enhanced :focus-visible {
