@@ -52,7 +52,7 @@ describe('PreferencesPage', () => {
       unwrap: vi.fn().mockResolvedValue({
         comfort: {
           theme: 'dark',
-          fontFamily: 'system',
+          fontFamily: 'manrope',
           paletteId: 'core',
           accessibilityMode: 'enhanced',
         },
@@ -60,12 +60,24 @@ describe('PreferencesPage', () => {
     });
   });
 
+  it('propose les polices contrôlées du Design System', () => {
+    render(<PreferencesPage />);
+
+    const fontSelect = screen.getByLabelText('Police');
+
+    expect(fontSelect).toHaveDisplayValue('Inter');
+    expect(screen.getByRole('option', { name: 'Geist' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Manrope' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Police du système' }))
+      .toBeInTheDocument();
+  });
+
   it('enregistre uniquement des préférences de confort contrôlées', async () => {
     const user = userEvent.setup();
     render(<PreferencesPage />);
 
     await user.selectOptions(screen.getByLabelText('Thème'), 'dark');
-    await user.selectOptions(screen.getByLabelText('Police'), 'system');
+    await user.selectOptions(screen.getByLabelText('Police'), 'manrope');
     await user.click(screen.getByRole('switch', {
       name: 'Activer le profil d’accessibilité renforcée',
     }));
@@ -76,7 +88,7 @@ describe('PreferencesPage', () => {
     expect(updatePreferences).toHaveBeenCalledWith({
       comfort: {
         theme: 'dark',
-        fontFamily: 'system',
+        fontFamily: 'manrope',
         paletteId: 'core',
         accessibilityMode: 'enhanced',
       },
