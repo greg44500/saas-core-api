@@ -12,12 +12,8 @@ vi.mock('@/features/platform/api/platform-current-context-api', () => ({
   useGetCurrentPlatformContextQuery: useGetCurrentPlatformContextQueryMock,
 }));
 
-vi.mock('@/components/shared/theme-toggle', () => ({
-  ThemeToggle: () => <button type="button">Thème test</button>,
-}));
-
-vi.mock('@/features/auth/components/user-menu', () => ({
-  UserMenu: () => <button type="button">Compte test</button>,
+vi.mock('@/features/auth/components/authenticated-user-identity', () => ({
+  AuthenticatedUserIdentity: () => <div>Identité utilisateur</div>,
 }));
 
 import { AccountLayout } from '@/app/layouts/account-layout';
@@ -52,6 +48,12 @@ describe('AccountLayout', () => {
   });
 
   afterEach(() => cleanup());
+
+  it('affiche le bloc d’identité partagé dans le header du compte', () => {
+    renderAccount('/account/profile');
+
+    expect(screen.getByText('Identité utilisateur')).toBeInTheDocument();
+  });
 
   it('revient exactement à la page qui a ouvert les paramètres du compte', async () => {
     const user = userEvent.setup();
