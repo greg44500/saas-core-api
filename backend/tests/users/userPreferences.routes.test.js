@@ -84,6 +84,25 @@ describe('PATCH /api/users/me/preferences', () => {
         });
     });
 
+    it('accepte une palette Core déclarée', async () => {
+        const response = await request(app)
+            .patch('/api/users/me/preferences')
+            .set('Authorization', 'Bearer test-token')
+            .send({
+                comfort: {
+                    paletteId: 'leafy-green-garden',
+                },
+            });
+
+        expect(response.status).toBe(200);
+        expect(updateCurrentUserPreferences).toHaveBeenCalledWith({
+            userId: 'user-id',
+            comfort: {
+                paletteId: 'leafy-green-garden',
+            },
+        });
+    });
+
     it('refuse une valeur CSS arbitraire comme palette', async () => {
         const response = await request(app)
             .patch('/api/users/me/preferences')
