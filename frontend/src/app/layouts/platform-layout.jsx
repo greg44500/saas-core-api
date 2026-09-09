@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router';
 
-import { AuthenticatedUserIdentity } from '@/features/auth/components/authenticated-user-identity';
 import { PlatformSidebar } from '@/features/platform/components/platform-sidebar';
+import { PlatformUserIdentity } from '@/features/platform/components/platform-user-identity';
 
 function PlatformLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex min-h-svh bg-background text-foreground">
       <PlatformSidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((current) => !current)}
@@ -19,7 +19,7 @@ function PlatformLayout() {
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
             <p className="font-semibold">Console d’administration globale</p>
 
-            <AuthenticatedUserIdentity />
+            <PlatformUserIdentity />
           </div>
         </header>
 
