@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router';
 
-import { UserMenu } from '@/features/auth/components/user-menu';
+import { AuthenticatedUserIdentity } from '@/features/auth/components/authenticated-user-identity';
 import { PlatformSidebar } from '@/features/platform/components/platform-sidebar';
 
 function PlatformLayout() {
@@ -19,9 +19,7 @@ function PlatformLayout() {
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
             <p className="font-semibold">Console d’administration globale</p>
 
-            <div className="flex items-center gap-2">
-              <UserMenu />
-            </div>
+            <AuthenticatedUserIdentity secondaryText="Console Platform" />
           </div>
         </header>
 
