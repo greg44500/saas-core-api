@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 const TOOLTIP_GAP = 8;
 const VIEWPORT_PADDING = 12;
 const TOOLTIP_MAX_WIDTH = 256;
+const TOOLTIP_CLOSE_DELAY_MS = 100;
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -30,8 +31,24 @@ function InfoTooltip({ content, label = 'Plus d’informations', className }) {
   const tooltipId = useId();
   const triggerRef = useRef(null);
   const tooltipRef = useRef(null);
+  const closeTimeoutRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState(null);
+
+  function cancelScheduledClose() {
+    if (closeTimeoutRef.current) {
+      window.clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }
+
+  function scheduleClose() {
+    cancelScheduledClose();
+    closeTimeoutRef.current = window.setTimeout(() => {
+      closeTimeoutRef.current = null;
+      setOpen(false);
+    }, TOOLTIP_CLOSE_DELAY_MS);
+  }
 
   function updatePosition() {
     const trigger = triggerRef.current;
@@ -83,23 +100,39 @@ function InfoTooltip({ content, label = 'Plus d’informations', className }) {
     if (!open) return undefined;
 
     const handleViewportChange = () => updatePosition();
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        cancelScheduledClose();
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
 
     window.addEventListener('resize', handleViewportChange);
     window.addEventListener('scroll', handleViewportChange, true);
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
       window.removeEventListener('resize', handleViewportChange);
       window.removeEventListener('scroll', handleViewportChange, true);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [open]);
+
+  useEffect(
+    () => () => cancelScheduledClose(),
+    [],
+  );
 
   if (!content) return null;
 
   const tooltip = open
     ? createPortal(
       <span
-        className="pointer-events-none fixed z-[110] rounded-lg border border-border bg-popover px-3 py-2 text-left text-xs font-normal leading-relaxed text-popover-foreground shadow-lg"
+        className="pointer-events-auto fixed z-[var(--layer-tooltip)] rounded-lg border border-border bg-popover px-3 py-2 text-left text-xs font-normal leading-relaxed text-popover-foreground shadow-lg"
         id={tooltipId}
+        onPointerEnter={cancelScheduledClose}
+        onPointerLeave={scheduleClose}
         ref={tooltipRef}
         role="tooltip"
         style={{
@@ -128,8 +161,11 @@ function InfoTooltip({ content, label = 'Plus d’informations', className }) {
           className="inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onBlur={() => setOpen(false)}
           onFocus={() => setOpen(true)}
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => setOpen(false)}
+          onPointerEnter={() => {
+            cancelScheduledClose();
+            setOpen(true);
+          }}
+          onPointerLeave={scheduleClose}
           ref={triggerRef}
           type="button"
         >
@@ -141,4 +177,7 @@ function InfoTooltip({ content, label = 'Plus d’informations', className }) {
   );
 }
 
-export { InfoTooltip };
+export {
+  InfoTooltip,
+  TOOLTIP_CLOSE_DELAY_MS,
+};
