@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
+import { DataTableSkeleton } from '@/components/data-display/data-table-skeleton';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { useToast } from '@/components/shared/toast-provider';
@@ -218,6 +219,9 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
     }
   }
 
+  const initialLoading = invitationsQuery.isLoading
+    || (invitationsQuery.isFetching && invitationsQuery.data === undefined);
+
   return (
     <div className="mt-5 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -233,13 +237,17 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
         )}
       </div>
 
-      {invitationsQuery.isLoading && (
-        <p className="text-sm text-muted-foreground">
-          Chargement des invitations…
-        </p>
+      {initialLoading && (
+        <div className="overflow-hidden rounded-lg border border-border">
+          <DataTableSkeleton
+            columns={columns.length}
+            density="compact"
+            rows={5}
+          />
+        </div>
       )}
 
-      {invitationsQuery.isError && (
+      {invitationsQuery.isError && !initialLoading && (
         <div className="space-y-3">
           <p className="text-sm text-destructive" role="alert">
             Impossible de charger les invitations en attente.
@@ -254,7 +262,7 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
         </div>
       )}
 
-      {!invitationsQuery.isLoading
+      {!initialLoading
         && !invitationsQuery.isError
         && invitations.length === 0 && (
           <p className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
@@ -262,7 +270,7 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
           </p>
         )}
 
-      {!invitationsQuery.isLoading
+      {!initialLoading
         && !invitationsQuery.isError
         && invitations.length > 0 && (
           <>
