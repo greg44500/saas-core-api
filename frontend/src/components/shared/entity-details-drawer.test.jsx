@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EntityDetailsDrawer } from './entity-details-drawer';
@@ -14,6 +14,7 @@ describe('EntityDetailsDrawer', () => {
   });
 
   afterEach(() => {
+    document.body.style.overflow = '';
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });
@@ -59,31 +60,46 @@ describe('EntityDetailsDrawer', () => {
     expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument();
   });
 
-  it('anime également le voile de fond à l’ouverture et à la fermeture', () => {
-    const { rerender } = render(
+  it('utilise un backdrop décoratif et le niveau de layer du Design System', () => {
+    render(
       <EntityDetailsDrawer onClose={vi.fn()} open title="Détails">
         <p>Contenu</p>
       </EntityDetailsDrawer>,
     );
 
-    const overlay = screen.getByRole('button', { name: 'Fermer le panneau de détails' });
+    const drawer = screen.getByRole('dialog');
+    const overlay = drawer.previousElementSibling;
 
+    expect(drawer.parentElement).toHaveClass('z-[var(--layer-drawer)]');
+    expect(overlay).toHaveAttribute('aria-hidden', 'true');
     expect(overlay).toHaveClass(
+      'bg-overlay/45',
       'transition-opacity',
       'duration-300',
       'ease-in-out',
       'opacity-100',
     );
+  });
 
-    rerender(
-      <EntityDetailsDrawer onClose={vi.fn()} open={false} title="Détails">
-        <p>Contenu</p>
+  it('place le focus dans la modale, boucle Tab et ferme avec Escape', () => {
+    const onClose = vi.fn();
+
+    render(
+      <EntityDetailsDrawer onClose={onClose} open title="Détails">
+        <button type="button">Action interne</button>
       </EntityDetailsDrawer>,
     );
 
-    expect(screen.getByRole('button', { name: 'Fermer le panneau de détails' })).toHaveClass(
-      'ease-in-out',
-      'opacity-0',
-    );
+    const closeButton = screen.getByRole('button', { name: 'Fermer' });
+    const actionButton = screen.getByRole('button', { name: 'Action interne' });
+
+    expect(closeButton).toHaveFocus();
+    expect(document.body.style.overflow).toBe('hidden');
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(actionButton).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
