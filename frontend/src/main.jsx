@@ -1,4 +1,6 @@
+import '@fontsource-variable/geist';
 import '@fontsource-variable/inter';
+import '@fontsource-variable/manrope';
 import './index.css';
 
 import { StrictMode } from 'react';
