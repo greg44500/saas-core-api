@@ -22,12 +22,15 @@ describe('DataTable', () => {
 
     render(
       <DataTable
+        caption="Liste des entités"
         columns={columns}
         data={[{ id: '1', name: 'Alpha', status: 'Actif' }]}
         getRowKey={(row) => row.id}
       />,
     );
 
+    expect(screen.getByRole('table', { name: 'Liste des entités' })).toBeInTheDocument();
+    expect(screen.getByText('Liste des entités')).toHaveClass('sr-only');
     expect(screen.getByRole('columnheader', { name: 'Nom' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Statut' })).toBeInTheDocument();
     expect(screen.getByText('Alpha')).toBeInTheDocument();
