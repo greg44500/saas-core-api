@@ -40,7 +40,7 @@ function PreferencesPage() {
   } = useForm({
     resolver: zodResolver(comfortPreferencesSchema),
     mode: 'onChange',
-    defaultValues: DEFAULT_COMFORT_PREFERENCES,
+    defaultValues: { ...DEFAULT_COMFORT_PREFERENCES },
   });
 
   const comfortPreferences = preferencesQuery.data?.comfort;
