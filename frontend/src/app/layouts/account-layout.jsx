@@ -9,6 +9,7 @@ import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platf
 
 const accountNavigationItems = [
   { label: 'Profil', path: '/account/profile' },
+  { label: 'Préférences', path: '/account/preferences' },
   { label: 'Sécurité', path: '/account/security' },
 ];
 
