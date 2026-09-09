@@ -22,6 +22,7 @@ import { useGetPlatformAuditMetadataQuery } from '@/features/platform/api/platfo
 import { useGetPlatformOverviewQuery } from '@/features/platform/api/platform-overview-api';
 import { PlatformAttentionTable } from '@/features/platform/components/platform-attention-table';
 import { PlatformEntitlementOverridesDrilldownDrawer } from '@/features/platform/components/platform-entitlement-overrides-drilldown-drawer';
+import { PlatformOverviewSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PlatformOverviewPeriodFilter } from '@/features/platform/components/platform-overview-period-filter';
 import { PlatformTeamSnapshotSection } from '@/features/platform/components/platform-team-snapshot-card';
 import {
@@ -170,6 +171,12 @@ function PlatformOverviewPage() {
     skip: !sections.audit,
   });
   const hasAnyOverviewSection = hasAnyPlatformOverviewSection(sections);
+  const isInitialOverviewLoading = overviewQuery.isLoading
+    || (overviewQuery.isFetching && overview === undefined);
+
+  if (isInitialOverviewLoading) {
+    return <PlatformOverviewSkeleton />;
+  }
 
   function changePeriod(nextPeriod) {
     setSearchParams(writeOverviewPeriodSearchParams(nextPeriod));
