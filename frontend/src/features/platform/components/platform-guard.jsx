@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router';
 
-import { PageLoader } from '@/components/shared/page-loader';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
+import { PlatformShellSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import {
   canAccessPlatformPath,
   getFirstPlatformDestination,
@@ -18,7 +18,7 @@ function PlatformGuard() {
   } = useGetCurrentPlatformContextQuery();
 
   if (isLoading || (isFetching && platformAccess === undefined)) {
-    return <PageLoader />;
+    return <PlatformShellSkeleton />;
   }
 
   if (error || !hasActivePlatformAccess(platformAccess)) {
