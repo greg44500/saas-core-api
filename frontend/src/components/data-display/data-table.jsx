@@ -30,6 +30,8 @@ function resolveClassName(className, row, rowIndex) {
  * @param {string} [props.tableClassName]
  * @param {string} [props.headerClassName]
  * @param {string | ((row: object, rowIndex: number) => string)} [props.rowClassName]
+ * @param {string} [props.'aria-label']
+ * @param {string} [props.'aria-labelledby']
  */
 function DataTable({
   columns,
