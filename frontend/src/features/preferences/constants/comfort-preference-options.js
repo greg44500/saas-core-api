@@ -1,6 +1,8 @@
 import {
+  ACTIVE_APPEARANCE_PALETTES,
+} from '@/app/application-appearance';
+import {
   APPEARANCE_FONT_FAMILY,
-  APPEARANCE_PALETTE,
   APPEARANCE_THEME,
 } from '@/lib/appearance-preferences';
 
@@ -15,9 +17,12 @@ const FONT_FAMILY_OPTIONS = Object.freeze([
   { value: APPEARANCE_FONT_FAMILY.SYSTEM, label: 'Police du système' },
 ]);
 
-const PALETTE_OPTIONS = Object.freeze([
-  { value: APPEARANCE_PALETTE.CORE, label: 'Core Atlantique' },
-]);
+const PALETTE_OPTIONS = Object.freeze(
+  ACTIVE_APPEARANCE_PALETTES.map((palette) => Object.freeze({
+    value: palette.id,
+    label: palette.label,
+  })),
+);
 
 export {
   FONT_FAMILY_OPTIONS,
