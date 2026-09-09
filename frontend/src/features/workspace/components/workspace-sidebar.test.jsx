@@ -194,7 +194,7 @@ describe('WorkspaceSidebar', () => {
     expect(settingsLink).toHaveAttribute('href', '/workspaces/workspace-1/settings');
   });
 
-  it('ouvre un flyout explicite pour un groupe en mode réduit', async () => {
+  it('ouvre un flyout explicite en mode réduit et le ferme avec Escape', async () => {
     const user = userEvent.setup();
 
     renderSidebar(
@@ -211,13 +211,20 @@ describe('WorkspaceSidebar', () => {
     expect(
       screen.getByRole('link', { name: 'Tableau de bord' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Tableau de bord', { selector: '[role="tooltip"]' })).toBeInTheDocument();
-    expect(screen.getByText('Gestion du workspace', { selector: '[role="tooltip"]' })).toBeInTheDocument();
+    expect(screen.getAllByText('Tableau de bord').some((node) =>
+      node.getAttribute('aria-hidden') === 'true')).toBe(true);
 
-    await user.click(screen.getByRole('button', { name: 'Gestion du workspace' }));
+    const workspaceGroup = screen.getByRole('button', { name: 'Gestion du workspace' });
+    await user.click(workspaceGroup);
+
+    expect(screen.getByRole('group', { name: 'Gestion du workspace' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Membres' })).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Déployer la navigation' }),
     ).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('group', { name: 'Gestion du workspace' })).not.toBeInTheDocument();
+    expect(workspaceGroup).toHaveFocus();
   });
 });
