@@ -15,6 +15,7 @@ import {
   useGetPlatformAuditMetadataQuery,
   useListPlatformAuditLogsQuery,
 } from '@/features/platform/api/platform-audit-logs-api';
+import { PlatformTablePageSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 
 const PAGE_SIZE = 20;
 
@@ -73,8 +74,20 @@ function PlatformAuditLogsPage() {
     }
   }
 
-  if (metadataQuery.isLoading || (auditMetadata && auditQuery.isLoading)) {
-    return <p className="text-sm text-muted-foreground">Chargement des événements d’audit…</p>;
+  const initialLoading = metadataQuery.isLoading
+    || (metadataQuery.isFetching && auditMetadata === undefined)
+    || (auditMetadata && (
+      auditQuery.isLoading
+      || (auditQuery.isFetching && auditQuery.data === undefined)
+    ));
+
+  if (initialLoading) {
+    return (
+      <PlatformTablePageSkeleton
+        columns={6}
+        showFilters
+      />
+    );
   }
 
   if (metadataQuery.isError || auditQuery.isError) {
