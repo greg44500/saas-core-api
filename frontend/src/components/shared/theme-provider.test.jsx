@@ -17,7 +17,7 @@ function ThemeProbe() {
       <button
         onClick={() => applyComfortPreferences({
           theme: 'light',
-          fontFamily: 'system',
+          fontFamily: 'geist',
           paletteId: 'core',
           accessibilityMode: 'enhanced',
         })}
@@ -75,7 +75,7 @@ describe('ThemeProvider comfort preferences', () => {
 
     expect(document.documentElement).not.toHaveClass('dark');
     expect(document.documentElement).toHaveClass('a11y-enhanced');
-    expect(document.documentElement.dataset.fontFamily).toBe('system');
+    expect(document.documentElement.dataset.fontFamily).toBe('geist');
     expect(document.documentElement.dataset.palette).toBe('core');
   });
 });
