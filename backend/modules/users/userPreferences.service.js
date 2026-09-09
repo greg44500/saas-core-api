@@ -5,6 +5,10 @@ import {
     DEFAULT_USER_COMFORT_PREFERENCES,
 } from './userPreferences.constants.js';
 
+const USER_COMFORT_PREFERENCE_KEYS = Object.freeze(
+    Object.keys(DEFAULT_USER_COMFORT_PREFERENCES),
+);
+
 function normalizeUserComfortPreferences(comfortPreferences) {
     return {
         ...DEFAULT_USER_COMFORT_PREFERENCES,
@@ -47,8 +51,9 @@ async function updateCurrentUserPreferences({ userId, comfort }) {
         throw new TypeError('userId is required to update current user preferences');
     }
 
-    const comfortEntries = Object.entries(comfort ?? {})
-        .filter(([, value]) => value !== undefined);
+    const comfortEntries = USER_COMFORT_PREFERENCE_KEYS
+        .filter((key) => comfort?.[key] !== undefined)
+        .map((key) => [key, comfort[key]]);
 
     if (comfortEntries.length === 0) {
         throw new TypeError('at least one comfort preference is required');
