@@ -1,4 +1,5 @@
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import { EntityDetailsSkeleton } from '@/components/shared/entity-details-skeleton';
 import { Button } from '@/components/ui/button';
 import {
   useGetPlatformRolePermissionCatalogQuery,
@@ -37,6 +38,17 @@ function PlatformRoleDetailsDrawer({ onClose, open, roleId }) {
     }
   ));
   const groups = groupPlatformPermissions(selectedDefinitions);
+  const isInitialLoading = (
+    !role && (roleQuery.isLoading || roleQuery.isFetching)
+  ) || (
+    catalogQuery.data === undefined
+    && (catalogQuery.isLoading || catalogQuery.isFetching)
+  );
+  const hasInitialError = (
+    !role && roleQuery.isError
+  ) || (
+    catalogQuery.data === undefined && catalogQuery.isError
+  );
 
   return (
     <EntityDetailsDrawer
@@ -45,13 +57,16 @@ function PlatformRoleDetailsDrawer({ onClose, open, roleId }) {
       open={open}
       title={role?.name ?? 'Détail du rôle'}
     >
-      {(roleQuery.isLoading || catalogQuery.isLoading) && (
-        <p className="text-sm text-muted-foreground">
-          Chargement du rôle…
-        </p>
+      {isInitialLoading && (
+        <EntityDetailsSkeleton
+          label="Chargement du rôle…"
+          rowsPerSection={[4, 4]}
+          sections={2}
+          showActions={false}
+        />
       )}
 
-      {(roleQuery.isError || catalogQuery.isError) && (
+      {!isInitialLoading && hasInitialError && (
         <div className="space-y-3">
           <p className="text-sm text-destructive" role="alert">
             Impossible de charger le détail du rôle.
@@ -69,7 +84,7 @@ function PlatformRoleDetailsDrawer({ onClose, open, roleId }) {
         </div>
       )}
 
-      {role && !catalogQuery.isLoading && !catalogQuery.isError && (
+      {role && catalogQuery.data !== undefined && (
         <div className="space-y-6">
           <dl className="grid gap-4 text-sm sm:grid-cols-2">
             <div>
