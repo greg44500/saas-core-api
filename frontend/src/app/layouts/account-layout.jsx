@@ -2,7 +2,7 @@ import { ArrowLeft } from 'lucide-react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 
 import { Button } from '@/components/ui/button';
-import { UserMenu } from '@/features/auth/components/user-menu';
+import { AuthenticatedUserIdentity } from '@/features/auth/components/authenticated-user-identity';
 import { getAuthenticatedHome } from '@/features/auth/lib/authenticated-destination';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
 
@@ -39,9 +39,7 @@ function AccountLayout() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <UserMenu />
-          </div>
+          <AuthenticatedUserIdentity />
         </div>
       </header>
 
