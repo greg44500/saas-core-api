@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 const TOOLTIP_SIDE_CLASS = Object.freeze({
   top: 'bottom-full left-1/2 mb-2 -translate-x-1/2',
   right: 'left-full top-1/2 ml-3 -translate-y-1/2',
+  'bottom-end': 'right-0 top-full mt-2',
 });
 
 function Tooltip({
