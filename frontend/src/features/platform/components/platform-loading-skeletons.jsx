@@ -150,8 +150,58 @@ function PlatformTablePageSkeleton({
   );
 }
 
+/**
+ * La rétention combine configuration, prévisualisation et historique : son
+ * chargement initial doit refléter cette structure plutôt qu'un faux écran de
+ * liste générique.
+ */
+function PlatformRetentionSkeleton() {
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="w-full max-w-3xl space-y-3">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-4 w-full max-w-2xl" />
+        </div>
+        <Skeleton className="h-10 w-28" />
+      </header>
+
+      <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <Skeleton className="h-5 w-52" />
+        <Skeleton className="mt-2 h-4 w-full max-w-xl" />
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+        </div>
+        <div className="mt-5 space-y-3">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <Skeleton className="h-5 w-48" />
+        <Skeleton className="mt-2 h-4 w-full max-w-lg" />
+        <Skeleton className="mt-5 h-28 w-full" />
+      </section>
+
+      <section className="overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm">
+        <Skeleton className="h-5 w-48" />
+        <Skeleton className="mt-2 h-4 w-full max-w-lg" />
+        <div className="mt-5 overflow-hidden rounded-lg border border-border">
+          <DataTableSkeleton columns={8} rows={5} />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export {
   PlatformOverviewSkeleton,
+  PlatformRetentionSkeleton,
   PlatformShellSkeleton,
   PlatformTablePageSkeleton,
 };
