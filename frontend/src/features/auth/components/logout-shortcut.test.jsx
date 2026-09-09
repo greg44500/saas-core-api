@@ -13,7 +13,7 @@ vi.mock('@/features/auth/api/auth-api', () => ({
 import { LogoutShortcut } from '@/features/auth/components/logout-shortcut';
 
 describe('LogoutShortcut', () => {
-  it('déconnecte puis redirige vers la connexion', async () => {
+  it('positionne le tooltip sous le bouton puis déconnecte et redirige', async () => {
     const user = userEvent.setup();
     const unwrap = vi.fn().mockResolvedValue(undefined);
     const logout = vi.fn(() => ({ unwrap }));
@@ -30,7 +30,10 @@ describe('LogoutShortcut', () => {
     render(<RouterProvider router={router} />);
 
     const button = screen.getByRole('button', { name: 'Déconnexion' });
-    expect(screen.getByRole('tooltip', { hidden: true })).toHaveTextContent('Déconnexion');
+    const tooltip = screen.getByRole('tooltip', { hidden: true });
+
+    expect(tooltip).toHaveTextContent('Déconnexion');
+    expect(tooltip).toHaveClass('right-0', 'top-full', 'mt-2');
 
     await user.click(button);
 
