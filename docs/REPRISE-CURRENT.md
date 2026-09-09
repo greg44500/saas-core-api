@@ -2,9 +2,9 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse reflète l’état connu de `main`. Le code, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment.
+> Cette synthèse décrit l’état validé destiné à devenir la référence de `main` après fusion du lot en cours. Le code, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment.
 >
-> **Dernière mise à jour : 2026-09-08**
+> **Dernière mise à jour : 2026-09-09**
 
 ---
 
@@ -28,7 +28,7 @@ Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présent
 
 D-020 a été développé puis intégré dans `main` après gate automatisée verte. Sa validation fonctionnelle manuelle complète reste différée.
 
-Avant D-015, deux blockers restent à traiter : D-011 puis D-021. D-011 a été précisée : la stabilisation du Design System Core est désormais sa première phase obligatoire.
+D-011.A est désormais techniquement validé sur la branche `d-011-a-design-system-core`. D-011 reste une dette active tant que D-011.B et D-011.C ne sont pas terminés.
 
 ```text
 D-018 Équipe Platform / RBAC / invitations internes            VALIDÉ
@@ -36,8 +36,8 @@ D-019 moteur sécurisé de rétention / purge Core                VALIDÉ
 DOC-CODE-1 normalisation documentation source                  VALIDÉ
 HOME-CORE accès public login/register                          vérification manuelle à reconfirmer
 D-020 invitation commerciale / offre privée découverte         INTÉGRÉ MAIN — MANUEL DIFFÉRÉ
-→ D-011.A Design System Core                                   PLANIFIÉ
-→ D-011.B préférences de confort                               PLANIFIÉ
+D-011.A Design System Core                                     VALIDÉ — EN ATTENTE DE FUSION
+→ D-011.B préférences de confort                               PROCHAIN BLOC
 → D-011.C préférences d'affichage métier                       PLANIFIÉ
 → D-021 gate sécurité Auth / invitations / tokens              PLANIFIÉ
 → D-015 versionnement / provenance / migrations / release      PLANIFIÉ
@@ -53,95 +53,152 @@ D-015 ne doit pas être ouvert avant clôture/reclassification explicite de D-01
 
 ---
 
-## 3. D-020 — état intégré à conserver
+## 3. Gate D-011.A validée
 
-Contrat canonique : `docs/contracts/COMMERCIAL-INVITATIONS.md`.
+### 3.1 Branche et périmètre
+
+Branche : `d-011-a-design-system-core`.
+
+La branche part exactement du `main` `6533c282a589bcc3f901e09ca17c41c5da71aed8` et ne diverge pas de celui-ci. L’audit final avant clôture confirme que les changements du lot sont limités à `frontend/src` : aucun backend, aucune dépendance, aucune variable d’environnement et aucune configuration hors périmètre n’ont été modifiés par D-011.A.
+
+### 3.2 Validation locale du 2026-09-09
+
+Validation manuelle : parcours Core et Platform contrôlés visuellement, notamment les états de chargement et les drawers de détail.
+
+Gate locale confirmée :
 
 ```text
-PlatformInvitation  → collaborateur interne de l’éditeur
-CommercialInvitation → acquisition initiale / futur client / bêta-testeur
-WorkspaceInvitation → membre d’un workspace existant
+frontend npm run lint     OK
+frontend npm test         OK — 183 fichiers / 585 tests
+frontend npm run build    OK
 ```
 
-D-020 ne rattache jamais une invitation commerciale à un workspace existant. Les offres privées restent séparées du catalogue public. Les règles `fixed`/trial et `open_ended` gratuit durable restent celles du contrat canonique.
+Les derniers correctifs de gate ont uniquement concerné :
 
-Sécurité déjà implémentée : token aléatoire, SHA-256 persisté, URL fragment, vault JavaScript runtime, aucune persistance du secret dans Redux/localStorage/sessionStorage/history.state/query string, acceptation authentifiée et atomique.
-
-Patterns frontend : RTK Query, `DataTable` partagé, `EntityDetailsDrawer` partagé, confirmations partagées, React Hook Form + Zod, actions selon permissions.
-
-Gate locale D-020 confirmée verte le 2026-09-08 : backend lint/tests, frontend lint/tests/build. Le `format:check` Prettier global reste un chantier séparé ; ne pas lancer `prettier --write .` sans convention canonique.
+- JSDoc des propriétés ARIA de `DataTable` ;
+- suppression d’une affectation inutile dans `DatePicker` sans changement de comportement ;
+- assertions de tests Testing Library rendues sémantiquement correctes pour un drawer et un tooltip masqué.
 
 ---
 
-## 4. D-011 — prochain bloc avant versionnement
+## 4. D-011.A — contrat Design System validé
 
-**Statut : PLANIFIÉ — blocker Core 1.0 avant D-015.**
+### 4.1 Architecture et tokens
 
-Ordre obligatoire :
+Le Core conserve Tailwind CSS v4 CSS-first, `@theme inline`, `frontend/src/index.css`, les variables CSS sémantiques, les thèmes light/dark et les primitives shadcn/ui.
 
-```text
-D-011.A Design System Core
-→ D-011.B Préférences de confort
-→ D-011.C Préférences d'affichage métier
-```
-
-### 4.1 D-011.A — Design System Core
-
-Le frontend possède déjà une base saine à auditer, pas à reconstruire aveuglément : Tailwind CSS v4 CSS-first, `@theme inline`, variables CSS sémantiques dans `frontend/src/index.css`, light/dark et shadcn/ui.
-
-Le nom `index.css` n'a pas besoin d'être changé en `global.css`. Son rôle doit rester global : Tailwind, tokens, thèmes, styles HTML transversaux, typographie, accessibilité globale, `color-scheme` et resets nécessaires. Aucun style métier spécifique ne doit y être accumulé.
-
-Le contrat cible distingue :
+Architecture retenue :
 
 ```text
-tokens primitifs contrôlés
-→ tokens sémantiques
+tokens globaux et sémantiques
 → components/ui
 → components/shared
 → features/*/components
 ```
 
-Les composants doivent préférer les tokens sémantiques aux couleurs arbitraires. L'audit doit toutefois éviter la sur-tokenisation : une valeur ponctuelle n'impose pas automatiquement un nouveau token.
+`index.css` reste réservé aux responsabilités globales : tokens, thèmes, typographie, couleurs sémantiques, couches/z-index, overlays, règles transversales et accessibilité globale. Les styles métier restent dans les features.
 
-À auditer avant modification : couleurs/radius/ombres/tailles codés en dur, variants shadcn/CVA, typographie, états interactifs, focus, formulaires, Dialog/Drawer/menus, responsive et composants qui contournent les primitives partagées.
+La sur-tokenisation est explicitement évitée : les espacements Tailwind, radius, ombres ou valeurs ponctuelles ne deviennent pas automatiquement de nouveaux tokens.
 
-### 4.2 Accessibilité : deux niveaux distincts
+Points d’extension préparés pour D-011.B :
 
-**Accessibilité structurelle : toujours active et non désactivable.**
+- `--font-family-app` ;
+- couleurs sémantiques light/dark ;
+- palettes futures traduites vers des tokens sémantiques contrôlés ;
+- couches partagées `dropdown`, `sidebar`, `flyout`, `drawer`, `modal`, `toast`, `tooltip`.
 
-Le Core vise une base cohérente avec WCAG 2.2 AA pour les composants/parcours concernés : HTML sémantique, clavier, focus visible/non masqué, contrastes, labels/erreurs, focus des overlays, accessible names, cibles interactives, zoom/texte, information non portée uniquement par la couleur, `prefers-reduced-motion` et préférences système pertinentes.
+### 4.2 Accessibilité structurelle
 
-Le design normal doit rester professionnel tout en respectant ces exigences ; l'accessibilité structurelle ne doit jamais être supprimée pour préserver l'esthétique.
+L’accessibilité de base reste toujours active et non désactivable. Le futur mode renforcé de D-011.B sera une surcouche, jamais un interrupteur d’accessibilité.
 
-**Mode accessibilité renforcée : préférence optionnelle.**
+D-011.A a consolidé notamment :
 
-Il pourra renforcer contraste, lisibilité/taille de texte, zones interactives, focus, espacements, réduction des animations/transparences et distinction des états. Il doit être conçu comme une surcouche combinable avec thème/palette, pas comme un interrupteur qui rendrait l'application accessible ou inaccessible.
+- accessible names des tableaux et composants concernés ;
+- labels/descriptions/erreurs des formulaires ;
+- navigation clavier du `DatePicker` ;
+- gestion du focus et restauration du focus des Dialog/Drawer ;
+- tooltips partagés accessibles au focus clavier ;
+- correction des sémantiques ARIA inutiles du menu utilisateur ;
+- règles globales `prefers-reduced-motion` ;
+- états asynchrones annoncés sans multiplier les live regions imbriquées.
 
-### 4.3 États asynchrones et Skeletons
+### 4.3 Contrat des états asynchrones
 
-Le Design System doit normaliser :
+Invariant validé :
 
 ```text
-LOADING   → Skeleton lorsque pertinent
-SUCCESS   → contenu
+LOADING   → Skeleton adapté lorsque pertinent
+SUCCESS   → contenu réel
 EMPTY     → EmptyState
-ERROR     → ErrorState + retry si pertinent
-FORBIDDEN / non-entitled → généralement composant absent
+ERROR     → ErrorState + retry lorsque pertinent
+FORBIDDEN / non-entitled → composant généralement absent
 ```
 
-Les Skeletons doivent favoriser perception de performance et stabilité du layout, approximer la structure finale, éviter le faux contenu et respecter `prefers-reduced-motion`/le profil d'accessibilité.
+Règle RTK Query importante : un Skeleton est réservé au chargement initial lorsqu’aucune donnée n’est encore disponible. Pendant un refetch avec donnée en cache, le contenu réel reste affiché afin d’éviter les clignotements et pertes de contexte.
 
-Prévoir une primitive générique et seulement les compositions partagées utiles (`KpiCardSkeleton`, `DataTableSkeleton`, `CardSkeleton`, `DashboardSectionSkeleton` ou équivalents après audit). Les modules métier futurs ne doivent pas recréer la mécanique générique.
+L’entitlement et les permissions déterminent si un composant ou une requête sont accessibles. Ils ne choisissent pas automatiquement la géométrie de Skeleton. Chaque feature accessible utilise explicitement une composition partagée adaptée.
 
-### 4.4 D-011.B — Préférences de confort
+Vocabulaire partagé établi :
 
-Cibles : thème clair/sombre/système, police contrôlée, palette fournie/intégrée par le propriétaire du produit et mode accessibilité renforcée.
+```text
+App / guards               → PageLoader
+Tables                      → DataTableSkeleton
+Pages Platform tabulaires  → PlatformTablePageSkeleton
+Dashboard                   → compositions dashboard/shell dédiées
+Settings / formulaires      → FormSectionSkeleton
+Drawer détail asynchrone    → EntityDetailsSkeleton
+Abonnement                  → WorkspaceSubscriptionSkeleton / PlanCardsSkeleton
+Cas métier réellement unique → composition spécifique basée sur Skeleton
+```
 
-Une préférence stocke des identifiants contrôlés, jamais une couleur CSS libre, une URL de police arbitraire ou du JSON non validé. Les palettes devront être traduites en tokens sémantiques et respecter les exigences d'accessibilité applicables.
+Une future feature ne doit donc pas créer une nouvelle convention visuelle générique si une composition partagée correspond déjà à sa géométrie.
 
-Le cadrage doit décider persistance serveur/local, valeurs par défaut, multi-appareils, validation Zod stricte, fallbacks et compatibilité ascendante.
+### 4.4 Skeletons et surfaces couvertes
 
-### 4.5 D-011.C — Préférences d'affichage métier
+Couverture D-011.A validée sur les principales surfaces :
+
+- guards et chargements de page ;
+- Dashboard Workspace ;
+- Files ;
+- Subscription et catalogue de plans ;
+- Workspace Settings / transfert de propriété ;
+- listes Platform Users, Workspaces, Plans, Subscriptions, Invitations, Overrides, Audit Logs et Retention ;
+- sections Platform Team ;
+- drawers asynchrones User, Workspace, Subscription, Entitlement Override et Role.
+
+Un drawer recevant déjà un objet complet depuis une liste ne simule pas artificiellement un chargement réseau.
+
+---
+
+## 5. D-011.B — prochain bloc
+
+D-011.B doit maintenant construire les préférences de confort au-dessus du Design System stabilisé.
+
+Cibles :
+
+```text
+thème clair / sombre / système
+police parmi une liste contrôlée
+palette parmi les palettes fournies et validées par le produit
+mode accessibilité renforcée
+```
+
+Règles :
+
+- aucune valeur CSS libre ;
+- aucun URL de police arbitraire ;
+- aucun JSON libre non validé ;
+- identifiants contrôlés et validation stricte ;
+- stratégie de persistance explicitement choisie ;
+- fallbacks si une option disparaît ;
+- compatibilité avec les préférences système pertinentes ;
+- aucune préférence ne crée de permission ou d’entitlement.
+
+La préférence d’accessibilité renforcée pourra augmenter contraste, lisibilité, focus, zones interactives, réduction des animations/transparences et distinction des états, tout en conservant l’accessibilité structurelle de base toujours active.
+
+---
+
+## 6. D-011.C — affichage métier après D-011.B
 
 Invariant :
 
@@ -153,65 +210,41 @@ ensemble accessible + préférences utilisateur
 → ensemble visible
 ```
 
-Une préférence ne crée jamais une permission, un entitlement ou une feature. Un KPI/widget inaccessible n'est pas proposé. Les modules métier futurs doivent pouvoir enregistrer leurs widgets/KPI sans coupler le Core à un métier.
+Une préférence ne crée jamais une permission, un entitlement ou une feature. Un KPI/widget inaccessible n’est pas proposé dans les préférences et ne doit pas polluer le Dashboard avec un faux état « indisponible ».
 
-V1 : afficher/masquer et éventuellement ordonner uniquement si le cadrage le justifie. Pas de constructeur libre de dashboard.
-
----
-
-## 5. D-021 — gate sécurité Auth / invitations / tokens
-
-**Statut : PLANIFIÉ — blocker Core 1.0 avant D-015.**
-
-Commencer par un audit de l'existant. Ne pas recréer les mécanismes déjà corrects.
-
-Politique cible invitations : `WorkspaceInvitation`, `PlatformInvitation`, `CommercialInvitation` expirent par défaut après 7 jours, côté serveur, single-use, révocables, resend avec rotation, replay refusé et consommation atomique.
-
-Reset password cible : 15 minutes, usage unique, nouvelle demande après expiration, token fort/hashé, anti-enumeration, rate limiting, notification et politique d'invalidation des sessions.
-
-Auditer `register`, `login`, `forgot-password`, preview/acceptation d'invitations et endpoints Auth sensibles. CAPTCHA non systématique au login ; défense adaptative seulement si justifiée. Protéger l'inscription contre création massive/trial abuse et forgot-password contre mail bombing.
-
-Google SSO reste D-010, non bloquant Core 1.0.
+Le Core doit rester générique : les futurs modules métier enregistreront leurs widgets/KPI sans coupler le socle à un domaine particulier.
 
 ---
 
-## 6. D-002 — gate avant première dérivation
+## 7. D-021 — gate sécurité avant versionnement
 
-Aucune première dérivation métier avant validation D-002.
+Après clôture de D-011.B puis D-011.C, ouvrir D-021 avant D-015.
 
-Invariant D-019 : un fichier soft-deleted continue à consommer `storage_bytes` tant que son contenu physique existe ; une restauration avant purge ne réserve pas ce stockage une seconde fois.
+Politique cible à confirmer par audit :
+
+- `WorkspaceInvitation`, `PlatformInvitation`, `CommercialInvitation` : expiration par défaut 7 jours, côté serveur, single-use, révocation, resend avec rotation, replay/concurrence sécurisés ;
+- reset password : 15 minutes, usage unique, nouvelle demande après expiration ;
+- anti-enumeration, rate limiting et stratégie anti-bot auditée ;
+- Google SSO reste D-010, hors D-021 et non bloquant Core 1.0.
 
 ---
 
-## 7. Dettes/contrôles différés à conserver
+## 8. Dettes et contrôles à conserver
 
-- UI navigation : différencier les icônes répétitives sans modifier permissions/routes/API.
-- Prettier global : chantier séparé ; pas de `prettier --write .` global avant convention canonique.
-- D-020 : validation fonctionnelle manuelle complète.
+- D-020 : validation fonctionnelle manuelle complète toujours différée.
+- D-002 : corbeille/restauration Files obligatoire avant première dérivation métier.
 - HOME-CORE : login/register public à reconfirmer manuellement.
+- Prettier global : chantier séparé ; ne pas lancer `prettier --write .` global sans convention canonique.
 - D-010 : Google SSO/MFA/passkeys/SSO avancé restent conditionnels et non blockers v1.0.
 
 ---
 
-## 8. Prochaine reprise de travail
+## 9. Prochaine reprise de travail
 
-Le prochain bloc est :
+Après fusion de D-011.A dans `main`, le prochain bloc est :
 
 ```text
-D-011.A — Audit et stabilisation du Design System Core
+D-011.B — Préférences de confort
 ```
 
-### Méthode obligatoire
-
-1. relire `docs/REPRISE-CURRENT.md` et D-011 dans `docs/DEBT.md` ;
-2. inspecter le frontend réel avant toute modification ;
-3. inventorier tokens, `index.css`, shadcn/ui, CVA, composants partagés, couleurs/styles arbitraires, typographie et états UI ;
-4. auditer l'accessibilité structurelle et distinguer celle-ci du mode renforcé optionnel ;
-5. auditer les états loading/success/empty/error/forbidden et les besoins Skeleton ;
-6. proposer le contrat Design System et les mini-lots avant de coder ;
-7. ne pas sur-tokeniser ni créer de composants dupliqués ;
-8. seulement après validation D-011.A, implémenter D-011.B puis D-011.C ;
-9. après D-011, ouvrir D-021 ;
-10. seulement après D-021, reprendre D-015 versionnement.
-
-Aucune nouvelle fonctionnalité métier ne doit être mélangée à D-011 ou D-021.
+Méthode : cadrer d’abord le modèle de préférence, les identifiants autorisés, les valeurs par défaut, la persistance et les fallbacks ; vérifier ensuite si un backend est réellement nécessaire avant d’implémenter. Ne pas mélanger D-011.C, D-021 ou une fonctionnalité métier dans ce lot.
