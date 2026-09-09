@@ -75,11 +75,15 @@
   --ring: #137c8b;
   --overlay: #000000;
 
+  /*
+   * Les tons d'état restent sémantiques et suffisamment contrastés lorsqu'ils
+   * sont utilisés comme texte sur leur fond teinté dans les composants Core.
+   */
   --destructive: #b42318;
   --destructive-foreground: #ffffff;
-  --success: #16794a;
+  --success: #0f7043;
   --success-foreground: #ffffff;
-  --warning: #9a6700;
+  --warning: #8f5e00;
   --warning-foreground: #ffffff;
   --info: #1769aa;
   --info-foreground: #ffffff;
@@ -123,7 +127,7 @@
   --ring: #67c5cf;
   --overlay: #000000;
 
-  --destructive: #e35d50;
+  --destructive: #ff8a80;
   --destructive-foreground: #1a0b09;
   --success: #54c98b;
   --success-foreground: #092719;
