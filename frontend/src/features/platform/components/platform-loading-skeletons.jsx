@@ -1,3 +1,4 @@
+import { DataTableSkeleton } from '@/components/data-display/data-table-skeleton';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function SkeletonCard({ lines = 2 }) {
@@ -101,4 +102,56 @@ function PlatformOverviewSkeleton() {
   );
 }
 
-export { PlatformOverviewSkeleton, PlatformShellSkeleton };
+/**
+ * Composition commune aux écrans Plateforme dont le contenu principal est un
+ * tableau. Les écrans fournissent uniquement leur géométrie réelle afin de ne
+ * pas dupliquer le comportement de chargement dans chaque domaine.
+ */
+function PlatformTablePageSkeleton({
+  columns = 5,
+  density = 'default',
+  rows = 6,
+  showAction = false,
+  showFilters = false,
+}) {
+  return (
+    <div className="space-y-8">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="w-full max-w-3xl space-y-3">
+          <Skeleton className="h-8 w-52" />
+          <Skeleton className="h-4 w-full max-w-2xl" />
+        </div>
+        {showAction && <Skeleton className="h-10 w-40" />}
+      </header>
+
+      {showFilters && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <Skeleton className="h-5 w-28" />
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }, (_, index) => (
+              <Skeleton className="h-10 w-full" key={`filter-${index}`} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <section className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="space-y-2 border-b border-border p-5">
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+        <DataTableSkeleton columns={columns} density={density} rows={rows} />
+        <div className="flex justify-between gap-4 p-5">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-9 w-40" />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export {
+  PlatformOverviewSkeleton,
+  PlatformShellSkeleton,
+  PlatformTablePageSkeleton,
+};
