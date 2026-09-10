@@ -1,44 +1,21 @@
+import {
+  getBalancedSixColumnGridClass,
+  getBalancedSixColumnItemClass,
+} from '@/components/shared/balanced-six-column-grid';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DashboardSummaryCard } from '@/features/workspace/components/dashboard-summary-card';
 import { useWorkspaceDashboardWidgets } from '@/features/workspace/hooks/use-workspace-dashboard-widgets';
 
 function getSummaryGridClass() {
-  return 'grid grid-cols-6 gap-4';
+  return getBalancedSixColumnGridClass();
 }
 
 /**
- * Répartit la dernière ligne sans laisser un widget isolé sur un tiers de la
- * largeur. La règle dépend uniquement du nombre réellement rendu : les futurs
- * modules métier héritent donc automatiquement du même comportement.
+ * Conserve l'API locale historique du Dashboard Workspace tout en déléguant la
+ * règle de répartition au moteur partagé utilisé aussi par la Platform.
  */
 function getSummaryItemClass(index, itemCount) {
-  const position = index + 1;
-  const isLast = position === itemCount;
-  const baseClass = 'col-span-6';
-  const smallScreenClass = itemCount > 1 && !(itemCount % 2 === 1 && isLast)
-    ? 'sm:col-span-3'
-    : 'sm:col-span-6';
-
-  if (itemCount <= 1) {
-    return `${baseClass} sm:col-span-6 xl:col-span-6`;
-  }
-
-  if (itemCount === 2) {
-    return `${baseClass} ${smallScreenClass} xl:col-span-3`;
-  }
-
-  if (itemCount === 4) {
-    return `${baseClass} ${smallScreenClass} xl:col-span-3`;
-  }
-
-  const remainder = itemCount % 3;
-  const balancedTailSize = remainder === 1 ? 4 : remainder;
-  const firstBalancedTailIndex = itemCount - balancedTailSize;
-  const xlClass = remainder === 0 || index < firstBalancedTailIndex
-    ? 'xl:col-span-2'
-    : 'xl:col-span-3';
-
-  return `${baseClass} ${smallScreenClass} ${xlClass}`;
+  return getBalancedSixColumnItemClass(index, itemCount);
 }
 
 function WorkspaceDashboardPage() {
