@@ -26,10 +26,10 @@ import {
 import { CommercialInvitationDetailsDrawer } from '@/features/commercial-invitation/components/commercial-invitation-details-drawer';
 import { CommercialInvitationForm } from '@/features/commercial-invitation/components/commercial-invitation-form';
 import { CommercialInvitationRevokeDialog } from '@/features/commercial-invitation/components/commercial-invitation-revoke-dialog';
+import { CommercialInvitationStatusBadge } from '@/features/commercial-invitation/components/commercial-invitation-status-badge';
 import {
   formatCommercialInvitationDate,
   formatCommercialInvitationDeliveryStatus,
-  formatCommercialInvitationStatus,
 } from '@/features/commercial-invitation/lib/commercial-invitation-formatters';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
 import { PlatformTablePageSkeleton } from '@/features/platform/components/platform-loading-skeletons';
@@ -197,8 +197,8 @@ function PlatformCommercialInvitationsPage() {
     {
       id: 'status',
       header: 'Statut',
-      cell: (invitation) => formatCommercialInvitationStatus(
-        invitation.status,
+      cell: (invitation) => (
+        <CommercialInvitationStatusBadge status={invitation.status} />
       ),
     },
     {
