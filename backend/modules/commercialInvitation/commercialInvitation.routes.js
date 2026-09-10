@@ -17,17 +17,22 @@ import {
 import {
     accept,
     create,
+    decline,
     list,
     listOffers,
     preview,
+    registerRecipient,
     resend,
     revoke,
+    verifyRecipient,
 } from './commercialInvitation.controller.js';
 import {
     acceptCommercialInvitationBodySchema,
     commercialInvitationIdParamsSchema,
+    commercialInvitationRecipientBodySchema,
     createCommercialInvitationBodySchema,
     previewCommercialInvitationBodySchema,
+    registerCommercialInvitationRecipientBodySchema,
     revokeCommercialInvitationBodySchema,
 } from './commercialInvitation.validation.js';
 
@@ -85,9 +90,9 @@ platformCommercialInvitationRouter.post(
 );
 
 /**
- * Parcours destinataire. `preview` reste public mais rate-limité et reçoit le
- * secret dans le body, jamais dans le path. `accept` exige en plus Auth afin que
- * le token ne puisse pas choisir l'identité bénéficiaire.
+ * Parcours destinataire. Les secrets restent dans le body HTTP et sont
+ * rate-limités. L'inscription liée au lien vérifie l'adresse bénéficiaire avant
+ * toute création de User. Les actions finales exigent une session authentifiée.
  */
 const commercialInvitationAcceptanceRouter = Router();
 
@@ -99,11 +104,36 @@ commercialInvitationAcceptanceRouter.post(
 );
 
 commercialInvitationAcceptanceRouter.post(
+    '/register',
+    commercialInvitationRateLimiter,
+    validateRequest({
+        body: registerCommercialInvitationRecipientBodySchema,
+    }),
+    registerRecipient,
+);
+
+commercialInvitationAcceptanceRouter.post(
+    '/recipient',
+    commercialInvitationRateLimiter,
+    authenticate,
+    validateRequest({ body: commercialInvitationRecipientBodySchema }),
+    verifyRecipient,
+);
+
+commercialInvitationAcceptanceRouter.post(
     '/accept',
     commercialInvitationRateLimiter,
     authenticate,
     validateRequest({ body: acceptCommercialInvitationBodySchema }),
     accept,
+);
+
+commercialInvitationAcceptanceRouter.post(
+    '/decline',
+    commercialInvitationRateLimiter,
+    authenticate,
+    validateRequest({ body: commercialInvitationRecipientBodySchema }),
+    decline,
 );
 
 export {
