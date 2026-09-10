@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,11 @@ const DRAWER_TRANSITION_MS = 300;
  * sortie et le focus est rendu à l'élément qui avait ouvert le panneau. Les
  * features fournissent uniquement leur contenu métier et ne réimplémentent pas
  * la mécanique de dialog, de focus ou de transition.
+ *
+ * Le portal vers `document.body` évite qu'un header sticky, un backdrop-filter
+ * ou tout autre ancêtre créant un containing block ne piège le positionnement
+ * fixed du drawer. Une modale reste ainsi attachée au viewport, quel que soit
+ * l'endroit où son bouton déclencheur est rendu.
  *
  * @param {object} props
  * @param {import('react').ReactNode} props.children
@@ -71,7 +77,7 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
 
   if (!isMounted) return null;
 
-  return (
+  return createPortal(
     <div
       className={`fixed inset-x-0 bottom-0 top-16 z-[var(--layer-drawer)] ${open ? 'pointer-events-auto' : 'pointer-events-none'}`}
     >
@@ -124,7 +130,8 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
           <div className="min-w-0 max-w-full">{children}</div>
         </div>
       </aside>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
