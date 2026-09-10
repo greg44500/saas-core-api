@@ -11,6 +11,7 @@ import { registerSchema } from '@/features/auth/validation/auth-schemas';
 import {
   useRegisterCommercialInvitationRecipientMutation,
 } from '@/features/commercial-invitation/api/commercial-invitations-api';
+import { CommercialInvitationProgress } from '@/features/commercial-invitation/components/commercial-invitation-progress';
 import {
   buildCommercialInvitationAuthState,
   getCommercialInvitationTokenFromLocation,
@@ -81,6 +82,10 @@ function RegisterPage() {
 
   return (
     <div className="space-y-6">
+      {commercialInvitationToken && (
+        <CommercialInvitationProgress currentStep={1} />
+      )}
+
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Créer votre compte</h1>
         <p className="text-sm text-muted-foreground">
