@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { CollapsibleCard } from '@/components/data-display/collapsible-card';
 import { DistributionBarChart } from '@/components/data-display/distribution-bar-chart';
 import { DashboardSection } from '@/components/shared/dashboard-section';
+import { useDashboardDisplayPreview } from '@/components/shared/dashboard-display-preview-context';
 import { MetricDrilldownButton } from '@/components/shared/metric-drilldown-button';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,12 +26,17 @@ function PlatformTeamSnapshotSection() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { data: platformAccess } = useGetCurrentPlatformContextQuery();
   const preferencesQuery = useGetCurrentUserPreferencesQuery();
+  const { previewHiddenWidgetIds } = useDashboardDisplayPreview();
   const canReadTeam = platformAccess?.permissions?.includes(
     PLATFORM_PERMISSION.TEAM_READ,
   ) === true;
-  const isVisible = isPlatformDashboardWidgetVisible(
+  const preferencesResolved = preferencesQuery.data !== undefined
+    || preferencesQuery.isError;
+  const savedHiddenWidgetIds = preferencesQuery.data?.dashboard?.hiddenWidgetIds ?? [];
+  const effectiveHiddenWidgetIds = previewHiddenWidgetIds ?? savedHiddenWidgetIds;
+  const isVisible = preferencesResolved && isPlatformDashboardWidgetVisible(
     'platform.team',
-    preferencesQuery.data?.dashboard?.hiddenWidgetIds ?? [],
+    effectiveHiddenWidgetIds,
   );
   const summaryQuery = useGetPlatformTeamSummaryQuery(undefined, {
     skip: !canReadTeam || !isVisible,
