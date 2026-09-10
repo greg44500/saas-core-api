@@ -3,12 +3,14 @@ import { SlidersHorizontal } from 'lucide-react';
 
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
 import { ErrorState } from '@/components/shared/error-state';
+import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import {
   useUpdateCurrentUserPreferencesMutation,
 } from '@/features/preferences/api/user-preferences-api';
-import { useToast } from '@/components/shared/toast-provider';
+
+const EMPTY_HIDDEN_WIDGET_IDS = Object.freeze([]);
 
 function DashboardDisplayPreferences({ accessibleWidgets, preferencesQuery }) {
   const { toast } = useToast();
@@ -17,12 +19,13 @@ function DashboardDisplayPreferences({ accessibleWidgets, preferencesQuery }) {
   const [updatePreferences, { isLoading: isSaving }] =
     useUpdateCurrentUserPreferencesMutation();
   const configurableWidgets = accessibleWidgets.filter((widget) => widget.configurable);
-  const savedHiddenWidgetIds = preferencesQuery.data?.dashboard?.hiddenWidgetIds ?? [];
+  const savedHiddenWidgetIds = preferencesQuery.data?.dashboard?.hiddenWidgetIds
+    ?? EMPTY_HIDDEN_WIDGET_IDS;
 
   useEffect(() => {
     if (!open) return;
     setDraftHiddenWidgetIds(new Set(savedHiddenWidgetIds));
-  }, [open, preferencesQuery.data]);
+  }, [open, savedHiddenWidgetIds]);
 
   if (configurableWidgets.length === 0) return null;
 
