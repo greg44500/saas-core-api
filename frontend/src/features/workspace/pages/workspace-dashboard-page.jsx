@@ -1,5 +1,5 @@
+import { DashboardDisplayPreferences } from '@/components/shared/dashboard-display-preferences';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DashboardDisplayPreferences } from '@/features/workspace/components/dashboard-display-preferences';
 import { DashboardSummaryCard } from '@/features/workspace/components/dashboard-summary-card';
 import { useWorkspaceDashboardWidgets } from '@/features/workspace/hooks/use-workspace-dashboard-widgets';
 
