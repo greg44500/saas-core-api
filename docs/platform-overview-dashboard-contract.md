@@ -1,54 +1,51 @@
 # SAAS-CORE-API — Contrat du dashboard Platform
 
-**Date :** 3 septembre 2026  
-**Statut :** P-UI + P-DASH.1 validés — P-DASH.2 / P-DASH.3 / raffinements P-DASH.4 en validation
+**Dernière mise à jour :** 2026-09-10  
+**Statut :** implémenté et validé dans le Core courant  
+**Périmètre :** `/platform/overview` — cockpit générique d’administration SaaS
 
 ## 1. Objet
 
-Ce document fige le rôle de `/platform/overview` comme cockpit générique de pilotage du SaaS.
+`/platform/overview` est le cockpit générique de pilotage de la plateforme. Il agrège l’état des comptes, workspaces, abonnements, plans, usages et signaux transversaux sans importer de données propres aux futurs modules métier d’un SaaS dérivé.
 
-La vue Platform est distincte d'un Workspace : elle agrège l'état de la plateforme, des tenants et des contrats commerciaux sans importer de données propres aux futurs modules métier d'une application dérivée.
+Le Dashboard Platform est distinct du Dashboard Workspace :
 
-## 2. Fondations UI validées
+```text
+Dashboard Platform
+→ administration du SaaS et de ses tenants
 
-Le mini-lot P-UI est validé par tests frontend ciblés, suite globale et build.
+Dashboard Workspace
+→ expérience du tenant et futurs KPI métier après dérivation
+```
 
-Décisions actives :
+Le frontend ne recalcule aucune métrique commerciale ou de sécurité : il affiche des projections backend déjà résolues.
 
-- navigation Platform groupée par sections fonctionnelles ;
-- intitulés visibles en français ;
-- topbar réduite à `Console d'administration globale` ;
-- lien de retour vers la console masqué dans la console elle-même mais conservé pour un super-admin qui se trouve dans un autre contexte ;
-- le menu utilisateur se ferme au clic extérieur, avec `Escape` et lors d'un changement de route afin qu'un popover ouvert ne persiste jamais sur la page suivante ;
-- largeur de sidebar et densité des tableaux inchangées ;
-- `DataTable` reste l'unique primitive de tableau ;
-- cartes construites via les primitives réutilisables `Card`, `MetricCard`, `CollapsibleCard`, `SignalSummaryCard` et `DashboardSection` ;
-- les descriptions de cartes sont exposées via `InfoTooltip` au survol et au focus clavier afin de libérer l'espace sans perdre l'explication ;
-- contenu dépliable uniquement lorsque le détail apporte une information nouvelle ;
-- pas d'infinite scroll pour les listes administratives ; pagination, filtres et état URL restent la règle ;
-- le frontend ne calcule aucune métrique commerciale ou de sécurité.
+## 2. Autorisation et projection
 
-F10.5 est également validé : le Workspace consomme les features/limites effectives sans recevoir les motifs, sources, auteurs ou identifiants internes des `EntitlementOverride`.
-
-## 3. Endpoint analytique — P-DASH.1 validé
-
-P-DASH.1 introduit et validé par tests ciblés puis régression backend globale :
+Endpoint :
 
 ```text
 GET /api/platform/overview
 ```
 
-Permission dédiée :
+Permission d’entrée :
 
 ```text
 platform:overview:read
 ```
 
-La politique Core V1 continue d'attribuer les permissions Platform au seul `super_admin`.
+Les domaines réellement exposés sont ensuite projetés selon les permissions runtime de l’acteur (`users:read`, `workspaces:read`, `subscriptions:read`, etc.). Une préférence d’affichage utilisateur peut seulement réduire cette projection ; elle ne crée jamais une autorisation.
 
-La permission du cockpit est indépendante des permissions de détail (`users:read`, `subscriptions:read`, etc.) afin qu'une future politique puisse autoriser une lecture agrégée sans ouvrir toutes les ressources administratives.
+Ordre obligatoire :
 
-## 4. Période d'analyse
+```text
+permissions Platform
+→ projection backend autorisée
+→ préférences d’affichage
+→ contenu réellement visible
+```
+
+## 3. Période d’analyse
 
 Query backend optionnelle :
 
@@ -66,112 +63,92 @@ Règles :
 - la période précédente possède exactement la même durée ;
 - les intervalles analytiques sont demi-ouverts `[from, to)`.
 
-Les indicateurs d'état courant (subscription active, trial actif, override actif, usage courant) utilisent un même instant de référence serveur `generatedAt`, indépendamment de la fenêtre servant aux tendances.
+Les métriques d’état courant utilisent le même instant serveur `generatedAt` afin d’éviter qu’une échéance soit interprétée différemment dans deux blocs du même chargement.
 
-P-DASH.2 ajoute côté frontend les presets :
+Le frontend propose les presets 7, 30, 90, 365 jours et période personnalisée. L’état partageable du filtre reste dans l’URL via `useSearchParams`, pas dans Redux.
+
+## 4. KPI principaux
+
+Le cockpit expose actuellement cinq KPI lorsque les permissions correspondantes sont disponibles :
 
 ```text
-7 derniers jours
-30 derniers jours (défaut canonique)
-90 derniers jours
-365 derniers jours
-Période personnalisée
+Utilisateurs
+Espaces de travail
+Abonnements payants actifs
+Accès gratuits actifs
+Valeur mensuelle contractuelle estimée
 ```
 
-La période est stockée dans l'URL, jamais dans un slice Redux. Le mode personnalisé utilise les `DatePicker` partagés et n'applique la query qu'une fois les deux bornes valides. Les dates saisies représentent des jours civils locaux puis sont converties en instants ISO pour l'API ; la borne de fin visible par l'utilisateur est inclusive et devient une borne backend exclusive au début local du jour suivant.
+### 4.1 Abonnements payants actifs
 
-## 5. Données génériques du DTO
+Le compteur correspond aux workspaces dont la Subscription effective est commerciale, `active`, valide à l’instant du calcul et porte un prix contractuel strictement supérieur à zéro. Les trials sont exclus.
 
-La réponse regroupe :
+### 4.2 Accès gratuits actifs
 
-- KPI utilisateurs : total, créations période, période précédente, variation ;
-- KPI workspaces : total, créations période, période précédente, variation ;
-- nombre de subscriptions commerciales actives et temporellement valides ;
-- estimation mensuelle contractuelle brute par devise via le champ technique `contractedMrrEstimate` ;
-- répartition User et Workspace par statut ;
-- répartition des Workspaces par Plan réellement effectif ;
-- santé Subscription : active, trialing, past_due, résiliations et downgrades programmés ;
-- trials arrivant à échéance dans les 7 jours ;
-- overrides actifs, programmés et expirant dans les 7 jours ;
-- UsageMetric agrégées pour l'état courant ;
-- usage File actif : nombre, taille et répartition par type MIME ;
-- signaux nécessitant une attention ;
-- derniers événements `AuditLog` fonctionnels en échec sur la période.
+Le compteur correspond aux workspaces dont l’accès effectif actif est gratuit :
 
-P-DASH.2 branche ces données via le `baseApi` RTK Query unique. Le frontend affiche les valeurs déjà calculées par le backend ; il ne reconstruit aucun pourcentage commercial ou signal de sécurité.
+- baseline Free ;
+- offre commerciale privée gratuite durable `open_ended`.
 
-## 6. Visualisations génériques — P-DASH.3
+Les trials de plans payants sont exclus.
 
-P-DASH.3 introduit deux primitives dans `components/data-display` :
+Le DTO expose aussi :
 
 ```text
-ComparisonBarChart
-DistributionBarChart
+freeActiveAccesses.total
+freeActiveAccesses.viaCommercialInvitation
 ```
 
-Règles :
+Le sous-compteur `viaCommercialInvitation` repose sur une invitation commerciale réellement acceptée et ne se déduit jamais du nom du Plan.
 
-- aucune primitive ne connaît Platform, Plan, Subscription ou RTK Query ;
-- les composants reçoivent des valeurs déjà calculées et ne reconstruisent aucune règle métier ;
-- `ComparisonBarChart` calcule uniquement une largeur relative pour comparer deux périodes ; les taux de croissance restent ceux fournis par le backend dans les KPI ;
-- `DistributionBarChart` utilise le pourcentage backend pour le texte et ne borne que la largeur visuelle de la barre entre 0 et 100 ; une incohérence de donnée ne doit pas être silencieusement masquée ;
-- les valeurs et libellés restent disponibles en texte ; les barres décoratives sont masquées aux technologies d'assistance ;
-- les groupes de données sont nommés via `aria-label` ;
-- aucune nouvelle dépendance graphique n'est requise pour ces visualisations simples ; un moteur plus riche pourra être substitué plus tard derrière les mêmes frontières de composants si un véritable besoin apparaît.
+### 4.3 Résolution économique
 
-La croissance compare actuellement les créations de la période sélectionnée à celles de la période précédente de même durée. Elle ne prétend pas être une courbe temporelle quotidienne : une vraie série temporelle nécessitera un contrat backend dédié si elle devient nécessaire.
-
-## 7. Répartition par Plan
-
-La répartition est calculée par Workspace, selon la même priorité commerciale que le resolver runtime :
+Une seule Subscription effective est retenue par workspace avec la même priorité générale que le runtime :
 
 ```text
-commercial active temporellement valide
-> commercial trialing temporellement valide
+commercial active valide
+> trialing valide
 > baseline active
 ```
 
-Le dashboard ne compte donc pas toutes les Subscriptions historiques.
+Cette règle évite qu’un workspace payant soit simultanément compté comme gratuit à cause de sa baseline persistante.
 
-Si un Plan référencé est incohérent ou introuvable, le Workspace reste visible dans un bucket `Plan indisponible` au lieu d'être silencieusement retiré des pourcentages.
+## 5. Finance : vocabulaire obligatoire
 
-P-DASH.3 affiche cette distribution par barres horizontales en conservant nom, nombre et pourcentage textuels. React ne recalcule jamais la part commerciale.
-
-## 8. Finance : vocabulaire obligatoire
-
-Le champ technique du DTO reste :
+Le champ technique reste :
 
 ```text
 contractedMrrEstimate
 ```
 
-`MRR` signifie historiquement `Monthly Recurring Revenue`, mais cet acronyme n'est pas affiché dans l'interface Core car la métrique disponible n'est pas encore un revenu comptable réellement encaissé.
-
-Le libellé utilisateur obligatoire est :
+Le libellé utilisateur reste :
 
 ```text
 Valeur mensuelle contractuelle estimée
 ```
 
-Le tooltip précise qu'il s'agit de l'équivalent mensuel brut des abonnements commerciaux actifs, calculé à partir des prix contractuels, et qu'il ne représente ni facturation ni encaissement.
+Cette métrique est un équivalent mensuel brut fondé sur les prix contractuels. Elle ne représente ni une facture, ni un encaissement, ni un revenu comptable reconnu.
 
 Contraintes :
 
-- les devises restent séparées ;
-- aucune somme EUR + USD ;
-- les remises ne sont pas encore appliquées à ce premier indicateur ;
-- il ne représente ni facturation, ni encaissement, ni revenu reconnu ;
-- le futur domaine Billing/Payment restera l'autorité pour les données financières réelles.
+- devises séparées ;
+- aucune somme artificielle EUR + USD ;
+- remises non intégrées tant qu’un contrat spécifique ne le prévoit pas ;
+- Billing/Payment restera l’autorité des données financières réelles.
 
-Le frontend affiche une valeur monétaire uniquement lorsqu'une seule devise est présente. En multi-devises, il indique le nombre de devises au lieu de produire une somme artificielle.
+Le frontend affiche une valeur monétaire uniquement lorsqu’une seule devise est présente ; en multi-devises, il affiche le nombre de devises.
 
-## 9. Usage File générique
+## 6. Répartition par Plan
 
-La carte `Usage de la plateforme` conserve un résumé court des principales `UsageMetric`. Son contenu déplié ne répète plus ces métriques : il expose des informations File complémentaires.
+La répartition est calculée par Workspace selon la Subscription effectivement appliquée, avec la même priorité commerciale que le resolver runtime.
 
-L'agrégation backend utilise uniquement les fichiers `active`, cohérents avec le quota fonctionnel de stockage. Les fichiers supprimés logiquement ne réapparaissent donc pas dans la consommation fonctionnelle même s'ils restent physiquement conservés pendant la période de rétention.
+Un Plan incohérent ou introuvable ne doit pas faire disparaître silencieusement un workspace des pourcentages : un bucket de repli reste préférable à une donnée faussée.
 
-Le DTO File contient :
+Le frontend ne recalcule pas les pourcentages commerciaux.
+
+## 7. Usage et fichiers
+
+La section Usage/Fichiers expose les `UsageMetric` autorisées et les fichiers actifs :
 
 ```text
 files.totalCount
@@ -185,52 +162,82 @@ files.byType[]
   percentageOfStorage
 ```
 
-Le frontend peut ainsi afficher deux lectures complémentaires : répartition par nombre de fichiers et répartition par stockage occupé. Le rendu reste data-driven ; un futur type autorisé apparaît sans modification du composant de distribution.
+Les fichiers soft-deleted ne sont pas présentés comme fichiers actifs même s’ils restent physiquement conservés pendant leur rétention.
 
-## 10. Signaux d'attention
+Les visualisations utilisent les primitives partagées `ComparisonBarChart` et `DistributionBarChart`. Les valeurs et libellés restent disponibles textuellement et les éléments purement décoratifs sont ignorés par les technologies d’assistance.
 
-La V1 agrège notamment :
+## 8. Santé, exceptions et points d’attention
+
+Le cockpit peut exposer notamment :
 
 - subscriptions `past_due` ;
 - workspaces suspendus ;
-- événements AuditLog `failed` sur la période ;
-- trials expirant dans les 7 jours ;
-- overrides expirant dans les 7 jours.
+- trials expirant sous 7 jours ;
+- overrides expirant sous 7 jours ;
+- événements Audit fonctionnels en échec sur la période.
 
-Les clés techniques restent en anglais dans le modèle et le DTO lorsqu'elles font partie du contrat existant. L'interface traduit systématiquement les libellés visibles : `past_due` devient par exemple `Abonnements en retard`, `trial` devient `essai`, et `downgrade` devient `baisse de formule`.
+`AuditLog.status = failed` décrit l’échec fonctionnel d’une action auditée ; ce n’est pas un système d’observabilité technique.
 
-`AuditLog.status = failed` décrit un échec fonctionnel d'une action auditée. Il ne constitue pas un système de monitoring des erreurs techniques serveur.
+Les erreurs 5xx, timeouts, jobs, disponibilité MongoDB, SMTP ou antivirus relèvent d’une future couche d’observabilité.
 
-Les valeurs non nulles de cette synthèse utilisent par défaut le ton `warning`; `destructive` reste réservé aux incidents réellement critiques. Une valeur nulle reste neutre.
+Le détail utilise le `DataTable` partagé.
 
-Les erreurs 5xx, timeouts, jobs en échec, disponibilité MongoDB, SMTP ou antivirus appartiendront à une future couche d'observabilité dédiée.
+## 9. UI, composants et équilibre des KPI
 
-Le tableau détaillé restera réservé à P-DASH.5 et utilisera obligatoirement le `DataTable` partagé.
-
-## 11. Performance et cohérence
-
-Les agrégations par collection sont indépendantes et exécutables en parallèle. Le dashboard accepte un léger décalage analytique entre collections : il ne sert jamais d'autorité transactionnelle.
-
-En revanche, les règles temporelles courantes utilisent le même instant de référence afin d'éviter qu'une échéance de trial, Subscription ou override soit interprétée différemment dans deux cartes d'un même chargement.
-
-Côté frontend :
-
-- RTK Query est l'unique state serveur du dashboard ;
-- `useSearchParams` porte l'état partageable de période ;
-- `useState` reste limité au brouillon local du filtre personnalisé et à l'ouverture des cartes dépliables ;
-- aucun slice Redux métier n'est créé pour la vue d'ensemble ;
-- le test du router mocke la page Overview afin de ne pas transformer un test de navigation en test réseau ;
-- les primitives graphiques ne déclenchent aucune requête et ne portent aucun state serveur.
-
-## 12. Ordre d'implémentation actualisé
+Primitives réutilisées :
 
 ```text
-P-DASH.1  backend / permission / validation / agrégats / tests         VALIDÉ
-P-DASH.2  RTK Query / période URL / binding des agrégats               EN VALIDATION
-P-DASH.3  primitives / croissance / répartition Plan                   EN VALIDATION
-P-DASH.4  raffinement cartes / usage File / santé / finance            EN VALIDATION
-P-DASH.5  DataTable des points nécessitant une attention
-F10.6      administration frontend des dérogations
+Card
+MetricCard
+CollapsibleCard
+SignalSummaryCard
+DashboardSection
+InfoTooltip
+DataTable
 ```
+
+Les KPI utilisent une grille commune à six colonnes et un algorithme d’équilibrage partagé avec le Dashboard Workspace. La composition dépend du nombre réellement rendu, jamais d’un nombre théorique de cartes.
+
+Convention large écran :
+
+```text
+1 → 1
+2 → 2
+3 → 3
+4 → 2 + 2
+5 → 3 + 2
+6 → 3 + 3
+7 → 3 + 2 + 2
+8 → 3 + 3 + 2
+```
+
+L’implémentation partagée se trouve dans :
+
+```text
+frontend/src/components/shared/balanced-six-column-grid.js
+```
+
+Cette règle protège notamment les vues personnalisées dans lesquelles certaines sections sont masquées.
+
+## 10. État serveur et chargement
+
+RTK Query est l’unique état serveur du Dashboard Platform.
+
+Un Skeleton est utilisé pour le chargement initial sans donnée. Lors d’un refetch avec données déjà disponibles, le contenu réel reste affiché.
+
+Les préférences de Dashboard n’ont pas vocation à charger des données auxquelles l’utilisateur n’a pas droit. Les projections backend restent l’autorité de sécurité.
+
+## 11. Validation actuelle
+
+Les sous-blocs historiques P-DASH ont été intégrés dans le Dashboard Platform courant. Les derniers travaux du 2026-09-10 ont ajouté :
+
+```text
+KPI économiques Free/Paid
+résolution économique par Subscription effective
+sous-compteur via invitation commerciale
+équilibrage partagé des grilles Dashboard
+```
+
+Les tests ciblés et globaux, le lint et le build applicables ont été confirmés verts localement par l’utilisateur avant intégration dans `main`.
 
 Aucun module métier spécifique ne doit être introduit dans ce dashboard Core.
