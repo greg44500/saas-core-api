@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useLoginMutation } from '@/features/auth/api/auth-api';
 import { resolveAuthenticatedDestination } from '@/features/auth/lib/authenticated-destination';
 import { loginSchema } from '@/features/auth/validation/auth-schemas';
+import { CommercialInvitationProgress } from '@/features/commercial-invitation/components/commercial-invitation-progress';
 import {
   getCommercialInvitationTokenFromLocation,
 } from '@/features/commercial-invitation/lib/commercial-invitation';
@@ -92,9 +93,17 @@ function LoginPage() {
 
   return (
     <div className="space-y-6">
+      {commercialInvitationToken && (
+        <CommercialInvitationProgress currentStep={2} />
+      )}
+
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Connexion</h1>
-        <p className="text-sm text-muted-foreground">Accédez à votre espace SaaS Core.</p>
+        <p className="text-sm text-muted-foreground">
+          {commercialInvitationToken
+            ? 'Connectez-vous avec le compte correspondant à l’adresse ayant reçu l’invitation.'
+            : 'Accédez à votre espace SaaS Core.'}
+        </p>
       </div>
 
       {statusMessage && (
