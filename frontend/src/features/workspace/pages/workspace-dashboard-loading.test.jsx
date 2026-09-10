@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isInitialQueryLoading } from '@/features/workspace/pages/workspace-dashboard-page';
+import { isInitialQueryLoading } from '@/features/workspace/components/core-dashboard-widgets';
 
 describe('isInitialQueryLoading', () => {
   it('considère un fetch sans donnée comme un premier chargement', () => {
