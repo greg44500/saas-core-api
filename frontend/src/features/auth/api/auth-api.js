@@ -34,7 +34,9 @@ const authApi = baseApi.injectEndpoints({
         const { data } = await queryFulfilled;
         const accessToken = getAccessTokenFromResponse(data);
 
-        if (!accessToken) return;
+        if (!accessToken) {
+          return;
+        }
 
         if (previousAccessToken) {
           dispatch(baseApi.util.resetApiState());
@@ -44,15 +46,21 @@ const authApi = baseApi.injectEndpoints({
       },
     }),
     refreshSession: build.mutation({
-      query: () => ({ url: '/auth/refresh', method: 'POST' }),
+      query: () => ({
+        url: '/auth/refresh',
+        method: 'POST',
+      }),
       extraOptions: { skipReauth: true },
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
           const accessToken = getAccessTokenFromResponse(data);
 
-          if (accessToken) dispatch(sessionAuthenticated({ accessToken }));
-          else dispatch(sessionTerminated());
+          if (accessToken) {
+            dispatch(sessionAuthenticated({ accessToken }));
+          } else {
+            dispatch(sessionTerminated());
+          }
         } catch {
           dispatch(sessionTerminated());
         }
@@ -64,40 +72,67 @@ const authApi = baseApi.injectEndpoints({
       providesTags: ['CurrentUser'],
     }),
     updateCurrentUser: build.mutation({
-      query: (payload) => ({ url: '/users/me', method: 'PATCH', body: payload }),
+      query: (payload) => ({
+        url: '/users/me',
+        method: 'PATCH',
+        body: payload,
+      }),
       transformResponse: (response) => response?.data?.user ?? null,
       invalidatesTags: ['CurrentUser'],
     }),
     logout: build.mutation({
-      query: () => ({ url: '/auth/logout', method: 'POST', responseHandler: 'text' }),
+      query: () => ({
+        url: '/auth/logout',
+        method: 'POST',
+        responseHandler: 'text',
+      }),
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
         } finally {
+          // `sessionTerminated` est l'unique signal de fin de session. Le store
+          // se charge de purger le cache RTK Query pour tous les workflows.
           dispatch(sessionTerminated());
         }
       },
     }),
     logoutAll: build.mutation({
-      query: () => ({ url: '/auth/logout-all', method: 'POST', responseHandler: 'text' }),
+      query: () => ({
+        url: '/auth/logout-all',
+        method: 'POST',
+        responseHandler: 'text',
+      }),
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         await queryFulfilled;
         dispatch(sessionTerminated());
       },
     }),
     changePassword: build.mutation({
-      query: (payload) => ({ url: '/auth/change-password', method: 'POST', body: payload, responseHandler: 'text' }),
+      query: (payload) => ({
+        url: '/auth/change-password',
+        method: 'POST',
+        body: payload,
+        responseHandler: 'text',
+      }),
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         await queryFulfilled;
         dispatch(sessionTerminated());
       },
     }),
     forgotPassword: build.mutation({
-      query: (payload) => ({ url: '/auth/forgot-password', method: 'POST', body: payload }),
+      query: (payload) => ({
+        url: '/auth/forgot-password',
+        method: 'POST',
+        body: payload,
+      }),
       extraOptions: { skipReauth: true },
     }),
     resetPassword: build.mutation({
-      query: (payload) => ({ url: '/auth/reset-password', method: 'POST', body: payload }),
+      query: (payload) => ({
+        url: '/auth/reset-password',
+        method: 'POST',
+        body: payload,
+      }),
       extraOptions: { skipReauth: true },
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         await queryFulfilled;
