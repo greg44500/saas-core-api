@@ -8,6 +8,103 @@ function getCharacterClassCount(password) {
   ].filter(Boolean).length;
 }
 
+function normalizeForWeakPasswordDetection(password, rejection) {
+  const leetspeakMap = rejection?.leetspeakMap ?? {};
+
+  return password
+    .toLocaleLowerCase('fr-FR')
+    .split('')
+    .map((character) => leetspeakMap[character] ?? character)
+    .join('')
+    .replace(/[^\p{L}\p{N}]/gu, '');
+}
+
+function hasRepeatedPattern(password, rejection) {
+  const repeatedCharacterMinimum = rejection?.repeatedCharacterMinimum ?? 6;
+  const repeatedPatternMaximumLength = rejection?.repeatedPatternMaximumLength ?? 8;
+  const repeatedPatternMinimumRepeats = rejection?.repeatedPatternMinimumRepeats ?? 3;
+  const normalized = password.toLocaleLowerCase('fr-FR');
+
+  const sameCharacter = new RegExp(
+    `^(.)\\1{${Math.max(1, repeatedCharacterMinimum - 1)},}$`,
+    'u',
+  );
+
+  if (sameCharacter.test(normalized)) {
+    return true;
+  }
+
+  for (let patternLength = 1; patternLength <= repeatedPatternMaximumLength; patternLength += 1) {
+    if (normalized.length < patternLength * repeatedPatternMinimumRepeats) {
+      continue;
+    }
+
+    const pattern = normalized.slice(0, patternLength);
+    const repeated = pattern.repeat(normalized.length / patternLength);
+
+    if (
+      normalized.length % patternLength === 0
+      && repeated === normalized
+      && normalized.length / patternLength >= repeatedPatternMinimumRepeats
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isAscendingOrDescendingSequence(value, minimumLength) {
+  if (value.length < minimumLength) {
+    return false;
+  }
+
+  const codePoints = Array.from(value, (character) => character.codePointAt(0));
+  const direction = Math.sign(codePoints[1] - codePoints[0]);
+
+  if (![1, -1].includes(direction)) {
+    return false;
+  }
+
+  return codePoints.slice(1).every((codePoint, index) =>
+    codePoint - codePoints[index] === direction);
+}
+
+function hasTrivialSequence(password, rejection) {
+  const minimumLength = rejection?.minimumSequenceLength ?? 6;
+  const knownSequences = rejection?.knownSequences ?? [];
+  const compact = password
+    .toLocaleLowerCase('fr-FR')
+    .replace(/[^a-z0-9]/g, '');
+
+  if (isAscendingOrDescendingSequence(compact, minimumLength)) {
+    return true;
+  }
+
+  if (compact.length < minimumLength) {
+    return false;
+  }
+
+  return knownSequences.some((sequence) =>
+    sequence.includes(compact));
+}
+
+function isRejectedByPublicPolicy(password, policy) {
+  const rejection = policy?.rejection;
+
+  if (!password || !rejection) {
+    return false;
+  }
+
+  const normalized = normalizeForWeakPasswordDetection(password, rejection);
+  const containsWeakTerm = (rejection.weakTerms ?? [])
+    .some((term) => normalized.includes(term));
+
+  return containsWeakTerm
+    || hasRepeatedPattern(password, rejection)
+    || hasTrivialSequence(password, rejection);
+}
+
 /**
  * Interprète le contrat déclaratif fourni par le backend. Les seuils et poids
  * ne sont jamais définis dans le frontend : il ne fait qu'exécuter le contrat
@@ -16,6 +113,10 @@ function getCharacterClassCount(password) {
 function evaluateFromPolicy(password, policy) {
   if (!password || !policy?.scoring || !Array.isArray(policy.levels)) {
     return null;
+  }
+
+  if (isRejectedByPublicPolicy(password, policy)) {
+    return policy.levels.find((level) => level.key === 'weak') ?? policy.levels[0];
   }
 
   let score = 0;
@@ -49,6 +150,7 @@ function PasswordPolicyFeedback({ password, policy }) {
   }
 
   const level = evaluateFromPolicy(password, policy);
+  const rejected = isRejectedByPublicPolicy(password, policy);
   const levelClassName = {
     weak: 'bg-destructive',
     good: 'bg-warning',
@@ -78,6 +180,11 @@ function PasswordPolicyFeedback({ password, policy }) {
           <p className="text-xs font-medium">
             Robustesse : {level.label}
           </p>
+          {rejected && (
+            <p className="text-xs text-destructive">
+              Ce mot de passe est trop prévisible et sera refusé.
+            </p>
+          )}
         </div>
       )}
 
@@ -90,4 +197,8 @@ function PasswordPolicyFeedback({ password, policy }) {
   );
 }
 
-export { PasswordPolicyFeedback, evaluateFromPolicy };
+export {
+  PasswordPolicyFeedback,
+  evaluateFromPolicy,
+  isRejectedByPublicPolicy,
+};
