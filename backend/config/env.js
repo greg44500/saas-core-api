@@ -64,7 +64,7 @@ const envSchema = z.object({
         .number()
         .int()
         .min(5)
-        .max(60)
+        .max(15)
         .default(15),
 
     SMTP_HOST: z
