@@ -6,10 +6,14 @@ import { DashboardSection } from '@/components/shared/dashboard-section';
 import { MetricDrilldownButton } from '@/components/shared/metric-drilldown-button';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useGetCurrentUserPreferencesQuery } from '@/features/preferences/api/user-preferences-api';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
 import { useGetPlatformTeamSummaryQuery } from '@/features/platform/api/platform-team-api';
 import { PlatformTeamMembersDrawer } from '@/features/platform/components/platform-team-members-drawer';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
+import {
+  isPlatformDashboardWidgetVisible,
+} from '@/features/platform/lib/platform-dashboard-preferences';
 
 const numberFormatter = new Intl.NumberFormat('fr-FR');
 
@@ -20,14 +24,19 @@ function formatTeamCount(value) {
 function PlatformTeamSnapshotSection() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { data: platformAccess } = useGetCurrentPlatformContextQuery();
+  const preferencesQuery = useGetCurrentUserPreferencesQuery();
   const canReadTeam = platformAccess?.permissions?.includes(
     PLATFORM_PERMISSION.TEAM_READ,
   ) === true;
+  const isVisible = isPlatformDashboardWidgetVisible(
+    'platform.team',
+    preferencesQuery.data?.dashboard?.hiddenWidgetIds ?? [],
+  );
   const summaryQuery = useGetPlatformTeamSummaryQuery(undefined, {
-    skip: !canReadTeam,
+    skip: !canReadTeam || !isVisible,
   });
 
-  if (!canReadTeam) {
+  if (!canReadTeam || !isVisible) {
     return null;
   }
 
