@@ -17,10 +17,22 @@ vi.mock('@/services/api/base-api', () => ({
       endpoints(builder);
 
       return {
-        useGetPlatformOverviewQuery: vi.fn(),
+        useGetPlatformOverviewQuery: vi.fn(() => ({
+          data: undefined,
+          isFetching: false,
+          isLoading: false,
+        })),
       };
     },
   },
+}));
+
+vi.mock('@/features/preferences/api/user-preferences-api', () => ({
+  useGetCurrentUserPreferencesQuery: vi.fn(() => ({
+    data: { dashboard: { hiddenWidgetIds: [] } },
+    isError: false,
+    isFetching: false,
+  })),
 }));
 
 import '@/features/platform/api/platform-overview-api';
