@@ -14,6 +14,7 @@ import {
 
 const VALID_TOKEN = 'a'.repeat(64);
 const VALID_ROLE_ID = '507f1f77bcf86cd799439011';
+const VALID_PASSWORD = 'Velo bleu sous la pluie, dimanche 47!';
 
 
 describe('platformInvitation.validation', () => {
@@ -58,21 +59,29 @@ describe('platformInvitation.validation', () => {
         })).toThrow();
     });
 
-    it('n’accepte que token et password pour créer un nouveau compte', () => {
+    it('n’accepte que token, password et consentement contractuel pour créer un nouveau compte', () => {
         expect(
             acceptNewPlatformInvitationBodySchema.parse({
                 token: VALID_TOKEN,
-                password: 'un-mot-de-passe-tres-long',
+                password: VALID_PASSWORD,
+                legalAccepted: true,
             }),
         ).toEqual({
             token: VALID_TOKEN,
-            password: 'un-mot-de-passe-tres-long',
+            password: VALID_PASSWORD,
+            legalAccepted: true,
         });
 
         expect(() => acceptNewPlatformInvitationBodySchema.parse({
             token: VALID_TOKEN,
-            password: 'un-mot-de-passe-tres-long',
+            password: VALID_PASSWORD,
+            legalAccepted: true,
             email: 'other@example.com',
+        })).toThrow();
+
+        expect(() => acceptNewPlatformInvitationBodySchema.parse({
+            token: VALID_TOKEN,
+            password: VALID_PASSWORD,
         })).toThrow();
     });
 
