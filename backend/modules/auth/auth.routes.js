@@ -29,14 +29,34 @@ import {
 
 const router = Router();
 
-router.get('/password-policy', passwordPolicy);
+/**
+ * Expose la représentation publique de la politique de mot de passe.
+ * Aucun secret utilisateur ne transite par cet endpoint.
+ */
+router.get(
+    '/password-policy',
+    passwordPolicy,
+);
 
+/**
+ * Inscription locale.
+ *
+ * La validation intervient avant le controller afin que celui-ci
+ * ne reçoive que des données conformes au contrat HTTP.
+ */
 router.post(
     '/register',
     validateRequest({ body: registerSchema }),
     register,
 );
 
+/**
+ * Authentification locale.
+ *
+ * Les deux barrières précédant la validation limitent respectivement les
+ * échecs provenant d'une même origine réseau et ceux visant une même identité.
+ * Elles ne consultent pas la base utilisateurs.
+ */
 router.post(
     '/login',
     loginIpRateLimiter,
@@ -47,29 +67,122 @@ router.post(
 
 router.post(
     '/forgot-password',
+
+    /*
+     * Première barrière : limite le volume total de demandes
+     * provenant d'une même origine réseau.
+     *
+     * Elle s'exécute avant la validation afin qu'un client
+     * envoyant volontairement des bodies invalides ne puisse
+     * pas contourner la protection anti-abus.
+     */
     forgotPasswordIpRateLimiter,
+
+    /*
+     * Deuxième barrière : limite les demandes visant
+     * une même adresse email, indépendamment de l'IP.
+     *
+     * Le limiter ne vérifie jamais si le compte existe :
+     * il ne crée donc aucune fuite d'information utilisateur.
+     */
     forgotPasswordEmailRateLimiter,
-    validateRequest({ body: forgotPasswordSchema }),
+
+    validateRequest({
+        body: forgotPasswordSchema,
+    }),
+
     forgotPassword,
 );
 
+/**
+ * Réinitialise le mot de passe à partir d'un token
+ * reçu via le workflow forgot-password.
+ *
+ * Route publique :
+ * le token de réinitialisation constitue ici la preuve
+ * temporaire autorisant le changement du credential.
+ *
+ * validateRequest protège le contrat HTTP avant que
+ * le controller puis le service ne soient exécutés.
+ */
 router.post(
     '/reset-password',
-    validateRequest({ body: resetPasswordSchema }),
+    validateRequest({
+        body: resetPasswordSchema,
+    }),
     resetPassword,
 );
 
-router.post('/refresh', refresh);
-router.post('/logout', logout);
-router.post('/logout-all', authenticate, logoutAll);
+/**
+ * Renouvelle la paire de tokens à partir du refresh token
+ * contenu dans le cookie HttpOnly.
+ *
+ * Cette route ne doit pas utiliser authenticate :
+ * l'access token peut justement être expiré au moment du refresh.
+ *
+ * Aucune validation de body n'est nécessaire puisque le refresh
+ * token est lu directement depuis le cookie.
+ */
+router.post(
+    '/refresh',
+    refresh,
+);
 
+/**
+ * Déconnecte la session courante à partir du refresh token
+ * contenu dans le cookie HttpOnly.
+ *
+ * Cette route ne dépend pas de l'access token :
+ * elle doit rester utilisable même si celui-ci est expiré.
+ *
+ * Aucun body n'est attendu, le refresh token étant lu
+ * directement depuis le cookie.
+ */
+router.post(
+    '/logout',
+    logout,
+);
+
+/**
+ * Déconnecte l'utilisateur de toutes ses sessions actives.
+ *
+ * Cette route nécessite un access token valide afin d'identifier
+ * de manière fiable l'utilisateur concerné.
+ *
+ * Le controller révoque ensuite toutes ses AuthSession encore
+ * actives et supprime le refresh token du navigateur courant.
+ */
+router.post(
+    '/logout-all',
+    authenticate,
+    logoutAll,
+);
+
+/**
+ * Modifie le mot de passe de l'utilisateur authentifié.
+ *
+ * L'identité provient exclusivement de l'access token.
+ * Le body contient uniquement le mot de passe actuel
+ * et le nouveau mot de passe.
+ *
+ * Toutes les sessions sont révoquées après la modification.
+ */
 router.post(
     '/change-password',
     authenticate,
-    validateRequest({ body: changePasswordSchema }),
+    validateRequest({
+        body: changePasswordSchema,
+    }),
     changePassword,
 );
 
-router.get('/me', authenticate, me);
+/**
+ * Retourne l'utilisateur actuellement authentifié.
+ */
+router.get(
+    '/me',
+    authenticate,
+    me,
+);
 
 export { router as authRouter };
