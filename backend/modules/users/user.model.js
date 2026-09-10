@@ -9,10 +9,14 @@ import { PLATFORM_ROLE } from '../../constants/platformRoles.constants.js';
 import { USER_STATUS } from '../../constants/userStatus.constants.js';
 import {
     DEFAULT_USER_COMFORT_PREFERENCES,
+    DEFAULT_USER_DASHBOARD_PREFERENCES,
     USER_ACCESSIBILITY_MODE,
     USER_FONT_FAMILY,
     USER_THEME,
 } from './userPreferences.constants.js';
+
+const DASHBOARD_WIDGET_ID_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
+const MAX_HIDDEN_DASHBOARD_WIDGETS = 100;
 
 const userComfortPreferencesSchema = new mongoose.Schema(
     {
@@ -46,10 +50,41 @@ const userComfortPreferencesSchema = new mongoose.Schema(
     },
 );
 
+const userDashboardPreferencesSchema = new mongoose.Schema(
+    {
+        hiddenWidgetIds: {
+            type: [{
+                type: String,
+                maxlength: 100,
+                match: DASHBOARD_WIDGET_ID_PATTERN,
+            }],
+            default: () => [...DEFAULT_USER_DASHBOARD_PREFERENCES.hiddenWidgetIds],
+            validate: [
+                {
+                    validator: (widgetIds) => widgetIds.length <= MAX_HIDDEN_DASHBOARD_WIDGETS,
+                    message: `Le nombre de widgets masqués ne peut pas dépasser ${MAX_HIDDEN_DASHBOARD_WIDGETS}.`,
+                },
+                {
+                    validator: (widgetIds) => new Set(widgetIds).size === widgetIds.length,
+                    message: 'Les identifiants de widgets masqués doivent être uniques.',
+                },
+            ],
+        },
+    },
+    {
+        _id: false,
+    },
+);
+
 const userPreferencesSchema = new mongoose.Schema(
     {
         comfort: {
             type: userComfortPreferencesSchema,
+            default: () => ({}),
+            required: true,
+        },
+        dashboard: {
+            type: userDashboardPreferencesSchema,
             default: () => ({}),
             required: true,
         },
