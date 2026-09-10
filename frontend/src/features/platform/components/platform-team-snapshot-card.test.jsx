@@ -7,9 +7,13 @@ import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-perm
 const mocks = vi.hoisted(() => ({
   drawerProps: vi.fn(),
   useGetCurrentPlatformContextQuery: vi.fn(),
+  useGetCurrentUserPreferencesQuery: vi.fn(),
   useGetPlatformTeamSummaryQuery: vi.fn(),
 }));
 
+vi.mock('@/features/preferences/api/user-preferences-api', () => ({
+  useGetCurrentUserPreferencesQuery: mocks.useGetCurrentUserPreferencesQuery,
+}));
 vi.mock('@/features/platform/api/platform-current-context-api', () => ({
   useGetCurrentPlatformContextQuery: mocks.useGetCurrentPlatformContextQuery,
 }));
@@ -65,6 +69,11 @@ describe('PlatformTeamSnapshotSection', () => {
       data: {
         status: 'active',
         permissions: [PLATFORM_PERMISSION.TEAM_READ],
+      },
+    });
+    mocks.useGetCurrentUserPreferencesQuery.mockReturnValue({
+      data: {
+        dashboard: { hiddenWidgetIds: [] },
       },
     });
     mocks.useGetPlatformTeamSummaryQuery.mockReturnValue({
@@ -129,6 +138,24 @@ describe('PlatformTeamSnapshotSection', () => {
       data: {
         status: 'active',
         permissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
+      },
+    });
+
+    render(<PlatformTeamSnapshotSection />);
+
+    expect(mocks.useGetPlatformTeamSummaryQuery).toHaveBeenCalledWith(
+      undefined,
+      { skip: true },
+    );
+    expect(
+      screen.queryByRole('region', { name: 'Organisation interne' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('ne charge ni n’affiche l’équipe lorsque le membre Platform la masque', () => {
+    mocks.useGetCurrentUserPreferencesQuery.mockReturnValue({
+      data: {
+        dashboard: { hiddenWidgetIds: ['platform.team'] },
       },
     });
 
