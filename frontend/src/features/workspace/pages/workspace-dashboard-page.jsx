@@ -2,10 +2,43 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DashboardSummaryCard } from '@/features/workspace/components/dashboard-summary-card';
 import { useWorkspaceDashboardWidgets } from '@/features/workspace/hooks/use-workspace-dashboard-widgets';
 
-function getSummaryGridClass(itemCount) {
-  if (itemCount <= 1) return 'grid grid-cols-1 gap-4';
-  if (itemCount === 2) return 'grid grid-cols-1 gap-4 sm:grid-cols-2';
-  return 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3';
+function getSummaryGridClass() {
+  return 'grid grid-cols-6 gap-4';
+}
+
+/**
+ * Répartit la dernière ligne sans laisser un widget isolé sur un tiers de la
+ * largeur. La règle dépend uniquement du nombre réellement rendu : les futurs
+ * modules métier héritent donc automatiquement du même comportement.
+ */
+function getSummaryItemClass(index, itemCount) {
+  const position = index + 1;
+  const isLast = position === itemCount;
+  const baseClass = 'col-span-6';
+  const smallScreenClass = itemCount > 1 && !(itemCount % 2 === 1 && isLast)
+    ? 'sm:col-span-3'
+    : 'sm:col-span-6';
+
+  if (itemCount <= 1) {
+    return `${baseClass} sm:col-span-6 xl:col-span-6`;
+  }
+
+  if (itemCount === 2) {
+    return `${baseClass} ${smallScreenClass} xl:col-span-3`;
+  }
+
+  if (itemCount === 4) {
+    return `${baseClass} ${smallScreenClass} xl:col-span-3`;
+  }
+
+  const remainder = itemCount % 3;
+  const balancedTailSize = remainder === 1 ? 4 : remainder;
+  const firstBalancedTailIndex = itemCount - balancedTailSize;
+  const xlClass = remainder === 0 || index < firstBalancedTailIndex
+    ? 'xl:col-span-2'
+    : 'xl:col-span-3';
+
+  return `${baseClass} ${smallScreenClass} ${xlClass}`;
 }
 
 function WorkspaceDashboardPage() {
@@ -36,21 +69,36 @@ function WorkspaceDashboardPage() {
 
       <section
         aria-label="Synthèse du workspace"
-        className={getSummaryGridClass(renderedSummaryCount)}
+        className={getSummaryGridClass()}
       >
-        {summaryWidgets.map((widget) => {
+        {summaryWidgets.map((widget, index) => {
           const Widget = widget.component;
-          return <Widget key={widget.id} />;
+          return (
+            <div
+              className={getSummaryItemClass(index, renderedSummaryCount)}
+              key={widget.id}
+            >
+              <Widget />
+            </div>
+          );
         })}
 
-        {pendingSummaryWidgets.map((widget) => (
-          <DashboardSummaryCard
-            description={widget.description}
-            isLoading
-            key={`loading-${widget.id}`}
-            label={widget.label}
-          />
-        ))}
+        {pendingSummaryWidgets.map((widget, pendingIndex) => {
+          const index = summaryWidgets.length + pendingIndex;
+
+          return (
+            <div
+              className={getSummaryItemClass(index, renderedSummaryCount)}
+              key={`loading-${widget.id}`}
+            >
+              <DashboardSummaryCard
+                description={widget.description}
+                isLoading
+                label={widget.label}
+              />
+            </div>
+          );
+        })}
       </section>
 
       {contentWidgets.map((widget) => {
@@ -73,4 +121,8 @@ function WorkspaceDashboardPage() {
   );
 }
 
-export { WorkspaceDashboardPage, getSummaryGridClass };
+export {
+  WorkspaceDashboardPage,
+  getSummaryGridClass,
+  getSummaryItemClass,
+};
