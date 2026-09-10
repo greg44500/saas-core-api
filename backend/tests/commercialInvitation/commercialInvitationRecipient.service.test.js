@@ -78,11 +78,17 @@ describe('commercialInvitationRecipient.service', () => {
         });
     };
 
-    const mockUserLookup = (value) => {
+    const mockTransactionalUserLookup = (value) => {
         User.findById.mockReturnValue({
             select: vi.fn().mockReturnValue({
                 session: vi.fn().mockResolvedValue(value),
             }),
+        });
+    };
+
+    const mockDirectUserLookup = (value) => {
+        User.findById.mockReturnValue({
+            select: vi.fn().mockResolvedValue(value),
         });
     };
 
@@ -130,7 +136,7 @@ describe('commercialInvitationRecipient.service', () => {
     });
 
     it('refuse une session authentifiée qui ne correspond pas au bénéficiaire', async () => {
-        mockUserLookup({
+        mockDirectUserLookup({
             _id: userId,
             emailCanonical: 'other@example.com',
         });
@@ -154,7 +160,7 @@ describe('commercialInvitationRecipient.service', () => {
             declinedBy: userId,
         };
 
-        mockUserLookup(user);
+        mockTransactionalUserLookup(user);
         mockInvitationLookup(invitation);
         CommercialInvitation.findOneAndUpdate.mockResolvedValue(
             declinedInvitation,
