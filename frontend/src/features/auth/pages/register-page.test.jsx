@@ -77,10 +77,15 @@ describe('RegisterPage commercial invitation flow', () => {
     });
   });
 
-  it('utilise le endpoint lié à l’invitation quand le vault contient un token', async () => {
+  it('utilise le endpoint lié à l’invitation et affiche l’étape 1', async () => {
     const user = userEvent.setup();
     setCommercialInvitationTokenInMemory(TOKEN);
     renderRegister();
+
+    expect(
+      screen.getByRole('navigation', { name: 'Activation de votre accès privé' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Étape 1 sur 3 — Création du compte')).toBeInTheDocument();
 
     await fillRegistrationForm(user, 'invitee@example.com');
     await user.click(screen.getByRole('button', { name: 'Créer mon compte' }));
@@ -119,9 +124,13 @@ describe('RegisterPage commercial invitation flow', () => {
     expect(mocks.registerAccount).not.toHaveBeenCalled();
   });
 
-  it('conserve l’inscription Auth générique hors invitation commerciale', async () => {
+  it('conserve l’inscription Auth générique hors invitation sans stepper commercial', async () => {
     const user = userEvent.setup();
     renderRegister();
+
+    expect(
+      screen.queryByRole('navigation', { name: 'Activation de votre accès privé' }),
+    ).not.toBeInTheDocument();
 
     await fillRegistrationForm(user, 'normal@example.com');
     await user.click(screen.getByRole('button', { name: 'Créer mon compte' }));
