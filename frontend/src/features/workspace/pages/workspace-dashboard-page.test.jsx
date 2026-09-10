@@ -7,13 +7,10 @@ vi.mock('@/features/workspace/hooks/use-workspace-dashboard-widgets', () => ({
   useWorkspaceDashboardWidgets: useWorkspaceDashboardWidgetsMock,
 }));
 
-vi.mock('@/components/shared/dashboard-display-preferences', () => ({
-  DashboardDisplayPreferences: () => (
-    <button type="button">Personnaliser le tableau de bord</button>
-  ),
-}));
-
-import { WorkspaceDashboardPage } from '@/features/workspace/pages/workspace-dashboard-page';
+import {
+  WorkspaceDashboardPage,
+  getSummaryGridClass,
+} from '@/features/workspace/pages/workspace-dashboard-page';
 
 function WorkspaceStatusWidget() {
   return <div>Statut du workspace : Actif</div>;
@@ -109,9 +106,15 @@ describe('WorkspaceDashboardPage', () => {
     expect(screen.getByText('Membres : 4')).toBeInTheDocument();
     expect(screen.getByText('Fichiers actifs : 7')).toBeInTheDocument();
     expect(screen.getByText('Activité récente : Workspace modifié')).toBeInTheDocument();
-    expect(screen.getByRole('button', {
+    expect(screen.queryByRole('button', {
       name: 'Personnaliser le tableau de bord',
-    })).toBeInTheDocument();
+    })).not.toBeInTheDocument();
+  });
+
+  it('adapte le nombre de colonnes au nombre réel de widgets de synthèse', () => {
+    expect(getSummaryGridClass(1)).toBe('grid grid-cols-1 gap-4');
+    expect(getSummaryGridClass(2)).toBe('grid grid-cols-1 gap-4 sm:grid-cols-2');
+    expect(getSummaryGridClass(3)).toContain('xl:grid-cols-3');
   });
 
   it('ne monte pas un widget accessible mais masqué par la préférence utilisateur', () => {
