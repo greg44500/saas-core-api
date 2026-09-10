@@ -56,6 +56,12 @@ vi.mock('mongoose', () => ({
 vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
 }));
+vi.mock('../../modules/authIdentities/authIdentity.model.js', () => ({
+    AuthIdentity: { create: vi.fn() },
+}));
+vi.mock('../../modules/legalAcceptance/legalAcceptance.service.js', () => ({
+    createRegistrationLegalAcceptance: vi.fn(),
+}));
 vi.mock('../../modules/plan/planFeature.service.js', () => ({
     assertEntitlementFeatureAvailable: vi.fn(),
 }));
@@ -79,6 +85,9 @@ vi.mock('../../modules/workspaceMember/workspaceMember.model.js', () => ({
 }));
 vi.mock('../../modules/workspaceInvitation/workspaceInvitation.model.js', () => ({
     WorkspaceInvitation: { findOne: vi.fn() },
+}));
+vi.mock('../../utils/password.js', () => ({
+    hashPassword: vi.fn(),
 }));
 
 const chainedResult = (value) => ({
