@@ -1,27 +1,25 @@
-import { cn } from '@/lib/utils';
+import { StatusBadge } from '@/components/shared/status-badge';
 import {
   formatCommercialInvitationStatus,
 } from '@/features/commercial-invitation/lib/commercial-invitation-formatters';
 
-const STATUS_CLASSES = Object.freeze({
-  pending: 'border-warning/30 bg-warning/10 text-warning',
-  accepted: 'border-success/30 bg-success/10 text-success',
-  declined: 'border-destructive/30 bg-destructive/10 text-destructive',
-  revoked: 'border-destructive/30 bg-destructive/10 text-destructive',
-  expired: 'border-destructive/30 bg-destructive/10 text-destructive',
+const COMMERCIAL_INVITATION_STATUS_TONE = Object.freeze({
+  pending: 'warning',
+  accepted: 'success',
+  declined: 'destructive',
+  revoked: 'destructive',
+  expired: 'destructive',
 });
 
 function CommercialInvitationStatusBadge({ status }) {
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium',
-        STATUS_CLASSES[status] ?? 'border-border bg-muted text-muted-foreground',
-      )}
-    >
+    <StatusBadge tone={COMMERCIAL_INVITATION_STATUS_TONE[status] ?? 'neutral'}>
       {formatCommercialInvitationStatus(status)}
-    </span>
+    </StatusBadge>
   );
 }
 
-export { CommercialInvitationStatusBadge, STATUS_CLASSES };
+export {
+  COMMERCIAL_INVITATION_STATUS_TONE,
+  CommercialInvitationStatusBadge,
+};
