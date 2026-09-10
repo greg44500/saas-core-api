@@ -22,6 +22,7 @@ import {
 } from '../../modules/plan/planCapability.registry.js';
 import {
     accept,
+    acceptNew,
     create,
     revoke,
 } from '../../modules/workspaceInvitation/workspaceInvitation.controller.js';
@@ -97,6 +98,7 @@ vi.mock(
 
         return {
             accept: handler(),
+            acceptNew: handler(),
             create: handler(),
             list: handler(),
             resend: handler(),
@@ -127,6 +129,7 @@ beforeEach(() => {
     create.mockClear();
     revoke.mockClear();
     accept.mockClear();
+    acceptNew.mockClear();
 });
 
 describe('workspaceInvitation.routes', () => {
@@ -182,5 +185,25 @@ describe('workspaceInvitation.routes', () => {
         expect(featureMiddleware).not.toHaveBeenCalled();
         expect(delegationMiddleware).not.toHaveBeenCalled();
         expect(accept).toHaveBeenCalledOnce();
+    });
+
+    it('permet la création de compte depuis une invitation sans authentification préalable', async () => {
+        const response = await request(createApp())
+            .post('/invitations/accept-new')
+            .send({
+                token: 'a'.repeat(64),
+                firstName: 'Marie',
+                lastName: 'Martin',
+                password: 'Phrase unique pour workspace 47!',
+                legalAccepted: true,
+            });
+
+        expect(response.status).toBe(200);
+        expect(authenticate).not.toHaveBeenCalled();
+        expect(workspaceContextMiddleware).not.toHaveBeenCalled();
+        expect(permissionMiddleware).not.toHaveBeenCalled();
+        expect(featureMiddleware).not.toHaveBeenCalled();
+        expect(delegationMiddleware).not.toHaveBeenCalled();
+        expect(acceptNew).toHaveBeenCalledOnce();
     });
 });
