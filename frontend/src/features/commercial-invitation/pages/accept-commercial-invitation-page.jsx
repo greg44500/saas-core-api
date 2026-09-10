@@ -12,6 +12,7 @@ import {
   usePreviewCommercialInvitationMutation,
   useVerifyCommercialInvitationRecipientMutation,
 } from '@/features/commercial-invitation/api/commercial-invitations-api';
+import { CommercialInvitationProgress } from '@/features/commercial-invitation/components/commercial-invitation-progress';
 import {
   buildCommercialInvitationAuthState,
   clearCommercialInvitationTokenFragment,
@@ -187,6 +188,11 @@ function AcceptCommercialInvitationPage() {
     && recipientState.error?.status === 403;
   const recipientVerified = authStatus === 'authenticated'
     && recipientState.data?.matchesRecipient === true;
+  const currentStep = recipientVerified
+    ? 3
+    : authStatus === 'authenticated'
+      ? 2
+      : 1;
 
   async function handleAcceptance() {
     if (!recipientVerified) return;
@@ -236,6 +242,8 @@ function AcceptCommercialInvitationPage() {
 
   return (
     <div className="space-y-6">
+      <CommercialInvitationProgress currentStep={currentStep} />
+
       <div className="space-y-2">
         <p className="text-sm font-medium text-primary">
           Invitation commerciale
