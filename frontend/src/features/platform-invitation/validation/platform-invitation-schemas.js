@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { passwordSchema } from '@/features/auth/validation/auth-schemas';
+import { newPasswordFormValueSchema } from '@/features/auth/validation/auth-schemas';
 
 const platformInvitationTokenSchema = z
   .string()
@@ -10,8 +10,11 @@ const platformInvitationTokenSchema = z
 
 const platformInvitationNewAccountSchema = z
   .strictObject({
-    password: passwordSchema,
-    confirmPassword: passwordSchema,
+    password: newPasswordFormValueSchema,
+    confirmPassword: newPasswordFormValueSchema,
+    legalAccepted: z.boolean().refine((value) => value === true, {
+      message: 'Vous devez accepter les conditions et reconnaître avoir pris connaissance de la politique de confidentialité.',
+    }),
   })
   .refine((values) => values.password === values.confirmPassword, {
     message: 'Les mots de passe ne correspondent pas.',
