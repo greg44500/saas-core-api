@@ -23,6 +23,17 @@ const PLATFORM_WORKSPACE_STATUS_LABEL = Object.freeze({
   closed: 'Clôturé',
 });
 
+/**
+ * Le ton exprime la gravité fonctionnelle, pas seulement la valeur technique :
+ * une suspension est réversible (warning), alors qu'une fermeture est terminale.
+ */
+const PLATFORM_WORKSPACE_STATUS_TONE = Object.freeze({
+  active: 'success',
+  suspended: 'warning',
+  archived: 'neutral',
+  closed: 'destructive',
+});
+
 const PLATFORM_WORKSPACE_STATUS_REASON_LABEL = Object.freeze({
   payment_failure: 'Échec de paiement',
   payment_dispute: 'Litige de paiement',
@@ -55,6 +66,7 @@ export {
   PLATFORM_WORKSPACE_STATUS,
   PLATFORM_WORKSPACE_STATUS_REASON,
   PLATFORM_WORKSPACE_STATUS_REASON_LABEL,
+  PLATFORM_WORKSPACE_STATUS_TONE,
   formatPlatformWorkspaceDate,
   formatPlatformWorkspaceStatus,
   formatPlatformWorkspaceStatusReason,
