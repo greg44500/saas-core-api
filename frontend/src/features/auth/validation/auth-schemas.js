@@ -1,14 +1,23 @@
 import { z } from 'zod';
 
 const emailSchema = z.email('Adresse email invalide.').max(254, 'Adresse email trop longue.');
-const passwordSchema = z
+
+/**
+ * Le frontend ne définit aucune politique de sécurité du mot de passe.
+ * Il vérifie uniquement qu'une valeur a été saisie ; la politique canonique
+ * est fournie et appliquée par le backend.
+ */
+const passwordCredentialSchema = z
   .string()
-  .min(15, 'Le mot de passe doit contenir au moins 15 caractères.')
-  .max(128, 'Le mot de passe ne peut pas dépasser 128 caractères.');
+  .min(1, 'Le mot de passe est requis.');
+
+const newPasswordFormValueSchema = z
+  .string()
+  .min(1, 'Le mot de passe est requis.');
 
 const loginSchema = z.strictObject({
   email: emailSchema,
-  password: passwordSchema,
+  password: passwordCredentialSchema,
 });
 
 const registerSchema = z
@@ -16,8 +25,11 @@ const registerSchema = z
     firstName: z.string().trim().min(1, 'Le prénom est requis.').max(100, 'Le prénom est trop long.'),
     lastName: z.string().trim().min(1, 'Le nom est requis.').max(100, 'Le nom est trop long.'),
     email: emailSchema,
-    password: passwordSchema,
-    confirmPassword: passwordSchema,
+    password: newPasswordFormValueSchema,
+    confirmPassword: newPasswordFormValueSchema,
+    legalAccepted: z.boolean().refine((value) => value === true, {
+      message: 'Vous devez accepter les conditions et reconnaître avoir pris connaissance de la politique de confidentialité.',
+    }),
   })
   .refine((values) => values.password === values.confirmPassword, {
     message: 'Les mots de passe ne correspondent pas.',
@@ -30,8 +42,8 @@ const forgotPasswordFormSchema = z.strictObject({
 
 const resetPasswordFormSchema = z
   .strictObject({
-    newPassword: passwordSchema,
-    confirmPassword: passwordSchema,
+    newPassword: newPasswordFormValueSchema,
+    confirmPassword: newPasswordFormValueSchema,
   })
   .refine((values) => values.newPassword === values.confirmPassword, {
     message: 'Les mots de passe ne correspondent pas.',
@@ -42,7 +54,8 @@ export {
   emailSchema,
   forgotPasswordFormSchema,
   loginSchema,
-  passwordSchema,
+  newPasswordFormValueSchema,
+  passwordCredentialSchema,
   registerSchema,
   resetPasswordFormSchema,
 };
