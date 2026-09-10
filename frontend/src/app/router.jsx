@@ -101,6 +101,15 @@ function createAppRoutes(applicationRoutes = APPLICATION_FRONTEND_ROUTES) {
           },
         },
         {
+          path: 'invitations/accept',
+          lazy: async () => {
+            const { AcceptWorkspaceInvitationPage } = await import(
+              '@/features/workspace-invitation/pages/accept-workspace-invitation-page'
+            );
+            return { Component: AcceptWorkspaceInvitationPage };
+          },
+        },
+        {
           path: 'commercial-invitations/accept',
           lazy: async () => {
             const { AcceptCommercialInvitationPage } = await import(
@@ -143,16 +152,6 @@ function createAppRoutes(applicationRoutes = APPLICATION_FRONTEND_ROUTES) {
               },
             },
           ],
-        },
-        {
-          path: 'invitations/accept',
-          HydrateFallback: PageLoader,
-          lazy: async () => {
-            const { AcceptWorkspaceInvitationPage } = await import(
-              '@/features/workspace-invitation/pages/accept-workspace-invitation-page'
-            );
-            return { Component: AcceptWorkspaceInvitationPage };
-          },
         },
         {
           path: 'workspaces',
