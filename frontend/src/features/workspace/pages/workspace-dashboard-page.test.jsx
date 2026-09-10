@@ -10,6 +10,7 @@ vi.mock('@/features/workspace/hooks/use-workspace-dashboard-widgets', () => ({
 import {
   WorkspaceDashboardPage,
   getSummaryGridClass,
+  getSummaryItemClass,
 } from '@/features/workspace/pages/workspace-dashboard-page';
 
 function WorkspaceStatusWidget() {
@@ -111,10 +112,30 @@ describe('WorkspaceDashboardPage', () => {
     })).not.toBeInTheDocument();
   });
 
-  it('adapte le nombre de colonnes au nombre réel de widgets de synthèse', () => {
-    expect(getSummaryGridClass(1)).toBe('grid grid-cols-1 gap-4');
-    expect(getSummaryGridClass(2)).toBe('grid grid-cols-1 gap-4 sm:grid-cols-2');
-    expect(getSummaryGridClass(3)).toContain('xl:grid-cols-3');
+  it('utilise une grille à six colonnes pour répartir les tiers et les moitiés', () => {
+    expect(getSummaryGridClass()).toBe('grid grid-cols-6 gap-4');
+  });
+
+  it('équilibre automatiquement la dernière ligne selon le nombre visible', () => {
+    expect(getSummaryItemClass(0, 1)).toContain('xl:col-span-6');
+
+    expect(getSummaryItemClass(0, 2)).toContain('xl:col-span-3');
+    expect(getSummaryItemClass(1, 2)).toContain('xl:col-span-3');
+
+    expect(getSummaryItemClass(0, 3)).toContain('xl:col-span-2');
+    expect(getSummaryItemClass(2, 3)).toContain('xl:col-span-2');
+
+    expect(getSummaryItemClass(0, 4)).toContain('xl:col-span-3');
+    expect(getSummaryItemClass(3, 4)).toContain('xl:col-span-3');
+
+    expect(getSummaryItemClass(0, 5)).toContain('xl:col-span-2');
+    expect(getSummaryItemClass(2, 5)).toContain('xl:col-span-2');
+    expect(getSummaryItemClass(3, 5)).toContain('xl:col-span-3');
+    expect(getSummaryItemClass(4, 5)).toContain('xl:col-span-3');
+
+    expect(getSummaryItemClass(0, 7)).toContain('xl:col-span-2');
+    expect(getSummaryItemClass(3, 7)).toContain('xl:col-span-3');
+    expect(getSummaryItemClass(6, 7)).toContain('xl:col-span-3');
   });
 
   it('ne monte pas un widget accessible mais masqué par la préférence utilisateur', () => {
