@@ -32,14 +32,20 @@ const {
 function useGetPlatformOverviewQuery(args, options) {
   const overviewQuery = useGetPlatformOverviewQueryBase(args, options);
   const preferencesQuery = useGetCurrentUserPreferencesQuery();
+  const preferencesResolved = preferencesQuery.data !== undefined
+    || preferencesQuery.isError;
   const hiddenWidgetIds = preferencesQuery.data?.dashboard?.hiddenWidgetIds ?? [];
 
   return {
     ...overviewQuery,
-    data: applyPlatformDashboardPreferences(
-      overviewQuery.data,
-      hiddenWidgetIds,
-    ),
+    data: preferencesResolved
+      ? applyPlatformDashboardPreferences(
+        overviewQuery.data,
+        hiddenWidgetIds,
+      )
+      : undefined,
+    isLoading: overviewQuery.isLoading || !preferencesResolved,
+    isFetching: overviewQuery.isFetching || (!preferencesResolved && preferencesQuery.isFetching),
   };
 }
 
