@@ -31,19 +31,19 @@ function DashboardDisplayPreferences({ accessibleWidgets, preferencesQuery }) {
   const savedHiddenWidgetIds = preferencesQuery.data?.dashboard?.hiddenWidgetIds
     ?? EMPTY_HIDDEN_WIDGET_IDS;
 
-  useEffect(() => {
-    if (!open) return;
-
-    const nextDraft = new Set(savedHiddenWidgetIds);
-    setDraftHiddenWidgetIds(nextDraft);
-    setPreviewHiddenWidgetIds([...nextDraft]);
-  }, [open, savedHiddenWidgetIds, setPreviewHiddenWidgetIds]);
-
   useEffect(() => () => {
     setPreviewHiddenWidgetIds(null);
   }, [setPreviewHiddenWidgetIds]);
 
   if (configurableWidgets.length === 0) return null;
+
+  function openPreferences() {
+    const nextDraft = new Set(savedHiddenWidgetIds);
+
+    setDraftHiddenWidgetIds(nextDraft);
+    setPreviewHiddenWidgetIds([...nextDraft]);
+    setOpen(true);
+  }
 
   function closeWithoutSaving() {
     setPreviewHiddenWidgetIds(null);
@@ -93,7 +93,7 @@ function DashboardDisplayPreferences({ accessibleWidgets, preferencesQuery }) {
     <>
       <Button
         disabled={preferencesQuery.isLoading}
-        onClick={() => setOpen(true)}
+        onClick={openPreferences}
         type="button"
         variant="outline"
       >
