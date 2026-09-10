@@ -73,6 +73,12 @@ const OVERVIEW = {
       changePercent: 100,
     },
     activeCommercialSubscriptions: 20,
+    paidActiveSubscriptions: 12,
+    freeActiveAccesses: {
+      total: 8,
+      viaCommercialInvitation: 3,
+    },
+    activeTrials: 4,
     contractedMrrEstimate: {
       basis: 'gross_before_discounts',
       isRevenue: false,
@@ -212,8 +218,13 @@ describe('PlatformOverviewPage', () => {
     expect(screen.getByText('Plateforme')).toBeInTheDocument();
     expect(within(kpis).getByText('100')).toBeInTheDocument();
     expect(within(kpis).getByText('50')).toBeInTheDocument();
-    expect(within(kpis).getByText('20')).toBeInTheDocument();
+    expect(within(kpis).getByText('12')).toBeInTheDocument();
+    expect(within(kpis).getByText('8')).toBeInTheDocument();
+    expect(within(kpis).getByText('3')).toBeInTheDocument();
+    expect(within(kpis).getByText('via invitation commerciale')).toBeInTheDocument();
     expect(within(kpis).getByText(/237,00/)).toBeInTheDocument();
+    expect(within(kpis).getByText('Abonnements payants actifs')).toBeInTheDocument();
+    expect(within(kpis).getByText('Accès gratuits actifs')).toBeInTheDocument();
     expect(within(kpis).getByText('Valeur mensuelle contractuelle estimée')).toBeInTheDocument();
     expect(within(attention).getByText('Abonnements en retard')).toBeInTheDocument();
     expect(within(attention).queryByText('Past due')).not.toBeInTheDocument();
@@ -382,7 +393,8 @@ describe('PlatformOverviewPage', () => {
 
     renderPage();
 
-    expect(screen.getByText('Abonnements actifs')).toBeInTheDocument();
+    expect(screen.getByText('Abonnements payants actifs')).toBeInTheDocument();
+    expect(screen.getByText('Accès gratuits actifs')).toBeInTheDocument();
     expect(screen.queryByText('Dérogations actives')).not.toBeInTheDocument();
     expect(screen.queryByText('Dérogations programmées')).not.toBeInTheDocument();
     expect(screen.queryByText('Audits en échec')).not.toBeInTheDocument();
