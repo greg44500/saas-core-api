@@ -106,7 +106,7 @@ describe('updatePlatformPlan', () => {
         expect(validatePlanCapabilities).toHaveBeenCalledWith(planData);
     });
 
-    it('met à jour uniquement un plan non archivé et audite les champs modifiés', async () => {
+    it('met à jour uniquement un plan non archivé avec un opérateur interne trusted et audite les champs modifiés', async () => {
         await updatePlatformPlan({
             planId,
             planData,
@@ -116,7 +116,10 @@ describe('updatePlatformPlan', () => {
         });
 
         expect(Plan.findOneAndUpdate).toHaveBeenCalledWith(
-            { _id: planId, status: { $ne: PLAN_STATUS.ARCHIVED } },
+            {
+                _id: planId,
+                status: mongoose.trusted({ $ne: PLAN_STATUS.ARCHIVED }),
+            },
             { $set: { ...planData, updatedBy: actorId } },
             { returnDocument: 'after', runValidators: true, session },
         );
