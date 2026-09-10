@@ -7,8 +7,25 @@ import { RouterProvider } from 'react-router/dom';
 const useForgotPasswordMutationMock = vi.hoisted(() => vi.fn());
 const useResetPasswordMutationMock = vi.hoisted(() => vi.fn());
 
+const PASSWORD_POLICY = {
+  minLength: 15,
+  maxLength: 128,
+  levels: [
+    { key: 'weak', label: 'Faible', minScore: 0 },
+    { key: 'good', label: 'Correct', minScore: 3 },
+    { key: 'strong', label: 'Robuste', minScore: 5 },
+  ],
+  scoring: {
+    lengthBands: [{ minLength: 15, points: 1 }],
+    characterClassBands: [{ minClasses: 2, points: 1 }],
+    uniqueRatio: { minRatio: 0.6, points: 1 },
+  },
+  guidance: [],
+};
+
 vi.mock('@/features/auth/api/auth-api', () => ({
   useForgotPasswordMutation: useForgotPasswordMutationMock,
+  useGetPasswordPolicyQuery: () => ({ data: PASSWORD_POLICY }),
   useResetPasswordMutation: useResetPasswordMutationMock,
 }));
 
