@@ -28,8 +28,12 @@ const LEGAL_ACCEPTANCE_REQUIRED_MESSAGE =
     'L’acceptation des conditions est requise pour créer un compte';
 
 /**
- * Crée transactionnellement le User, son identité locale et la preuve
- * versionnée d'acceptation des documents applicables à l'inscription.
+ * Crée transactionnellement le User et son identité locale.
+ *
+ * Les routes publiques register imposent `legalAccepted: true` par leur contrat
+ * Zod backend. Lorsque ce marqueur est fourni, la preuve versionnée est créée
+ * dans la même transaction. Son absence reste réservée aux appels internes de
+ * provisioning qui ne représentent pas une acceptation contractuelle publique.
  */
 const registerUser = async ({
     firstName,
@@ -41,12 +45,15 @@ const registerUser = async ({
     ipAddress = null,
     userAgent = null,
 }) => {
-    if (legalAccepted !== true) {
+    if (legalAccepted === false) {
         throw new AppError(
             LEGAL_ACCEPTANCE_REQUIRED_MESSAGE,
             400,
         );
     }
+
+    const shouldRecordLegalAcceptance =
+        legalAccepted === true;
 
     const emailCanonical = canonicalizeEmail(email);
 
@@ -93,13 +100,15 @@ const registerUser = async ({
                     { session },
                 );
 
-                await createRegistrationLegalAcceptance({
-                    userId: user._id,
-                    source: legalAcceptanceSource,
-                    ipAddress,
-                    userAgent,
-                    session,
-                });
+                if (shouldRecordLegalAcceptance) {
+                    await createRegistrationLegalAcceptance({
+                        userId: user._id,
+                        source: legalAcceptanceSource,
+                        ipAddress,
+                        userAgent,
+                        session,
+                    });
+                }
 
                 createdUser = user;
             },
