@@ -8,12 +8,18 @@ import {
     listCommercialInvitationOffers,
 } from './commercialInvitationOfferCatalog.service.js';
 import {
+    declineCommercialInvitation,
+    registerCommercialInvitationRecipient,
+    verifyCommercialInvitationRecipient,
+} from './commercialInvitationRecipient.service.js';
+import {
     createCommercialInvitation,
     listCommercialInvitations,
     previewCommercialInvitation,
     resendCommercialInvitation,
     revokeCommercialInvitation,
 } from './commercialInvitation.service.js';
+import { toPublicUser } from '../auth/publicUser.dto.js';
 
 const serializeLimits = (limits) => {
     if (limits instanceof Map) {
@@ -74,6 +80,7 @@ const toAdminInvitationDto = (
     deliveredAt: invitation.deliveredAt,
     expiresAt: invitation.expiresAt,
     acceptedAt: invitation.acceptedAt,
+    declinedAt: invitation.declinedAt ?? null,
     revokedAt: invitation.revokedAt,
     revokeReason: invitation.revokeReason ?? null,
     plan: resolvedPlan?._id
@@ -208,6 +215,33 @@ const preview = async (req, res) => {
     });
 };
 
+const registerRecipient = async (req, res) => {
+    const user = await registerCommercialInvitationRecipient(
+        req.validated.body,
+    );
+
+    res.status(201).json({
+        status: 'success',
+        data: {
+            user: toPublicUser(user),
+        },
+    });
+};
+
+const verifyRecipient = async (req, res) => {
+    await verifyCommercialInvitationRecipient({
+        token: req.validated.body.token,
+        userId: req.user.id,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            matchesRecipient: true,
+        },
+    });
+};
+
 const accept = async (req, res) => {
     const {
         invitation,
@@ -249,15 +283,38 @@ const accept = async (req, res) => {
     });
 };
 
+const decline = async (req, res) => {
+    const invitation = await declineCommercialInvitation({
+        token: req.validated.body.token,
+        userId: req.user.id,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            invitation: {
+                id: invitation._id.toString(),
+                status: invitation.status,
+                declinedAt: invitation.declinedAt,
+            },
+        },
+    });
+};
+
 export {
     accept,
     create,
+    decline,
     list,
     listOffers,
     preview,
+    registerRecipient,
     resend,
     revoke,
     toAdminInvitationDto,
     toOfferDto,
     toSelectablePlanDto,
+    verifyRecipient,
 };
