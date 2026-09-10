@@ -11,6 +11,11 @@ import {
 } from './userPreferences.constants.js';
 
 const userNameSchema = z.string().trim().min(1).max(100);
+const dashboardWidgetIdSchema = z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/);
 
 const userIdentityInputSchema = z.strictObject({
     firstName: userNameSchema,
@@ -49,9 +54,29 @@ const userComfortPreferencesInputSchema = z
         },
     );
 
-const updateCurrentUserPreferencesSchema = z.strictObject({
-    comfort: userComfortPreferencesInputSchema,
+const userDashboardPreferencesInputSchema = z.strictObject({
+    hiddenWidgetIds: z
+        .array(dashboardWidgetIdSchema)
+        .max(100)
+        .refine(
+            (widgetIds) => new Set(widgetIds).size === widgetIds.length,
+            {
+                message: 'Les identifiants de widgets masqués doivent être uniques.',
+            },
+        ),
 });
+
+const updateCurrentUserPreferencesSchema = z
+    .strictObject({
+        comfort: userComfortPreferencesInputSchema.optional(),
+        dashboard: userDashboardPreferencesInputSchema.optional(),
+    })
+    .refine(
+        (value) => value.comfort !== undefined || value.dashboard !== undefined,
+        {
+            message: 'Au moins une section de préférences doit être fournie.',
+        },
+    );
 
 const requestCurrentUserClosureSchema = z.strictObject({
     currentPassword: passwordSchema,
@@ -64,5 +89,6 @@ export {
     updateCurrentUserPreferencesSchema,
     updateCurrentUserProfileSchema,
     userComfortPreferencesInputSchema,
+    userDashboardPreferencesInputSchema,
     userIdentityInputSchema,
 };
