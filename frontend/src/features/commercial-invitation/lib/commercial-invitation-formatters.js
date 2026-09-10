@@ -1,6 +1,7 @@
 const COMMERCIAL_INVITATION_STATUS_LABELS = Object.freeze({
   pending: 'En attente',
   accepted: 'Acceptée',
+  declined: 'Refusée',
   expired: 'Expirée',
   revoked: 'Révoquée',
 });
