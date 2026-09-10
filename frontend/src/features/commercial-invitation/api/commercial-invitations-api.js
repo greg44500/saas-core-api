@@ -9,8 +9,9 @@ const COMMERCIAL_INVITATIONS_LIST_TAG = {
  * API RTK Query du domaine CommercialInvitation.
  *
  * Les endpoints Platform et bénéficiaire partagent le même cache technique,
- * mais gardent des contrats HTTP distincts. Le token n'est jamais stocké dans
- * Redux : il est seulement fourni comme argument éphémère aux mutations.
+ * mais gardent des contrats HTTP distincts. Le token n'est jamais persisté
+ * volontairement par l'application : il est fourni comme argument éphémère aux
+ * mutations du parcours puis reste dans le vault runtime de la feature.
  */
 const commercialInvitationsApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -86,6 +87,25 @@ const commercialInvitationsApi = baseApi.injectEndpoints({
       transformResponse: (response) => response?.data?.invitation ?? null,
     }),
 
+    registerCommercialInvitationRecipient: build.mutation({
+      query: ({ token, ...credentials }) => ({
+        url: '/commercial-invitations/register',
+        method: 'POST',
+        body: { ...credentials, token },
+      }),
+      extraOptions: { skipReauth: true },
+      transformResponse: (response) => response?.data?.user ?? null,
+    }),
+
+    verifyCommercialInvitationRecipient: build.mutation({
+      query: (token) => ({
+        url: '/commercial-invitations/recipient',
+        method: 'POST',
+        body: { token },
+      }),
+      transformResponse: (response) => response?.data ?? null,
+    }),
+
     acceptCommercialInvitation: build.mutation({
       query: (token) => ({
         url: '/commercial-invitations/accept',
@@ -100,17 +120,30 @@ const commercialInvitationsApi = baseApi.injectEndpoints({
         'PlanCatalog',
       ],
     }),
+
+    declineCommercialInvitation: build.mutation({
+      query: (token) => ({
+        url: '/commercial-invitations/decline',
+        method: 'POST',
+        body: { token },
+      }),
+      transformResponse: (response) => response?.data?.invitation ?? null,
+      invalidatesTags: [COMMERCIAL_INVITATIONS_LIST_TAG],
+    }),
   }),
 });
 
 export const {
   useAcceptCommercialInvitationMutation,
   useCreateCommercialInvitationMutation,
+  useDeclineCommercialInvitationMutation,
   useListCommercialInvitationOffersQuery,
   useListCommercialInvitationsQuery,
   usePreviewCommercialInvitationMutation,
+  useRegisterCommercialInvitationRecipientMutation,
   useResendCommercialInvitationMutation,
   useRevokeCommercialInvitationMutation,
+  useVerifyCommercialInvitationRecipientMutation,
 } = commercialInvitationsApi;
 
 export {
