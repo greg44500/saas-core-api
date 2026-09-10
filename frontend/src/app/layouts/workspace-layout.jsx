@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router';
 
+import { DashboardDisplayPreviewProvider } from '@/components/shared/dashboard-display-preview-context';
 import { workspaceNavigation } from '@/app/workspace-navigation';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 import { WorkspaceSidebar } from '@/features/workspace/components/workspace-sidebar';
@@ -11,20 +12,22 @@ function WorkspaceLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="min-h-svh bg-background text-foreground md:flex">
-      <WorkspaceSidebar
-        collapsed={sidebarCollapsed}
-        navigation={workspaceNavigation}
-        onToggle={() => setSidebarCollapsed((current) => !current)}
-        workspace={workspace}
-      />
-      <div className="min-w-0 flex-1">
-        <WorkspaceTopbar workspace={workspace} />
-        <main className="relative z-0 px-4 py-6 sm:px-6 lg:px-8">
-          <Outlet />
-        </main>
+    <DashboardDisplayPreviewProvider>
+      <div className="min-h-svh bg-background text-foreground md:flex">
+        <WorkspaceSidebar
+          collapsed={sidebarCollapsed}
+          navigation={workspaceNavigation}
+          onToggle={() => setSidebarCollapsed((current) => !current)}
+          workspace={workspace}
+        />
+        <div className="min-w-0 flex-1">
+          <WorkspaceTopbar workspace={workspace} />
+          <main className="relative z-0 px-4 py-6 sm:px-6 lg:px-8">
+            <Outlet />
+          </main>
+        </div>
       </div>
-    </div>
+    </DashboardDisplayPreviewProvider>
   );
 }
 
