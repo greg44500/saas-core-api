@@ -12,6 +12,7 @@ import { DashboardRecentActivity } from '@/features/workspace/components/dashboa
 import { DashboardSubscriptionSummary } from '@/features/workspace/components/dashboard-subscription-summary';
 import { DashboardSummaryCard } from '@/features/workspace/components/dashboard-summary-card';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
+import { isInitialQueryLoading } from '@/features/workspace/lib/dashboard-query';
 import {
   formatDashboardCount,
   formatWorkspaceStatus,
@@ -19,10 +20,6 @@ import {
 
 const SUMMARY_QUERY_LIMIT = 1;
 const RECENT_ACTIVITY_LIMIT = 5;
-
-function isInitialQueryLoading(query) {
-  return query.isLoading || (query.isFetching && query.data === undefined);
-}
 
 function WorkspaceStatusDashboardWidget() {
   const { workspace } = useWorkspaceContext();
@@ -152,11 +149,8 @@ export {
   FilesDashboardWidget,
   MembersDashboardWidget,
   PendingInvitationsDashboardWidget,
-  RECENT_ACTIVITY_LIMIT,
   RecentActivityDashboardWidget,
-  SUMMARY_QUERY_LIMIT,
   SubscriptionDashboardWidget,
   WorkspaceRoleDashboardWidget,
   WorkspaceStatusDashboardWidget,
-  isInitialQueryLoading,
 };
