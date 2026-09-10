@@ -114,6 +114,7 @@ const commercialInvitationsApi = baseApi.injectEndpoints({
       }),
       transformResponse: (response) => response?.data ?? null,
       invalidatesTags: [
+        COMMERCIAL_INVITATIONS_LIST_TAG,
         'WorkspaceList',
         'Workspace',
         'WorkspaceSubscription',
