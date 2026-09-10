@@ -85,6 +85,29 @@ describe('PreferencesPage', () => {
       .toBeInTheDocument();
   });
 
+  it('prévisualise une police puis restaure la préférence sauvegardée sans validation', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<PreferencesPage />);
+
+    await user.selectOptions(screen.getByLabelText('Police'), 'manrope');
+
+    expect(applyComfortPreferences).toHaveBeenLastCalledWith({
+      theme: 'dark',
+      fontFamily: 'manrope',
+      paletteId: 'core',
+      accessibilityMode: 'standard',
+    }, { persistLocal: false });
+
+    unmount();
+
+    expect(applyComfortPreferences).toHaveBeenLastCalledWith({
+      theme: 'system',
+      fontFamily: 'inter',
+      paletteId: 'core',
+      accessibilityMode: 'standard',
+    }, { persistLocal: false });
+  });
+
   it('prévisualise une palette puis restaure la préférence sauvegardée sans validation', async () => {
     const user = userEvent.setup();
     const { unmount } = render(<PreferencesPage />);
