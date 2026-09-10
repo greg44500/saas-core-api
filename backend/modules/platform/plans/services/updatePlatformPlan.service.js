@@ -74,9 +74,11 @@ const updatePlatformPlan = async ({
         updatedPlan = await Plan.findOneAndUpdate(
             {
                 _id: planId,
-                status: {
+                // Cet opérateur est construit par le serveur. Il doit rester explicite
+                // malgré sanitizeFilter, sans accorder de confiance aux données entrantes.
+                status: mongoose.trusted({
                     $ne: PLAN_STATUS.ARCHIVED,
-                },
+                }),
             },
             {
                 $set: {
