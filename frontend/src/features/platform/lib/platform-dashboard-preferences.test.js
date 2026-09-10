@@ -98,4 +98,31 @@ describe('platform dashboard preferences', () => {
     expect(result.attention.recentFailedAuditEvents).toEqual([]);
     expect(result.attention.totalSignals).toBe(3);
   });
+
+  it('retire la section attention lorsque tous ses domaines sources sont masqués', () => {
+    const result = applyPlatformDashboardPreferences({
+      availableSections: {
+        users: true,
+        workspaces: true,
+        plans: true,
+        subscriptions: true,
+        overrides: true,
+        usage: true,
+        files: true,
+        audit: true,
+      },
+      attention: {
+        totalSignals: 1,
+        counts: { suspendedWorkspaces: 1 },
+        items: [{ id: 'workspace-1', type: 'workspace_suspended' }],
+      },
+    }, [
+      'platform.workspaces',
+      'platform.subscriptions',
+      'platform.overrides',
+      'platform.audit',
+    ]);
+
+    expect(result.attention).toBeUndefined();
+  });
 });
