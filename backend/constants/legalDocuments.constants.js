@@ -7,6 +7,7 @@ const LEGAL_ACCEPTANCE_SOURCE = Object.freeze({
     LOCAL_REGISTRATION: 'local_registration',
     COMMERCIAL_INVITATION_REGISTRATION: 'commercial_invitation_registration',
     PLATFORM_INVITATION_REGISTRATION: 'platform_invitation_registration',
+    WORKSPACE_INVITATION_REGISTRATION: 'workspace_invitation_registration',
 });
 
 export {
