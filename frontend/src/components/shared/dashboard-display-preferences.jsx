@@ -3,12 +3,15 @@ import { SlidersHorizontal } from 'lucide-react';
 
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
 import { ErrorState } from '@/components/shared/error-state';
+import { useDashboardDisplayPreview } from '@/components/shared/dashboard-display-preview-context';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import {
   useUpdateCurrentUserPreferencesMutation,
 } from '@/features/preferences/api/user-preferences-api';
+
+const EMPTY_HIDDEN_WIDGET_IDS = Object.freeze([]);
 
 /**
  * Contrôle partagé des préférences d'affichage d'un dashboard.
@@ -19,19 +22,33 @@ import {
  */
 function DashboardDisplayPreferences({ accessibleWidgets, preferencesQuery }) {
   const { toast } = useToast();
+  const { setPreviewHiddenWidgetIds } = useDashboardDisplayPreview();
   const [open, setOpen] = useState(false);
   const [draftHiddenWidgetIds, setDraftHiddenWidgetIds] = useState(() => new Set());
   const [updatePreferences, { isLoading: isSaving }] =
     useUpdateCurrentUserPreferencesMutation();
   const configurableWidgets = accessibleWidgets.filter((widget) => widget.configurable);
-  const savedHiddenWidgetIds = preferencesQuery.data?.dashboard?.hiddenWidgetIds ?? [];
+  const savedHiddenWidgetIds = preferencesQuery.data?.dashboard?.hiddenWidgetIds
+    ?? EMPTY_HIDDEN_WIDGET_IDS;
 
   useEffect(() => {
     if (!open) return;
-    setDraftHiddenWidgetIds(new Set(savedHiddenWidgetIds));
-  }, [open, preferencesQuery.data]);
+
+    const nextDraft = new Set(savedHiddenWidgetIds);
+    setDraftHiddenWidgetIds(nextDraft);
+    setPreviewHiddenWidgetIds([...nextDraft]);
+  }, [open, savedHiddenWidgetIds, setPreviewHiddenWidgetIds]);
+
+  useEffect(() => () => {
+    setPreviewHiddenWidgetIds(null);
+  }, [setPreviewHiddenWidgetIds]);
 
   if (configurableWidgets.length === 0) return null;
+
+  function closeWithoutSaving() {
+    setPreviewHiddenWidgetIds(null);
+    setOpen(false);
+  }
 
   function updateWidgetVisibility(widgetId, visible) {
     setDraftHiddenWidgetIds((current) => {
@@ -43,6 +60,7 @@ function DashboardDisplayPreferences({ accessibleWidgets, preferencesQuery }) {
         next.add(widgetId);
       }
 
+      setPreviewHiddenWidgetIds([...next]);
       return next;
     });
   }
@@ -55,6 +73,7 @@ function DashboardDisplayPreferences({ accessibleWidgets, preferencesQuery }) {
         },
       }).unwrap();
 
+      setPreviewHiddenWidgetIds(null);
       setOpen(false);
       toast({
         title: 'Affichage du tableau de bord enregistré',
@@ -83,8 +102,8 @@ function DashboardDisplayPreferences({ accessibleWidgets, preferencesQuery }) {
       </Button>
 
       <EntityDetailsDrawer
-        description="Choisissez uniquement parmi les indicateurs auxquels vous avez réellement accès. Masquer un indicateur ne modifie jamais vos droits."
-        onClose={() => setOpen(false)}
+        description="Choisissez uniquement parmi les indicateurs auxquels vous avez réellement accès. Les changements sont prévisualisés immédiatement et ne modifient jamais vos droits."
+        onClose={closeWithoutSaving}
         open={open}
         title="Affichage du tableau de bord"
       >
@@ -136,7 +155,7 @@ function DashboardDisplayPreferences({ accessibleWidgets, preferencesQuery }) {
             <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-4">
               <Button
                 disabled={isSaving}
-                onClick={() => setOpen(false)}
+                onClick={closeWithoutSaving}
                 type="button"
                 variant="outline"
               >
