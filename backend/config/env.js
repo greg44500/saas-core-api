@@ -14,7 +14,6 @@ const isKnownPlaceholder = (value) => (
     && PRODUCTION_PLACEHOLDER_VALUES.has(value.trim())
 );
 
-// Schema de validation pour les variables d'environnement.
 const envSchema = z.object({
     NODE_ENV: z
         .enum(['development', 'test', 'production'])
@@ -65,7 +64,7 @@ const envSchema = z.object({
         .int()
         .min(5)
         .max(60)
-        .default(30),
+        .default(15),
 
     SMTP_HOST: z
         .string()
@@ -116,18 +115,12 @@ const envSchema = z.object({
     LOCAL_STORAGE_ROOT_DIR: z
         .string()
         .trim()
-        .min(
-            1,
-            'LOCAL_STORAGE_ROOT_DIR est obligatoire',
-        ),
+        .min(1, 'LOCAL_STORAGE_ROOT_DIR est obligatoire'),
 
     UPLOAD_TEMP_DIR: z
         .string()
         .trim()
-        .min(
-            1,
-            'UPLOAD_TEMP_DIR est obligatoire',
-        ),
+        .min(1, 'UPLOAD_TEMP_DIR est obligatoire'),
 
     CLAMAV_BINARY_PATH: z
         .string()
@@ -140,11 +133,6 @@ const envSchema = z.object({
         .min(1000)
         .max(120000),
 
-    /*
-     * Durée pendant laquelle un fichier temporaire est protégé contre la
-     * purge. La valeur minimale de cinq minutes empêche une configuration
-     * accidentelle de cibler des uploads encore actifs.
-     */
     UPLOAD_TEMP_FILE_MAX_AGE_MINUTES: z.coerce
         .number()
         .int()
@@ -152,10 +140,6 @@ const envSchema = z.object({
         .max(10080)
         .default(60),
 
-    /*
-     * Secret dédié à la génération des empreintes HMAC utilisées pour
-     * identifier durablement une identité ayant déjà consommé un trial.
-     */
     TRIAL_IDENTITY_SECRET: z
         .string()
         .min(
@@ -163,10 +147,6 @@ const envSchema = z.object({
             'TRIAL_IDENTITY_SECRET doit contenir au minimum 32 caractères',
         ),
 
-    /*
-     * Les outils qui détruisent volontairement des données de développement
-     * restent désactivés par défaut, même lorsque NODE_ENV=development.
-     */
     ALLOW_DEVELOPMENT_DATA_RESET: z
         .enum(['true', 'false'])
         .default('false')
@@ -195,10 +175,6 @@ const envSchema = z.object({
         });
     }
 
-    /*
-     * Les cookies d'authentification et les requêtes CORS avec credentials
-     * exigent un frontend servi en HTTPS en production.
-     */
     if (!config.CLIENT_URL.startsWith('https://')) {
         context.addIssue({
             code: 'custom',
@@ -217,8 +193,6 @@ const envSchema = z.object({
 });
 
 const validateEnvironment = (input) => envSchema.safeParse(input);
-
-// Valider les variables d'environnement et les transformer en types appropriés.
 const validationResult = validateEnvironment(process.env);
 
 if (!validationResult.success) {
@@ -230,7 +204,6 @@ if (!validationResult.success) {
     process.exit(1);
 }
 
-// Geler l'objet pour éviter toute modification accidentelle.
 const env = Object.freeze(validationResult.data);
 
 export {
