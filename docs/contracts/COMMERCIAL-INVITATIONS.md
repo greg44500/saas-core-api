@@ -1,14 +1,14 @@
 # SAAS-CORE-API — Contrat D-020 : invitations commerciales et offres privées
 
-**Statut :** GATE AUTOMATISÉE VALIDÉE — validation manuelle finale requise  
-**Date :** 2026-09-08  
+**Statut :** EN COURS — intégré dans `main`, gate automatisée verte, parcours nominal validé manuellement  
+**Dernière mise à jour :** 2026-09-10  
 **Périmètre :** Core clonable
 
 ## 1. Objet
 
-D-020 fournit un mécanisme générique permettant à la Plateforme de proposer une offre commerciale privée à une personne qui ne possède encore aucun rattachement Workspace courant dans le SaaS, puis de créer son premier workspace lors de l'acceptation.
+D-020 fournit un mécanisme générique permettant à la Plateforme de proposer une offre commerciale privée à une personne qui ne possède encore aucun rattachement Workspace courant dans le SaaS, puis de créer son premier workspace lors de l’acceptation.
 
-Ce domaine ne remplace ni l'authentification, ni les invitations d'équipe Platform, ni les invitations de membres d'un workspace.
+Ce domaine ne remplace ni Auth, ni les invitations d’équipe Platform, ni les invitations de membres Workspace.
 
 ## 2. Frontières de domaine
 
@@ -16,22 +16,20 @@ Ce domaine ne remplace ni l'authentification, ni les invitations d'équipe Platf
 PlatformInvitation != CommercialInvitation != WorkspaceInvitation
 ```
 
-- `PlatformInvitation` intègre un collaborateur interne à l'équipe Platform.
+- `PlatformInvitation` intègre un collaborateur interne à l’équipe Platform.
 - `WorkspaceInvitation` ajoute un membre dans un workspace existant.
-- `CommercialInvitation` propose un Plan privé dans un parcours d'acquisition initiale et crée le premier workspace du bénéficiaire.
+- `CommercialInvitation` propose un Plan privé dans un parcours d’acquisition initiale et crée le premier workspace du bénéficiaire.
 
-`CommercialInvitation` ne cible jamais un workspace existant. Les ajustements commerciaux d'un workspace existant utilisent les mécanismes `Subscription` et `EntitlementOverride`.
+`CommercialInvitation` ne cible jamais un workspace existant. Les ajustements commerciaux d’un workspace existant utilisent `Subscription` et `EntitlementOverride`.
 
 ## 3. Bénéficiaire éligible
 
-L'existence d'un compte Auth ne suffit pas à interdire D-020.
-
 Un bénéficiaire est admissible lorsque :
 
-- aucun compte n'existe encore pour son email canonical ; ou
+- aucun compte n’existe encore pour son email canonical ; ou
 - un `User` existe déjà, mais ne possède aucun `WorkspaceMember` `active` ou `suspended`.
 
-Un utilisateur déjà rattaché à un workspace actif/suspendu est refusé. Cette règle est vérifiée à la création de l'invitation lorsqu'un User existe déjà et de nouveau lors de l'acceptation.
+Un utilisateur déjà rattaché à un workspace actif/suspendu est refusé. Cette règle est vérifiée à la création lorsqu’un User existe déjà et de nouveau lors de l’acceptation.
 
 ## 4. Offre privée
 
@@ -42,14 +40,14 @@ Une invitation commerciale cible uniquement un `Plan` :
 - `systemRole = null` ;
 - fonctionnalités et limites explicitement définies.
 
-Le catalogue utilisateur public reste filtré côté backend sur :
+Le catalogue public utilisateur reste filtré côté backend sur :
 
 ```text
 status = active
 isPublic = true
 ```
 
-Un Plan privé Découverte ne doit donc jamais être envoyé au sélecteur public des plans disponibles.
+Un Plan privé de découverte n’est donc jamais injecté dans le sélecteur public des plans.
 
 D-020 expose un catalogue administratif dédié :
 
@@ -57,13 +55,11 @@ D-020 expose un catalogue administratif dédié :
 GET /api/platform/commercial-invitations/offers
 ```
 
-Ce catalogue est filtré par le backend et n'utilise pas la pagination générale des Plans afin de ne pas rendre certaines offres privées invisibles par effet de limite arbitraire.
-
-Une offre privée peut être gratuite sans devenir la baseline. `EntitlementOverride` reste réservé aux exceptions individuelles et ne représente pas une offre réutilisable.
+Une offre privée peut être gratuite sans devenir la baseline. `EntitlementOverride` reste réservé aux exceptions individuelles.
 
 ## 5. Contrats temporels Subscription
 
-Une Subscription distingue explicitement :
+Une Subscription distingue :
 
 ```text
 fixed
@@ -72,7 +68,7 @@ open_ended
 
 ### 5.1 `fixed`
 
-Utilisé lorsqu'une échéance existe. Une Subscription commerciale active `fixed` doit posséder une `currentPeriodEnd` valide.
+Une Subscription commerciale active `fixed` possède une `currentPeriodEnd` valide.
 
 Un vrai trial est :
 
@@ -83,7 +79,7 @@ trialEndsAt = date future
 currentPeriodEnd = trialEndsAt
 ```
 
-D-020 réserve le trial à une périodicité dont le tarif correspondant est strictement positif. Une périodicité gratuite ne peut donc pas être présentée comme un trial payant.
+D-020 réserve le trial à une périodicité dont le tarif correspondant est strictement positif.
 
 ### 5.2 `open_ended`
 
@@ -98,13 +94,11 @@ D-020 autorise `open_ended` uniquement pour un accès commercial durable :
 - `cancelAtPeriodEnd = false` ;
 - sans consommation de `TrialEligibility`.
 
-Le resolver vérifie l'ensemble de ces invariants avant de reconnaître une commerciale `open_ended`. Une configuration incohérente retombe sur la baseline au lieu d'accorder des droits permanents.
-
-Une `open_ended` ne peut pas être résiliée « en fin de période », puisqu'elle n'en possède pas. Elle peut être annulée immédiatement via le lifecycle prévu.
+Le resolver vérifie ces invariants avant de reconnaître une commerciale `open_ended`. Une configuration incohérente ne doit pas accorder de droits permanents.
 
 ## 6. Migration `termType`
 
-Les Subscriptions historiques peuvent précéder le champ `termType`. D-020 fournit une migration dédiée et idempotente :
+Migration dédiée et idempotente :
 
 ```bash
 npm run migration:subscription-term-type
@@ -119,37 +113,26 @@ kind = baseline   → termType = open_ended
 kind = commercial → termType = fixed
 ```
 
-La migration refuse de deviner pour une Subscription sans `termType` dont `kind` est absent ou inconnu.
+La migration refuse de deviner lorsque `kind` est absent ou inconnu.
 
-Ordre opérationnel de référence :
-
-```text
-1. subscription-kind déjà appliquée
-2. migration:subscription-term-type
-3. déployer / activer le code D-020
-4. npm run seed:platform-roles
-```
-
-## 7. Invitation et durée de l'offre
-
-L'expiration de `CommercialInvitation` protège uniquement le lien d'onboarding :
+## 7. Invitation et durée de l’offre
 
 ```text
 invitation.expiresAt != subscription.currentPeriodEnd
 ```
 
-Une invitation temporaire peut donc créer un accès gratuit durable.
+L’expiration de `CommercialInvitation` protège le lien d’onboarding ; elle ne définit pas la durée contractuelle de la Subscription créée.
 
-La création conserve également un `reason` administratif obligatoire expliquant pourquoi l'accès privé est accordé. Ce motif reste interne à l'administration et à l'audit ; il n'est pas exposé dans la preview publique.
+La création conserve un `reason` administratif obligatoire, interne à l’administration et à l’audit.
 
 ## 8. Sécurité du secret
 
 - secret généré avec `crypto.randomBytes(32)` ;
 - seule son empreinte SHA-256 est persistée ;
 - aucun secret brut dans AuditLog ;
-- resend = nouveau secret, nouveau hash et invalidation immédiate de l'ancien lien ;
-- révocation d'une invitation pending interdit son acceptation ;
-- preview et accept sont rate-limités ;
+- resend = nouveau secret, nouveau hash et invalidation immédiate de l’ancien lien ;
+- révocation d’une invitation pending interdit son acceptation ;
+- preview, register dédié et accept sont rate-limités ;
 - le token est envoyé dans le body HTTP des appels API, jamais dans un path.
 
 Le lien email utilise :
@@ -158,7 +141,7 @@ Le lien email utilise :
 /commercial-invitations/accept#token=<secret>
 ```
 
-Le fragment URL n'est pas transmis au serveur HTTP par le navigateur. Le frontend le capture à l'arrivée, le place uniquement dans un vault JavaScript en mémoire vive, puis nettoie immédiatement le fragment avec `history.replaceState`.
+Le fragment URL n’est pas transmis au serveur HTTP par le navigateur. Le frontend le capture à l’arrivée, le place uniquement dans un vault JavaScript en mémoire vive, puis nettoie immédiatement le fragment avec `history.replaceState`.
 
 Le secret ne doit jamais être placé dans :
 
@@ -169,39 +152,89 @@ Le secret ne doit jamais être placé dans :
 - une query string ;
 - les logs.
 
-Le vault runtime permet de traverser le parcours `accept -> login/register -> accept` tant que l'application n'est pas rechargée. Un rechargement complet détruit volontairement le secret et oblige à rouvrir le lien reçu par email.
-
-Le changement de compte pendant l'acceptation conserve le vault runtime, déconnecte la session courante puis retourne vers Login sans exposer le token. Le secret est effacé explicitement après acceptation réussie.
+Un rechargement complet détruit volontairement le secret runtime et oblige à rouvrir le lien reçu par email.
 
 ## 9. Preview publique
 
-`POST /api/commercial-invitations/preview` :
+```text
+POST /api/commercial-invitations/preview
+```
 
-- est public mais rate-limité ;
+La preview :
+
+- est publique mais rate-limitée ;
 - reçoit le token dans le body ;
 - exige une validation Zod stricte ;
 - revalide le Plan et le snapshot ;
 - ne renvoie ni email du bénéficiaire ni motif administratif.
 
-Une modification significative du Plan après l'envoi rend l'invitation non acceptable et impose une nouvelle invitation.
+Une modification significative du Plan après l’envoi rend l’invitation non acceptable et impose une nouvelle invitation.
 
-## 10. Autorité utilisateur
+## 10. Création de compte protégée par l’identité de l’invitation
 
-L'acceptation ne crée jamais de mot de passe et ne contourne pas Auth.
+Lorsqu’un visiteur arrive par un lien D-020 et ne possède pas encore de compte, le frontend n’utilise pas l’inscription publique ordinaire sans contexte.
 
-Le bénéficiaire :
+Le parcours D-020 utilise une route de register dédiée qui :
 
-1. utilise le workflow Auth normal ;
-2. s'inscrit si nécessaire ou se connecte à un compte existant sans workspace ;
-3. revient sur le parcours D-020 ;
-4. accepte avec une session authentifiée ;
-5. l'email canonical du User doit correspondre exactement à l'invitation.
+1. recharge l’invitation active à partir du token hashé ;
+2. vérifie qu’elle est `pending` et non expirée ;
+3. vérifie que l’email demandé correspond exactement au bénéficiaire canonical ;
+4. revalide le Plan et le snapshot ;
+5. délègue ensuite seulement à la logique Auth de création de compte.
 
-Si une mauvaise session est déjà ouverte, le frontend propose explicitement de changer de compte sans perdre le secret runtime. Le backend reste l'autorité finale et refuse toute discordance d'email.
+Une mauvaise adresse email est donc refusée avant création du compte.
 
-Le service recharge aussi le `User` dans la transaction et exige `status = active`. Une désactivation concurrente après le middleware `authenticate` ne peut donc pas créer un tenant.
+## 11. Autorité utilisateur après Auth
 
-## 11. Snapshot de proposition
+Après inscription ou connexion, le backend vérifie encore l’identité du bénéficiaire.
+
+Le parcours authentifié expose un contrôle recipient permettant au frontend de distinguer :
+
+```text
+compte correspondant au bénéficiaire
+→ Acceptation / Refus disponibles
+
+mauvais compte
+→ aucune action d’acceptation/refus
+→ proposition explicite d’utiliser un autre compte
+```
+
+Le backend reste l’autorité finale et refuse toute discordance d’email.
+
+Le changement de compte déconnecte la session courante et conserve le vault runtime tant que l’application n’est pas rechargée.
+
+## 12. Refus explicite
+
+Le bénéficiaire authentifié correspondant peut refuser l’offre.
+
+Lifecycle ajouté :
+
+```text
+pending → declined
+```
+
+Le refus :
+
+- est transactionnel ;
+- enregistre `declinedAt` et `declinedBy` ;
+- produit `COMMERCIAL_INVITATION_DECLINED` ;
+- empêche toute acceptation ultérieure de cette invitation ;
+- vide le vault frontend ;
+- ferme la session courante utilisée pour ce parcours, sans imposer un logout-all global.
+
+Les statuts visibles sont notamment :
+
+```text
+pending   → En attente
+accepted  → Acceptée
+declined  → Refusée
+revoked   → Révoquée
+expired   → Expirée
+```
+
+Le rendu utilise le composant de statut partagé du Design System avec tons sémantiques.
+
+## 13. Snapshot de proposition
 
 `offerSnapshot` conserve :
 
@@ -215,35 +248,31 @@ Le service recharge aussi le `User` dans la transaction et exige `status = activ
 
 Avant resend, preview et accept, le backend compare les conditions significatives avec le Plan courant. Un simple renommage reste autorisé ; une modification de prix, trial, périodicité, fonctionnalités ou limites impose une nouvelle invitation.
 
-La Subscription et le Plan restent l'autorité runtime après acceptation.
+La Subscription et le Plan restent l’autorité runtime après acceptation.
 
-## 12. Acceptation atomique
+## 14. Acceptation atomique
 
-L'acceptation appartient à une transaction MongoDB unique :
+L’acceptation appartient à une transaction MongoDB unique :
 
 1. rechargement du User et validation `active` ;
-2. validation conditionnelle de l'invitation `pending` et non expirée ;
+2. validation conditionnelle de l’invitation `pending` et non expirée ;
 3. correspondance email canonical ;
 4. absence de membership Workspace `active` ou `suspended` ;
 5. revalidation du Plan et du snapshot ;
-6. précontrôle `TrialEligibility` avant provisioning pour un vrai trial ;
+6. précontrôle `TrialEligibility` pour un vrai trial ;
 7. création Workspace ;
 8. création des rôles système ;
 9. création du membership owner ;
 10. création de la Subscription baseline ;
-11. réservation de la métrique `members` pour l'owner ;
+11. réservation de la métrique `members` ;
 12. création de la Subscription commerciale ;
 13. consommation de `TrialEligibility` uniquement pour un vrai trial ;
-14. transition conditionnelle de l'invitation vers `accepted` ;
+14. transition conditionnelle vers `accepted` ;
 15. audits.
 
-L'index unique de `TrialEligibility` et la transition conditionnelle de l'invitation restent les derniers gardes contre les courses concurrentes.
+Tout échec annule l’ensemble.
 
-Tout échec annule l'ensemble.
-
-## 13. Permissions Platform
-
-Permissions dédiées :
+## 15. Permissions Platform
 
 ```text
 platform:commercial_invitations:read
@@ -252,104 +281,75 @@ platform:commercial_invitations:resend
 platform:commercial_invitations:revoke
 ```
 
-Aucune route D-020 n'utilise `TEAM_*` comme substitut.
+Aucune route D-020 n’utilise les permissions Team comme substitut.
 
-Les presets système délèguent ces permissions au `super_admin`, au `platform_admin` et au `commercial_support` selon leur rôle. Après déploiement du code, `npm run seed:platform-roles` resynchronise uniquement les rôles système du Core ; les rôles personnalisés ne sont pas modifiés.
+## 16. Audit minimal
 
-## 14. Validation HTTP et autorité backend
-
-Le frontend administratif peut fournir uniquement :
-
-- email ;
-- Plan existant ;
-- nom proposé du premier workspace ;
-- périodicité autorisée ;
-- motif administratif.
-
-Il ne peut pas fournir directement :
-
-- capabilities ;
-- limites ;
-- prix ;
-- statut Subscription ;
-- dates contractuelles ;
-- provider ;
-- `termType` ;
-- état d'éligibilité trial.
-
-Toutes ces valeurs sont dérivées et revalidées par le backend.
-
-## 15. Audit minimal
-
-Événements :
+Événements D-020 actuels :
 
 ```text
 COMMERCIAL_INVITATION_CREATED
 COMMERCIAL_INVITATION_RESENT
 COMMERCIAL_INVITATION_REVOKED
 COMMERCIAL_INVITATION_ACCEPTED
+COMMERCIAL_INVITATION_DECLINED
 SUBSCRIPTION_CREATED
 ```
 
-L'audit peut conserver acteur, bénéficiaire, Plan, Workspace, Subscription, motif et dates nécessaires. Il ne conserve jamais le token brut.
+Le token brut n’est jamais audité.
 
-## 16. Frontend implémenté
+## 17. Frontend implémenté
 
 Administration Platform :
 
-- `DataTable` partagé pour la liste ;
-- drawer de création basé sur les composants partagés ;
-- confirmation de révocation réutilisable ;
-- RTK Query pour l'état serveur ;
-- catalogue dédié des Plans privés exploitables ;
-- resend/revoke conditionnels selon lifecycle et permissions ;
-- aucun composant de tableau dupliqué ;
-- backend autorité finale.
+- liste via `DataTable` partagé ;
+- création dans un drawer ;
+- resend/revoke selon lifecycle et permissions ;
+- statuts via badge sémantique partagé ;
+- RTK Query pour l’état serveur ;
+- invalidation du cache de liste après mutations pertinentes.
 
-Parcours `/commercial-invitations/accept` :
-
-- extraction du token depuis le fragment URL ;
-- vault runtime uniquement ;
-- nettoyage immédiat de l'URL ;
-- preview de l'offre ;
-- orientation login/register si nécessaire ;
-- retour au parcours après Auth ;
-- changement de compte possible sans persistance du secret ;
-- accept authentifié ;
-- suppression du secret runtime après succès.
-
-## 17. Relation avec D-002
-
-D-020 ne modifie pas la corbeille Files.
-
-D-002 reste un bloc séparé mais obligatoire avant la première dérivation du Core. Sa restauration devra respecter D-019 : un fichier soft-deleted dont le contenu physique existe encore continue à consommer `storage_bytes`; une restauration avant purge ne réserve donc pas le stockage une seconde fois.
-
-## 18. Validation D-020
-
-La gate automatisée D-020 a été exécutée localement le 2026-09-08 et confirmée verte :
+Parcours bénéficiaire :
 
 ```text
-backend lint       ✅
-backend tests      ✅
-frontend lint      ✅
-frontend tests     ✅
-frontend build     ✅
+1. Création du compte
+2. Connexion
+3. Acceptation de l’offre
 ```
 
-Le contrôle global `prettier --check .` n'est pas retenu comme gate D-020 : le dépôt ne possède pas encore de configuration Prettier canonique et ce contrôle signale massivement des fichiers historiques hors périmètre. `prettier --write .` ne doit pas être utilisé pour D-020.
+Un stepper partagé rend cette progression visible sur les écrans concernés.
 
-Avant de déclarer D-020 `VALIDÉ` et d'intégrer la branche dans `main`, il reste une validation manuelle ciblée du parcours réel :
+Le parcours prend aussi en charge : preview, login/register, vérification du recipient, changement de compte, acceptation, refus et nettoyage du secret runtime.
 
-- catalogue privé visible uniquement dans la console Platform ;
-- création d'une invitation ;
-- réception/usage du lien `#token` ;
-- preview ;
-- register ou login ;
-- changement de compte ;
-- acceptation ;
-- création du premier workspace ;
-- droits issus du Plan privé ;
-- état final `accepted` ;
-- pour un trial, démarrage de l'horloge à l'acceptation et aucun moyen de paiement demandé.
+## 18. Dashboard Platform et accès gratuits
 
-Après cette validation manuelle, D-020 pourra passer formellement à `VALIDÉ` puis être intégré dans `main` par fast-forward.
+Après acceptation, l’invitation n’est plus l’autorité des droits : la `Subscription` effective l’est.
+
+Le Dashboard Platform distingue désormais :
+
+```text
+Abonnements payants actifs
+Accès gratuits actifs
+Valeur mensuelle contractuelle estimée
+```
+
+Une offre D-020 gratuite `open_ended` est comptée dans les accès gratuits actifs. Le sous-compteur `viaCommercialInvitation` utilise l’invitation `accepted` uniquement comme provenance commerciale, jamais comme source de droits.
+
+## 19. Validation D-020
+
+Le code D-020 et ses évolutions sont intégrés dans `main`.
+
+Les gates automatisées applicables ont été confirmées vertes localement par l’utilisateur après les derniers correctifs :
+
+```text
+backend tests      OK
+frontend tests     OK
+lint               OK
+frontend build     OK
+```
+
+Le parcours nominal a également été validé manuellement jusqu’à l’acceptation réussie et la création du premier workspace avec le Plan privé attendu.
+
+D-020 reste toutefois `EN COURS` dans `docs/DEBT.md` tant que la validation manuelle finale n’a pas été explicitement clôturée pour les scénarios négatifs/restants du parcours, notamment vérification post-correctif de la mauvaise identité et du refus bénéficiaire.
+
+Une fois ces contrôles explicitement validés, D-020 pourra passer formellement à `VALIDÉ` dans `docs/DEBT.md` avant D-021/D-015.
