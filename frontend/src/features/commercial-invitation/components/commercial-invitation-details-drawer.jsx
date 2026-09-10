@@ -45,6 +45,7 @@ function CommercialInvitationDetailsDrawer({ invitation, onClose }) {
             <DetailRow label="Créée le" value={formatCommercialInvitationDate(invitation.createdAt)} />
             <DetailRow label="Expire le" value={formatCommercialInvitationDate(invitation.expiresAt)} />
             <DetailRow label="Acceptée le" value={formatCommercialInvitationDate(invitation.acceptedAt)} />
+            <DetailRow label="Refusée le" value={formatCommercialInvitationDate(invitation.declinedAt)} />
             <DetailRow label="Révoquée le" value={formatCommercialInvitationDate(invitation.revokedAt)} />
           </dl>
 
