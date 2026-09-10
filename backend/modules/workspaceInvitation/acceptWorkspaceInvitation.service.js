@@ -71,9 +71,10 @@ const loadAcceptableInvitation = async ({ tokenHash, now, session }) => {
     return invitation;
 };
 
-const loadAcceptableRole = async ({ invitation, session }) => {
+const loadAcceptableRole = async ({ invitation, now, session }) => {
     const entitlement = await getWorkspaceEffectiveEntitlement({
         workspaceId: invitation.workspace,
+        at: now,
         session,
     });
 
@@ -150,12 +151,6 @@ const activateWorkspaceMembership = async ({
         existingMembership.status = WORKSPACE_MEMBER_STATUS.ACTIVE;
         existingMembership.role = role._id;
         existingMembership.updatedBy = userId;
-
-        /*
-         * Le document existant reste la référence du membership réactivé.
-         * La logique métier ne doit pas dépendre de la valeur retournée par
-         * save(), notamment lorsque cette méthode est mockée en test.
-         */
         await existingMembership.save({ session });
         return existingMembership;
     }
@@ -251,7 +246,7 @@ const acceptWorkspaceInvitation = async ({
             );
         }
 
-        const role = await loadAcceptableRole({ invitation, session });
+        const role = await loadAcceptableRole({ invitation, now, session });
         const membership = await activateWorkspaceMembership({
             invitation,
             role,
@@ -344,7 +339,7 @@ const acceptNewWorkspaceInvitation = async ({
                 );
             }
 
-            const role = await loadAcceptableRole({ invitation, session });
+            const role = await loadAcceptableRole({ invitation, now, session });
 
             const [user] = await User.create(
                 [
