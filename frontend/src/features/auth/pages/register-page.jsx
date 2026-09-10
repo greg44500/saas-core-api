@@ -9,9 +9,16 @@ import { Input } from '@/components/ui/input';
 import { useRegisterMutation } from '@/features/auth/api/auth-api';
 import { registerSchema } from '@/features/auth/validation/auth-schemas';
 import {
+  useRegisterCommercialInvitationRecipientMutation,
+} from '@/features/commercial-invitation/api/commercial-invitations-api';
+import {
   buildCommercialInvitationAuthState,
   getCommercialInvitationTokenFromLocation,
 } from '@/features/commercial-invitation/lib/commercial-invitation';
+
+function getApiMessage(error, fallback) {
+  return error?.data?.message ?? fallback;
+}
 
 function RegisterPage() {
   const navigate = useNavigate();
@@ -19,7 +26,9 @@ function RegisterPage() {
   const commercialInvitationState = commercialInvitationToken
     ? buildCommercialInvitationAuthState()
     : undefined;
-  const [registerAccount, { isLoading }] = useRegisterMutation();
+  const [registerAccount, registerAccountState] = useRegisterMutation();
+  const [registerCommercialRecipient, commercialRegisterState] =
+    useRegisterCommercialInvitationRecipientMutation();
   const {
     register,
     handleSubmit,
@@ -38,9 +47,20 @@ function RegisterPage() {
     },
   });
 
+  const isLoading = registerAccountState.isLoading
+    || commercialRegisterState.isLoading;
+
   const onSubmit = async ({ confirmPassword: _confirmPassword, ...payload }) => {
     try {
-      await registerAccount(payload).unwrap();
+      if (commercialInvitationToken) {
+        await registerCommercialRecipient({
+          ...payload,
+          token: commercialInvitationToken,
+        }).unwrap();
+      } else {
+        await registerAccount(payload).unwrap();
+      }
+
       navigate('/login', {
         replace: true,
         state: {
@@ -48,10 +68,13 @@ function RegisterPage() {
           ...(commercialInvitationState ?? {}),
         },
       });
-    } catch {
+    } catch (error) {
       setError('root.server', {
         type: 'server',
-        message: 'Impossible de créer le compte. Vérifiez les informations puis réessayez.',
+        message: getApiMessage(
+          error,
+          'Impossible de créer le compte. Vérifiez les informations puis réessayez.',
+        ),
       });
     }
   };
@@ -60,7 +83,11 @@ function RegisterPage() {
     <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Créer votre compte</h1>
-        <p className="text-sm text-muted-foreground">Créez votre identité. Le workspace et le plan viendront ensuite.</p>
+        <p className="text-sm text-muted-foreground">
+          {commercialInvitationToken
+            ? 'Créez le compte correspondant à l’adresse ayant reçu cette invitation. Votre espace sera créé seulement après acceptation de l’offre.'
+            : 'Créez votre identité. Le workspace et le plan viendront ensuite.'}
+        </p>
       </div>
 
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
