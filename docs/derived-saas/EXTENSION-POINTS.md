@@ -1,8 +1,8 @@
 # SAAS-CORE-API — Points d’extension des SaaS dérivés
 
 **Statut :** canonique — actif  
-**Dernière mise à jour :** 2026-09-05  
-**Périmètre :** CORE-FIN-5 / D-014 — RBAC, capabilities, routing backend/frontend et navigation métier
+**Dernière mise à jour :** 2026-09-10  
+**Périmètre :** D-014 + D-011.C — RBAC, capabilities, routing, navigation et widgets Dashboard métier
 
 ---
 
@@ -302,7 +302,131 @@ Les entrées sont filtrées selon les permissions et capabilities effectives lor
 
 ---
 
-## 8. Règle de composition d’un module métier
+## 8. Point d’extension du Dashboard Workspace
+
+D-011.C ajoute un point d’extension explicite pour les KPI, cartes et widgets métier affichés sur le Dashboard d’un Workspace.
+
+Fichier applicatif :
+
+```text
+frontend/src/app/application-dashboard.js
+```
+
+Le Core fournit ses propres descriptors et compose explicitement les modules Dashboard applicatifs.
+
+Principe :
+
+```text
+widgets Core
++
+widgets des modules métier explicitement déclarés
+→ registre Dashboard applicatif
+```
+
+Un descriptor de widget déclare notamment :
+
+```text
+id stable
+label
+description
+component
+slot
+order
+configurable
+requiredFeatures
+requiredPermissions
+```
+
+L’identifiant doit rester stable dans le temps. Il sert à persister la préférence utilisateur dans :
+
+```text
+User.preferences.dashboard.hiddenWidgetIds
+```
+
+### 8.1 Invariant d’autorisation
+
+Le registre Dashboard ne constitue jamais une autorité de sécurité.
+
+Ordre obligatoire :
+
+```text
+Plan / entitlement effectif
++
+permissions utilisateur
+→ widgets réellement accessibles
+
+widgets réellement accessibles
++
+préférences personnelles
+→ widgets visibles
+```
+
+Conséquences :
+
+- une préférence ne crée jamais une feature ;
+- une préférence ne crée jamais une permission ;
+- un widget non accessible n’est pas proposé dans le panneau de personnalisation ;
+- un widget non accessible n’est généralement pas monté ;
+- les endpoints backend restent responsables de leur propre sécurité ;
+- les données sensibles ne doivent jamais être chargées sous prétexte qu’un widget est seulement caché visuellement.
+
+### 8.2 Extension par un module métier
+
+Exemple conceptuel :
+
+```js
+{
+    id: 'catalog.price-alerts',
+    label: 'Alertes prix',
+    description: 'Nombre de produits nécessitant une vérification.',
+    component: CatalogPriceAlertsWidget,
+    slot: 'summary',
+    order: 1000,
+    configurable: true,
+    requiredFeatures: ['price_history'],
+    requiredPermissions: ['catalog:item:read'],
+}
+```
+
+Le module métier fournit son descriptor et l’application dérivée l’ajoute à la collection de composition prévue. Le Core ne doit pas importer directement le module métier.
+
+### 8.3 UX de personnalisation
+
+La V1 validée prend en charge uniquement :
+
+```text
+afficher / masquer
+```
+
+Le switch produit un aperçu immédiat du Dashboard. La préférence n’est persistée qu’après `Enregistrer`. `Annuler` restaure l’état sauvegardé.
+
+Les grilles de Dashboard doivent conserver un équilibre visuel lorsque des widgets sont retirés. La composition doit donc dépendre du nombre réel de cartes visibles et ne pas réserver artificiellement l’espace d’un widget masqué.
+
+Le Core n’ajoute pas par anticipation :
+
+```text
+drag-and-drop arbitraire
+réordonnancement utilisateur libre
+resize
+constructeur de Dashboard
+styles personnalisables par widget
+```
+
+Ces capacités ne seront introduites que si une application dérivée démontre un besoin produit réel.
+
+### 8.4 Widgets Core et widgets métier
+
+Les widgets Workspace actuels du Core — par exemple statut du workspace, rôle, abonnement ou activité — servent principalement à fournir un Dashboard générique avant dérivation.
+
+Ils ne constituent pas le modèle fonctionnel du futur Dashboard métier.
+
+Dans un SaaS dérivé, les modules applicatifs sont destinés à déclarer les KPI et données opérationnelles pertinentes pour le métier via ce point d’extension.
+
+Le Dashboard Platform est un cas distinct : il constitue déjà une surface métier d’administration de la plateforme. Sa projection d’autorisation reste définie côté backend ; la préférence personnelle ne peut que réduire cette projection.
+
+---
+
+## 9. Règle de composition d’un module métier
 
 Un module métier complet peut donc fournir conceptuellement :
 
@@ -317,6 +441,7 @@ frontend/src/features/catalog/
 → composants / pages
 → catalog.routes.js
 → catalog.navigation.js
+→ catalog.dashboard.js
 ```
 
 Puis l’application dérivée compose uniquement les descriptors dans :
@@ -327,15 +452,16 @@ backend/config/applicationRolePermission.registry.js
 backend/config/applicationRoutes.registry.js
 frontend/src/app/application-routes.js
 frontend/src/app/workspace-navigation.js
+frontend/src/app/application-dashboard.js
 ```
 
 Ces fichiers `app/` et `config/` sont les points de jonction assumés entre le Core et le produit dérivé.
 
 ---
 
-## 9. Ce que D-014 ne met pas en place
+## 10. Ce que les points d’extension V1 ne mettent pas en place
 
-D-014 n’introduit pas :
+Le Core n’introduit pas :
 
 ```text
 plugins npm dynamiques
@@ -345,13 +471,14 @@ chargement de code depuis la base de données
 création de permissions techniques depuis Platform
 création de capabilities techniques depuis Platform
 second router ou second design system
+dashboard builder arbitraire
 ```
 
 Ces mécanismes augmenteraient la complexité sans besoin démontré pour le Core V1.
 
 ---
 
-## 10. Tests obligatoires d’un module dérivé
+## 11. Tests obligatoires d’un module dérivé
 
 Un module métier qui utilise ces points d’extension doit au minimum tester :
 
@@ -377,15 +504,24 @@ frontend routing
 
 navigation
 → entrée présente seulement lorsque l’utilisateur peut réellement l’utiliser
+
+dashboard
+→ widget composé dans le registre attendu
+→ feature et permissions réellement filtrées
+→ préférence appliquée seulement après le contrôle d’accès
+→ identifiant stable
+→ composant non autorisé non monté lorsque le contrat le prévoit
 ```
 
 Les suites de tests du Core et du module métier restent complémentaires.
 
 ---
 
-## 11. Validation de D-014
+## 12. Validation des points d’extension
 
 D-014 a été validée le 2026-09-05 après confirmation locale des suites ciblées, des suites globales et du build frontend.
+
+D-011.C a été validée le 2026-09-10 après validation manuelle, tests ciblés et globaux, lint et build applicables.
 
 Les tests démontrent que les points de composition permettent à un module métier de référence de :
 
@@ -396,17 +532,18 @@ Les tests démontrent que les points de composition permettent à un module mét
 - monter ses routes backend ;
 - ajouter ses routes frontend ;
 - composer sa navigation Workspace ;
+- déclarer des widgets Dashboard filtrés par capability/permission puis par préférence personnelle ;
 - exécuter ses tests ;
 
-sans modifier les longues listes centrales de routing ou de permissions du Core, hors points de composition applicatifs explicitement prévus.
+sans modifier les longues listes centrales du Core hors points de composition applicatifs explicitement prévus.
 
-La validation d’une dérivation et d’un upgrade sur un dépôt pilote réel reste volontairement séparée : elle relève de D-017 et ne remet pas en cause la validation du contrat d’extension D-014.
+La validation d’une dérivation et d’un upgrade sur un dépôt pilote réel reste volontairement séparée : elle relève de D-017 et ne remet pas en cause la validation des contrats D-014/D-011.C.
 
-Le statut canonique de la dette est porté par `docs/DEBT.md`.
+Le statut canonique des dettes est porté par `docs/DEBT.md`.
 
 ---
 
-## 12. Fichiers de référence
+## 13. Fichiers de référence
 
 ```text
 backend/config/applicationCapability.registry.js
@@ -418,6 +555,9 @@ backend/constants/role.constants.js
 frontend/src/app/application-routes.js
 frontend/src/app/router.jsx
 frontend/src/app/workspace-navigation.js
+frontend/src/app/application-dashboard.js
+frontend/src/features/workspace/dashboard/core-dashboard-widgets.js
+frontend/src/components/shared/dashboard-display-preferences.jsx
 docs/contracts/CAPABILITIES.md
 docs/derived-saas/DERIVED-SAAS.md
 ```
