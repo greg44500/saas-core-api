@@ -811,7 +811,7 @@ describe('forgotUserPassword', () => {
         ).toHaveBeenCalledWith({
             resetUrl:
                 'http://localhost:5173/reset-password?token=opaque-reset-token',
-            expiresInMinutes: 30,
+            expiresInMinutes: 15,
         });
 
         /*

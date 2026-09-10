@@ -19,6 +19,35 @@ vi.mock('react-redux', () => ({
   useSelector: () => mocks.authStatus,
 }));
 
+vi.mock('@/features/auth/api/auth-api', () => ({
+  useGetPasswordPolicyQuery: () => ({
+    data: {
+      minLength: 15,
+      maxLength: 128,
+      levels: [
+        { key: 'weak', label: 'Faible', minScore: 0 },
+        { key: 'good', label: 'Correct', minScore: 3 },
+        { key: 'strong', label: 'Robuste', minScore: 5 },
+      ],
+      scoring: {
+        lengthBands: [
+          { minLength: 15, points: 1 },
+          { minLength: 20, points: 1 },
+          { minLength: 28, points: 1 },
+        ],
+        characterClassBands: [
+          { minClasses: 2, points: 1 },
+          { minClasses: 4, points: 1 },
+        ],
+        uniqueRatio: {
+          minimum: 0.6,
+          points: 1,
+        },
+      },
+    },
+  }),
+}));
+
 vi.mock('@/features/platform-invitation/api/platform-invitation-acceptance-api', () => ({
   useAcceptExistingPlatformInvitationMutation: () => [
     mocks.acceptExisting,
@@ -116,18 +145,22 @@ describe('AcceptPlatformInvitationPage', () => {
 
     await user.type(
       screen.getByLabelText('Mot de passe'),
-      'mot-de-passe-tres-securise',
+      'Phrase unique pour invitation 47!',
     );
     await user.type(
       screen.getByLabelText('Confirmer le mot de passe'),
-      'mot-de-passe-tres-securise',
+      'Phrase unique pour invitation 47!'
+    );
+    await user.click(
+      screen.getByLabelText(/J’accepte les Conditions générales/i),
     );
     await user.click(screen.getByRole('button', { name: 'Créer mon accès' }));
 
     await waitFor(() => {
       expect(mocks.acceptNew).toHaveBeenCalledWith({
         token: TOKEN,
-        password: 'mot-de-passe-tres-securise',
+        password: 'Phrase unique pour invitation 47!',
+        legalAccepted: true,
       });
     });
     expect(await screen.findByText('Invitation acceptée')).toBeInTheDocument();
