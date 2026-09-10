@@ -7,7 +7,7 @@ vi.mock('@/features/workspace/hooks/use-workspace-dashboard-widgets', () => ({
   useWorkspaceDashboardWidgets: useWorkspaceDashboardWidgetsMock,
 }));
 
-vi.mock('@/features/workspace/components/dashboard-display-preferences', () => ({
+vi.mock('@/components/shared/dashboard-display-preferences', () => ({
   DashboardDisplayPreferences: () => (
     <button type="button">Personnaliser le tableau de bord</button>
   ),
