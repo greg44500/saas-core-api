@@ -1,8 +1,9 @@
-import { baseApi } from '@/services/api/base-api';
+import { useDashboardDisplayPreview } from '@/components/shared/dashboard-display-preview-context';
 import { useGetCurrentUserPreferencesQuery } from '@/features/preferences/api/user-preferences-api';
 import {
   applyPlatformDashboardPreferences,
 } from '@/features/platform/lib/platform-dashboard-preferences';
+import { baseApi } from '@/services/api/base-api';
 
 const platformOverviewApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -26,22 +27,24 @@ const {
 
 /**
  * Applique les préférences d'affichage après la projection d'autorisation
- * renvoyée par le backend. Les données reçues restent celles que l'acteur est
- * autorisé à consulter ; cette couche ne fait que réduire les surfaces visibles.
+ * renvoyée par le backend. Le preview reste local et n'élargit jamais les
+ * données reçues : il ne peut que réduire temporairement les surfaces visibles.
  */
 function useGetPlatformOverviewQuery(args, options) {
   const overviewQuery = useGetPlatformOverviewQueryBase(args, options);
   const preferencesQuery = useGetCurrentUserPreferencesQuery();
+  const { previewHiddenWidgetIds } = useDashboardDisplayPreview();
   const preferencesResolved = preferencesQuery.data !== undefined
     || preferencesQuery.isError;
-  const hiddenWidgetIds = preferencesQuery.data?.dashboard?.hiddenWidgetIds ?? [];
+  const savedHiddenWidgetIds = preferencesQuery.data?.dashboard?.hiddenWidgetIds ?? [];
+  const effectiveHiddenWidgetIds = previewHiddenWidgetIds ?? savedHiddenWidgetIds;
 
   return {
     ...overviewQuery,
     data: preferencesResolved
       ? applyPlatformDashboardPreferences(
         overviewQuery.data,
-        hiddenWidgetIds,
+        effectiveHiddenWidgetIds,
       )
       : undefined,
     isLoading: overviewQuery.isLoading || !preferencesResolved,
