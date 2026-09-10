@@ -20,11 +20,6 @@ const commercialInvitationTokenSchema = z
     .length(64, 'Token d’invitation invalide')
     .regex(/^[a-f\d]{64}$/i, 'Token d’invitation invalide');
 
-/**
- * Le client administratif choisit une offre existante. Il ne peut pas injecter
- * de capabilities, limites, prix, statut ou dates de Subscription. Le motif est
- * obligatoire afin que l'accès privé reste justifiable dans l'audit Platform.
- */
 const createCommercialInvitationBodySchema = z.strictObject({
     email: z.string().trim().email().max(254),
     planId: mongoIdSchema,
@@ -61,6 +56,7 @@ const registerCommercialInvitationRecipientBodySchema =
     userIdentityInputSchema.extend({
         password: passwordSchema,
         token: commercialInvitationTokenSchema,
+        legalAccepted: z.literal(true),
     });
 
 export {
