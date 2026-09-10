@@ -8,6 +8,10 @@ import { DistributionBarChart } from '@/components/data-display/distribution-bar
 import { FileTypeIcon } from '@/components/data-display/file-type-icon';
 import { MetricCard } from '@/components/data-display/metric-card';
 import { SignalSummaryCard } from '@/components/data-display/signal-summary-card';
+import {
+  getBalancedSixColumnGridClass,
+  getBalancedSixColumnItemClass,
+} from '@/components/shared/balanced-six-column-grid';
 import { DashboardSection } from '@/components/shared/dashboard-section';
 import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { MetricDrilldownButton } from '@/components/shared/metric-drilldown-button';
@@ -136,11 +140,12 @@ function renderFileDistributionLabel(item) {
   );
 }
 
-function getPrimaryKpiGridClass(itemCount) {
-  if (itemCount <= 1) return 'grid grid-cols-1 gap-4';
-  if (itemCount === 2) return 'grid grid-cols-1 gap-4 sm:grid-cols-2';
-  if (itemCount === 3) return 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3';
-  return 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4';
+function getPrimaryKpiGridClass() {
+  return getBalancedSixColumnGridClass();
+}
+
+function getPrimaryKpiItemClass(index, itemCount) {
+  return getBalancedSixColumnItemClass(index, itemCount);
 }
 
 function OverviewPanel({ title, description, children }) {
@@ -247,8 +252,9 @@ function PlatformOverviewPage() {
     attention,
     sections,
   });
-  const primaryKpiCount = (sections.users ? 1 : 0)
-    + (sections.workspaces ? 1 : 0)
+  const primaryKpiLeadingCount = (sections.users ? 1 : 0)
+    + (sections.workspaces ? 1 : 0);
+  const primaryKpiCount = primaryKpiLeadingCount
     + (sections.subscriptions ? 3 : 0);
   const showPrimaryKpis = primaryKpiCount > 0;
   const showGrowthAndDistribution = growthItems.length > 0 || sections.plans;
@@ -322,10 +328,11 @@ function PlatformOverviewPage() {
       {showPrimaryKpis && (
         <section
           aria-label="Indicateurs principaux"
-          className={getPrimaryKpiGridClass(primaryKpiCount)}
+          className={getPrimaryKpiGridClass()}
         >
           {sections.users && (
             <MetricCard
+              className={getPrimaryKpiItemClass(0, primaryKpiCount)}
               description="Nombre total de comptes inscrits sur la plateforme."
               title="Utilisateurs"
               value={formatCount(overview?.kpis?.users?.total)}
@@ -334,6 +341,10 @@ function PlatformOverviewPage() {
           )}
           {sections.workspaces && (
             <MetricCard
+              className={getPrimaryKpiItemClass(
+                sections.users ? 1 : 0,
+                primaryKpiCount,
+              )}
               description="Nombre total d’espaces de travail clients créés sur la plateforme."
               title="Espaces de travail"
               value={formatCount(overview?.kpis?.workspaces?.total)}
@@ -341,7 +352,15 @@ function PlatformOverviewPage() {
             />
           )}
           {sections.subscriptions && (
-            <PlatformEconomicKpiCards kpis={overview?.kpis} />
+            <PlatformEconomicKpiCards
+              itemClassNames={[0, 1, 2].map((offset) => (
+                getPrimaryKpiItemClass(
+                  primaryKpiLeadingCount + offset,
+                  primaryKpiCount,
+                )
+              ))}
+              kpis={overview?.kpis}
+            />
           )}
         </section>
       )}
@@ -570,5 +589,6 @@ export {
   formatTrend,
   formatUsageValue,
   getPrimaryKpiGridClass,
+  getPrimaryKpiItemClass,
   renderFileDistributionLabel,
 };
