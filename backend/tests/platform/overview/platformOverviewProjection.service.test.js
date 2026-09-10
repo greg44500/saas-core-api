@@ -24,6 +24,12 @@ const COMPLETE_OVERVIEW = {
         users: { total: 100 },
         workspaces: { total: 50 },
         activeCommercialSubscriptions: 20,
+        paidActiveSubscriptions: 12,
+        freeActiveAccesses: {
+            total: 8,
+            viaCommercialInvitation: 3,
+        },
+        activeTrials: 4,
         contractedMrrEstimate: {
             basis: 'gross_before_discounts',
             isRevenue: false,
@@ -97,6 +103,37 @@ describe('projectPlatformOverviewByPermissions', () => {
             ]),
         );
         expect(result.attention.totalSignals).toBe(11);
+    });
+
+    it('expose les KPI économiques uniquement avec subscriptions:read', () => {
+        const withSubscriptionAccess = projectPlatformOverviewByPermissions({
+            overview: COMPLETE_OVERVIEW,
+            permissions: [
+                PLATFORM_PERMISSION.OVERVIEW_READ,
+                PLATFORM_PERMISSION.SUBSCRIPTIONS_READ,
+            ],
+        });
+
+        expect(withSubscriptionAccess.kpis).toMatchObject({
+            paidActiveSubscriptions: 12,
+            freeActiveAccesses: {
+                total: 8,
+                viaCommercialInvitation: 3,
+            },
+            activeTrials: 4,
+        });
+
+        const withoutSubscriptionAccess = projectPlatformOverviewByPermissions({
+            overview: COMPLETE_OVERVIEW,
+            permissions: [PLATFORM_PERMISSION.OVERVIEW_READ],
+        });
+
+        expect(withoutSubscriptionAccess.kpis).not.toHaveProperty(
+            'paidActiveSubscriptions',
+        );
+        expect(withoutSubscriptionAccess.kpis).not.toHaveProperty(
+            'freeActiveAccesses',
+        );
     });
 
     it('ne révèle ni dérogation ni compteur caché lorsqu’entitlement_overrides:read est absent', () => {
