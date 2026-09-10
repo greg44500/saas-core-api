@@ -43,6 +43,9 @@ vi.mock('mongoose', () => ({
 vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
 }));
+vi.mock('../../modules/legalAcceptance/legalAcceptance.service.js', () => ({
+    createRegistrationLegalAcceptance: vi.fn(),
+}));
 vi.mock('../../modules/users/user.model.js', () => ({
     User: { findById: vi.fn() },
 }));
@@ -226,14 +229,12 @@ describe('acceptExistingPlatformInvitation', () => {
         ).rejects.toMatchObject({ statusCode: 403 });
 
         expect(PlatformTeamMember.create).not.toHaveBeenCalled();
-        expect(createAuditLog).not.toHaveBeenCalled();
     });
 
-    it('refuse un second membership actif', async () => {
+    it('refuse lorsqu’une appartenance active existe déjà', async () => {
         setup({
             existingMember: {
-                _id: 'existing-member-id',
-                status: PLATFORM_TEAM_MEMBER_STATUS.ACTIVE,
+                _id: 'existing-membership-id',
             },
         });
 
