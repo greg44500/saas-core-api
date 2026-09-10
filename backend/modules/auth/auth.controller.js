@@ -17,11 +17,6 @@ import { toPublicUser } from './publicUser.dto.js';
 
 import { signAccessToken } from '../../utils/jwt.js';
 
-
-/**
- * Expose uniquement la partie publique et déclarative de la politique.
- * Le mot de passe lui-même ne transite jamais par cet endpoint.
- */
 export const passwordPolicy = async (_req, res) => {
     res.status(200).json({
         status: 'success',
@@ -31,11 +26,12 @@ export const passwordPolicy = async (_req, res) => {
     });
 };
 
-/**
- * Inscrit un nouvel utilisateur avec une identité locale.
- */
 export const register = async (req, res) => {
-    const user = await registerUser(req.validated.body);
+    const user = await registerUser({
+        ...req.validated.body,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
+    });
 
     res.status(201).json({
         status: 'success',
