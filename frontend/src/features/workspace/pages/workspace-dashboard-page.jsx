@@ -1,14 +1,18 @@
-import { DashboardDisplayPreferences } from '@/components/shared/dashboard-display-preferences';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DashboardSummaryCard } from '@/features/workspace/components/dashboard-summary-card';
 import { useWorkspaceDashboardWidgets } from '@/features/workspace/hooks/use-workspace-dashboard-widgets';
+
+function getSummaryGridClass(itemCount) {
+  if (itemCount <= 1) return 'grid grid-cols-1 gap-4';
+  if (itemCount === 2) return 'grid grid-cols-1 gap-4 sm:grid-cols-2';
+  return 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3';
+}
 
 function WorkspaceDashboardPage() {
   const {
     workspace,
     accessibleWidgets,
     visibleWidgets,
-    preferencesQuery,
     isPreferencesLoading,
   } = useWorkspaceDashboardWidgets();
   const summaryWidgets = visibleWidgets.filter((widget) => widget.slot === 'summary');
@@ -18,25 +22,22 @@ function WorkspaceDashboardPage() {
     : [];
   const hasPendingContent = isPreferencesLoading
     && accessibleWidgets.some((widget) => widget.configurable && widget.slot === 'content');
+  const renderedSummaryCount = summaryWidgets.length + pendingSummaryWidgets.length;
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-primary">{workspace.name}</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Tableau de bord</h1>
-          <p className="max-w-3xl text-sm text-muted-foreground">
-            Vue synthétique du workspace courant. Les indicateurs affichés respectent les fonctionnalités réellement disponibles, les permissions de votre rôle et vos préférences personnelles d’affichage.
-          </p>
-        </div>
-
-        <DashboardDisplayPreferences
-          accessibleWidgets={accessibleWidgets}
-          preferencesQuery={preferencesQuery}
-        />
+      <header className="space-y-2">
+        <p className="text-sm font-medium text-primary">{workspace.name}</p>
+        <h1 className="text-3xl font-semibold tracking-tight">Tableau de bord</h1>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          Vue synthétique du workspace courant. Les indicateurs affichés respectent les fonctionnalités réellement disponibles, les permissions de votre rôle et vos préférences personnelles d’affichage.
+        </p>
       </header>
 
-      <section aria-label="Synthèse du workspace" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <section
+        aria-label="Synthèse du workspace"
+        className={getSummaryGridClass(renderedSummaryCount)}
+      >
         {summaryWidgets.map((widget) => {
           const Widget = widget.component;
           return <Widget key={widget.id} />;
@@ -72,4 +73,4 @@ function WorkspaceDashboardPage() {
   );
 }
 
-export { WorkspaceDashboardPage };
+export { WorkspaceDashboardPage, getSummaryGridClass };
