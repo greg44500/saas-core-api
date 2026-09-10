@@ -21,18 +21,20 @@ function formatMrrEstimate(estimate) {
  * Présente uniquement les KPI économiques déjà calculés côté backend. Le
  * frontend n'infère jamais la nature Free/Paid/Trial à partir du nom d'un Plan.
  */
-function PlatformEconomicKpiCards({ kpis }) {
+function PlatformEconomicKpiCards({ kpis, itemClassNames = [] }) {
   const freeAccesses = kpis?.freeActiveAccesses;
   const invitedFreeCount = freeAccesses?.viaCommercialInvitation;
 
   return (
     <>
       <MetricCard
+        className={itemClassNames[0]}
         description="Nombre de workspaces dont la Subscription effective est commerciale, active, valide et porte un prix contractuel strictement supérieur à zéro. Les trials sont exclus."
         title="Abonnements payants actifs"
         value={formatCount(kpis?.paidActiveSubscriptions)}
       />
       <MetricCard
+        className={itemClassNames[1]}
         description="Nombre de workspaces dont l’accès effectif actif est gratuit : baseline Free ou offre commerciale privée gratuite durable. Les trials de plans payants sont exclus."
         title="Accès gratuits actifs"
         trend={Number.isFinite(invitedFreeCount)
@@ -45,6 +47,7 @@ function PlatformEconomicKpiCards({ kpis }) {
         value={formatCount(freeAccesses?.total)}
       />
       <MetricCard
+        className={itemClassNames[2]}
         description="Équivalent mensuel brut des abonnements commerciaux actifs, calculé à partir des prix contractuels. Ce montant n’est ni facturé ni encaissé au sens comptable."
         title="Valeur mensuelle contractuelle estimée"
         value={formatMrrEstimate(kpis?.contractedMrrEstimate)}
