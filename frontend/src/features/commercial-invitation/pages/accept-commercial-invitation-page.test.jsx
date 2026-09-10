@@ -162,13 +162,14 @@ describe('AcceptCommercialInvitationPage', () => {
     });
   });
 
-  it('prévisualise l’offre avec le token conservé uniquement en runtime', async () => {
+  it('prévisualise l’offre en étape 1 avec le token conservé uniquement en runtime', async () => {
     renderAcceptance();
 
     expect(
       screen.getByRole('heading', { name: 'Découverte privée' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Beta Workspace/)).toBeInTheDocument();
+    expect(screen.getByText('Étape 1 sur 3 — Création du compte')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(mocks.preview).toHaveBeenCalledWith(TOKEN);
@@ -187,7 +188,7 @@ describe('AcceptCommercialInvitationPage', () => {
     expect(getCommercialInvitationTokenFromLocation()).toBe(TOKEN);
   });
 
-  it('refuse toute acceptation au mauvais compte et propose uniquement le changement de compte', async () => {
+  it('reste en étape 2 avec le mauvais compte et propose uniquement le changement de compte', async () => {
     const user = userEvent.setup();
     mocks.authStatus = 'authenticated';
     mocks.recipientState = {
@@ -201,6 +202,7 @@ describe('AcceptCommercialInvitationPage', () => {
     await waitFor(() => {
       expect(mocks.verifyRecipient).toHaveBeenCalledWith(TOKEN);
     });
+    expect(screen.getByText('Étape 2 sur 3 — Connexion')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Accepter et créer mon espace' }),
     ).not.toBeInTheDocument();
@@ -219,7 +221,7 @@ describe('AcceptCommercialInvitationPage', () => {
     expect(getCommercialInvitationTokenFromLocation()).toBe(TOKEN);
   });
 
-  it('accepte uniquement après vérification du bénéficiaire', async () => {
+  it('passe en étape 3 uniquement après vérification du bénéficiaire', async () => {
     const user = userEvent.setup();
     mocks.authStatus = 'authenticated';
     mocks.recipientState = {
@@ -230,6 +232,9 @@ describe('AcceptCommercialInvitationPage', () => {
 
     renderAcceptance();
 
+    expect(
+      screen.getByText('Étape 3 sur 3 — Acceptation de l’offre'),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Utiliser un autre compte' }),
     ).not.toBeInTheDocument();
