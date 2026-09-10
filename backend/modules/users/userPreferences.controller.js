@@ -18,6 +18,7 @@ async function updateMyPreferences(req, res) {
     const preferences = await updateCurrentUserPreferences({
         userId: req.user.id,
         comfort: req.validated.body.comfort,
+        dashboard: req.validated.body.dashboard,
     });
 
     res.status(200).json({
