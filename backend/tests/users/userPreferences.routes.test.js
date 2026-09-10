@@ -20,17 +20,22 @@ vi.mock('../../modules/users/userPreferences.service.js', () => ({
     updateCurrentUserPreferences: vi.fn(),
 }));
 
+const defaultPreferences = {
+    comfort: {
+        theme: 'system',
+        fontFamily: 'inter',
+        paletteId: 'core',
+        accessibilityMode: 'standard',
+    },
+    dashboard: {
+        hiddenWidgetIds: [],
+    },
+};
+
 describe('GET /api/users/me/preferences', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        getCurrentUserPreferences.mockResolvedValue({
-            comfort: {
-                theme: 'system',
-                fontFamily: 'inter',
-                paletteId: 'core',
-                accessibilityMode: 'standard',
-            },
-        });
+        getCurrentUserPreferences.mockResolvedValue(defaultPreferences);
     });
 
     it('protège et retourne uniquement les préférences courantes', async () => {
@@ -43,12 +48,7 @@ describe('GET /api/users/me/preferences', () => {
         expect(getCurrentUserPreferences).toHaveBeenCalledWith({
             userId: 'user-id',
         });
-        expect(response.body.data.preferences.comfort).toEqual({
-            theme: 'system',
-            fontFamily: 'inter',
-            paletteId: 'core',
-            accessibilityMode: 'standard',
-        });
+        expect(response.body.data.preferences).toEqual(defaultPreferences);
     });
 });
 
@@ -56,16 +56,15 @@ describe('PATCH /api/users/me/preferences', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         updateCurrentUserPreferences.mockResolvedValue({
+            ...defaultPreferences,
             comfort: {
+                ...defaultPreferences.comfort,
                 theme: 'dark',
-                fontFamily: 'inter',
-                paletteId: 'core',
-                accessibilityMode: 'standard',
             },
         });
     });
 
-    it('valide strictement et met à jour une préférence contrôlée', async () => {
+    it('valide strictement et met à jour une préférence de confort contrôlée', async () => {
         const response = await request(app)
             .patch('/api/users/me/preferences')
             .set('Authorization', 'Bearer test-token')
@@ -81,6 +80,7 @@ describe('PATCH /api/users/me/preferences', () => {
             comfort: {
                 theme: 'dark',
             },
+            dashboard: undefined,
         });
     });
 
@@ -100,7 +100,51 @@ describe('PATCH /api/users/me/preferences', () => {
             comfort: {
                 paletteId: 'leafy-green-garden',
             },
+            dashboard: undefined,
         });
+    });
+
+    it('met à jour les widgets masqués sans exiger une préférence de confort', async () => {
+        const response = await request(app)
+            .patch('/api/users/me/preferences')
+            .set('Authorization', 'Bearer test-token')
+            .send({
+                dashboard: {
+                    hiddenWidgetIds: ['core.members', 'future-module.metric'],
+                },
+            });
+
+        expect(response.status).toBe(200);
+        expect(updateCurrentUserPreferences).toHaveBeenCalledWith({
+            userId: 'user-id',
+            comfort: undefined,
+            dashboard: {
+                hiddenWidgetIds: ['core.members', 'future-module.metric'],
+            },
+        });
+    });
+
+    it('refuse les doublons et les identifiants de widgets hors contrat', async () => {
+        const duplicateResponse = await request(app)
+            .patch('/api/users/me/preferences')
+            .set('Authorization', 'Bearer test-token')
+            .send({
+                dashboard: {
+                    hiddenWidgetIds: ['core.members', 'core.members'],
+                },
+            });
+        const invalidResponse = await request(app)
+            .patch('/api/users/me/preferences')
+            .set('Authorization', 'Bearer test-token')
+            .send({
+                dashboard: {
+                    hiddenWidgetIds: ['<script>alert(1)</script>'],
+                },
+            });
+
+        expect(duplicateResponse.status).toBe(400);
+        expect(invalidResponse.status).toBe(400);
+        expect(updateCurrentUserPreferences).not.toHaveBeenCalled();
     });
 
     it('refuse une valeur CSS arbitraire comme palette', async () => {
@@ -122,9 +166,9 @@ describe('PATCH /api/users/me/preferences', () => {
             .patch('/api/users/me/preferences')
             .set('Authorization', 'Bearer test-token')
             .send({
-                comfort: {
-                    theme: 'light',
-                    customCss: 'body { display: none; }',
+                dashboard: {
+                    hiddenWidgetIds: [],
+                    customLayout: 'freeform',
                 },
             });
 
@@ -132,13 +176,18 @@ describe('PATCH /api/users/me/preferences', () => {
         expect(updateCurrentUserPreferences).not.toHaveBeenCalled();
     });
 
-    it('refuse un objet comfort vide', async () => {
-        const response = await request(app)
+    it('refuse un objet comfort vide et un body vide', async () => {
+        const comfortResponse = await request(app)
             .patch('/api/users/me/preferences')
             .set('Authorization', 'Bearer test-token')
             .send({ comfort: {} });
+        const emptyResponse = await request(app)
+            .patch('/api/users/me/preferences')
+            .set('Authorization', 'Bearer test-token')
+            .send({});
 
-        expect(response.status).toBe(400);
+        expect(comfortResponse.status).toBe(400);
+        expect(emptyResponse.status).toBe(400);
         expect(updateCurrentUserPreferences).not.toHaveBeenCalled();
     });
 });
