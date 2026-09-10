@@ -8,6 +8,9 @@ import {
 } from 'vitest';
 
 import {
+    LEGAL_ACCEPTANCE_SOURCE,
+} from '../../constants/legalDocuments.constants.js';
+import {
     PLATFORM_TEAM_ROLE_KEY,
 } from '../../constants/platformTeam.constants.js';
 import { USER_STATUS } from '../../constants/userStatus.constants.js';
@@ -22,6 +25,9 @@ import {
 import { User } from '../../modules/users/user.model.js';
 import { AuthIdentity } from '../../modules/authIdentities/authIdentity.model.js';
 import { createAuditLog } from '../../modules/auditLog/auditLog.service.js';
+import {
+    createRegistrationLegalAcceptance,
+} from '../../modules/legalAcceptance/legalAcceptance.service.js';
 import { hashPassword } from '../../utils/password.js';
 import {
     hashPlatformInvitationToken,
@@ -42,6 +48,9 @@ vi.mock('mongoose', () => ({
 
 vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
+}));
+vi.mock('../../modules/legalAcceptance/legalAcceptance.service.js', () => ({
+    createRegistrationLegalAcceptance: vi.fn(),
 }));
 vi.mock('../../modules/users/user.model.js', () => ({
     User: {
@@ -134,6 +143,7 @@ const setup = ({ existingUser = null } = {}) => {
     AuthIdentity.create.mockResolvedValue([{}]);
     PlatformTeamMember.create.mockResolvedValue([membership]);
     createAuditLog.mockResolvedValue(undefined);
+    createRegistrationLegalAcceptance.mockResolvedValue({});
     hashPassword.mockResolvedValue('password-hash');
     resolvePlatformAuthorization.mockResolvedValue({
         roleKey: PLATFORM_TEAM_ROLE_KEY.SUPER_ADMIN,
@@ -155,7 +165,8 @@ describe('acceptNewPlatformInvitation', () => {
         await expect(
             acceptNewPlatformInvitation({
                 token: 'a'.repeat(64),
-                password: 'x'.repeat(20),
+                password: 'Velo bleu sous la pluie, dimanche 47!',
+                legalAccepted: true,
             }),
         ).rejects.toMatchObject({ statusCode: 409 });
 
@@ -164,12 +175,17 @@ describe('acceptNewPlatformInvitation', () => {
         expect(PlatformTeamMember.create).not.toHaveBeenCalled();
     });
 
-    it('crée User, AuthIdentity et membership dans la même transaction', async () => {
+    it('crée User, AuthIdentity, preuve légale et membership dans la même transaction', async () => {
         const { invitation, membership, role, session, user } = setup();
+        const now = new Date('2026-09-10T18:00:00.000Z');
 
         const result = await acceptNewPlatformInvitation({
             token: 'a'.repeat(64),
-            password: 'x'.repeat(20),
+            password: 'Velo bleu sous la pluie, dimanche 47!',
+            legalAccepted: true,
+            ipAddress: '127.0.0.1',
+            userAgent: 'Vitest',
+            now,
         });
 
         expect(hashPassword).toHaveBeenCalledOnce();
@@ -192,6 +208,14 @@ describe('acceptNewPlatformInvitation', () => {
             { session },
         );
         expect(AuthIdentity.create).toHaveBeenCalledOnce();
+        expect(createRegistrationLegalAcceptance).toHaveBeenCalledWith({
+            userId: user._id,
+            source: LEGAL_ACCEPTANCE_SOURCE.PLATFORM_INVITATION_REGISTRATION,
+            ipAddress: '127.0.0.1',
+            userAgent: 'Vitest',
+            acceptedAt: now,
+            session,
+        });
         expect(PlatformTeamMember.create).toHaveBeenCalledOnce();
         expect(createAuditLog).toHaveBeenCalledOnce();
         expect(result.user).toBe(user);
