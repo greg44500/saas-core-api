@@ -13,25 +13,6 @@ import { AuthGuard, GuestGuard } from '@/features/auth/components/auth-guard';
 import { PlatformGuard } from '@/features/platform/components/platform-guard';
 import { WorkspaceGuard } from '@/features/workspace/components/workspace-guard';
 
-/**
- * Assemble la hiérarchie de navigation du frontend et ses frontières d'accès.
- *
- * Les guards protègent l'expérience utilisateur et évitent de monter des zones
- * incompatibles avec le contexte courant, mais ils ne constituent jamais une
- * autorité de sécurité : chaque endpoint backend revérifie authentification,
- * tenant, rôles, permissions et entitlements.
- *
- * Les routes applicatives injectées permettent aux modules métier d'étendre le
- * Core après clonage sans modifier cette structure. Elles restent séparées en
- * zones authentifiées, workspace et Platform afin de préserver les mêmes
- * frontières de contexte que les routes natives.
- *
- * Le lazy loading est volontairement défini au niveau des écrans/routes afin de
- * limiter le bundle initial sans déplacer de logique métier dans le routeur.
- *
- * @param {object} [applicationRoutes]
- * @returns {Array<object>} Configuration consommée par React Router.
- */
 function createAppRoutes(applicationRoutes = APPLICATION_FRONTEND_ROUTES) {
   const {
     publicRoutes,
@@ -46,6 +27,20 @@ function createAppRoutes(applicationRoutes = APPLICATION_FRONTEND_ROUTES) {
       HydrateFallback: PageLoader,
       children: [
         { index: true, Component: App },
+        {
+          path: 'legal/terms',
+          lazy: async () => {
+            const { TermsPage } = await import('@/features/legal/pages/terms-page');
+            return { Component: TermsPage };
+          },
+        },
+        {
+          path: 'legal/privacy',
+          lazy: async () => {
+            const { PrivacyPage } = await import('@/features/legal/pages/privacy-page');
+            return { Component: PrivacyPage };
+          },
+        },
         ...publicRoutes,
       ],
     },
