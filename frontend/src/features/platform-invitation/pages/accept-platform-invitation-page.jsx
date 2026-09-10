@@ -10,8 +10,11 @@ import {
 
 import { FormField } from '@/components/forms/form-field';
 import { PasswordField } from '@/components/forms/password-field';
+import { PasswordPolicyFeedback } from '@/components/forms/password-policy-feedback';
 import { PageLoader } from '@/components/shared/page-loader';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useGetPasswordPolicyQuery } from '@/features/auth/api/auth-api';
 import {
   useAcceptExistingPlatformInvitationMutation,
   useAcceptNewPlatformInvitationMutation,
@@ -39,6 +42,7 @@ function AcceptPlatformInvitationPage() {
   const tokenResult = platformInvitationTokenSchema.safeParse(
     searchParams.get('token') ?? '',
   );
+  const { data: passwordPolicy } = useGetPasswordPolicyQuery();
 
   const [acceptExisting, existingState] =
     useAcceptExistingPlatformInvitationMutation();
@@ -50,6 +54,7 @@ function AcceptPlatformInvitationPage() {
     handleSubmit,
     formState: { errors },
     setError,
+    watch,
   } = useForm({
     resolver: zodResolver(platformInvitationNewAccountSchema),
     mode: 'onBlur',
@@ -57,8 +62,12 @@ function AcceptPlatformInvitationPage() {
     defaultValues: {
       password: '',
       confirmPassword: '',
+      legalAccepted: false,
     },
   });
+
+  const password = watch('password');
+  const legalAccepted = watch('legalAccepted');
 
   if (authStatus === 'checking') {
     return <PageLoader />;
@@ -114,6 +123,7 @@ function AcceptPlatformInvitationPage() {
       await acceptNew({
         token,
         password: values.password,
+        legalAccepted: values.legalAccepted,
       }).unwrap();
 
       navigate('/login', {
@@ -185,17 +195,19 @@ function AcceptPlatformInvitationPage() {
       >
         <FormField
           error={errors.password?.message}
-          hint="15 caractères minimum."
           id="platform-invitation-password"
           label="Mot de passe"
         >
-          <PasswordField
-            autoComplete="new-password"
-            describedBy="platform-invitation-password-message"
-            id="platform-invitation-password"
-            invalid={Boolean(errors.password)}
-            {...register('password')}
-          />
+          <div className="space-y-2">
+            <PasswordField
+              autoComplete="new-password"
+              describedBy={errors.password ? 'platform-invitation-password-message' : undefined}
+              id="platform-invitation-password"
+              invalid={Boolean(errors.password)}
+              {...register('password')}
+            />
+            <PasswordPolicyFeedback password={password} policy={passwordPolicy} />
+          </div>
         </FormField>
 
         <FormField
@@ -214,6 +226,31 @@ function AcceptPlatformInvitationPage() {
           />
         </FormField>
 
+        <div className="space-y-2">
+          <label className="flex items-start gap-3 text-sm" htmlFor="platformInvitationLegalAccepted">
+            <Checkbox
+              aria-invalid={Boolean(errors.legalAccepted) || undefined}
+              id="platformInvitationLegalAccepted"
+              {...register('legalAccepted')}
+            />
+            <span className="leading-5">
+              J’accepte les{' '}
+              <Link className="font-medium text-primary hover:underline" target="_blank" to="/legal/terms">
+                Conditions générales d’utilisation
+              </Link>{' '}
+              et reconnais avoir pris connaissance de la{' '}
+              <Link className="font-medium text-primary hover:underline" target="_blank" to="/legal/privacy">
+                Politique de confidentialité
+              </Link>.
+            </span>
+          </label>
+          {errors.legalAccepted && (
+            <p className="text-sm text-destructive" id="platformInvitationLegalAccepted-message" role="alert">
+              {errors.legalAccepted.message}
+            </p>
+          )}
+        </div>
+
         {errors.root?.acceptance && (
           <p className="text-sm text-destructive" role="alert">
             {errors.root.acceptance.message}
@@ -222,7 +259,7 @@ function AcceptPlatformInvitationPage() {
 
         <Button
           className="w-full"
-          disabled={newState.isLoading}
+          disabled={newState.isLoading || !legalAccepted}
           type="submit"
         >
           {newState.isLoading ? 'Création…' : 'Créer mon accès'}
