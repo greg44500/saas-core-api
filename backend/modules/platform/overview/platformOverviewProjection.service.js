@@ -149,6 +149,11 @@ const projectPlatformOverviewByPermissions = ({
     if (sections.subscriptions) {
         projected.kpis.activeCommercialSubscriptions =
             overview.kpis?.activeCommercialSubscriptions;
+        projected.kpis.paidActiveSubscriptions =
+            overview.kpis?.paidActiveSubscriptions;
+        projected.kpis.freeActiveAccesses =
+            overview.kpis?.freeActiveAccesses;
+        projected.kpis.activeTrials = overview.kpis?.activeTrials;
         projected.kpis.contractedMrrEstimate =
             overview.kpis?.contractedMrrEstimate;
         projected.subscriptionHealth = overview.subscriptionHealth;
