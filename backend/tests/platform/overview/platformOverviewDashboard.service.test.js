@@ -17,9 +17,12 @@ const FROM = new Date('2026-08-03T12:00:00.000Z');
 const TO = new Date('2026-09-03T12:00:00.000Z');
 
 describe('platformOverviewDashboard.service', () => {
-    it('partage le même instant puis applique la projection avec les permissions runtime', async () => {
+    it('partage le même instant puis compose les KPI économiques avant projection', async () => {
         const getOverview = vi.fn(async () => ({
             generatedAt: AT,
+            kpis: {
+                workspaces: { total: 6 },
+            },
             attention: {
                 totalSignals: 3,
                 counts: { failedAuditEvents: 3 },
@@ -32,10 +35,19 @@ describe('platformOverviewDashboard.service', () => {
                 level: 'warning',
             },
         ]);
+        const getEconomicKpis = vi.fn(async () => ({
+            paidActiveSubscriptions: 2,
+            freeActiveAccesses: {
+                total: 4,
+                viaCommercialInvitation: 1,
+            },
+            activeTrials: 0,
+        }));
         const projectOverview = vi.fn(({ overview }) => overview);
         const service = createPlatformOverviewDashboardService({
             getOverview,
             getAttention,
+            getEconomicKpis,
             projectOverview,
         });
         const permissions = [
@@ -60,9 +72,19 @@ describe('platformOverviewDashboard.service', () => {
             to: TO,
             at: AT,
         });
+        expect(getEconomicKpis).toHaveBeenCalledWith({ at: AT });
         expect(projectOverview).toHaveBeenCalledWith({
             overview: {
                 generatedAt: AT,
+                kpis: {
+                    workspaces: { total: 6 },
+                    paidActiveSubscriptions: 2,
+                    freeActiveAccesses: {
+                        total: 4,
+                        viaCommercialInvitation: 1,
+                    },
+                    activeTrials: 0,
+                },
                 attention: {
                     totalSignals: 3,
                     counts: { failedAuditEvents: 3 },
@@ -89,9 +111,15 @@ describe('platformOverviewDashboard.service', () => {
             attention: { counts: {} },
         }));
         const getAttention = vi.fn(async () => []);
+        const getEconomicKpis = vi.fn(async () => ({
+            paidActiveSubscriptions: 1,
+            freeActiveAccesses: { total: 2, viaCommercialInvitation: 1 },
+            activeTrials: 0,
+        }));
         const service = createPlatformOverviewDashboardService({
             getOverview,
             getAttention,
+            getEconomicKpis,
         });
 
         const overview = await service({ at: AT });
