@@ -60,6 +60,21 @@ describe('EntityDetailsDrawer', () => {
     expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument();
   });
 
+  it('rend le drawer dans document.body pour rester attaché au viewport', () => {
+    const { container } = render(
+      <div data-testid="local-container">
+        <EntityDetailsDrawer onClose={vi.fn()} open title="Détails">
+          <p>Contenu</p>
+        </EntityDetailsDrawer>
+      </div>,
+    );
+
+    const drawer = screen.getByRole('dialog');
+
+    expect(container).not.toContainElement(drawer);
+    expect(document.body).toContainElement(drawer);
+  });
+
   it('utilise un backdrop décoratif et le niveau de layer du Design System', () => {
     render(
       <EntityDetailsDrawer onClose={vi.fn()} open title="Détails">
