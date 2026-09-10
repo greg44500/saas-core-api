@@ -9,6 +9,7 @@ import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import {
   useGetPlatformWorkspaceQuery,
   useListPlatformWorkspacesQuery,
@@ -17,11 +18,11 @@ import {
 } from '@/features/platform/api/platform-workspaces-api';
 import { PlatformTablePageSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PlatformWorkspaceDetailsDrawer } from '@/features/platform/components/platform-workspace-details-drawer';
+import { PlatformWorkspaceStatusBadge } from '@/features/platform/components/platform-workspace-status-badge';
 import {
   PLATFORM_WORKSPACE_STATUS_REASON,
   PLATFORM_WORKSPACE_STATUS_REASON_LABEL,
   formatPlatformWorkspaceDate,
-  formatPlatformWorkspaceStatus,
   formatPlatformWorkspaceStatusReason,
 } from '@/features/platform/lib/platform-workspace-formatters';
 
@@ -163,7 +164,7 @@ function PlatformWorkspacesPage() {
     {
       id: 'status',
       header: 'Statut',
-      cell: (workspace) => formatPlatformWorkspaceStatus(workspace.status),
+      cell: (workspace) => <PlatformWorkspaceStatusBadge status={workspace.status} />,
     },
     {
       id: 'reason',
@@ -280,8 +281,7 @@ function PlatformWorkspacesPage() {
               <label className="text-sm font-medium" htmlFor="platform-workspace-status-reason-details">
                 Détails du motif
               </label>
-              <textarea
-                className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              <Textarea
                 id="platform-workspace-status-reason-details"
                 maxLength={500}
                 onChange={(event) => setStatusReasonDetails(event.target.value)}
