@@ -37,7 +37,9 @@ vi.mock('@/services/api/base-api', () => ({
   },
 }));
 
-import '@/features/commercial-invitation/api/commercial-invitations-api';
+import {
+  COMMERCIAL_INVITATIONS_LIST_TAG,
+} from '@/features/commercial-invitation/api/commercial-invitations-api';
 
 describe('commercialInvitationsApi', () => {
   it('lit le catalogue privé dédié et le listing paginé', () => {
@@ -139,5 +141,11 @@ describe('commercialInvitationsApi', () => {
       method: 'POST',
       body: { token },
     });
+  });
+
+  it('rafraîchit le listing Platform après acceptation', () => {
+    const accept = captured.mutations[6];
+
+    expect(accept.invalidatesTags).toContain(COMMERCIAL_INVITATIONS_LIST_TAG);
   });
 });
