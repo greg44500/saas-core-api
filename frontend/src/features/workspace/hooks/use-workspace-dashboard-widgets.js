@@ -3,11 +3,13 @@ import {
   getAccessibleDashboardWidgets,
   getVisibleDashboardWidgets,
 } from '@/app/application-dashboard';
+import { useDashboardDisplayPreview } from '@/components/shared/dashboard-display-preview-context';
 import { useGetCurrentUserPreferencesQuery } from '@/features/preferences/api/user-preferences-api';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 
 function useWorkspaceDashboardWidgets() {
   const { can, hasFeature, workspace } = useWorkspaceContext();
+  const { previewHiddenWidgetIds } = useDashboardDisplayPreview();
   const preferencesQuery = useGetCurrentUserPreferencesQuery();
   const accessibleWidgets = getAccessibleDashboardWidgets(
     applicationDashboardWidgets,
@@ -15,7 +17,8 @@ function useWorkspaceDashboardWidgets() {
   );
   const isPreferencesLoading = preferencesQuery.data === undefined
     && (preferencesQuery.isLoading || preferencesQuery.isFetching);
-  const hiddenWidgetIds = preferencesQuery.data?.dashboard?.hiddenWidgetIds ?? [];
+  const savedHiddenWidgetIds = preferencesQuery.data?.dashboard?.hiddenWidgetIds ?? [];
+  const effectiveHiddenWidgetIds = previewHiddenWidgetIds ?? savedHiddenWidgetIds;
 
   /*
    * Tant que la préférence personnelle n'est pas connue, les widgets
@@ -26,7 +29,7 @@ function useWorkspaceDashboardWidgets() {
    */
   const visibleWidgets = isPreferencesLoading
     ? accessibleWidgets.filter((widget) => !widget.configurable)
-    : getVisibleDashboardWidgets(accessibleWidgets, hiddenWidgetIds);
+    : getVisibleDashboardWidgets(accessibleWidgets, effectiveHiddenWidgetIds);
 
   return {
     workspace,
