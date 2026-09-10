@@ -245,6 +245,10 @@ const AUDIT_ACTION_REGISTRY = freezeRegistry({
         value: 'COMMERCIAL_INVITATION_ACCEPTED',
         label: 'Invitation commerciale acceptée',
     },
+    COMMERCIAL_INVITATION_DECLINED: {
+        value: 'COMMERCIAL_INVITATION_DECLINED',
+        label: 'Invitation commerciale refusée',
+    },
     COMMERCIAL_INVITATION_REVOKED: {
         value: 'COMMERCIAL_INVITATION_REVOKED',
         label: 'Invitation commerciale révoquée',
