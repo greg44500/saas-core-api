@@ -24,11 +24,14 @@ vi.mock('@/services/api/base-api', () => ({
       return {
         useAcceptCommercialInvitationMutation: vi.fn(),
         useCreateCommercialInvitationMutation: vi.fn(),
+        useDeclineCommercialInvitationMutation: vi.fn(),
         useListCommercialInvitationOffersQuery: vi.fn(),
         useListCommercialInvitationsQuery: vi.fn(),
         usePreviewCommercialInvitationMutation: vi.fn(),
+        useRegisterCommercialInvitationRecipientMutation: vi.fn(),
         useResendCommercialInvitationMutation: vi.fn(),
         useRevokeCommercialInvitationMutation: vi.fn(),
+        useVerifyCommercialInvitationRecipientMutation: vi.fn(),
       };
     },
   },
@@ -97,18 +100,42 @@ describe('commercialInvitationsApi', () => {
     });
   });
 
-  it('envoie le token uniquement dans le body des endpoints bénéficiaire', () => {
+  it('garde le secret dans le body de tous les endpoints bénéficiaire', () => {
     const preview = captured.mutations[3];
-    const accept = captured.mutations[4];
+    const registerRecipient = captured.mutations[4];
+    const verifyRecipient = captured.mutations[5];
+    const accept = captured.mutations[6];
+    const decline = captured.mutations[7];
     const token = 'a'.repeat(64);
+    const credentials = {
+      firstName: 'Beta',
+      lastName: 'User',
+      email: 'beta@example.com',
+      password: 'long-password-for-test',
+    };
 
     expect(preview.query(token)).toEqual({
       url: '/commercial-invitations/preview',
       method: 'POST',
       body: { token },
     });
+    expect(registerRecipient.query({ token, ...credentials })).toEqual({
+      url: '/commercial-invitations/register',
+      method: 'POST',
+      body: { ...credentials, token },
+    });
+    expect(verifyRecipient.query(token)).toEqual({
+      url: '/commercial-invitations/recipient',
+      method: 'POST',
+      body: { token },
+    });
     expect(accept.query(token)).toEqual({
       url: '/commercial-invitations/accept',
+      method: 'POST',
+      body: { token },
+    });
+    expect(decline.query(token)).toEqual({
+      url: '/commercial-invitations/decline',
       method: 'POST',
       body: { token },
     });
