@@ -39,13 +39,16 @@ function hasRepeatedPattern(password, rejection) {
       continue;
     }
 
+    if (normalized.length % patternLength !== 0) {
+      continue;
+    }
+
     const pattern = normalized.slice(0, patternLength);
-    const repeated = pattern.repeat(normalized.length / patternLength);
+    const repeatCount = normalized.length / patternLength;
 
     if (
-      normalized.length % patternLength === 0
-      && repeated === normalized
-      && normalized.length / patternLength >= repeatedPatternMinimumRepeats
+      repeatCount >= repeatedPatternMinimumRepeats
+      && pattern.repeat(repeatCount) === normalized
     ) {
       return true;
     }
@@ -70,6 +73,18 @@ function isAscendingOrDescendingSequence(value, minimumLength) {
     codePoint - codePoints[index] === direction);
 }
 
+function isRepeatedSequencePrefix(value, sequence, minimumLength) {
+  if (value.length < minimumLength) {
+    return false;
+  }
+
+  const repeated = sequence.repeat(
+    Math.ceil(value.length / sequence.length),
+  );
+
+  return repeated.startsWith(value);
+}
+
 function hasTrivialSequence(password, rejection) {
   const minimumLength = rejection?.minimumSequenceLength ?? 6;
   const knownSequences = rejection?.knownSequences ?? [];
@@ -86,7 +101,8 @@ function hasTrivialSequence(password, rejection) {
   }
 
   return knownSequences.some((sequence) =>
-    sequence.includes(compact));
+    sequence.includes(compact)
+    || isRepeatedSequencePrefix(compact, sequence, minimumLength));
 }
 
 function isRejectedByPublicPolicy(password, policy) {
