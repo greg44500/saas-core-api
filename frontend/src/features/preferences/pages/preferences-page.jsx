@@ -34,7 +34,7 @@ function PreferencesPage() {
     comfortPreferences: appliedComfortPreferences,
   } = useTheme();
   const savedComfortPreferencesRef = useRef(null);
-  const hasPalettePreviewRef = useRef(false);
+  const hasAppearancePreviewRef = useRef(false);
   const preferencesQuery = useGetCurrentUserPreferencesQuery();
   const [updatePreferences, { isLoading: isSaving }] =
     useUpdateCurrentUserPreferencesMutation();
@@ -62,23 +62,32 @@ function PreferencesPage() {
   }, [comfortPreferences, reset]);
 
   useEffect(() => () => {
-    if (!hasPalettePreviewRef.current || !savedComfortPreferencesRef.current) {
+    if (!hasAppearancePreviewRef.current || !savedComfortPreferencesRef.current) {
       return;
     }
 
     /*
-     * Une palette cliquée est un aperçu tant que le formulaire n'est pas
-     * enregistré. Quitter la page ne doit donc jamais transformer cet aperçu
-     * en préférence implicite pour le reste de la session.
+     * Une police ou une palette sélectionnée reste un aperçu tant que le
+     * formulaire n'est pas enregistré. Quitter la page ne doit donc jamais
+     * transformer cet aperçu en préférence implicite pour le reste de la session.
      */
     applyComfortPreferences(savedComfortPreferencesRef.current, {
       persistLocal: false,
     });
   }, [applyComfortPreferences]);
 
+  function previewFontFamily(fontFamily, onFieldChange) {
+    onFieldChange(fontFamily);
+    hasAppearancePreviewRef.current = true;
+    applyComfortPreferences({
+      ...appliedComfortPreferences,
+      fontFamily,
+    }, { persistLocal: false });
+  }
+
   function previewPalette(paletteId, onFieldChange) {
     onFieldChange(paletteId);
-    hasPalettePreviewRef.current = true;
+    hasAppearancePreviewRef.current = true;
     applyComfortPreferences({
       ...appliedComfortPreferences,
       paletteId,
@@ -92,7 +101,7 @@ function PreferencesPage() {
       }).unwrap();
 
       savedComfortPreferencesRef.current = updatedPreferences.comfort;
-      hasPalettePreviewRef.current = false;
+      hasAppearancePreviewRef.current = false;
       applyComfortPreferences(updatedPreferences.comfort, { persistLocal: false });
       reset(updatedPreferences.comfort);
       toast({
@@ -169,13 +178,29 @@ function PreferencesPage() {
               id="fontFamily"
               label="Police"
             >
-              <Select id="fontFamily" {...register('fontFamily')}>
-                {FONT_FAMILY_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
+              <Controller
+                control={control}
+                name="fontFamily"
+                render={({ field }) => (
+                  <Select
+                    id="fontFamily"
+                    name={field.name}
+                    onBlur={field.onBlur}
+                    onChange={(event) => previewFontFamily(
+                      event.target.value,
+                      field.onChange,
+                    )}
+                    ref={field.ref}
+                    value={field.value}
+                  >
+                    {FONT_FAMILY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              />
             </FormField>
           </div>
 
