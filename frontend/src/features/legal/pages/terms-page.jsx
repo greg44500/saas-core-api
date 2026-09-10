@@ -5,7 +5,6 @@ function TermsPage() {
         <h1 className="text-3xl font-semibold tracking-tight">
           Conditions générales d’utilisation
         </h1>
-        <p className="text-sm text-muted-foreground">Version technique : 2026-09-10</p>
       </div>
 
       <section className="rounded-xl border border-warning/40 bg-warning/10 p-5">
