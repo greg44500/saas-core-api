@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Registre canonique des dettes actives
 
 **Statut :** source de vérité documentaire pour les dettes non résolues  
-**Dernière mise à jour :** 2026-09-09  
+**Dernière mise à jour :** 2026-09-10  
 **Périmètre :** Core clonable et, lorsque précisé, applications dérivées
 
 ---
@@ -63,16 +63,16 @@ produit dérivé automatiquement production-ready
 | ID | Dette | Statut |
 |---|---|---|
 | D-020 | Invitation commerciale client et offres privées de découverte | EN COURS |
-| D-011 | Design System Core, préférences utilisateur et affichage métier | EN COURS |
+| D-011 | Design System Core, préférences utilisateur et affichage métier | VALIDÉ |
 | D-021 | Gate sécurité Auth, invitations et tokens temporaires | PLANIFIÉ |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
 | D-002 | Corbeille et restauration des fichiers | PLANIFIÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
-D-001, D-014, D-018 et D-019 sont clôturées.
+D-001, D-011, D-014, D-018 et D-019 sont clôturées.
 
-D-020, D-011 et D-021 doivent être clôturées ou explicitement reclassifiées avant D-015. D-002 doit être `VALIDÉ` avant D-017 et avant toute première dérivation métier.
+D-020 et D-021 doivent être clôturées ou explicitement reclassifiées avant D-015. D-002 doit être `VALIDÉ` avant D-017 et avant toute première dérivation métier.
 
 ### 4.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -203,21 +203,21 @@ MFA, passkeys, SSO entreprise ou autres providers ne sont pas ajoutés uniquemen
 
 ## D-011 — Design System Core, préférences utilisateur et affichage métier
 
-**Statut :** EN COURS  
+**Statut :** VALIDÉ — 2026-09-10  
 **Périmètre :** Core frontend clonable + préférences utilisateur + points d'extension des applications dérivées  
-**Blocage Core 1.0 :** oui, avant D-015  
+**Blocage Core 1.0 :** levé  
 **Dépendances :** design system frontend existant, identité utilisateur, entitlement effectif et RBAC  
 **Déclencheur :** décisions produit du 2026-09-08 — stabiliser avant versionnement le langage visuel du Core, son accessibilité et le mécanisme générique de préférences.
 
-D-011 doit être traitée dans l'ordre suivant :
+Ordre réalisé :
 
 ```text
 D-011.A Design System Core                    VALIDÉ — 2026-09-09
 D-011.B Préférences de confort                VALIDÉ — 2026-09-09
-→ D-011.C Préférences d'affichage métier      PLANIFIÉ
+D-011.C Préférences d'affichage métier        VALIDÉ — 2026-09-10
 ```
 
-Le système de préférences ne doit pas précéder la stabilisation du Design System : une préférence choisit parmi des possibilités autorisées par le Design System, elle ne crée pas elle-même des styles arbitraires.
+Le système de préférences choisit uniquement parmi des possibilités autorisées par le Design System et les droits effectifs ; il ne crée ni styles arbitraires ni autorisations.
 
 ### D-011.A — Stabilisation du Design System Core
 
@@ -280,7 +280,7 @@ Une exigence d'accessibilité structurelle ne doit jamais être retirée pour pr
 
 ### Mode accessibilité renforcée
 
-D-011.B expose désormais une préférence contrôlée `accessibilityMode`. Elle constitue une **surcouche optionnelle** et non l'activation de l'accessibilité elle-même.
+D-011.B expose une préférence contrôlée `accessibilityMode`. Elle constitue une **surcouche optionnelle** et non l'activation de l'accessibilité elle-même.
 
 Le profil renforcé peut augmenter de manière contrôlée le contraste de surfaces secondaires, la visibilité des bordures et du focus, et réduire certaines animations/transitions applicatives. Le respect global de `prefers-reduced-motion` reste toujours actif indépendamment de cette préférence.
 
@@ -320,7 +320,7 @@ Le socle partagé comprend notamment la primitive `Skeleton`, `DataTableSkeleton
 
 **Sous-phase : VALIDÉE le 2026-09-09.** Gate locale finale frontend et backend verte (`lint`, tests globaux et build frontend) et validation UI manuelle confirmée avant fusion fast-forward dans `main`.
 
-Le Core fournit désormais un mécanisme contrôlé pour les préférences transversales :
+Le Core fournit un mécanisme contrôlé pour les préférences transversales :
 
 ```text
 theme             → system | light | dark
@@ -355,13 +355,15 @@ Golden Peachy Glow
 
 Les mini-palettes utilisent des métadonnées frontend contrôlées. Les couleurs réelles restent traduites vers les tokens sémantiques du Design System. Les couleurs d'état restent indépendantes des palettes de marque.
 
-La page `/account/preferences` propose thème, police, palette et accessibilité renforcée. Le clic sur une palette produit un aperçu immédiat, mais seule la sauvegarde explicite persiste le choix serveur ; quitter sans enregistrer restaure la préférence sauvegardée.
+La page `/account/preferences` propose thème, police, palette et accessibilité renforcée. Le clic sur une palette ou une police produit un aperçu immédiat, mais seule la sauvegarde explicite persiste le choix serveur ; quitter sans enregistrer restaure la préférence sauvegardée.
 
 Les ajustements transversaux de shell réalisés dans le même lot sont factorisés : identité applicative `SaaS Core`, affichage statique du workspace lorsqu'un seul est accessible, bloc partagé d'identité authentifiée, qualité Platform issue du contexte réel, raccourci Déconnexion, tooltip `bottom-end`, sidebars Workspace/Platform liées au viewport avec scroll interne de navigation si nécessaire. Ces éléments ne créent aucune nouvelle source d'autorisation.
 
 ### D-011.C — Préférences d'affichage métier
 
-Le Core doit préparer un registre extensible permettant aux futurs modules métier de déclarer widgets, cartes, indicateurs ou KPI sélectionnables par l'utilisateur sans coupler le Core à un domaine métier.
+**Sous-phase : VALIDÉE le 2026-09-10.** Validation fonctionnelle manuelle confirmée, tests ciblés et globaux locaux verts, lint vert et build frontend vert avant fusion fast-forward dans `main` au commit `084a0094dd5bdd16103476f9be67173e434faeb5`.
+
+Le Core fournit désormais un registre extensible permettant aux futurs modules métier de déclarer des widgets, cartes, indicateurs ou KPI sans coupler le Core à un domaine métier.
 
 Invariant de sécurité et d'UX :
 
@@ -377,31 +379,52 @@ préférences utilisateur
 → ensemble visible
 ```
 
-Conséquences :
+Conséquences validées :
 
 - une préférence ne crée jamais un droit ;
-- une feature/KPI/widget non autorisé n'est jamais proposé dans les préférences ;
+- un widget non autorisé n'est jamais proposé dans les préférences ;
 - masquer un widget ne retire aucun droit ;
 - afficher un widget ne crée aucun droit ;
-- le frontend ne doit jamais utiliser les préférences comme autorisation ;
-- les composants non accessibles ne doivent pas polluer le Dashboard avec un faux état « indisponible » lorsque le produit a décidé leur absence.
+- le frontend n'utilise jamais les préférences comme autorisation ;
+- les composants non accessibles sont absents plutôt qu'affichés comme « indisponibles » lorsque la convention produit le prévoit ;
+- les identifiants de widgets sont stables et strictement validés ;
+- les identifiants inconnus ou retirés peuvent être préservés sans coupler le backend au registre frontend ;
+- la prévisualisation des switches est immédiate mais la persistance n'a lieu qu'après `Enregistrer` ;
+- `Annuler` restaure l'état enregistré ;
+- les grilles rééquilibrent l'espace selon les widgets réellement visibles ;
+- le contrôle de personnalisation est contextualisé au Dashboard Workspace et au Dashboard Platform ;
+- les drawers partagés sont portallés dans `document.body` afin de rester attachés au viewport et indépendants des contextes de stacking du shell.
 
-La V1 reste volontairement limitée à afficher/masquer et, uniquement si le cadrage le justifie, réordonner. Pas de constructeur libre, grille arbitraire, redimensionnement complexe ou personnalisation visuelle par widget sans besoin produit explicite.
+Persistance :
 
-### Tests attendus D-011
+```text
+User.preferences.dashboard.hiddenWidgetIds
+```
 
-D-011.A et D-011.B sont validés par leurs gates locales respectives, leurs tests ciblés/globaux et leur validation manuelle.
+La validation backend impose une liste bornée d'identifiants syntaxiquement contrôlés, sans JSON libre et sans dépendance au registre frontend.
 
-Pour D-011.C, prévoir encore au minimum :
+Architecture Workspace :
 
-- validation backend stricte des préférences persistées si persistance serveur ;
-- tests de non-escalade : aucune préférence ne contourne Plan/entitlement/RBAC ;
-- filtrage des préférences Dashboard selon entitlement + permissions ;
-- fallbacks lorsqu'un widget enregistré n'existe plus ;
-- persistance inter-session lorsque la préférence est serveur ;
-- checklist manuelle responsive, clavier, zoom, lisibilité, thème light/dark et cohérence du Design System.
+```text
+frontend/src/app/application-dashboard.js
+→ widgets Core
+→ modules Dashboard explicitement composés
+→ filtre features + permissions
+→ préférences utilisateur
+→ composition du Dashboard
+```
 
-**Critère de clôture :** Design System Core audité et stabilisé, tokens sémantiques et responsabilités globales documentés, accessibilité structurelle non désactivable intégrée, profil d'accessibilité renforcée cadré/implémenté selon le contrat retenu, états asynchrones partagés dont Skeletons cohérents, préférences de confort strictement contrôlées, registre d'affichage métier extensible, filtrage entitlement+RBAC garanti, composants réutilisables et tests backend/frontend/accessibilité/sécurité pertinents validés avant D-015.
+Les cartes Workspace actuellement fournies par le Core (`Statut du workspace`, `Votre rôle`, `Abonnement`, etc.) servent principalement de surface générique avant dérivation. Elles ne définissent pas le contenu métier futur. Dans un SaaS dérivé, le registre est destiné à recevoir les KPI et données métier déclarés par les modules applicatifs.
+
+Le Dashboard Platform est différent : il constitue déjà une surface fonctionnelle d'administration de la plateforme. Ses domaines (`Utilisateurs`, `Workspaces`, `Plans`, `Abonnements`, `Dérogations`, `Usage/fichiers`, `Audit`, `Équipe Platform`) restent bornés par la projection backend des permissions Platform, puis éventuellement réduits par la préférence personnelle.
+
+La V1 est volontairement limitée à **afficher / masquer**. Aucun constructeur libre, drag-and-drop arbitraire, redimensionnement, personnalisation visuelle par widget ou logique métier n'est ajouté par anticipation.
+
+### Tests validés D-011
+
+D-011.A, D-011.B et D-011.C sont validés par leurs gates locales respectives, tests ciblés/globaux, lint/build applicables et validation manuelle. D-011.C couvre notamment validation backend stricte, non-escalade, filtrage entitlement/RBAC, fallback d'identifiants inconnus, persistance, prévisualisation, absence de requête pour certains widgets masqués et comportements de shell/drawer associés.
+
+**Critère de clôture atteint :** Design System Core stabilisé, accessibilité structurelle non désactivable intégrée, profil renforcé contrôlé, états asynchrones partagés, préférences de confort strictes, registre Dashboard extensible, filtrage entitlement+RBAC garanti, composants réutilisables et validation backend/frontend effectuée.
 
 ---
 
@@ -428,7 +451,7 @@ Variables/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrati
 **Statut :** PLANIFIÉ  
 **Périmètre :** Core / distribution  
 **Blocage Core 1.0 :** oui  
-**Dépendances :** D-020, D-011 et D-021 doivent être clôturées ou explicitement reclassifiées avant ouverture de la release candidate
+**Dépendances :** D-020 et D-021 doivent être clôturées ou explicitement reclassifiées avant ouverture de la release candidate
 
 À finaliser avant `v1.0.0` : SemVer, tags/releases, changelog/release notes, changements de contrats/configuration, migrations et ordre pre/post-deploy, reprise/rollback, provenance machine-readable et gate de release reproductible.
 
@@ -530,7 +553,7 @@ DOC-CODE-1 documentation source                             VALIDÉ
 → D-020 invitation commerciale / offre privée découverte    EN COURS
 D-011.A stabilisation Design System Core                    VALIDÉ
 D-011.B préférences de confort                              VALIDÉ
-→ D-011.C préférences d'affichage métier                    PLANIFIÉ
+D-011.C préférences d'affichage métier                      VALIDÉ
 → D-021 gate sécurité Auth / invitations / tokens           PLANIFIÉ
 → D-015 release/version/provenance/migrations               PLANIFIÉ
 → D-016 Playwright E2E Core                                 PLANIFIÉ
@@ -540,7 +563,7 @@ D-011.B préférences de confort                              VALIDÉ
 → taguer uniquement ensuite la release Core stable
 ```
 
-Aucune première dérivation métier avant D-002 `VALIDÉ`. Aucune release `v1.0.0` avant clôture/reclassification explicite de tous les blockers Core applicables, notamment D-020, D-011 et D-021 avant D-015.
+Aucune première dérivation métier avant D-002 `VALIDÉ`. Aucune release `v1.0.0` avant clôture/reclassification explicite des blockers Core applicables, notamment D-020 et D-021 avant D-015.
 
 ---
 
