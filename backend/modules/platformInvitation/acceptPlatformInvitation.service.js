@@ -7,6 +7,9 @@ import {
     AUDIT_STATUS,
 } from '../../constants/auditActions.constants.js';
 import {
+    LEGAL_ACCEPTANCE_SOURCE,
+} from '../../constants/legalDocuments.constants.js';
+import {
     PLATFORM_INVITATION_STATUS,
     PLATFORM_TEAM_MEMBER_STATUS,
 } from '../../constants/platformTeam.constants.js';
@@ -15,6 +18,9 @@ import { AppError } from '../../utils/appError.js';
 import { hashPassword } from '../../utils/password.js';
 import { createAuditLog } from '../auditLog/auditLog.service.js';
 import { AuthIdentity } from '../authIdentities/authIdentity.model.js';
+import {
+    createRegistrationLegalAcceptance,
+} from '../legalAcceptance/legalAcceptance.service.js';
 import { PlatformRole } from '../platformRole/platformRole.model.js';
 import {
     resolvePlatformAuthorization,
@@ -56,9 +62,6 @@ const loadAcceptableInvitation = async ({
         );
     }
 
-    // Les lectures partageant une session transactionnelle restent
-    // séquentielles : MongoDB/Mongoose ne garantit pas le parallélisme dans une
-    // transaction et peut invalider le numéro de transaction actif.
     const role = await PlatformRole.findById(invitation.role)
         .session(session);
     const inviter = await User.findById(invitation.invitedBy)
@@ -72,11 +75,6 @@ const loadAcceptableInvitation = async ({
         );
     }
 
-    /**
-     * L'autorité de l'invitant est recontrôlée depuis PlatformTeamMember au
-     * moment où les privilèges deviennent effectifs. Une ancienne invitation
-     * ne survit donc pas à la suspension ou à la révocation de son créateur.
-     */
     const inviterAuthorization = await resolvePlatformAuthorization({
         user: inviter,
         session,
@@ -261,13 +259,14 @@ const acceptExistingPlatformInvitation = async ({
 const acceptNewPlatformInvitation = async ({
     token,
     password,
+    legalAccepted,
     ipAddress = null,
     userAgent = null,
     now = new Date(),
 }) => {
-    if (!token || !password) {
+    if (!token || !password || legalAccepted !== true) {
         throw new TypeError(
-            'token and password are required to accept a new-user platform invitation',
+            'token, password and legalAccepted=true are required to accept a new-user platform invitation',
         );
     }
 
@@ -334,6 +333,15 @@ const acceptNewPlatformInvitation = async ({
                 ],
                 { session },
             );
+
+            await createRegistrationLegalAcceptance({
+                userId: user._id,
+                source: LEGAL_ACCEPTANCE_SOURCE.PLATFORM_INVITATION_REGISTRATION,
+                ipAddress,
+                userAgent,
+                acceptedAt: now,
+                session,
+            });
 
             const membership = await createPlatformMembership({
                 userId: user._id,
