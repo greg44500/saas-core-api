@@ -21,6 +21,7 @@ import {
 import { useGetPlatformAuditMetadataQuery } from '@/features/platform/api/platform-audit-logs-api';
 import { useGetPlatformOverviewQuery } from '@/features/platform/api/platform-overview-api';
 import { PlatformAttentionTable } from '@/features/platform/components/platform-attention-table';
+import { PlatformEconomicKpiCards } from '@/features/platform/components/platform-economic-kpi-cards';
 import { PlatformEntitlementOverridesDrilldownDrawer } from '@/features/platform/components/platform-entitlement-overrides-drilldown-drawer';
 import { PlatformOverviewSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PlatformOverviewPeriodFilter } from '@/features/platform/components/platform-overview-period-filter';
@@ -248,7 +249,7 @@ function PlatformOverviewPage() {
   });
   const primaryKpiCount = (sections.users ? 1 : 0)
     + (sections.workspaces ? 1 : 0)
-    + (sections.subscriptions ? 2 : 0);
+    + (sections.subscriptions ? 3 : 0);
   const showPrimaryKpis = primaryKpiCount > 0;
   const showGrowthAndDistribution = growthItems.length > 0 || sections.plans;
   const showUsageCard = sections.usage || sections.files;
@@ -340,18 +341,7 @@ function PlatformOverviewPage() {
             />
           )}
           {sections.subscriptions && (
-            <>
-              <MetricCard
-                description="Nombre de contrats commerciaux actifs et encore valides à l’instant du calcul."
-                title="Abonnements actifs"
-                value={formatCount(overview?.kpis?.activeCommercialSubscriptions)}
-              />
-              <MetricCard
-                description="Équivalent mensuel brut des abonnements commerciaux actifs, calculé à partir des prix contractuels. Ce montant n’est ni facturé ni encaissé au sens comptable."
-                title="Valeur mensuelle contractuelle estimée"
-                value={formatMrrEstimate(overview?.kpis?.contractedMrrEstimate)}
-              />
-            </>
+            <PlatformEconomicKpiCards kpis={overview?.kpis} />
           )}
         </section>
       )}
