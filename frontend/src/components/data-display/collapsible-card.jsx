@@ -38,7 +38,7 @@ function CollapsibleCard({
   const contentId = useId();
 
   return (
-    <Card className={className}>
+    <Card className={cn('only:col-span-full', className)}>
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-2">
