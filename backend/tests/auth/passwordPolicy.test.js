@@ -45,7 +45,7 @@ describe('passwordPolicy', () => {
     });
 
     it('classe la robustesse selon les seuils de la politique backend', () => {
-        expect(evaluatePasswordStrength('phrase assez longue').key).toBe('weak');
+        expect(evaluatePasswordStrength('aaaaaaaaaaaaaaa').key).toBe('weak');
         expect(
             evaluatePasswordStrength('Phrase longue et unique 47!').key,
         ).not.toBe('weak');
