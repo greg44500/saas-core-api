@@ -26,8 +26,10 @@ import {
 import {
     acceptCommercialInvitationBodySchema,
     commercialInvitationIdParamsSchema,
+    commercialInvitationRecipientBodySchema,
     createCommercialInvitationBodySchema,
     previewCommercialInvitationBodySchema,
+    registerCommercialInvitationRecipientBodySchema,
     revokeCommercialInvitationBodySchema,
 } from '../../modules/commercialInvitation/commercialInvitation.validation.js';
 import {
@@ -51,11 +53,14 @@ const {
     handlers: {
         accept: vi.fn((req, res) => res.status(201).json({ status: 'success' })),
         create: vi.fn((req, res) => res.status(201).json({ status: 'success' })),
+        decline: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         list: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         listOffers: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         preview: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
+        registerRecipient: vi.fn((req, res) => res.status(201).json({ status: 'success' })),
         resend: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
         revoke: vi.fn((req, res) => res.status(204).send()),
+        verifyRecipient: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     },
 }));
 
@@ -186,6 +191,34 @@ describe('commercialInvitationAcceptanceRouter', () => {
         expect(handlers.preview).toHaveBeenCalledOnce();
     });
 
+    it('lie l’inscription au token avant toute création de compte', async () => {
+        const response = await request(acceptanceApp)
+            .post('/commercial-invitations/register')
+            .send({});
+
+        expect(response.status).toBe(201);
+        expect(commercialInvitationRateLimiter).toHaveBeenCalledOnce();
+        expect(authenticate).not.toHaveBeenCalled();
+        expect(validateRequest).toHaveBeenCalledWith({
+            body: registerCommercialInvitationRecipientBodySchema,
+        });
+        expect(handlers.registerRecipient).toHaveBeenCalledOnce();
+    });
+
+    it('exige Auth pour vérifier le compte bénéficiaire', async () => {
+        const response = await request(acceptanceApp)
+            .post('/commercial-invitations/recipient')
+            .send({});
+
+        expect(response.status).toBe(200);
+        expect(commercialInvitationRateLimiter).toHaveBeenCalledOnce();
+        expect(authenticate).toHaveBeenCalledOnce();
+        expect(validateRequest).toHaveBeenCalledWith({
+            body: commercialInvitationRecipientBodySchema,
+        });
+        expect(handlers.verifyRecipient).toHaveBeenCalledOnce();
+    });
+
     it('exige Auth pour accepter et ne confie jamais l’identité au token seul', async () => {
         const response = await request(acceptanceApp)
             .post('/commercial-invitations/accept')
@@ -198,5 +231,19 @@ describe('commercialInvitationAcceptanceRouter', () => {
             body: acceptCommercialInvitationBodySchema,
         });
         expect(handlers.accept).toHaveBeenCalledOnce();
+    });
+
+    it('exige Auth pour refuser définitivement l’offre', async () => {
+        const response = await request(acceptanceApp)
+            .post('/commercial-invitations/decline')
+            .send({});
+
+        expect(response.status).toBe(200);
+        expect(commercialInvitationRateLimiter).toHaveBeenCalledOnce();
+        expect(authenticate).toHaveBeenCalledOnce();
+        expect(validateRequest).toHaveBeenCalledWith({
+            body: commercialInvitationRecipientBodySchema,
+        });
+        expect(handlers.decline).toHaveBeenCalledOnce();
     });
 });
