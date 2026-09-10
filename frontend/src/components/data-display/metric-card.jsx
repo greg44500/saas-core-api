@@ -35,7 +35,7 @@ function MetricCard({
     ?? TREND_TONE_CLASS.neutral;
 
   return (
-    <Card className={cn('flex h-full flex-col', className)}>
+    <Card className={cn('flex h-full flex-col only:col-span-full', className)}>
       <CardHeader className="min-h-16">
         <div className="flex items-start justify-between gap-2">
           <CardTitle
