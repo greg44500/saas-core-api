@@ -4,106 +4,117 @@ const PLATFORM_DASHBOARD_WIDGETS = Object.freeze([
   Object.freeze({
     id: 'platform.users',
     label: 'Utilisateurs',
-    description: 'Nombre de comptes et évolution des inscriptions.',
+    description: 'Comptes inscrits et évolution des inscriptions.',
     configurable: true,
-    requiredSections: Object.freeze(['users']),
+    sectionKeys: Object.freeze(['users']),
+    requiredPermissions: Object.freeze([PLATFORM_PERMISSION.USERS_READ]),
   }),
   Object.freeze({
     id: 'platform.workspaces',
     label: 'Espaces de travail',
-    description: 'Nombre de workspaces et évolution des créations.',
+    description: 'Workspaces, croissance et signaux associés.',
     configurable: true,
-    requiredSections: Object.freeze(['workspaces']),
+    sectionKeys: Object.freeze(['workspaces']),
+    requiredPermissions: Object.freeze([PLATFORM_PERMISSION.WORKSPACES_READ]),
+  }),
+  Object.freeze({
+    id: 'platform.plans',
+    label: 'Répartition par plan',
+    description: 'Répartition des workspaces par plan effectivement appliqué.',
+    configurable: true,
+    sectionKeys: Object.freeze(['plans']),
+    requiredPermissions: Object.freeze([
+      PLATFORM_PERMISSION.PLANS_READ,
+      PLATFORM_PERMISSION.WORKSPACES_READ,
+    ]),
   }),
   Object.freeze({
     id: 'platform.subscriptions',
     label: 'Abonnements',
-    description: 'Abonnements actifs et valeur mensuelle contractuelle estimée.',
+    description: 'Abonnements, valeur contractuelle et échéances associées.',
     configurable: true,
-    requiredSections: Object.freeze(['subscriptions']),
+    sectionKeys: Object.freeze(['subscriptions']),
+    requiredPermissions: Object.freeze([PLATFORM_PERMISSION.SUBSCRIPTIONS_READ]),
   }),
   Object.freeze({
-    id: 'platform.growth',
-    label: 'Croissance de la plateforme',
-    description: 'Comparaison des créations avec la période précédente.',
+    id: 'platform.overrides',
+    label: 'Dérogations de droits',
+    description: 'Dérogations actives, programmées et arrivant à échéance.',
     configurable: true,
-    anySections: Object.freeze(['users', 'workspaces']),
+    sectionKeys: Object.freeze(['overrides']),
+    requiredPermissions: Object.freeze([
+      PLATFORM_PERMISSION.ENTITLEMENT_OVERRIDES_READ,
+    ]),
   }),
   Object.freeze({
-    id: 'platform.plan-distribution',
-    label: 'Répartition par plan',
-    description: 'Répartition des workspaces par plan effectivement appliqué.',
+    id: 'platform.usage',
+    label: 'Usage et fichiers',
+    description: 'Consommation fonctionnelle, fichiers actifs et stockage.',
     configurable: true,
-    requiredSections: Object.freeze(['plans']),
+    sectionKeys: Object.freeze(['usage', 'files']),
+    requiredPermissions: Object.freeze([PLATFORM_PERMISSION.WORKSPACES_READ]),
+  }),
+  Object.freeze({
+    id: 'platform.audit',
+    label: 'Audit et signaux associés',
+    description: 'Événements d’audit et alertes administratives associées.',
+    configurable: true,
+    sectionKeys: Object.freeze(['audit']),
+    requiredPermissions: Object.freeze([PLATFORM_PERMISSION.AUDIT_LOGS_READ]),
   }),
   Object.freeze({
     id: 'platform.team',
     label: 'Équipe de la Plateforme',
     description: 'Effectif interne, statuts d’accès et répartition par rôle.',
     configurable: true,
+    sectionKeys: Object.freeze([]),
     requiredPermissions: Object.freeze([PLATFORM_PERMISSION.TEAM_READ]),
-  }),
-  Object.freeze({
-    id: 'platform.usage',
-    label: 'Usage de la plateforme',
-    description: 'Consommation fonctionnelle et stockage des fichiers.',
-    configurable: true,
-    anySections: Object.freeze(['usage', 'files']),
-  }),
-  Object.freeze({
-    id: 'platform.commercial-health',
-    label: 'Échéances et exceptions',
-    description: 'Échéances commerciales et dérogations de droits.',
-    configurable: true,
-    anySections: Object.freeze(['subscriptions', 'overrides']),
-  }),
-  Object.freeze({
-    id: 'platform.attention',
-    label: 'Points nécessitant une attention',
-    description: 'Signaux administratifs nécessitant une vérification.',
-    configurable: true,
-    anySections: Object.freeze([
-      'subscriptions',
-      'workspaces',
-      'overrides',
-      'audit',
-    ]),
   }),
 ]);
 
-function getAccessiblePlatformDashboardWidgets(
-  widgets,
-  { sections, permissions = [] },
-) {
+function getAccessiblePlatformDashboardWidgets(widgets, permissions = []) {
   const grantedPermissions = new Set(permissions);
 
-  return widgets.filter((widget) => {
-    const requiredSections = widget.requiredSections ?? [];
-    const anySections = widget.anySections ?? [];
-    const requiredPermissions = widget.requiredPermissions ?? [];
-
-    return requiredSections.every((section) => sections?.[section] === true)
-      && (anySections.length === 0
-        || anySections.some((section) => sections?.[section] === true))
-      && requiredPermissions.every((permission) => grantedPermissions.has(permission));
-  });
+  return widgets.filter((widget) => (
+    (widget.requiredPermissions ?? [])
+      .every((permission) => grantedPermissions.has(permission))
+  ));
 }
 
-function getVisiblePlatformDashboardWidgetIds(
-  accessibleWidgets,
-  hiddenWidgetIds = [],
-) {
+function getHiddenPlatformSectionKeys(hiddenWidgetIds = []) {
   const hiddenIds = new Set(hiddenWidgetIds);
 
   return new Set(
-    accessibleWidgets
-      .filter((widget) => !hiddenIds.has(widget.id))
-      .map((widget) => widget.id),
+    PLATFORM_DASHBOARD_WIDGETS
+      .filter((widget) => hiddenIds.has(widget.id))
+      .flatMap((widget) => widget.sectionKeys),
   );
+}
+
+function applyPlatformDashboardPreferences(overview, hiddenWidgetIds = []) {
+  if (!overview?.availableSections) return overview;
+
+  const hiddenSectionKeys = getHiddenPlatformSectionKeys(hiddenWidgetIds);
+
+  return {
+    ...overview,
+    availableSections: Object.fromEntries(
+      Object.entries(overview.availableSections).map(([key, isAvailable]) => [
+        key,
+        isAvailable === true && !hiddenSectionKeys.has(key),
+      ]),
+    ),
+  };
+}
+
+function isPlatformDashboardWidgetVisible(widgetId, hiddenWidgetIds = []) {
+  return !new Set(hiddenWidgetIds).has(widgetId);
 }
 
 export {
   PLATFORM_DASHBOARD_WIDGETS,
+  applyPlatformDashboardPreferences,
   getAccessiblePlatformDashboardWidgets,
-  getVisiblePlatformDashboardWidgetIds,
+  getHiddenPlatformSectionKeys,
+  isPlatformDashboardWidgetVisible,
 };
