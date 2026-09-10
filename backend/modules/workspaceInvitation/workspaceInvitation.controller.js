@@ -1,4 +1,5 @@
 import {
+    acceptNewWorkspaceInvitation,
     acceptWorkspaceInvitation,
 } from './acceptWorkspaceInvitation.service.js';
 import {
@@ -120,8 +121,34 @@ const accept = async (req, res) => {
     });
 };
 
+const acceptNew = async (req, res) => {
+    const { invitation, membership } =
+        await acceptNewWorkspaceInvitation({
+            token: req.validated.body.token,
+            firstName: req.validated.body.firstName,
+            lastName: req.validated.body.lastName,
+            password: req.validated.body.password,
+            legalAccepted: req.validated.body.legalAccepted,
+            ipAddress: req.context.ipAddress,
+            userAgent: req.context.userAgent,
+        });
+
+    res.status(201).json({
+        status: 'success',
+        data: {
+            membership: {
+                id: membership._id.toString(),
+                workspaceId: invitation.workspace.toString(),
+                roleId: membership.role.toString(),
+                status: membership.status,
+            },
+        },
+    });
+};
+
 export {
     accept,
+    acceptNew,
     create,
     list,
     resend,
