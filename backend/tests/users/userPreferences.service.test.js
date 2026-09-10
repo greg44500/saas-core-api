@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { User } from '../../modules/users/user.model.js';
 import {
     DEFAULT_USER_COMFORT_PREFERENCES,
+    DEFAULT_USER_DASHBOARD_PREFERENCES,
 } from '../../modules/users/userPreferences.constants.js';
 import {
     getCurrentUserPreferences,
@@ -16,7 +17,7 @@ vi.mock('../../modules/users/user.model.js', () => ({
     },
 }));
 
-describe('current user comfort preferences service', () => {
+describe('current user preferences service', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
@@ -32,10 +33,11 @@ describe('current user comfort preferences service', () => {
 
         expect(result).toEqual({
             comfort: DEFAULT_USER_COMFORT_PREFERENCES,
+            dashboard: DEFAULT_USER_DASHBOARD_PREFERENCES,
         });
     });
 
-    it('met à jour uniquement les préférences fournies', async () => {
+    it('met à jour uniquement les préférences de confort fournies', async () => {
         User.findOneAndUpdate.mockResolvedValue({
             _id: 'user-id',
             preferences: {
@@ -69,15 +71,78 @@ describe('current user comfort preferences service', () => {
             },
         );
         expect(result.comfort.theme).toBe('dark');
+        expect(result.dashboard).toEqual(DEFAULT_USER_DASHBOARD_PREFERENCES);
+    });
+
+    it('persiste uniquement la liste de widgets masqués demandée', async () => {
+        User.findOneAndUpdate.mockResolvedValue({
+            _id: 'user-id',
+            preferences: {
+                comfort: DEFAULT_USER_COMFORT_PREFERENCES,
+                dashboard: {
+                    hiddenWidgetIds: ['core.members', 'training.learners'],
+                },
+            },
+        });
+
+        const result = await updateCurrentUserPreferences({
+            userId: 'user-id',
+            dashboard: {
+                hiddenWidgetIds: ['core.members', 'training.learners'],
+            },
+        });
+
+        expect(User.findOneAndUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({ _id: 'user-id' }),
+            {
+                $set: {
+                    'preferences.dashboard.hiddenWidgetIds': [
+                        'core.members',
+                        'training.learners',
+                    ],
+                    updatedBy: 'user-id',
+                },
+            },
+            {
+                returnDocument: 'after',
+                runValidators: true,
+            },
+        );
+        expect(result.dashboard.hiddenWidgetIds).toEqual([
+            'core.members',
+            'training.learners',
+        ]);
+    });
+
+    it('conserve un identifiant de widget inconnu mais syntaxiquement valide', async () => {
+        User.findOneAndUpdate.mockResolvedValue({
+            _id: 'user-id',
+            preferences: {
+                comfort: DEFAULT_USER_COMFORT_PREFERENCES,
+                dashboard: {
+                    hiddenWidgetIds: ['future-module.metric'],
+                },
+            },
+        });
+
+        const result = await updateCurrentUserPreferences({
+            userId: 'user-id',
+            dashboard: {
+                hiddenWidgetIds: ['future-module.metric'],
+            },
+        });
+
+        expect(result.dashboard.hiddenWidgetIds).toEqual([
+            'future-module.metric',
+        ]);
     });
 
     it('refuse une mise à jour sans préférence', async () => {
         await expect(
             updateCurrentUserPreferences({
                 userId: 'user-id',
-                comfort: {},
             }),
-        ).rejects.toThrow('at least one comfort preference is required');
+        ).rejects.toThrow('at least one user preference is required');
 
         expect(User.findOneAndUpdate).not.toHaveBeenCalled();
     });
