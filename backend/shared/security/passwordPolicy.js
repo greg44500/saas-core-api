@@ -61,7 +61,7 @@ const hasRepeatedPattern = (password) => {
         return true;
     }
 
-    return /^(.{1,4})\1{3,}$/u.test(normalized);
+    return /^(.{1,8})\1{2,}$/u.test(normalized);
 };
 
 const isAscendingOrDescendingSequence = (value) => {
@@ -78,6 +78,18 @@ const isAscendingOrDescendingSequence = (value) => {
 
     return codePoints.slice(1).every((codePoint, index) =>
         codePoint - codePoints[index] === direction);
+};
+
+const isRepeatedSequencePrefix = (value, sequence) => {
+    if (value.length < 6) {
+        return false;
+    }
+
+    const repeated = sequence.repeat(
+        Math.ceil(value.length / sequence.length),
+    );
+
+    return repeated.startsWith(value);
 };
 
 const hasTrivialSequence = (password) => {
@@ -101,23 +113,20 @@ const hasTrivialSequence = (password) => {
     ];
 
     return knownSequences.some((sequence) =>
-        compact.length >= 6 && sequence.includes(compact));
+        sequence.includes(compact)
+        || isRepeatedSequencePrefix(compact, sequence));
 };
 
 const containsCommonWeakTerm = (password) => {
     const normalized = normalizeForWeakPasswordDetection(password);
 
-    return COMMON_WEAK_TERMS.some((term) => {
-        const index = normalized.indexOf(term);
-
-        if (index === -1) {
-            return false;
-        }
-
-        const remainder = normalized.slice(0, index) + normalized.slice(index + term.length);
-
-        return remainder.length <= 8 || /^\d+$/.test(remainder);
-    });
+    /*
+     * Une variante qui conserve explicitement un terme faible reste facile à
+     * deviner même si elle ajoute une année, une ponctuation ou quelques
+     * substitutions leetspeak. La longueur seule ne doit pas la réhabiliter.
+     */
+    return COMMON_WEAK_TERMS.some((term) =>
+        normalized.includes(term));
 };
 
 const getCharacterClassCount = (password) => [
@@ -148,7 +157,8 @@ const evaluatePasswordStrength = (password) => {
         }
     }
 
-    const uniqueRatio = new Set(Array.from(password)).size / Array.from(password).length;
+    const characters = Array.from(password);
+    const uniqueRatio = new Set(characters).size / characters.length;
     if (uniqueRatio >= PASSWORD_POLICY.scoring.uniqueRatio.minRatio) {
         score += PASSWORD_POLICY.scoring.uniqueRatio.points;
     }
