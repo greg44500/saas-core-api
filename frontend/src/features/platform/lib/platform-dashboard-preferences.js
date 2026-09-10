@@ -80,6 +80,13 @@ const ATTENTION_TYPE_SECTION = Object.freeze({
   audit_failed: 'audit',
 });
 
+const ATTENTION_SECTION_KEYS = Object.freeze([
+  'subscriptions',
+  'workspaces',
+  'overrides',
+  'audit',
+]);
+
 function getAccessiblePlatformDashboardWidgets(widgets, permissions = []) {
   const grantedPermissions = new Set(permissions);
 
@@ -101,6 +108,12 @@ function getHiddenPlatformSectionKeys(hiddenWidgetIds = []) {
 
 function projectAttentionByVisibleSections(attention, availableSections) {
   if (!attention) return attention;
+
+  const hasVisibleAttentionDomain = ATTENTION_SECTION_KEYS.some(
+    (section) => availableSections?.[section] === true,
+  );
+
+  if (!hasVisibleAttentionDomain) return undefined;
 
   const counts = {
     ...(availableSections.subscriptions
@@ -164,6 +177,7 @@ function isPlatformDashboardWidgetVisible(widgetId, hiddenWidgetIds = []) {
 }
 
 export {
+  ATTENTION_SECTION_KEYS,
   ATTENTION_TYPE_SECTION,
   PLATFORM_DASHBOARD_WIDGETS,
   applyPlatformDashboardPreferences,
