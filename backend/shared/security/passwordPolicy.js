@@ -46,6 +46,27 @@ const LEETSPEAK_MAP = Object.freeze({
     '7': 't',
 });
 
+const KNOWN_SEQUENCES = Object.freeze([
+    '0123456789',
+    '1234567890',
+    'abcdefghijklmnopqrstuvwxyz',
+    'zyxwvutsrqponmlkjihgfedcba',
+    'azertyuiop',
+    'poiuytreza',
+    'qwertyuiop',
+    'poiuytrewq',
+]);
+
+const PASSWORD_REJECTION_POLICY = Object.freeze({
+    weakTerms: COMMON_WEAK_TERMS,
+    leetspeakMap: LEETSPEAK_MAP,
+    knownSequences: KNOWN_SEQUENCES,
+    minimumSequenceLength: 6,
+    repeatedCharacterMinimum: 6,
+    repeatedPatternMaximumLength: 8,
+    repeatedPatternMinimumRepeats: 3,
+});
+
 const normalizeForWeakPasswordDetection = (password) =>
     password
         .toLocaleLowerCase('fr-FR')
@@ -65,7 +86,7 @@ const hasRepeatedPattern = (password) => {
 };
 
 const isAscendingOrDescendingSequence = (value) => {
-    if (value.length < 6) {
+    if (value.length < PASSWORD_REJECTION_POLICY.minimumSequenceLength) {
         return false;
     }
 
@@ -81,7 +102,7 @@ const isAscendingOrDescendingSequence = (value) => {
 };
 
 const isRepeatedSequencePrefix = (value, sequence) => {
-    if (value.length < 6) {
+    if (value.length < PASSWORD_REJECTION_POLICY.minimumSequenceLength) {
         return false;
     }
 
@@ -101,18 +122,7 @@ const hasTrivialSequence = (password) => {
         return true;
     }
 
-    const knownSequences = [
-        '0123456789',
-        '1234567890',
-        'abcdefghijklmnopqrstuvwxyz',
-        'zyxwvutsrqponmlkjihgfedcba',
-        'azertyuiop',
-        'poiuytreza',
-        'qwertyuiop',
-        'poiuytrewq',
-    ];
-
-    return knownSequences.some((sequence) =>
+    return KNOWN_SEQUENCES.some((sequence) =>
         sequence.includes(compact)
         || isRepeatedSequencePrefix(compact, sequence));
 };
@@ -215,6 +225,7 @@ const getPublicPasswordPolicy = () => ({
     maxLength: PASSWORD_POLICY.maxLength,
     levels: PASSWORD_POLICY.levels,
     scoring: PASSWORD_POLICY.scoring,
+    rejection: PASSWORD_REJECTION_POLICY,
     guidance: [
         'Les espaces, lettres, chiffres et caractères spéciaux sont autorisés.',
         'Les suites évidentes, répétitions et mots de passe trop courants sont refusés.',
