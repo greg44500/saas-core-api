@@ -155,6 +155,15 @@ const commercialInvitationSchema = new Schema(
             ref: 'User',
             default: null,
         },
+        declinedAt: {
+            type: Date,
+            default: null,
+        },
+        declinedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            default: null,
+        },
         workspace: {
             type: Schema.Types.ObjectId,
             ref: 'Workspace',
