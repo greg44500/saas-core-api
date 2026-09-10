@@ -3,6 +3,12 @@ import { z } from 'zod';
 import {
     BILLING_INTERVAL,
 } from '../../constants/subscription.constants.js';
+import {
+    passwordSchema,
+} from '../../shared/validation/password.validation.js';
+import {
+    userIdentityInputSchema,
+} from '../users/user.validation.js';
 
 const mongoIdSchema = z
     .string()
@@ -47,11 +53,23 @@ const acceptCommercialInvitationBodySchema = z.strictObject({
     token: commercialInvitationTokenSchema,
 });
 
+const commercialInvitationRecipientBodySchema = z.strictObject({
+    token: commercialInvitationTokenSchema,
+});
+
+const registerCommercialInvitationRecipientBodySchema =
+    userIdentityInputSchema.extend({
+        password: passwordSchema,
+        token: commercialInvitationTokenSchema,
+    });
+
 export {
     acceptCommercialInvitationBodySchema,
     commercialInvitationIdParamsSchema,
+    commercialInvitationRecipientBodySchema,
     commercialInvitationTokenSchema,
     createCommercialInvitationBodySchema,
     previewCommercialInvitationBodySchema,
+    registerCommercialInvitationRecipientBodySchema,
     revokeCommercialInvitationBodySchema,
 };
