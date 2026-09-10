@@ -72,6 +72,14 @@ const PLATFORM_DASHBOARD_WIDGETS = Object.freeze([
   }),
 ]);
 
+const ATTENTION_TYPE_SECTION = Object.freeze({
+  subscription_past_due: 'subscriptions',
+  trial_expiring: 'subscriptions',
+  workspace_suspended: 'workspaces',
+  override_expiring: 'overrides',
+  audit_failed: 'audit',
+});
+
 function getAccessiblePlatformDashboardWidgets(widgets, permissions = []) {
   const grantedPermissions = new Set(permissions);
 
@@ -91,18 +99,62 @@ function getHiddenPlatformSectionKeys(hiddenWidgetIds = []) {
   );
 }
 
+function projectAttentionByVisibleSections(attention, availableSections) {
+  if (!attention) return attention;
+
+  const counts = {
+    ...(availableSections.subscriptions
+      ? {
+        pastDueSubscriptions: attention.counts?.pastDueSubscriptions ?? 0,
+        trialsExpiringNext7Days: attention.counts?.trialsExpiringNext7Days ?? 0,
+      }
+      : {}),
+    ...(availableSections.workspaces
+      ? { suspendedWorkspaces: attention.counts?.suspendedWorkspaces ?? 0 }
+      : {}),
+    ...(availableSections.overrides
+      ? { overridesExpiringNext7Days: attention.counts?.overridesExpiringNext7Days ?? 0 }
+      : {}),
+    ...(availableSections.audit
+      ? { failedAuditEvents: attention.counts?.failedAuditEvents ?? 0 }
+      : {}),
+  };
+  const items = (attention.items ?? []).filter((item) => {
+    const section = ATTENTION_TYPE_SECTION[item?.type];
+    return section ? availableSections[section] === true : false;
+  });
+
+  return {
+    ...attention,
+    totalSignals: Object.values(counts).reduce(
+      (sum, value) => sum + (Number(value) || 0),
+      0,
+    ),
+    counts,
+    items,
+    ...(availableSections.audit
+      ? {}
+      : { recentFailedAuditEvents: [] }),
+  };
+}
+
 function applyPlatformDashboardPreferences(overview, hiddenWidgetIds = []) {
   if (!overview?.availableSections) return overview;
 
   const hiddenSectionKeys = getHiddenPlatformSectionKeys(hiddenWidgetIds);
+  const availableSections = Object.fromEntries(
+    Object.entries(overview.availableSections).map(([key, isAvailable]) => [
+      key,
+      isAvailable === true && !hiddenSectionKeys.has(key),
+    ]),
+  );
 
   return {
     ...overview,
-    availableSections: Object.fromEntries(
-      Object.entries(overview.availableSections).map(([key, isAvailable]) => [
-        key,
-        isAvailable === true && !hiddenSectionKeys.has(key),
-      ]),
+    availableSections,
+    attention: projectAttentionByVisibleSections(
+      overview.attention,
+      availableSections,
     ),
   };
 }
@@ -112,9 +164,11 @@ function isPlatformDashboardWidgetVisible(widgetId, hiddenWidgetIds = []) {
 }
 
 export {
+  ATTENTION_TYPE_SECTION,
   PLATFORM_DASHBOARD_WIDGETS,
   applyPlatformDashboardPreferences,
   getAccessiblePlatformDashboardWidgets,
   getHiddenPlatformSectionKeys,
   isPlatformDashboardWidgetVisible,
+  projectAttentionByVisibleSections,
 };
