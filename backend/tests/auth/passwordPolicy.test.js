@@ -19,6 +19,22 @@ describe('passwordPolicy', () => {
             'good',
             'strong',
         ]);
+        expect(publicPolicy.rejection).toEqual(
+            expect.objectContaining({
+                minimumSequenceLength: 6,
+                repeatedCharacterMinimum: 6,
+                weakTerms: expect.arrayContaining([
+                    'password',
+                    'motdepasse',
+                    'azerty',
+                ]),
+                knownSequences: expect.arrayContaining([
+                    '1234567890',
+                    'abcdefghijklmnopqrstuvwxyz',
+                    'azertyuiop',
+                ]),
+            }),
+        );
     });
 
     it.each([
