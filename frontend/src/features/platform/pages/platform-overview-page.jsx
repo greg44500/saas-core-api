@@ -135,9 +135,16 @@ function renderFileDistributionLabel(item) {
   );
 }
 
+function getPrimaryKpiGridClass(itemCount) {
+  if (itemCount <= 1) return 'grid grid-cols-1 gap-4';
+  if (itemCount === 2) return 'grid grid-cols-1 gap-4 sm:grid-cols-2';
+  if (itemCount === 3) return 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3';
+  return 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4';
+}
+
 function OverviewPanel({ title, description, children }) {
   return (
-    <Card>
+    <Card className="only:col-span-full">
       <CardHeader>
         <div className="flex items-start gap-2">
           <CardTitle>{title}</CardTitle>
@@ -239,9 +246,10 @@ function PlatformOverviewPage() {
     attention,
     sections,
   });
-  const showPrimaryKpis = sections.users
-    || sections.workspaces
-    || sections.subscriptions;
+  const primaryKpiCount = (sections.users ? 1 : 0)
+    + (sections.workspaces ? 1 : 0)
+    + (sections.subscriptions ? 2 : 0);
+  const showPrimaryKpis = primaryKpiCount > 0;
   const showGrowthAndDistribution = growthItems.length > 0 || sections.plans;
   const showUsageCard = sections.usage || sections.files;
   const showCommercialHealthCard = sections.subscriptions || sections.overrides;
@@ -313,7 +321,7 @@ function PlatformOverviewPage() {
       {showPrimaryKpis && (
         <section
           aria-label="Indicateurs principaux"
-          className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+          className={getPrimaryKpiGridClass(primaryKpiCount)}
         >
           {sections.users && (
             <MetricCard
@@ -571,5 +579,6 @@ export {
   formatMrrEstimate,
   formatTrend,
   formatUsageValue,
+  getPrimaryKpiGridClass,
   renderFileDistributionLabel,
 };
