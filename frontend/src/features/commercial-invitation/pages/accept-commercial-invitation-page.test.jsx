@@ -15,12 +15,23 @@ const mocks = vi.hoisted(() => ({
     isLoading: false,
   },
   authStatus: 'unauthenticated',
+  decline: vi.fn(),
+  declineState: {
+    error: null,
+    isLoading: false,
+  },
   logout: vi.fn(),
   logoutState: {
     isLoading: false,
   },
   preview: vi.fn(),
   previewState: {
+    data: null,
+    error: null,
+    isLoading: false,
+  },
+  verifyRecipient: vi.fn(),
+  recipientState: {
     data: null,
     error: null,
     isLoading: false,
@@ -42,9 +53,17 @@ vi.mock(
       mocks.accept,
       mocks.acceptState,
     ],
+    useDeclineCommercialInvitationMutation: () => [
+      mocks.decline,
+      mocks.declineState,
+    ],
     usePreviewCommercialInvitationMutation: () => [
       mocks.preview,
       mocks.previewState,
+    ],
+    useVerifyCommercialInvitationRecipientMutation: () => [
+      mocks.verifyRecipient,
+      mocks.recipientState,
     ],
   }),
 );
@@ -92,6 +111,7 @@ function renderAcceptance() {
         />
         <Route element={<LocationStateProbe />} path="/login" />
         <Route element={<LocationStateProbe />} path="/register" />
+        <Route element={<LocationStateProbe />} path="/" />
         <Route
           element={<LocationStateProbe />}
           path="/workspaces/:workspaceId/dashboard"
@@ -113,7 +133,16 @@ describe('AcceptCommercialInvitationPage', () => {
       error: null,
       isLoading: false,
     };
+    mocks.recipientState = {
+      data: null,
+      error: null,
+      isLoading: false,
+    };
     mocks.acceptState = {
+      error: null,
+      isLoading: false,
+    };
+    mocks.declineState = {
       error: null,
       isLoading: false,
     };
@@ -124,6 +153,9 @@ describe('AcceptCommercialInvitationPage', () => {
       unwrap: vi.fn().mockResolvedValue({
         workspace: { id: 'workspace-123' },
       }),
+    });
+    mocks.decline.mockReturnValue({
+      unwrap: vi.fn().mockResolvedValue({ status: 'declined' }),
     });
     mocks.logout.mockReturnValue({
       unwrap: vi.fn().mockResolvedValue(undefined),
@@ -155,10 +187,26 @@ describe('AcceptCommercialInvitationPage', () => {
     expect(getCommercialInvitationTokenFromLocation()).toBe(TOKEN);
   });
 
-  it('permet de changer de compte sans persister ni perdre le secret runtime', async () => {
+  it('refuse toute acceptation au mauvais compte et propose uniquement le changement de compte', async () => {
     const user = userEvent.setup();
     mocks.authStatus = 'authenticated';
+    mocks.recipientState = {
+      data: null,
+      error: { status: 403 },
+      isLoading: false,
+    };
+
     renderAcceptance();
+
+    await waitFor(() => {
+      expect(mocks.verifyRecipient).toHaveBeenCalledWith(TOKEN);
+    });
+    expect(
+      screen.queryByRole('button', { name: 'Accepter et créer mon espace' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Refuser l’offre' }),
+    ).not.toBeInTheDocument();
 
     await user.click(
       screen.getByRole('button', { name: 'Utiliser un autre compte' }),
@@ -171,10 +219,20 @@ describe('AcceptCommercialInvitationPage', () => {
     expect(getCommercialInvitationTokenFromLocation()).toBe(TOKEN);
   });
 
-  it('accepte avec une session authentifiée, efface le secret puis ouvre le workspace', async () => {
+  it('accepte uniquement après vérification du bénéficiaire', async () => {
     const user = userEvent.setup();
     mocks.authStatus = 'authenticated';
+    mocks.recipientState = {
+      data: { matchesRecipient: true },
+      error: null,
+      isLoading: false,
+    };
+
     renderAcceptance();
+
+    expect(
+      screen.queryByRole('button', { name: 'Utiliser un autre compte' }),
+    ).not.toBeInTheDocument();
 
     await user.click(
       screen.getByRole('button', { name: 'Accepter et créer mon espace' }),
@@ -186,6 +244,30 @@ describe('AcceptCommercialInvitationPage', () => {
     expect(
       await screen.findByText('/workspaces/workspace-123/dashboard|none'),
     ).toBeInTheDocument();
+    expect(getCommercialInvitationTokenFromLocation()).toBeNull();
+  });
+
+  it('refuse définitivement l’offre, invalide le secret runtime et déconnecte la session courante', async () => {
+    const user = userEvent.setup();
+    mocks.authStatus = 'authenticated';
+    mocks.recipientState = {
+      data: { matchesRecipient: true },
+      error: null,
+      isLoading: false,
+    };
+
+    renderAcceptance();
+
+    await user.click(screen.getByRole('button', { name: 'Refuser l’offre' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Refuser définitivement' }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.decline).toHaveBeenCalledWith(TOKEN);
+      expect(mocks.logout).toHaveBeenCalledOnce();
+    });
+    expect(await screen.findByText('/|none')).toBeInTheDocument();
     expect(getCommercialInvitationTokenFromLocation()).toBeNull();
   });
 });
