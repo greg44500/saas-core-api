@@ -5,7 +5,12 @@ import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-perm
 
 const mocks = vi.hoisted(() => ({
   useGetCurrentPlatformContextQuery: vi.fn(),
+  useGetCurrentUserPreferencesQuery: vi.fn(),
   useGetPlatformTeamSummaryQuery: vi.fn(),
+}));
+
+vi.mock('@/features/preferences/api/user-preferences-api', () => ({
+  useGetCurrentUserPreferencesQuery: mocks.useGetCurrentUserPreferencesQuery,
 }));
 
 vi.mock('@/features/platform/api/platform-current-context-api', () => ({
@@ -28,6 +33,11 @@ describe('PlatformTeamSnapshotSection loading', () => {
       data: {
         permissions: [PLATFORM_PERMISSION.TEAM_READ],
         status: 'active',
+      },
+    });
+    mocks.useGetCurrentUserPreferencesQuery.mockReturnValue({
+      data: {
+        dashboard: { hiddenWidgetIds: [] },
       },
     });
     mocks.useGetPlatformTeamSummaryQuery.mockReturnValue({
