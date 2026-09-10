@@ -1,6 +1,10 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 
 const DashboardDisplayPreviewContext = createContext(null);
+const EMPTY_PREVIEW_CONTEXT = Object.freeze({
+  previewHiddenWidgetIds: null,
+  setPreviewHiddenWidgetIds: () => {},
+});
 
 function DashboardDisplayPreviewProvider({ children }) {
   const [previewHiddenWidgetIds, setPreviewHiddenWidgetIds] = useState(null);
@@ -21,12 +25,7 @@ function DashboardDisplayPreviewProvider({ children }) {
  * voir l'effet des switches sans persister une préférence ni créer de droit.
  */
 function useDashboardDisplayPreview() {
-  const context = useContext(DashboardDisplayPreviewContext);
-
-  return context ?? {
-    previewHiddenWidgetIds: null,
-    setPreviewHiddenWidgetIds: () => {},
-  };
+  return useContext(DashboardDisplayPreviewContext) ?? EMPTY_PREVIEW_CONTEXT;
 }
 
 export {
