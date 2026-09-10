@@ -2,6 +2,11 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  DashboardDisplayPreviewProvider,
+  useDashboardDisplayPreview,
+} from '@/components/shared/dashboard-display-preview-context';
+
 const updatePreferences = vi.hoisted(() => vi.fn());
 const toast = vi.hoisted(() => vi.fn());
 
@@ -60,6 +65,30 @@ function createPreferencesQuery(hiddenWidgetIds = []) {
   };
 }
 
+function PreviewProbe() {
+  const { previewHiddenWidgetIds } = useDashboardDisplayPreview();
+
+  return (
+    <output data-testid="preview">
+      {previewHiddenWidgetIds === null
+        ? 'saved'
+        : [...previewHiddenWidgetIds].sort().join(',') || 'none'}
+    </output>
+  );
+}
+
+function renderPreferences(hiddenWidgetIds = []) {
+  return render(
+    <DashboardDisplayPreviewProvider>
+      <DashboardDisplayPreferences
+        accessibleWidgets={accessibleWidgets}
+        preferencesQuery={createPreferencesQuery(hiddenWidgetIds)}
+      />
+      <PreviewProbe />
+    </DashboardDisplayPreviewProvider>,
+  );
+}
+
 describe('DashboardDisplayPreferences', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -73,12 +102,7 @@ describe('DashboardDisplayPreferences', () => {
   it('propose uniquement les widgets accessibles et configurables', async () => {
     const user = userEvent.setup();
 
-    render(
-      <DashboardDisplayPreferences
-        accessibleWidgets={accessibleWidgets}
-        preferencesQuery={createPreferencesQuery()}
-      />,
-    );
+    renderPreferences();
 
     await user.click(screen.getByRole('button', {
       name: 'Personnaliser le tableau de bord',
@@ -93,19 +117,34 @@ describe('DashboardDisplayPreferences', () => {
     expect(screen.queryByText('Widget inaccessible')).not.toBeInTheDocument();
   });
 
+  it('prévisualise immédiatement un switch puis restaure l’état enregistré avec Annuler', async () => {
+    const user = userEvent.setup();
+
+    renderPreferences(['core.files']);
+
+    expect(screen.getByTestId('preview')).toHaveTextContent('saved');
+
+    await user.click(screen.getByRole('button', {
+      name: 'Personnaliser le tableau de bord',
+    }));
+    expect(screen.getByTestId('preview')).toHaveTextContent('core.files');
+
+    await user.click(screen.getByRole('switch', { name: 'Afficher Membres' }));
+    expect(screen.getByTestId('preview')).toHaveTextContent('core.files,core.members');
+
+    await user.click(screen.getByRole('button', { name: 'Annuler' }));
+    expect(screen.getByTestId('preview')).toHaveTextContent('saved');
+    expect(updatePreferences).not.toHaveBeenCalled();
+  });
+
   it('préserve les identifiants masqués hors contexte lors de l’enregistrement', async () => {
     const user = userEvent.setup();
 
-    render(
-      <DashboardDisplayPreferences
-        accessibleWidgets={accessibleWidgets}
-        preferencesQuery={createPreferencesQuery([
-          'core.files',
-          'platform.team',
-          'removed-module.old-widget',
-        ])}
-      />,
-    );
+    renderPreferences([
+      'core.files',
+      'platform.team',
+      'removed-module.old-widget',
+    ]);
 
     await user.click(screen.getByRole('button', {
       name: 'Personnaliser le tableau de bord',
@@ -123,5 +162,6 @@ describe('DashboardDisplayPreferences', () => {
         ],
       },
     });
+    expect(screen.getByTestId('preview')).toHaveTextContent('saved');
   });
 });
