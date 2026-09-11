@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 
 const useGetCurrentPlatformContextQueryMock = vi.hoisted(() => vi.fn());
@@ -22,7 +23,9 @@ function renderSidebar({
 } = {}) {
   render(
     <MemoryRouter initialEntries={[path]}>
-      <PlatformSidebar collapsed={collapsed} onToggle={onToggle} />
+      <TooltipProvider delay={0}>
+        <PlatformSidebar collapsed={collapsed} onToggle={onToggle} />
+      </TooltipProvider>
     </MemoryRouter>,
   );
 }
@@ -109,7 +112,7 @@ describe('PlatformSidebar', () => {
     expect(screen.queryByRole('button', { name: 'Sécurité & données' })).not.toBeInTheDocument();
   });
 
-  it('ouvre un flyout en sidebar réduite puis le ferme après navigation', async () => {
+  it('utilise le tooltip shadcn/Base UI en sidebar réduite et ferme le flyout après navigation', async () => {
     const user = userEvent.setup();
     renderSidebar({ collapsed: true });
 
@@ -117,7 +120,13 @@ describe('PlatformSidebar', () => {
       name: 'Sécurité & données',
     });
 
-    expect(screen.getByRole('tooltip', { name: 'Sécurité & données' })).toBeInTheDocument();
+    expect(screen.queryByText('Sécurité & données', { exact: true })).not.toBeInTheDocument();
+
+    await user.hover(securityGroup);
+    expect(await screen.findByText('Sécurité & données', { exact: true })).toBeInTheDocument();
+
+    await user.unhover(securityGroup);
+    expect(screen.queryByText('Sécurité & données', { exact: true })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Rétention & purge' })).not.toBeInTheDocument();
 
     await user.click(securityGroup);
