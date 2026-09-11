@@ -14,6 +14,9 @@ import {
 import {
     getWorkspaceEffectiveEntitlement,
 } from '../../subscriptions/subscription.service.js';
+import {
+    getUsageMetricValue,
+} from '../../usageMetric/usageMetric.service.js';
 
 
 const isValidDate = (value) =>
@@ -83,6 +86,22 @@ const assertFeatureOperationalLimits = async ({
         ) {
             throw new AppError(
                 `La fonctionnalité "${featureKey}" nécessite une limite "${metricKey}" d’au moins ${requirement.minimumEffectiveValue}.`,
+                409,
+            );
+        }
+
+        const minimumHeadroom = requirement.minimumHeadroom ?? 0;
+        if (minimumHeadroom <= 0) continue;
+
+        const usage = await getUsageMetricValue({
+            workspaceId,
+            metricKey,
+            at,
+        });
+
+        if (projectedValue - usage < minimumHeadroom) {
+            throw new AppError(
+                `La limite "${metricKey}" doit conserver une capacité disponible d’au moins ${minimumHeadroom} pour rendre la fonctionnalité "${featureKey}" utilisable.`,
                 409,
             );
         }
