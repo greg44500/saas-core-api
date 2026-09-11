@@ -50,12 +50,13 @@ describe('entitlementOverridePolicy.registry', () => {
         })).toBe(false);
     });
 
-    it('déclare le minimum opérationnel de la gestion d’équipe', () => {
+    it('déclare le minimum et la capacité disponible de la gestion d’équipe', () => {
         expect(getPlanFeatureOverridePolicy('team_management'))
             .toEqual({
                 requiredLimits: {
                     members: {
                         minimumEffectiveValue: 2,
+                        minimumHeadroom: 1,
                     },
                 },
             });
