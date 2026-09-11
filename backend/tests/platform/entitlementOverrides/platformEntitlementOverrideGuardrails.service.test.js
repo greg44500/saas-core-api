@@ -49,6 +49,16 @@ const mockEffectiveLimits = (limits) => {
     });
 };
 
+const captureError = (callback) => {
+    try {
+        callback();
+    } catch (error) {
+        return error;
+    }
+
+    return null;
+};
+
 
 describe('platformEntitlementOverrideGuardrails.service', () => {
     beforeEach(() => {
@@ -103,19 +113,19 @@ describe('platformEntitlementOverrideGuardrails.service', () => {
     });
 
     it('refuse une limite members au-delà du maximum administratif', () => {
-        expect(() => assertLimitValueWithinPolicy({
-            metricKey: 'members',
-            limitValue: 51,
-        })).toThrow(expect.objectContaining({
-            statusCode: 400,
-        }));
+        const aboveMaximum = captureError(() =>
+            assertLimitValueWithinPolicy({
+                metricKey: 'members',
+                limitValue: 51,
+            }));
+        const unlimited = captureError(() =>
+            assertLimitValueWithinPolicy({
+                metricKey: 'members',
+                limitValue: null,
+            }));
 
-        expect(() => assertLimitValueWithinPolicy({
-            metricKey: 'members',
-            limitValue: null,
-        })).toThrow(expect.objectContaining({
-            statusCode: 400,
-        }));
+        expect(aboveMaximum).toMatchObject({ statusCode: 400 });
+        expect(unlimited).toMatchObject({ statusCode: 400 });
     });
 
     it('refuse la modification directe d’une limite au-delà de sa politique', async () => {
