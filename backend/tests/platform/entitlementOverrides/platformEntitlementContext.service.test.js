@@ -9,6 +9,7 @@ import {
 const mocks = vi.hoisted(() => ({
     findWorkspaceById: vi.fn(),
     getNextEntitlementChangeAt: vi.fn(),
+    getUsageMetricValue: vi.fn(),
     getWorkspaceEffectiveEntitlement: vi.fn(),
 }));
 
@@ -34,6 +35,13 @@ vi.mock(
     () => ({
         getNextEntitlementChangeAt:
             mocks.getNextEntitlementChangeAt,
+    }),
+);
+
+vi.mock(
+    '../../../modules/usageMetric/usageMetric.service.js',
+    () => ({
+        getUsageMetricValue: mocks.getUsageMetricValue,
     }),
 );
 
@@ -96,9 +104,11 @@ describe('platformEntitlementContext.service', () => {
         mocks.getNextEntitlementChangeAt.mockResolvedValue(
             new Date('2026-09-05T08:00:00.000Z'),
         );
+        mocks.getUsageMetricValue.mockImplementation(({ metricKey }) =>
+            Promise.resolve(metricKey === 'members' ? 1 : 0));
     });
 
-    it('sépare le plan catalogue de l’état effectif et masque la clé technique du plan', async () => {
+    it('sépare le plan catalogue de l’état effectif et expose les usages sans clé technique du plan', async () => {
         const at = new Date('2026-09-04T12:00:00.000Z');
         const context = await getPlatformEntitlementContext({
             workspaceId: 'workspace-id',
@@ -127,6 +137,11 @@ describe('platformEntitlementContext.service', () => {
                     members: 2,
                 },
             },
+            usage: {
+                members: 1,
+                storage_bytes: 0,
+                file_uploads_monthly: 0,
+            },
             appliedOverrides: [
                 {
                     id: 'override-id',
@@ -150,7 +165,11 @@ describe('platformEntitlementContext.service', () => {
             workspaceId: 'workspace-id',
             at,
         });
-
+        expect(mocks.getUsageMetricValue).toHaveBeenCalledWith({
+            workspaceId: 'workspace-id',
+            metricKey: 'members',
+            at,
+        });
         expect(
             context.appliedOverrides[0],
         ).not.toHaveProperty('reason');
