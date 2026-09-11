@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 
 const STATUS_BADGE_TONE_CLASS = Object.freeze({
   neutral: 'bg-muted text-muted-foreground',
+  archive: 'bg-muted text-muted-foreground',
   warning: 'bg-warning/15 text-warning',
   destructive: 'bg-destructive/15 text-destructive',
   success: 'bg-success/15 text-success',
@@ -11,10 +12,8 @@ const STATUS_BADGE_TONE_CLASS = Object.freeze({
 /**
  * Badge sémantique partagé pour les statuts et niveaux de vigilance.
  *
- * Le composant centralise la forme et les tons ; les features choisissent le
- * sens du libellé mais ne réécrivent pas les couleurs d'état dans chaque
- * tableau ou carte. Les valeurs de tokens associées garantissent la lisibilité
- * des tons light/dark actuels sans neutraliser leur sémantique visuelle.
+ * `archive` distingue explicitement un état historique d'un état simplement
+ * neutre, même lorsque les deux utilisent volontairement une teinte discrète.
  */
 function StatusBadge({
   children,
