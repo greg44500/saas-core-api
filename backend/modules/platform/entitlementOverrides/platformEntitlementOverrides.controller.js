@@ -6,6 +6,11 @@ import {
     updatePlatformEntitlementOverride,
 } from './platformEntitlementOverrides.service.js';
 import {
+    createPlatformFeatureOverrideGroup,
+    getPlatformFeatureOverrideGroup,
+    updatePlatformFeatureOverrideGroup,
+} from './platformEntitlementOverrideGroups.service.js';
+import {
     getPlatformEntitlementContext,
 } from './platformEntitlementContext.service.js';
 
@@ -34,6 +39,17 @@ const getEntitlementOverrideById = async (req, res) => {
     });
 };
 
+const getFeatureOverrideGroup = async (req, res) => {
+    const group = await getPlatformFeatureOverrideGroup({
+        overrideId: req.validated.params.overrideId,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: { group },
+    });
+};
+
 const getEntitlementContext = async (req, res) => {
     const context = await getPlatformEntitlementContext({
         workspaceId: req.validated.params.workspaceId,
@@ -59,6 +75,20 @@ const createEntitlementOverride = async (req, res) => {
     });
 };
 
+const createFeatureOverrideGroup = async (req, res) => {
+    const group = await createPlatformFeatureOverrideGroup({
+        groupData: req.validated.body,
+        actorId: req.user._id,
+        ipAddress: req.context?.ipAddress ?? null,
+        userAgent: req.context?.userAgent ?? null,
+    });
+
+    res.status(201).json({
+        status: 'success',
+        data: { group },
+    });
+};
+
 const updateEntitlementOverride = async (req, res) => {
     const override = await updatePlatformEntitlementOverride({
         overrideId: req.validated.params.overrideId,
@@ -71,6 +101,21 @@ const updateEntitlementOverride = async (req, res) => {
     res.status(200).json({
         status: 'success',
         data: { override },
+    });
+};
+
+const updateFeatureOverrideGroup = async (req, res) => {
+    const group = await updatePlatformFeatureOverrideGroup({
+        overrideId: req.validated.params.overrideId,
+        groupData: req.validated.body,
+        actorId: req.user._id,
+        ipAddress: req.context?.ipAddress ?? null,
+        userAgent: req.context?.userAgent ?? null,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: { group },
     });
 };
 
@@ -92,9 +137,12 @@ const revokeEntitlementOverride = async (req, res) => {
 
 export {
     createEntitlementOverride,
+    createFeatureOverrideGroup,
     getEntitlementContext,
     getEntitlementOverrideById,
+    getFeatureOverrideGroup,
     listEntitlementOverrides,
     revokeEntitlementOverride,
     updateEntitlementOverride,
+    updateFeatureOverrideGroup,
 };
