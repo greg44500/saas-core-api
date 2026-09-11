@@ -330,8 +330,8 @@ const getPlatformFeatureOverrideGroup = async ({
 
 /**
  * Modifie la décision groupée comme une unité UX tout en conservant des
- * overrides atomiques. Les limites ajoutées sont créées dans la même
- * transaction ; les limites existantes restent auditables individuellement.
+ * overrides atomiques. Chaque override existant est sauvegardé et audité une
+ * seule fois, même si plusieurs propriétés changent dans la même opération.
  */
 const updatePlatformFeatureOverrideGroup = async ({
     overrideId,
@@ -390,7 +390,13 @@ const updatePlatformFeatureOverrideGroup = async ({
             assertMutableOverride({ override, now });
         }
 
-        const groupedDocuments = [primary, ...related];
+        const existingDocuments = [primary, ...related];
+        const previousById = new Map(
+            existingDocuments.map((override) => [
+                override._id.toString(),
+                snapshotOverride(override),
+            ]),
+        );
         const commonUpdates = [
             'groupName',
             'source',
@@ -399,30 +405,17 @@ const updatePlatformFeatureOverrideGroup = async ({
             'reason',
         ];
 
-        for (const override of groupedDocuments) {
-            const previous = snapshotOverride(override);
-
+        for (const override of existingDocuments) {
             for (const field of commonUpdates) {
                 if (Object.hasOwn(groupData, field)) {
                     override[field] = groupData[field];
                 }
             }
-
             override.updatedBy = actorId;
+        }
 
-            if (override === primary && Object.hasOwn(groupData, 'featureEnabled')) {
-                override.featureEnabled = groupData.featureEnabled;
-            }
-
-            await override.save({ session });
-            await auditUpdatedOverride({
-                override,
-                actorId,
-                previous,
-                ipAddress,
-                userAgent,
-                session,
-            });
+        if (Object.hasOwn(groupData, 'featureEnabled')) {
+            primary.featureEnabled = groupData.featureEnabled;
         }
 
         const relatedByMetric = new Map(
@@ -433,18 +426,8 @@ const updatePlatformFeatureOverrideGroup = async ({
             const existing = relatedByMetric.get(limit.metricKey);
 
             if (existing) {
-                const previous = snapshotOverride(existing);
                 existing.limitValue = limit.limitValue;
                 existing.updatedBy = actorId;
-                await existing.save({ session });
-                await auditUpdatedOverride({
-                    override: existing,
-                    actorId,
-                    previous,
-                    ipAddress,
-                    userAgent,
-                    session,
-                });
                 continue;
             }
 
@@ -476,6 +459,18 @@ const updatePlatformFeatureOverrideGroup = async ({
             await auditCreatedOverride({
                 override: createdLimit,
                 actorId,
+                ipAddress,
+                userAgent,
+                session,
+            });
+        }
+
+        for (const override of existingDocuments) {
+            await override.save({ session });
+            await auditUpdatedOverride({
+                override,
+                actorId,
+                previous: previousById.get(override._id.toString()),
                 ipAddress,
                 userAgent,
                 session,
