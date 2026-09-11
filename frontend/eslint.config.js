@@ -46,6 +46,12 @@ export default [
               message: 'Utiliser la primitive shadcn/Base UI depuis @/components/ui/tooltip.',
             },
           ],
+          patterns: [
+            {
+              group: ['**/components/shared/tooltip'],
+              message: 'Les tooltips doivent utiliser la primitive canonique @/components/ui/tooltip.',
+            },
+          ],
         },
       ],
       'no-unused-vars': [
