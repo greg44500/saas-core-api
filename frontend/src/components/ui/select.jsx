@@ -50,13 +50,13 @@ function SelectContent({ className, children, sideOffset = 4, ...props }) {
           )}
           {...props}
         >
-          <BaseSelect.ScrollUpArrow className="flex h-7 items-center justify-center bg-popover text-muted-foreground">
+          <BaseSelect.ScrollUpArrow className="flex h-6 items-center justify-center bg-popover text-muted-foreground">
             <ChevronUp aria-hidden="true" className="size-4" />
           </BaseSelect.ScrollUpArrow>
-          <BaseSelect.List className="max-h-72 overflow-y-auto p-1">
+          <BaseSelect.List className="max-h-60 overflow-y-auto p-1">
             {children}
           </BaseSelect.List>
-          <BaseSelect.ScrollDownArrow className="flex h-7 items-center justify-center bg-popover text-muted-foreground">
+          <BaseSelect.ScrollDownArrow className="flex h-6 items-center justify-center bg-popover text-muted-foreground">
             <ChevronDown aria-hidden="true" className="size-4" />
           </BaseSelect.ScrollDownArrow>
         </BaseSelect.Popup>
@@ -68,7 +68,7 @@ function SelectContent({ className, children, sideOffset = 4, ...props }) {
 function SelectGroup({ className, ...props }) {
   return (
     <BaseSelect.Group
-      className={cn('py-1', className)}
+      className={cn('py-0.5', className)}
       {...props}
     />
   );
@@ -78,7 +78,7 @@ function SelectLabel({ className, ...props }) {
   return (
     <BaseSelect.GroupLabel
       className={cn(
-        'px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground',
+        'px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground',
         className,
       )}
       {...props}
@@ -90,7 +90,7 @@ function SelectItem({ className, children, ...props }) {
   return (
     <BaseSelect.Item
       className={cn(
-        'relative flex min-h-9 cursor-default select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none',
+        'relative flex min-h-8 cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none',
         'data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         className,
@@ -112,7 +112,7 @@ function SelectItem({ className, children, ...props }) {
 function SelectSeparator({ className, ...props }) {
   return (
     <BaseSelect.Separator
-      className={cn('-mx-1 my-1 h-px bg-border', className)}
+      className={cn('-mx-1 my-0.5 h-px bg-border', className)}
       {...props}
     />
   );
