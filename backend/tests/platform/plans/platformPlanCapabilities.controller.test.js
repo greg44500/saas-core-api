@@ -11,7 +11,7 @@ import {
 
 
 describe('listPlanCapabilities', () => {
-    it('expose les features, leurs métriques associées et le registre actif', async () => {
+    it('expose les features, leurs métriques associées et les garde-fous de dérogation', async () => {
         const json = vi.fn();
         const status = vi.fn(() => ({ json }));
 
@@ -45,14 +45,37 @@ describe('listPlanCapabilities', () => {
                 expect.objectContaining({
                     key: 'team_management',
                     metricKeys: ['members'],
+                    overridePolicy: {
+                        requiredLimits: {
+                            members: {
+                                minimumEffectiveValue: 2,
+                            },
+                        },
+                    },
                 }),
             ]),
         );
         expect(payload.data.metrics).toEqual(
             expect.arrayContaining([
-                expect.objectContaining({ key: 'members' }),
-                expect.objectContaining({ key: 'storage_bytes' }),
-                expect.objectContaining({ key: 'file_uploads_monthly' }),
+                expect.objectContaining({
+                    key: 'members',
+                    overridePolicy: expect.objectContaining({
+                        control: 'linear_slider',
+                        max: 50,
+                    }),
+                }),
+                expect.objectContaining({
+                    key: 'storage_bytes',
+                    overridePolicy: expect.objectContaining({
+                        control: 'preset_slider',
+                    }),
+                }),
+                expect.objectContaining({
+                    key: 'file_uploads_monthly',
+                    overridePolicy: expect.objectContaining({
+                        control: 'preset_slider',
+                    }),
+                }),
             ]),
         );
     });
