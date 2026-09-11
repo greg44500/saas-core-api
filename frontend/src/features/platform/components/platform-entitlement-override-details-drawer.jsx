@@ -11,6 +11,7 @@ import {
   formatPlatformEntitlementOverrideValue,
   isEditablePlatformEntitlementOverride,
 } from '@/features/platform/lib/platform-entitlement-override-formatters';
+import { formatPlatformPlanMetric } from '@/features/platform/lib/platform-plan-formatters';
 
 function DetailRow({ label, value }) {
   return (
@@ -39,8 +40,14 @@ function getValueLabel(targetType) {
     : 'Valeur appliquée';
 }
 
+function formatLimitValue(override) {
+  if (override.limitValue === null) return 'Illimité';
+  return String(override.limitValue ?? '—');
+}
+
 function PlatformEntitlementOverrideDetails({
   error,
+  featureGroup = null,
   isLoading,
   onEdit,
   onRetry,
@@ -75,6 +82,20 @@ function PlatformEntitlementOverrideDetails({
 
   return (
     <div className="space-y-6">
+      {featureGroup?.groupName && (
+        <section className="rounded-xl border border-primary/30 bg-primary/10 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+            Dérogation sélectionnée
+          </p>
+          <p className="mt-1 text-lg font-semibold text-foreground">
+            {featureGroup.groupName}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {formatPlatformEntitlementOverrideCapability(override)}
+          </p>
+        </section>
+      )}
+
       <section>
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Dérogation
@@ -114,6 +135,23 @@ function PlatformEntitlementOverrideDetails({
           <DetailRow label="Motif" value={override.reason} />
         </dl>
       </section>
+
+      {featureGroup?.relatedOverrides?.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Limites associées
+          </h3>
+          <dl className="mt-2">
+            {featureGroup.relatedOverrides.map((relatedOverride) => (
+              <DetailRow
+                key={relatedOverride.id}
+                label={formatPlatformPlanMetric(relatedOverride.metricKey)}
+                value={formatLimitValue(relatedOverride)}
+              />
+            ))}
+          </dl>
+        </section>
+      )}
 
       <section>
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -163,6 +201,7 @@ function PlatformEntitlementOverrideDetails({
 
 function PlatformEntitlementOverrideDetailsDrawer({
   error,
+  featureGroup = null,
   isLoading,
   onClose,
   onEdit,
@@ -172,15 +211,20 @@ function PlatformEntitlementOverrideDetailsDrawer({
   open,
   override,
 }) {
+  const title = featureGroup?.groupName
+    ?? (override ? formatPlatformEntitlementOverrideCapability(override) : null)
+    ?? 'Détails de la dérogation';
+
   return (
     <EntityDetailsDrawer
       description="Dérogation commerciale appliquée au calcul d’entitlement du workspace. Les informations internes restent réservées à Platform."
       onClose={onClose}
       open={open}
-      title={override?.workspace?.name ?? 'Détails de la dérogation'}
+      title={title}
     >
       <PlatformEntitlementOverrideDetails
         error={error}
+        featureGroup={featureGroup}
         isLoading={isLoading}
         onEdit={onEdit}
         onRetry={onRetry}
