@@ -3,7 +3,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { DateTimePicker } from '@/components/forms/date-time-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlatformFeatureLimitConfiguration } from '@/features/platform/components/platform-feature-limit-configuration';
+import {
+  getRequiredLimitValue,
+  isOperationalValueSufficient,
+  PlatformFeatureLimitConfiguration,
+} from '@/features/platform/components/platform-feature-limit-configuration';
 import { PlatformFeatureSelector } from '@/features/platform/components/platform-feature-selector';
 import { PlatformMetricLimitControl } from '@/features/platform/components/platform-metric-limit-control';
 import {
@@ -84,12 +88,6 @@ function parseLimitValue({ value, mode, metric }) {
   }
 
   return limitValue;
-}
-
-function isOperationalValueSufficient(value, minimumValue) {
-  if (minimumValue === null || minimumValue === undefined) return true;
-  if (value === null) return true;
-  return Number.isInteger(value) && value >= minimumValue;
 }
 
 function PlatformEntitlementOverrideForm({
@@ -255,11 +253,16 @@ function PlatformEntitlementOverrideForm({
         const metric = metricsByKey.get(key);
         const existing = existingByMetric.get(key);
         const effectiveValue = entitlementContext?.effective?.limits?.[key];
-        const minimumEffectiveValue =
-          requiredLimits?.[key]?.minimumEffectiveValue ?? null;
+        const usageValue = entitlementContext?.usage?.[key] ?? 0;
+        const requirement = requiredLimits?.[key] ?? {};
+        const minimumRequiredValue = getRequiredLimitValue(
+          requirement,
+          usageValue,
+        );
         const needsAdjustment = !isOperationalValueSufficient(
           effectiveValue,
-          minimumEffectiveValue,
+          requirement,
+          usageValue,
         );
         const policy = metric?.overridePolicy;
         const existingUnlimited = existing?.limitValue === null;
@@ -268,11 +271,11 @@ function PlatformEntitlementOverrideForm({
         const value = Number.isInteger(existing?.limitValue)
           ? existing.limitValue
           : needsAdjustment
-            ? getInitialPolicyValue(metric, minimumEffectiveValue)
+            ? getInitialPolicyValue(metric, minimumRequiredValue)
             : Number.isInteger(effectiveValue)
               && isLimitValueAllowedByPolicy(metric, effectiveValue)
               ? effectiveValue
-              : getInitialPolicyValue(metric, minimumEffectiveValue ?? 0);
+              : getInitialPolicyValue(metric, minimumRequiredValue);
 
         return [
           key,
@@ -330,6 +333,7 @@ function PlatformEntitlementOverrideForm({
       const configuration = relatedLimits[requiredMetricKey];
       const currentEffectiveValue =
         entitlementContext?.effective?.limits?.[requiredMetricKey];
+      const usageValue = entitlementContext?.usage?.[requiredMetricKey] ?? 0;
       const projectedValue = configuration?.enabled
         ? configuration.mode === 'unlimited'
           ? null
@@ -338,7 +342,8 @@ function PlatformEntitlementOverrideForm({
 
       return !isOperationalValueSufficient(
         projectedValue,
-        requiredPolicy.minimumEffectiveValue,
+        requiredPolicy,
+        usageValue,
       );
     });
   }, [
@@ -548,6 +553,7 @@ function PlatformEntitlementOverrideForm({
               onUpdateRelatedLimit={updateRelatedLimit}
               planLimits={entitlementContext?.plan?.limits ?? {}}
               relatedLimits={relatedLimits}
+              usage={entitlementContext?.usage ?? {}}
             />
           )}
         </section>
@@ -589,6 +595,9 @@ function PlatformEntitlementOverrideForm({
                     )} · Effectif : {formatPlatformPlanLimit(
                       effectiveMetric.key,
                       entitlementContext?.effective?.limits?.[effectiveMetric.key],
+                    )} · Utilisé : {formatPlatformPlanLimit(
+                      effectiveMetric.key,
+                      entitlementContext?.usage?.[effectiveMetric.key] ?? 0,
                     )}
                   </p>
                 )}
