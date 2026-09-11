@@ -1,15 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { GroupedSearchSelect } from '@/components/shared/grouped-search-select';
 import { formatPlatformPlanFeature } from '@/features/platform/lib/platform-plan-formatters';
-
-function normalizeSearch(value) {
-  return value
-    .toLocaleLowerCase('fr-FR')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-}
 
 function PlatformFeatureSelector({
   definitions = [],
@@ -17,16 +9,13 @@ function PlatformFeatureSelector({
   onChange,
   value,
 }) {
-  const [search, setSearch] = useState('');
-
   const definitionsByKey = useMemo(
     () => new Map(definitions.map((definition) => [definition.key, definition])),
     [definitions],
   );
 
-  const groupedFeatures = useMemo(() => {
-    const normalizedSearch = normalizeSearch(search.trim());
-    const groups = new Map();
+  const groups = useMemo(() => {
+    const grouped = new Map();
 
     featureKeys.forEach((featureKey) => {
       const definition = definitionsByKey.get(featureKey) ?? {
@@ -36,109 +25,52 @@ function PlatformFeatureSelector({
         category: 'other',
         categoryLabel: 'Autres',
         displayOrder: 1000,
-        metricKeys: [],
       };
-      const searchable = normalizeSearch([
-        definition.label,
-        definition.description,
-        definition.categoryLabel,
-      ].filter(Boolean).join(' '));
-
-      if (normalizedSearch && !searchable.includes(normalizedSearch)) {
-        return;
-      }
-
       const groupKey = definition.category ?? 'other';
-      if (!groups.has(groupKey)) {
-        groups.set(groupKey, {
+
+      if (!grouped.has(groupKey)) {
+        grouped.set(groupKey, {
+          key: groupKey,
           label: definition.categoryLabel ?? 'Autres',
-          order: definition.displayOrder ?? 1000,
-          features: [],
+          order: definition.categoryDisplayOrder ?? 1000,
+          items: [],
         });
       }
 
-      groups.get(groupKey).features.push(definition);
+      grouped.get(groupKey).items.push({
+        value: definition.key,
+        label: definition.label,
+        description: definition.description ?? null,
+        order: definition.displayOrder ?? 1000,
+      });
     });
 
-    return [...groups.values()]
+    return [...grouped.values()]
       .map((group) => ({
         ...group,
-        features: [...group.features].sort(
+        items: [...group.items].sort(
           (left, right) =>
-            (left.displayOrder ?? 1000) - (right.displayOrder ?? 1000)
+            left.order - right.order
             || left.label.localeCompare(right.label, 'fr'),
         ),
       }))
       .sort((left, right) =>
-        left.label.localeCompare(right.label, 'fr'),
+        left.order - right.order
+        || left.label.localeCompare(right.label, 'fr'),
       );
-  }, [definitionsByKey, featureKeys, search]);
+  }, [definitionsByKey, featureKeys]);
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-2">
-        <label className="text-sm font-medium" htmlFor="override-feature-search">
-          Rechercher une fonctionnalité
-        </label>
-        <Input
-          id="override-feature-search"
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Nom, domaine ou usage…"
-          type="search"
-          value={search}
-        />
-      </div>
-
-      <div className="max-h-80 space-y-4 overflow-y-auto pr-1">
-        {groupedFeatures.length === 0 ? (
-          <p className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-            Aucune fonctionnalité ne correspond à cette recherche.
-          </p>
-        ) : groupedFeatures.map((group) => (
-          <section key={group.label} className="space-y-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {group.label}
-            </h4>
-            <div className="grid gap-2">
-              {group.features.map((feature) => {
-                const selected = feature.key === value;
-                const metricCount = feature.metricKeys?.length ?? 0;
-
-                return (
-                  <button
-                    aria-pressed={selected}
-                    className={cn(
-                      'rounded-lg border px-3 py-3 text-left transition-colors',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      selected
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border bg-background hover:bg-muted/50',
-                    )}
-                    key={feature.key}
-                    onClick={() => onChange(feature.key)}
-                    type="button"
-                  >
-                    <span className="block text-sm font-medium text-foreground">
-                      {feature.label}
-                    </span>
-                    {feature.description && (
-                      <span className="mt-1 block text-xs text-muted-foreground">
-                        {feature.description}
-                      </span>
-                    )}
-                    <span className="mt-2 block text-xs text-muted-foreground">
-                      {metricCount > 0
-                        ? `${metricCount} limite${metricCount > 1 ? 's' : ''} associée${metricCount > 1 ? 's' : ''}`
-                        : 'Aucune limite associée'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-      </div>
-    </div>
+    <GroupedSearchSelect
+      emptyMessage="Aucune fonctionnalité ne correspond à cette recherche."
+      groups={groups}
+      id="override-feature"
+      label="Fonctionnalité"
+      onValueChange={onChange}
+      placeholder="Sélectionner une fonctionnalité"
+      searchPlaceholder="Nom, domaine ou usage…"
+      value={value}
+    />
   );
 }
 
