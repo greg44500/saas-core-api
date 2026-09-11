@@ -7,25 +7,33 @@ import { ToastProvider } from '@/components/shared/toast-provider';
 
 const mocks = vi.hoisted(() => ({
   createOverride: vi.fn(),
+  createFeatureGroup: vi.fn(),
   revokeOverride: vi.fn(),
   updateOverride: vi.fn(),
+  updateFeatureGroup: vi.fn(),
   useCreatePlatformEntitlementOverrideMutation: vi.fn(),
+  useCreatePlatformFeatureOverrideGroupMutation: vi.fn(),
   useGetPlatformEntitlementContextQuery: vi.fn(),
   useGetPlatformEntitlementOverrideQuery: vi.fn(),
+  useGetPlatformFeatureOverrideGroupQuery: vi.fn(),
   useListPlatformEntitlementOverridesQuery: vi.fn(),
   useRevokePlatformEntitlementOverrideMutation: vi.fn(),
   useUpdatePlatformEntitlementOverrideMutation: vi.fn(),
+  useUpdatePlatformFeatureOverrideGroupMutation: vi.fn(),
   useListPlatformPlanCapabilitiesQuery: vi.fn(),
   useListPlatformWorkspacesQuery: vi.fn(),
 }));
 
 vi.mock('@/features/platform/api/platform-entitlement-overrides-api', () => ({
   useCreatePlatformEntitlementOverrideMutation: mocks.useCreatePlatformEntitlementOverrideMutation,
+  useCreatePlatformFeatureOverrideGroupMutation: mocks.useCreatePlatformFeatureOverrideGroupMutation,
   useGetPlatformEntitlementContextQuery: mocks.useGetPlatformEntitlementContextQuery,
   useGetPlatformEntitlementOverrideQuery: mocks.useGetPlatformEntitlementOverrideQuery,
+  useGetPlatformFeatureOverrideGroupQuery: mocks.useGetPlatformFeatureOverrideGroupQuery,
   useListPlatformEntitlementOverridesQuery: mocks.useListPlatformEntitlementOverridesQuery,
   useRevokePlatformEntitlementOverrideMutation: mocks.useRevokePlatformEntitlementOverrideMutation,
   useUpdatePlatformEntitlementOverrideMutation: mocks.useUpdatePlatformEntitlementOverrideMutation,
+  useUpdatePlatformFeatureOverrideGroupMutation: mocks.useUpdatePlatformFeatureOverrideGroupMutation,
 }));
 
 vi.mock('@/features/platform/api/platform-plans-api', () => ({
@@ -63,10 +71,25 @@ const override = {
 const capabilities = {
   features: ['file_upload', 'team_management'],
   featureDefinitions: [
-    { key: 'file_upload', label: 'Téléversement de fichiers' },
-    { key: 'team_management', label: 'Gestion d’équipe' },
+    {
+      key: 'file_upload',
+      label: 'Téléversement de fichiers',
+      category: 'files',
+      categoryLabel: 'Fichiers',
+      metricKeys: ['storage_bytes'],
+    },
+    {
+      key: 'team_management',
+      label: 'Gestion d’équipe',
+      category: 'workspace',
+      categoryLabel: 'Collaboration',
+      metricKeys: ['members'],
+    },
   ],
-  metrics: [{ key: 'storage_bytes', presentation: { label: 'Stockage', unit: 'bytes' } }],
+  metrics: [
+    { key: 'storage_bytes', presentation: { label: 'Stockage', unit: 'bytes' } },
+    { key: 'members', presentation: { label: 'Membres', unit: 'count' } },
+  ],
 };
 
 function mutationHook(mock) {
@@ -103,8 +126,20 @@ describe('PlatformEntitlementOverridesPage', () => {
       isLoading: false,
       refetch: vi.fn(),
     });
-    mocks.useGetPlatformEntitlementContextQuery.mockImplementation((workspaceId) => ({
-      data: workspaceId
+    mocks.useGetPlatformFeatureOverrideGroupQuery.mockReturnValue({
+      data: {
+        groupId: null,
+        groupName: null,
+        featureKey: 'file_upload',
+        primaryOverride: override,
+        relatedOverrides: [],
+      },
+      error: undefined,
+      isFetching: false,
+      isLoading: false,
+    });
+    mocks.useGetPlatformEntitlementContextQuery.mockImplementation((currentWorkspaceId) => ({
+      data: currentWorkspaceId
         ? {
             workspace: { id: 'workspace-id', name: 'Workspace Démo' },
             plan: {
@@ -112,9 +147,12 @@ describe('PlatformEntitlementOverridesPage', () => {
               key: 'free',
               name: 'Free',
               features: ['file_upload'],
-              limits: {},
+              limits: { members: 1 },
             },
-            effective: { features: ['file_upload'], limits: {} },
+            effective: {
+              features: ['file_upload'],
+              limits: { members: 1 },
+            },
             appliedOverrides: [],
             nextEntitlementChangeAt: null,
           }
@@ -139,8 +177,14 @@ describe('PlatformEntitlementOverridesPage', () => {
     mocks.useCreatePlatformEntitlementOverrideMutation.mockReturnValue(
       mutationHook(mocks.createOverride),
     );
+    mocks.useCreatePlatformFeatureOverrideGroupMutation.mockReturnValue(
+      mutationHook(mocks.createFeatureGroup),
+    );
     mocks.useUpdatePlatformEntitlementOverrideMutation.mockReturnValue(
       mutationHook(mocks.updateOverride),
+    );
+    mocks.useUpdatePlatformFeatureOverrideGroupMutation.mockReturnValue(
+      mutationHook(mocks.updateFeatureGroup),
     );
     mocks.useRevokePlatformEntitlementOverrideMutation.mockReturnValue(
       mutationHook(mocks.revokeOverride),
@@ -215,7 +259,7 @@ describe('PlatformEntitlementOverridesPage', () => {
     ).not.toBeDisabled();
   });
 
-  it('crée une dérogation exceptionnelle contextualisée depuis le Drawer', async () => {
+  it('crée une dérogation groupée avec la limite associée', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -223,13 +267,19 @@ describe('PlatformEntitlementOverridesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Dérogation exceptionnelle' }));
     const drawer = screen.getByRole('dialog', { name: 'Dérogation exceptionnelle' });
 
-    expect(within(drawer).getByText('Workspace Démo')).toBeInTheDocument();
-    expect(within(drawer).getByRole('option', { name: 'Gestion d’équipe' })).toBeInTheDocument();
-    expect(
-      within(drawer).queryByRole('option', { name: 'Téléversement de fichiers' }),
-    ).not.toBeInTheDocument();
+    expect(within(drawer).getByText('Gestion d’équipe')).toBeInTheDocument();
+    expect(within(drawer).queryByText('Téléversement de fichiers')).not.toBeInTheDocument();
+    expect(within(drawer).getByText('1 limite associée')).toBeInTheDocument();
 
-    await user.type(within(drawer).getByLabelText('Motif'), 'Accès support validé');
+    await user.type(
+      within(drawer).getByLabelText('Nom de la dérogation'),
+      'Découverte équipe',
+    );
+    await user.click(within(drawer).getByLabelText('Ajuster cette limite'));
+    const limitInput = within(drawer).getByLabelText('Limite');
+    await user.clear(limitInput);
+    await user.type(limitInput, '5');
+    await user.type(within(drawer).getByLabelText('Motif'), 'Essai commercial validé');
     await user.click(
       within(drawer).getByRole('button', {
         name: 'Créer la dérogation exceptionnelle',
@@ -237,14 +287,16 @@ describe('PlatformEntitlementOverridesPage', () => {
     );
 
     await waitFor(() => {
-      expect(mocks.createOverride).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mocks.createFeatureGroup).toHaveBeenCalledWith(expect.objectContaining({
         workspaceId: 'workspace-id',
-        targetType: 'feature',
         featureKey: 'team_management',
         featureEnabled: true,
-        reason: 'Accès support validé',
+        groupName: 'Découverte équipe',
+        relatedLimits: [{ metricKey: 'members', limitValue: 5 }],
+        reason: 'Essai commercial validé',
       }));
     });
+    expect(mocks.createOverride).not.toHaveBeenCalled();
     expect(
       await screen.findByText('Dérogation exceptionnelle créée'),
     ).toBeInTheDocument();
