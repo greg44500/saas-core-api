@@ -7,6 +7,7 @@ import { DataTable, DataTableActions } from '@/components/data-display/data-tabl
 import { StatusBadge } from '@/components/data-display/status-badge';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import { SelectField } from '@/components/shared/select-field';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,6 +41,7 @@ import {
 } from '@/features/platform/lib/platform-entitlement-override-formatters';
 
 const PAGE_SIZE = 20;
+const ALL_FILTERS_VALUE = '__all__';
 
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
@@ -54,6 +56,10 @@ function getLifecycleTone(lifecycle) {
 function readPositivePage(searchParams) {
   const value = Number(searchParams.get('page') ?? 1);
   return Number.isInteger(value) && value > 0 ? value : 1;
+}
+
+function normalizeFilterValue(value) {
+  return value === ALL_FILTERS_VALUE ? '' : value;
 }
 
 function PlatformEntitlementOverridesPage() {
@@ -252,7 +258,7 @@ function PlatformEntitlementOverridesPage() {
     },
     {
       id: 'capability',
-      header: 'Capability',
+      header: 'Cible',
       cell: (override) => formatPlatformEntitlementOverrideCapability(override),
     },
     {
@@ -299,6 +305,33 @@ function PlatformEntitlementOverridesPage() {
     || Boolean(workspacesQuery.error)
     || Boolean(entitlementContextQuery.error);
 
+  const workspaceFilterItems = [
+    { value: ALL_FILTERS_VALUE, label: 'Tous' },
+    ...workspaces.map((workspace) => ({
+      value: workspace.id,
+      label: workspace.name ?? workspace.id,
+    })),
+  ];
+  const typeFilterItems = [
+    { value: ALL_FILTERS_VALUE, label: 'Tous' },
+    { value: ENTITLEMENT_OVERRIDE_TARGET.FEATURE, label: 'Fonctionnalité' },
+    { value: ENTITLEMENT_OVERRIDE_TARGET.LIMIT, label: 'Limite autonome' },
+  ];
+  const sourceFilterItems = [
+    { value: ALL_FILTERS_VALUE, label: 'Toutes' },
+    ...Object.values(ENTITLEMENT_OVERRIDE_SOURCE).map((value) => ({
+      value,
+      label: formatPlatformEntitlementOverrideSource(value),
+    })),
+  ];
+  const lifecycleFilterItems = [
+    { value: ALL_FILTERS_VALUE, label: 'Tous' },
+    ...Object.values(ENTITLEMENT_OVERRIDE_LIFECYCLE).map((value) => ({
+      value,
+      label: formatPlatformEntitlementOverrideLifecycle(value),
+    })),
+  ];
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -331,70 +364,46 @@ function PlatformEntitlementOverridesPage() {
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="override-filter-workspace">Espace de travail</label>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              id="override-filter-workspace"
-              onChange={(event) => updateFilter('workspaceId', event.target.value)}
-              value={workspaceId}
-            >
-              <option value="">Tous</option>
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name ?? workspace.id}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="override-filter-type">Type</label>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              id="override-filter-type"
-              onChange={(event) => updateFilter('targetType', event.target.value)}
-              value={targetType}
-            >
-              <option value="">Tous</option>
-              <option value={ENTITLEMENT_OVERRIDE_TARGET.FEATURE}>Fonctionnalité</option>
-              <option value={ENTITLEMENT_OVERRIDE_TARGET.LIMIT}>Limite</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="override-filter-source">Origine</label>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              id="override-filter-source"
-              onChange={(event) => updateFilter('source', event.target.value)}
-              value={source}
-            >
-              <option value="">Toutes</option>
-              {Object.values(ENTITLEMENT_OVERRIDE_SOURCE).map((value) => (
-                <option key={value} value={value}>
-                  {formatPlatformEntitlementOverrideSource(value)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="override-filter-lifecycle">État</label>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              id="override-filter-lifecycle"
-              onChange={(event) => updateFilter('lifecycle', event.target.value)}
-              value={lifecycle}
-            >
-              <option value="">Tous</option>
-              {Object.values(ENTITLEMENT_OVERRIDE_LIFECYCLE).map((value) => (
-                <option key={value} value={value}>
-                  {formatPlatformEntitlementOverrideLifecycle(value)}
-                </option>
-              ))}
-            </select>
-          </div>
+          <SelectField
+            id="override-filter-workspace"
+            items={workspaceFilterItems}
+            label="Espace de travail"
+            onValueChange={(value) => updateFilter(
+              'workspaceId',
+              normalizeFilterValue(value),
+            )}
+            value={workspaceId || ALL_FILTERS_VALUE}
+          />
+          <SelectField
+            id="override-filter-type"
+            items={typeFilterItems}
+            label="Type"
+            onValueChange={(value) => updateFilter(
+              'targetType',
+              normalizeFilterValue(value),
+            )}
+            value={targetType || ALL_FILTERS_VALUE}
+          />
+          <SelectField
+            id="override-filter-source"
+            items={sourceFilterItems}
+            label="Origine"
+            onValueChange={(value) => updateFilter(
+              'source',
+              normalizeFilterValue(value),
+            )}
+            value={source || ALL_FILTERS_VALUE}
+          />
+          <SelectField
+            id="override-filter-lifecycle"
+            items={lifecycleFilterItems}
+            label="État"
+            onValueChange={(value) => updateFilter(
+              'lifecycle',
+              normalizeFilterValue(value),
+            )}
+            value={lifecycle || ALL_FILTERS_VALUE}
+          />
         </div>
 
         {(workspaceId || targetType || source || lifecycle) && (
@@ -444,6 +453,9 @@ function PlatformEntitlementOverridesPage() {
       <PlatformEntitlementOverrideDetailsDrawer
         error={detailQuery.error}
         featureGroup={selectedFeatureGroupQuery.data}
+        featureGroupError={selectedFeatureGroupQuery.error}
+        featureGroupLoading={selectedIsFeature
+          && (selectedFeatureGroupQuery.isLoading || selectedFeatureGroupQuery.isFetching)}
         isLoading={detailQuery.isLoading || detailQuery.isFetching}
         onClose={() => setSelectedId(null)}
         onEdit={(override) => {
