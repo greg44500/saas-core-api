@@ -96,6 +96,27 @@ describe('EntityDetailsDrawer', () => {
     );
   });
 
+  it('déplace la description visuelle vers l’aide contextuelle sans casser aria-describedby', () => {
+    render(
+      <EntityDetailsDrawer
+        description="Informations détaillées sur cette entité."
+        onClose={vi.fn()}
+        open
+        title="Détails"
+      >
+        <p>Contenu</p>
+      </EntityDetailsDrawer>,
+    );
+
+    const drawer = screen.getByRole('dialog');
+    const infoButton = screen.getByRole('button', { name: 'À propos de Détails' });
+    const description = screen.getByText('Informations détaillées sur cette entité.');
+
+    expect(infoButton).toBeInTheDocument();
+    expect(description).toHaveClass('sr-only');
+    expect(drawer).toHaveAttribute('aria-describedby', description.id);
+  });
+
   it('place le focus dans la modale, boucle Tab et ferme avec Escape', () => {
     const onClose = vi.fn();
 
