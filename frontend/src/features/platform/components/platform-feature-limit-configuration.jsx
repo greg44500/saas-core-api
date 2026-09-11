@@ -5,10 +5,22 @@ import {
 } from '@/features/platform/lib/platform-plan-formatters';
 
 
-function isOperationalValueSufficient(value, minimumValue) {
-  if (minimumValue === null || minimumValue === undefined) return true;
+function getRequiredLimitValue(requirement = {}, usage = 0) {
+  const minimumEffectiveValue = requirement.minimumEffectiveValue ?? 0;
+  const minimumHeadroom = requirement.minimumHeadroom ?? 0;
+
+  return Math.max(
+    minimumEffectiveValue,
+    usage + minimumHeadroom,
+  );
+}
+
+function isOperationalValueSufficient(value, requirement = {}, usage = 0) {
+  if (!requirement || Object.keys(requirement).length === 0) return true;
   if (value === null) return true;
-  return Number.isInteger(value) && value >= minimumValue;
+
+  return Number.isInteger(value)
+    && value >= getRequiredLimitValue(requirement, usage);
 }
 
 function PlatformFeatureLimitConfiguration({
@@ -18,6 +30,7 @@ function PlatformFeatureLimitConfiguration({
   onUpdateRelatedLimit,
   planLimits = {},
   relatedLimits,
+  usage = {},
 }) {
   const metricKeys = featureDefinition?.metricKeys ?? [];
   const featureLabel = featureDefinition?.label ?? featureDefinition?.key ?? 'Fonctionnalité';
@@ -56,11 +69,17 @@ function PlatformFeatureLimitConfiguration({
               const configuration = relatedLimits[metricKey] ?? {};
               const planValue = planLimits?.[metricKey];
               const effectiveValue = effectiveLimits?.[metricKey];
-              const minimumEffectiveValue =
-                requiredLimits?.[metricKey]?.minimumEffectiveValue ?? null;
+              const usageValue = usage?.[metricKey] ?? 0;
+              const requirement = requiredLimits?.[metricKey] ?? {};
+              const minimumRequiredValue = getRequiredLimitValue(
+                requirement,
+                usageValue,
+              );
+              const hasRequirement = Object.keys(requirement).length > 0;
               const needsAdjustment = !isOperationalValueSufficient(
                 effectiveValue,
-                minimumEffectiveValue,
+                requirement,
+                usageValue,
               );
               const forceEnabled = Boolean(configuration.locked || needsAdjustment);
               const label = metric?.presentation?.label
@@ -75,11 +94,11 @@ function PlatformFeatureLimitConfiguration({
                     <div>
                       <p className="text-sm font-medium">{label}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Plan : {formatPlatformPlanLimit(metricKey, planValue)} · Effectif : {formatPlatformPlanLimit(metricKey, effectiveValue)}
+                        Plan : {formatPlatformPlanLimit(metricKey, planValue)} · Effectif : {formatPlatformPlanLimit(metricKey, effectiveValue)} · Utilisé : {formatPlatformPlanLimit(metricKey, usageValue)}
                       </p>
-                      {minimumEffectiveValue !== null && (
+                      {hasRequirement && (
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Minimum opérationnel : {formatPlatformPlanLimit(metricKey, minimumEffectiveValue)}
+                          Minimum nécessaire après usage : {formatPlatformPlanLimit(metricKey, minimumRequiredValue)}
                         </p>
                       )}
                     </div>
@@ -103,7 +122,7 @@ function PlatformFeatureLimitConfiguration({
 
                   {needsAdjustment && (
                     <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground">
-                      La valeur effective actuelle ne permet pas d’utiliser réellement cette fonctionnalité. Une nouvelle limite est obligatoire pour valider la dérogation.
+                      La capacité restante est insuffisante pour utiliser réellement cette fonctionnalité. Une nouvelle limite est obligatoire pour valider la dérogation.
                     </p>
                   )}
 
@@ -111,7 +130,7 @@ function PlatformFeatureLimitConfiguration({
                     <PlatformMetricLimitControl
                       idPrefix={`override-related-limit-${metricKey}`}
                       metric={metric}
-                      minimumValue={minimumEffectiveValue}
+                      minimumValue={hasRequirement ? minimumRequiredValue : null}
                       mode={configuration.mode ?? 'limited'}
                       onModeChange={(mode) => onUpdateRelatedLimit(metricKey, { mode })}
                       onValueChange={(value) => onUpdateRelatedLimit(metricKey, { value })}
@@ -135,5 +154,6 @@ function PlatformFeatureLimitConfiguration({
 
 export {
   PlatformFeatureLimitConfiguration,
+  getRequiredLimitValue,
   isOperationalValueSufficient,
 };
