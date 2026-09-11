@@ -120,24 +120,20 @@ function PlatformEntitlementOverrideForm({
   );
   const grantableFeatures = useMemo(
     () => (capabilities?.features ?? []).filter(
-      (featureKey) => !effectiveFeatureSet.has(featureKey),
+      (candidateKey) => !effectiveFeatureSet.has(candidateKey),
     ),
     [capabilities, effectiveFeatureSet],
   );
   const suspendableFeatures = useMemo(
     () => (capabilities?.features ?? []).filter(
-      (featureKey) => effectiveFeatureSet.has(featureKey),
+      (candidateKey) => effectiveFeatureSet.has(candidateKey),
     ),
     [capabilities, effectiveFeatureSet],
   );
 
   const [formError, setFormError] = useState(null);
-  const [exceptionKind, setExceptionKind] = useState(
-    EXCEPTION_KIND.GRANT_FEATURE,
-  );
-  const [featureKey, setFeatureKey] = useState(
-    override?.featureKey ?? '',
-  );
+  const [exceptionKind, setExceptionKind] = useState(EXCEPTION_KIND.GRANT_FEATURE);
+  const [featureKey, setFeatureKey] = useState(override?.featureKey ?? '');
   const [metricKey, setMetricKey] = useState(
     override?.metricKey ?? metrics?.[0]?.key ?? '',
   );
@@ -255,22 +251,27 @@ function PlatformEntitlementOverrideForm({
         const effectiveValue = entitlementContext?.effective?.limits?.[key];
         const usageValue = entitlementContext?.usage?.[key] ?? 0;
         const requirement = requiredLimits?.[key] ?? {};
-        const minimumRequiredValue = getRequiredLimitValue(
-          requirement,
-          usageValue,
-        );
-        const needsAdjustment = !isOperationalValueSufficient(
+        const minimumRequiredValue = getRequiredLimitValue(requirement, usageValue);
+        const effectiveNeedsAdjustment = !isOperationalValueSufficient(
           effectiveValue,
           requirement,
           usageValue,
         );
+        const existingValue = existing?.limitValue;
+        const existingIsAllowed = existing
+          ? isLimitValueAllowedByPolicy(metric, existingValue)
+          : false;
+        const existingIsOperational = existing
+          ? isOperationalValueSufficient(existingValue, requirement, usageValue)
+          : false;
         const policy = metric?.overridePolicy;
-        const existingUnlimited = existing?.limitValue === null;
-        const canKeepUnlimited = existingUnlimited
+        const canKeepUnlimited = existingValue === null
           && policy?.allowUnlimited === true;
-        const value = Number.isInteger(existing?.limitValue)
-          ? existing.limitValue
-          : needsAdjustment
+        const shouldNormalizeExisting = Boolean(existing)
+          && (!existingIsAllowed || (featureEnabled && !existingIsOperational));
+        const value = existing && !shouldNormalizeExisting
+          ? existingValue
+          : effectiveNeedsAdjustment || shouldNormalizeExisting
             ? getInitialPolicyValue(metric, minimumRequiredValue)
             : Number.isInteger(effectiveValue)
               && isLimitValueAllowedByPolicy(metric, effectiveValue)
@@ -280,9 +281,11 @@ function PlatformEntitlementOverrideForm({
         return [
           key,
           {
-            enabled: Boolean(existing) || needsAdjustment,
+            enabled: Boolean(existing) || effectiveNeedsAdjustment,
             locked: Boolean(existing),
-            mode: canKeepUnlimited ? 'unlimited' : 'limited',
+            mode: canKeepUnlimited && !shouldNormalizeExisting
+              ? 'unlimited'
+              : 'limited',
             value,
           },
         ];
@@ -291,6 +294,7 @@ function PlatformEntitlementOverrideForm({
   }, [
     associatedMetricKeys,
     entitlementContext,
+    featureEnabled,
     featureGroup,
     managesFeatureLimits,
     metricsByKey,
@@ -322,6 +326,7 @@ function PlatformEntitlementOverrideForm({
 
   const hasOperationalLimitGap = useMemo(() => {
     if (!managesFeatureLimits) return false;
+    if (isGroupedFeatureEdit && featureEnabled === false) return false;
 
     const requiredLimits =
       selectedFeatureDefinition?.overridePolicy?.requiredLimits ?? {};
@@ -348,6 +353,8 @@ function PlatformEntitlementOverrideForm({
     });
   }, [
     entitlementContext,
+    featureEnabled,
+    isGroupedFeatureEdit,
     managesFeatureLimits,
     relatedLimits,
     selectedFeatureDefinition,
@@ -363,11 +370,7 @@ function PlatformEntitlementOverrideForm({
         throw new Error('Le motif doit contenir entre 3 et 500 caractères.');
       }
 
-      if (
-        startsAt
-        && endsAt
-        && new Date(endsAt) <= new Date(startsAt)
-      ) {
+      if (startsAt && endsAt && new Date(endsAt) <= new Date(startsAt)) {
         throw new Error('La fin de la dérogation doit être postérieure à son début.');
       }
 
@@ -509,12 +512,10 @@ function PlatformEntitlementOverrideForm({
         </section>
       ) : (
         <section className="rounded-xl border border-border bg-muted/30 p-4 text-sm">
-          {featureGroup?.groupName && (
-            <p className="mb-3 inline-flex rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-              {featureGroup.groupName}
-            </p>
-          )}
-          <p><span className="font-medium">Workspace :</span> {override?.workspace?.name ?? '—'}</p>
+          <p>
+            <span className="font-medium">Workspace :</span>{' '}
+            {override?.workspace?.name ?? '—'}
+          </p>
           <p className="mt-1">
             <span className="font-medium">Cible :</span>{' '}
             {override?.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
@@ -549,17 +550,22 @@ function PlatformEntitlementOverrideForm({
             <PlatformFeatureLimitConfiguration
               effectiveLimits={entitlementContext?.effective?.limits ?? {}}
               featureDefinition={selectedFeatureDefinition}
+              featureEnabled={featureEnabled}
               metricsByKey={metricsByKey}
+              onFeatureEnabledChange={setFeatureEnabled}
               onUpdateRelatedLimit={updateRelatedLimit}
               planLimits={entitlementContext?.plan?.limits ?? {}}
               relatedLimits={relatedLimits}
+              showFeatureState={isGroupedFeatureEdit}
               usage={entitlementContext?.usage ?? {}}
             />
           )}
         </section>
       )}
 
-      {(mode === 'edit' && effectiveTargetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE) && (
+      {(mode === 'edit'
+        && effectiveTargetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
+        && !isGroupedFeatureEdit) && (
         <section className="space-y-4">
           <h3 className="font-semibold">Valeur appliquée</h3>
           <div className="space-y-2">
@@ -587,20 +593,18 @@ function PlatformEntitlementOverrideForm({
                   {effectiveMetric.presentation?.label
                     ?? formatPlatformPlanMetric(effectiveMetric.key)}
                 </p>
-                {mode === 'create' && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Plan : {formatPlatformPlanLimit(
-                      effectiveMetric.key,
-                      entitlementContext?.plan?.limits?.[effectiveMetric.key],
-                    )} · Effectif : {formatPlatformPlanLimit(
-                      effectiveMetric.key,
-                      entitlementContext?.effective?.limits?.[effectiveMetric.key],
-                    )} · Utilisé : {formatPlatformPlanLimit(
-                      effectiveMetric.key,
-                      entitlementContext?.usage?.[effectiveMetric.key] ?? 0,
-                    )}
-                  </p>
-                )}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Plan : {formatPlatformPlanLimit(
+                    effectiveMetric.key,
+                    entitlementContext?.plan?.limits?.[effectiveMetric.key],
+                  )} · Effectif : {formatPlatformPlanLimit(
+                    effectiveMetric.key,
+                    entitlementContext?.effective?.limits?.[effectiveMetric.key],
+                  )} · Utilisé : {formatPlatformPlanLimit(
+                    effectiveMetric.key,
+                    entitlementContext?.usage?.[effectiveMetric.key] ?? 0,
+                  )}
+                </p>
               </div>
 
               <PlatformMetricLimitControl
@@ -669,7 +673,9 @@ function PlatformEntitlementOverrideForm({
             placeholder="Justification commerciale ou administrative…"
             value={reason}
           />
-          <p className="text-xs text-muted-foreground">Obligatoire, 3 à 500 caractères. Visible uniquement dans Platform.</p>
+          <p className="text-xs text-muted-foreground">
+            Obligatoire, 3 à 500 caractères. Visible uniquement dans Platform.
+          </p>
         </div>
       </section>
 
