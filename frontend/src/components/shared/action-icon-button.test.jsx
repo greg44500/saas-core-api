@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ActionIconButton } from '@/components/shared/action-icon-button';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 function TestIcon(props) {
   return <svg data-testid="test-icon" {...props} />;
@@ -16,12 +17,14 @@ describe('ActionIconButton', () => {
     const onClick = vi.fn();
 
     render(
-      <ActionIconButton
-        Icon={TestIcon}
-        label="Voir les permissions de Support commercial"
-        onClick={onClick}
-        tooltipLabel="Voir"
-      />,
+      <TooltipProvider>
+        <ActionIconButton
+          Icon={TestIcon}
+          label="Voir les permissions de Support commercial"
+          onClick={onClick}
+          tooltipLabel="Voir"
+        />
+      </TooltipProvider>,
     );
 
     const button = screen.getByRole('button', {
