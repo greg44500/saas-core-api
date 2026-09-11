@@ -133,6 +133,11 @@ const featureGroup = {
   ],
 };
 
+async function chooseSelectOption(user, label, optionName) {
+  await user.click(screen.getByRole('combobox', { name: label }));
+  await user.click(screen.getByRole('option', { name: optionName }));
+}
+
 describe('PlatformEntitlementOverrideForm', () => {
   afterEach(() => cleanup());
 
@@ -153,11 +158,15 @@ describe('PlatformEntitlementOverrideForm', () => {
     expect(screen.getByText('Workspace Démo')).toBeInTheDocument();
     expect(screen.getByText('Free')).toBeInTheDocument();
     expect(screen.getByLabelText('Rechercher fonctionnalité')).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Fonctionnalité' })).toHaveTextContent('Gestion d’équipe');
+    expect(screen.getByRole('combobox', { name: 'Nature' }))
+      .toHaveTextContent('Accorder une fonctionnalité actuellement inactive');
+    expect(screen.getByRole('combobox', { name: 'Fonctionnalité' }))
+      .toHaveTextContent('Gestion d’équipe');
 
-    await user.selectOptions(
-      screen.getByLabelText('Nature'),
-      EXCEPTION_KIND.SUSPEND_FEATURE,
+    await chooseSelectOption(
+      user,
+      'Nature',
+      'Suspendre une fonctionnalité actuellement active',
     );
 
     expect(screen.getByRole('combobox', { name: 'Fonctionnalité' }))
@@ -268,7 +277,7 @@ describe('PlatformEntitlementOverrideForm', () => {
     );
 
     expect(screen.getByLabelText('Nom de la dérogation')).toHaveValue('Découverte équipe');
-    expect(screen.getByLabelText('État')).toHaveValue('true');
+    expect(screen.getByRole('combobox', { name: 'État' })).toHaveTextContent('Activée');
     expect(screen.getByText(/Plan : 5 · Effectif : 5 · Utilisé : 5/)).toBeInTheDocument();
     expect(screen.getByRole('slider', { name: 'Limite Membres' }))
       .toHaveAttribute('aria-valuenow', '6');
@@ -298,7 +307,7 @@ describe('PlatformEntitlementOverrideForm', () => {
       />,
     );
 
-    await user.selectOptions(screen.getByLabelText('État'), 'false');
+    await chooseSelectOption(user, 'État', 'Désactivée');
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
@@ -321,9 +330,10 @@ describe('PlatformEntitlementOverrideForm', () => {
       />,
     );
 
-    await user.selectOptions(
-      screen.getByLabelText('Nature'),
-      EXCEPTION_KIND.SUSPEND_FEATURE,
+    await chooseSelectOption(
+      user,
+      'Nature',
+      'Suspendre une fonctionnalité actuellement active',
     );
     await user.type(screen.getByLabelText('Motif'), 'Suspension contractuelle');
     await user.click(
