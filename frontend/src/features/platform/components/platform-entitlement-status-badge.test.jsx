@@ -11,9 +11,9 @@ describe('platform entitlement semantic tones', () => {
     expect(getPlatformEntitlementLifecycleTone('scheduled')).toBe('info');
   });
 
-  it('traite les états terminaux comme de l’historique neutre', () => {
-    expect(getPlatformEntitlementLifecycleTone('expired')).toBe('neutral');
-    expect(getPlatformEntitlementLifecycleTone('revoked')).toBe('neutral');
+  it('traite les états terminaux comme de l’historique archivé', () => {
+    expect(getPlatformEntitlementLifecycleTone('expired')).toBe('archive');
+    expect(getPlatformEntitlementLifecycleTone('revoked')).toBe('archive');
   });
 
   it('utilise warning pour une fonctionnalité explicitement désactivée', () => {
