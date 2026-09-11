@@ -58,15 +58,18 @@ const CORE_METRIC_OVERRIDE_POLICIES = Object.freeze({
 });
 
 /**
- * Une feature peut dépendre d'un minimum de capacité pour être réellement
- * exploitable. Exemple : activer la gestion d'équipe avec `members = 1`
- * n'apporte aucune capacité de collaboration au workspace.
+ * Une feature accordée exceptionnellement doit être réellement exploitable.
+ *
+ * `minimumEffectiveValue` protège les configurations intrinsèquement inutiles.
+ * `minimumHeadroom` protège aussi un workspace qui aurait déjà consommé toute
+ * sa capacité : activer une feature avec un quota saturé resterait sans effet.
  */
 const CORE_FEATURE_OVERRIDE_POLICIES = Object.freeze({
     [CORE_PLAN_FEATURE.TEAM_MANAGEMENT]: Object.freeze({
         requiredLimits: Object.freeze({
             [CORE_PLAN_METRIC.MEMBERS]: Object.freeze({
                 minimumEffectiveValue: 2,
+                minimumHeadroom: 1,
             }),
         }),
     }),
@@ -74,9 +77,11 @@ const CORE_FEATURE_OVERRIDE_POLICIES = Object.freeze({
         requiredLimits: Object.freeze({
             [CORE_PLAN_METRIC.STORAGE_BYTES]: Object.freeze({
                 minimumEffectiveValue: 100 * MEBIBYTE,
+                minimumHeadroom: 5 * MEBIBYTE,
             }),
             [CORE_PLAN_METRIC.FILE_UPLOADS_MONTHLY]: Object.freeze({
                 minimumEffectiveValue: 1,
+                minimumHeadroom: 1,
             }),
         }),
     }),
