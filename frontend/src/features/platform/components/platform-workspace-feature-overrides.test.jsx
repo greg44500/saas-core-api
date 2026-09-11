@@ -163,27 +163,16 @@ describe('PlatformWorkspaceFeatureOverrides', () => {
     });
   });
 
-  it('crée une dérogation positive pour une fonctionnalité absente du plan', async () => {
-    const user = userEvent.setup();
+  it('impose le flow complet pour accorder une fonctionnalité absente du plan', () => {
     renderComponent();
 
     const teamSwitch = screen.getByRole('switch', { name: 'Activer Gestion d’équipe' });
     expect(teamSwitch).toHaveAttribute('aria-checked', 'false');
-    expect(teamSwitch).not.toBeDisabled();
-    expect(screen.getByText('Non incluse dans le plan Premium')).toBeInTheDocument();
-
-    await user.click(teamSwitch);
-
-    await waitFor(() => {
-      expect(mocks.createOverride).toHaveBeenCalledWith(expect.objectContaining({
-        workspaceId: 'workspace-id',
-        targetType: 'feature',
-        featureKey: 'team_management',
-        featureEnabled: true,
-        source: 'administrative',
-        endsAt: null,
-      }));
-    });
+    expect(teamSwitch).toBeDisabled();
+    expect(
+      screen.getByText(/Non incluse dans le plan Premium — utilisez « Dérogation exceptionnelle »/),
+    ).toBeInTheDocument();
+    expect(mocks.createOverride).not.toHaveBeenCalled();
   });
 
   it('révoque une dérogation positive lorsque le switch revient à l’état du plan', async () => {
