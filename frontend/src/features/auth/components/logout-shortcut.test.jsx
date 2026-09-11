@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
+
 const useLogoutMutationMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/features/auth/api/auth-api', () => ({
@@ -13,7 +15,7 @@ vi.mock('@/features/auth/api/auth-api', () => ({
 import { LogoutShortcut } from '@/features/auth/components/logout-shortcut';
 
 describe('LogoutShortcut', () => {
-  it('positionne le tooltip sous le bouton puis déconnecte et redirige', async () => {
+  it('expose le raccourci avec le tooltip shadcn puis déconnecte et redirige', async () => {
     const user = userEvent.setup();
     const unwrap = vi.fn().mockResolvedValue(undefined);
     const logout = vi.fn(() => ({ unwrap }));
@@ -27,13 +29,17 @@ describe('LogoutShortcut', () => {
       { initialEntries: ['/workspace'] },
     );
 
-    render(<RouterProvider router={router} />);
+    render(
+      <TooltipProvider delay={0}>
+        <RouterProvider router={router} />
+      </TooltipProvider>,
+    );
 
     const button = screen.getByRole('button', { name: 'Déconnexion' });
-    const tooltip = screen.getByRole('tooltip', { hidden: true });
+    expect(screen.getAllByText('Déconnexion')).toHaveLength(1);
 
-    expect(tooltip).toHaveTextContent('Déconnexion');
-    expect(tooltip).toHaveClass('right-0', 'top-full', 'mt-2');
+    await user.hover(button);
+    expect((await screen.findAllByText('Déconnexion')).length).toBeGreaterThan(1);
 
     await user.click(button);
 
