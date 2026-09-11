@@ -32,12 +32,13 @@ describe('ActionIconButton', () => {
     });
 
     expect(button).toBeInTheDocument();
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    expect(button).toHaveAccessibleName('Voir les permissions de Support commercial');
+    expect(screen.queryByText('Voir', { exact: true })).not.toBeInTheDocument();
 
     await user.tab();
 
     expect(button).toHaveFocus();
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Voir');
+    expect(await screen.findByText('Voir', { exact: true })).toBeInTheDocument();
 
     await user.click(button);
     expect(onClick).toHaveBeenCalledTimes(1);
