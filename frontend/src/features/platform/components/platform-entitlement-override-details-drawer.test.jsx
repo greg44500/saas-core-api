@@ -19,10 +19,21 @@ const baseOverride = {
   revokedAt: null,
 };
 
-function renderDetails(override, { onViewWorkspace = vi.fn() } = {}) {
+function renderDetails(
+  override,
+  {
+    featureGroup = null,
+    featureGroupError = null,
+    featureGroupLoading = false,
+    onViewWorkspace = vi.fn(),
+  } = {},
+) {
   render(
     <PlatformEntitlementOverrideDetails
       error={null}
+      featureGroup={featureGroup}
+      featureGroupError={featureGroupError}
+      featureGroupLoading={featureGroupLoading}
       isLoading={false}
       onEdit={vi.fn()}
       onRetry={vi.fn()}
@@ -64,6 +75,60 @@ describe('PlatformEntitlementOverrideDetails', () => {
 
     await user.click(workspaceLink);
     expect(onViewWorkspace).toHaveBeenCalledWith(baseOverride.workspace);
+  });
+
+  it('présente le nom métier et les limites d’une dérogation groupée', () => {
+    const featureOverride = {
+      ...baseOverride,
+      groupId: 'group-id',
+      groupName: 'Découverte Téléversement',
+      targetType: 'feature',
+      featureKey: 'file_upload',
+      featureEnabled: true,
+      metricKey: null,
+      limitValue: null,
+    };
+
+    renderDetails(featureOverride, {
+      featureGroup: {
+        groupId: 'group-id',
+        groupName: 'Découverte Téléversement',
+        featureKey: 'file_upload',
+        primaryOverride: featureOverride,
+        relatedOverrides: [
+          {
+            ...baseOverride,
+            id: 'storage-limit-id',
+            targetType: 'limit',
+            featureKey: null,
+            featureEnabled: null,
+            metricKey: 'storage_bytes',
+            limitValue: 200 * 1024 * 1024,
+          },
+        ],
+      },
+    });
+
+    expect(screen.getByText('Dérogation sélectionnée')).toBeInTheDocument();
+    expect(screen.getByText('Découverte Téléversement')).toBeInTheDocument();
+    expect(screen.getByText('Limites associées')).toBeInTheDocument();
+    expect(screen.getByText('Stockage')).toBeInTheDocument();
+    expect(screen.getByText('200 Mo')).toBeInTheDocument();
+  });
+
+  it('désactive la modification tant que les limites d’une feature ne sont pas chargées', () => {
+    renderDetails({
+      ...baseOverride,
+      targetType: 'feature',
+      featureKey: 'team_management',
+      featureEnabled: true,
+      metricKey: null,
+      limitValue: null,
+    }, {
+      featureGroupLoading: true,
+    });
+
+    expect(screen.getByRole('button', { name: 'Chargement…' })).toBeDisabled();
   });
 
   it('présente une dérogation de limite avec une valeur explicite', () => {
