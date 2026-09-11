@@ -42,7 +42,7 @@ function getValueLabel(targetType) {
 
 function PlatformEntitlementOverrideDetails({
   error,
-  featureGroup = null,
+  featureGroup,
   featureGroupError = null,
   featureGroupLoading = false,
   isLoading,
@@ -78,8 +78,11 @@ function PlatformEntitlementOverrideDetails({
   if (!override) return null;
 
   const featureRequiresGroup = override.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE;
+  const groupStillLoading = featureRequiresGroup
+    && featureGroup === undefined
+    && !featureGroupError;
   const groupUnavailable = featureRequiresGroup
-    && (featureGroupLoading || Boolean(featureGroupError));
+    && (groupStillLoading || featureGroupLoading || Boolean(featureGroupError));
 
   return (
     <div className="space-y-6">
@@ -195,7 +198,7 @@ function PlatformEntitlementOverrideDetails({
               type="button"
               variant="secondary"
             >
-              {featureGroupLoading ? 'Chargement…' : 'Modifier'}
+              {groupStillLoading || featureGroupLoading ? 'Chargement…' : 'Modifier'}
             </Button>
             <Button onClick={() => onRevoke(override)} type="button" variant="destructive">
               Révoquer
@@ -213,7 +216,7 @@ function PlatformEntitlementOverrideDetails({
 
 function PlatformEntitlementOverrideDetailsDrawer({
   error,
-  featureGroup = null,
+  featureGroup,
   featureGroupError = null,
   featureGroupLoading = false,
   isLoading,
