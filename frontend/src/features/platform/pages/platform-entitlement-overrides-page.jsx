@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
-import { StatusBadge } from '@/components/data-display/status-badge';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
 import { SelectField } from '@/components/shared/select-field';
@@ -25,37 +24,36 @@ import { useListPlatformPlanCapabilitiesQuery } from '@/features/platform/api/pl
 import { useListPlatformWorkspacesQuery } from '@/features/platform/api/platform-workspaces-api';
 import { PlatformEntitlementOverrideDetailsDrawer } from '@/features/platform/components/platform-entitlement-override-details-drawer';
 import { PlatformEntitlementOverrideForm } from '@/features/platform/components/platform-entitlement-override-form';
+import { PlatformEntitlementPeriod } from '@/features/platform/components/platform-entitlement-period';
 import { PlatformEntitlementOverrideRevokeDialog } from '@/features/platform/components/platform-entitlement-override-revoke-dialog';
+import { PlatformEntitlementLifecycleBadge } from '@/features/platform/components/platform-entitlement-status-badge';
+import { PlatformEntitlementSubject } from '@/features/platform/components/platform-entitlement-subject';
 import { PlatformTablePageSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PlatformWorkspaceFeatureOverrides } from '@/features/platform/components/platform-workspace-feature-overrides';
 import {
   ENTITLEMENT_OVERRIDE_LIFECYCLE,
   ENTITLEMENT_OVERRIDE_SOURCE,
   ENTITLEMENT_OVERRIDE_TARGET,
-  formatPlatformEntitlementOverrideCapability,
-  formatPlatformEntitlementOverrideDate,
   formatPlatformEntitlementOverrideLifecycle,
   formatPlatformEntitlementOverrideSource,
-  formatPlatformEntitlementOverrideTarget,
-  formatPlatformEntitlementOverrideValue,
 } from '@/features/platform/lib/platform-entitlement-override-formatters';
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 const ALL_FILTERS_VALUE = '__all__';
 
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
 }
 
-function getLifecycleTone(lifecycle) {
-  if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE) return 'success';
-  if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.SCHEDULED) return 'info';
-  return 'neutral';
-}
-
 function readPositivePage(searchParams) {
   const value = Number(searchParams.get('page') ?? 1);
   return Number.isInteger(value) && value > 0 ? value : 1;
+}
+
+function readPageSize(searchParams) {
+  const value = Number(searchParams.get('limit') ?? DEFAULT_PAGE_SIZE);
+  return PAGE_SIZE_OPTIONS.includes(value) ? value : DEFAULT_PAGE_SIZE;
 }
 
 function normalizeFilterValue(value) {
@@ -76,16 +74,15 @@ function PlatformEntitlementOverridesPage() {
   const [revokeError, setRevokeError] = useState(null);
 
   const page = readPositivePage(searchParams);
+  const pageSize = readPageSize(searchParams);
   const workspaceId = searchParams.get('workspaceId') ?? '';
-  const targetType = searchParams.get('targetType') ?? '';
   const source = searchParams.get('source') ?? '';
   const lifecycle = searchParams.get('lifecycle') ?? '';
 
   const listQuery = useListPlatformEntitlementOverridesQuery({
     page,
-    limit: PAGE_SIZE,
+    limit: pageSize,
     workspaceId: workspaceId || undefined,
-    targetType: targetType || undefined,
     source: source || undefined,
     lifecycle: lifecycle || undefined,
   });
@@ -148,8 +145,23 @@ function PlatformEntitlementOverridesPage() {
     });
   }
 
+  function changePageSize(nextPageSize) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (nextPageSize === DEFAULT_PAGE_SIZE) next.delete('limit');
+      else next.set('limit', String(nextPageSize));
+      next.delete('page');
+      return next;
+    });
+  }
+
   function resetFilters() {
-    setSearchParams({});
+    setSearchParams((current) => {
+      const next = new URLSearchParams();
+      const currentLimit = current.get('limit');
+      if (currentLimit) next.set('limit', currentLimit);
+      return next;
+    });
   }
 
   async function submitCreate(payload) {
@@ -224,7 +236,7 @@ function PlatformEntitlementOverridesPage() {
   if (listQuery.isLoading || (listQuery.isFetching && listQuery.data === undefined)) {
     return (
       <PlatformTablePageSkeleton
-        columns={7}
+        columns={5}
         showAction
         showFilters
       />
@@ -252,35 +264,26 @@ function PlatformEntitlementOverridesPage() {
       cell: (override) => override.workspace?.name ?? 'Workspace indisponible',
     },
     {
-      id: 'type',
-      header: 'Type',
-      cell: (override) => formatPlatformEntitlementOverrideTarget(override.targetType),
-    },
-    {
-      id: 'capability',
-      header: 'Cible',
-      cell: (override) => formatPlatformEntitlementOverrideCapability(override),
-    },
-    {
-      id: 'value',
-      header: 'Valeur',
-      cell: (override) => formatPlatformEntitlementOverrideValue(override),
-    },
-    {
-      id: 'lifecycle',
-      header: 'État',
+      id: 'subject',
+      header: 'Fonctionnalité',
       cell: (override) => (
-        <StatusBadge tone={getLifecycleTone(override.lifecycle)}>
-          {formatPlatformEntitlementOverrideLifecycle(override.lifecycle)}
-        </StatusBadge>
+        <PlatformEntitlementSubject
+          featureDefinitions={capabilities.featureDefinitions}
+          override={override}
+        />
       ),
     },
     {
-      id: 'endsAt',
-      header: 'Fin',
-      cell: (override) => override.endsAt
-        ? formatPlatformEntitlementOverrideDate(override.endsAt)
-        : 'Permanente',
+      id: 'lifecycle',
+      header: 'Statut',
+      cell: (override) => (
+        <PlatformEntitlementLifecycleBadge lifecycle={override.lifecycle} />
+      ),
+    },
+    {
+      id: 'period',
+      header: 'Période',
+      cell: (override) => <PlatformEntitlementPeriod override={override} />,
     },
     {
       id: 'actions',
@@ -311,11 +314,6 @@ function PlatformEntitlementOverridesPage() {
       value: workspace.id,
       label: workspace.name ?? workspace.id,
     })),
-  ];
-  const typeFilterItems = [
-    { value: ALL_FILTERS_VALUE, label: 'Tous' },
-    { value: ENTITLEMENT_OVERRIDE_TARGET.FEATURE, label: 'Fonctionnalité' },
-    { value: ENTITLEMENT_OVERRIDE_TARGET.LIMIT, label: 'Limite autonome' },
   ];
   const sourceFilterItems = [
     { value: ALL_FILTERS_VALUE, label: 'Toutes' },
@@ -359,11 +357,11 @@ function PlatformEntitlementOverridesPage() {
         <div>
           <h2 className="text-lg font-semibold">Filtres</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Sélectionner un workspace affiche ses fonctionnalités effectives, active les réglages rapides et permet de créer une dérogation exceptionnelle contextualisée.
+            Sélectionnez un workspace pour afficher ses fonctionnalités actives et créer une dérogation contextualisée.
           </p>
         </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
           <SelectField
             id="override-filter-workspace"
             items={workspaceFilterItems}
@@ -373,16 +371,6 @@ function PlatformEntitlementOverridesPage() {
               normalizeFilterValue(value),
             )}
             value={workspaceId || ALL_FILTERS_VALUE}
-          />
-          <SelectField
-            id="override-filter-type"
-            items={typeFilterItems}
-            label="Type"
-            onValueChange={(value) => updateFilter(
-              'targetType',
-              normalizeFilterValue(value),
-            )}
-            value={targetType || ALL_FILTERS_VALUE}
           />
           <SelectField
             id="override-filter-source"
@@ -397,7 +385,7 @@ function PlatformEntitlementOverridesPage() {
           <SelectField
             id="override-filter-lifecycle"
             items={lifecycleFilterItems}
-            label="État"
+            label="Statut"
             onValueChange={(value) => updateFilter(
               'lifecycle',
               normalizeFilterValue(value),
@@ -406,7 +394,7 @@ function PlatformEntitlementOverridesPage() {
           />
         </div>
 
-        {(workspaceId || targetType || source || lifecycle) && (
+        {(workspaceId || source || lifecycle) && (
           <Button className="mt-4" onClick={resetFilters} type="button" variant="ghost">
             Réinitialiser les filtres
           </Button>
@@ -422,7 +410,7 @@ function PlatformEntitlementOverridesPage() {
 
       {(capabilitiesQuery.error || workspacesQuery.error) && (
         <p className="text-sm text-warning" role="status">
-          La liste reste consultable, mais les réglages commerciaux sont indisponibles tant que les workspaces et le registre de capabilities ne sont pas chargés.
+          La liste reste consultable, mais les informations commerciales sont indisponibles tant que les workspaces et le registre de fonctionnalités ne sont pas chargés.
         </p>
       )}
 
@@ -444,7 +432,10 @@ function PlatformEntitlementOverridesPage() {
           <DataPagination
             disabled={listQuery.isFetching}
             onPageChange={changePage}
+            onPageSizeChange={changePageSize}
             page={page}
+            pageSize={pageSize}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
             pagination={listQuery.data?.pagination}
           />
         </div>
@@ -485,7 +476,7 @@ function PlatformEntitlementOverridesPage() {
       />
 
       <EntityDetailsDrawer
-        description="Accordez ou suspendez exceptionnellement une capability, éventuellement pour une période précise, sans modifier le plan catalogue."
+        description="Accordez ou suspendez exceptionnellement une fonctionnalité, éventuellement pour une période précise, sans modifier le plan catalogue."
         onClose={() => {
           if (!createPending) setCreateOpen(false);
         }}
@@ -505,7 +496,7 @@ function PlatformEntitlementOverridesPage() {
       </EntityDetailsDrawer>
 
       <EntityDetailsDrawer
-        description="Modifiez la valeur, la période, l’origine ou le motif. La cible de la dérogation reste immuable."
+        description="Modifiez la période, l’origine, le motif et les paramètres associés. La fonctionnalité ciblée reste immuable."
         onClose={() => {
           if (!editPending) {
             setEditTarget(null);
@@ -548,4 +539,9 @@ function PlatformEntitlementOverridesPage() {
   );
 }
 
-export { PlatformEntitlementOverridesPage };
+export {
+  DEFAULT_PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+  PlatformEntitlementOverridesPage,
+  readPageSize,
+};
