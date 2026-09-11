@@ -19,7 +19,10 @@ const capabilities = {
       metricKeys: ['storage_bytes'],
       overridePolicy: {
         requiredLimits: {
-          storage_bytes: { minimumEffectiveValue: 100 * 1024 * 1024 },
+          storage_bytes: {
+            minimumEffectiveValue: 100 * 1024 * 1024,
+            minimumHeadroom: 5 * 1024 * 1024,
+          },
         },
       },
     },
@@ -32,7 +35,10 @@ const capabilities = {
       metricKeys: ['members'],
       overridePolicy: {
         requiredLimits: {
-          members: { minimumEffectiveValue: 2 },
+          members: {
+            minimumEffectiveValue: 2,
+            minimumHeadroom: 1,
+          },
         },
       },
     },
@@ -79,6 +85,7 @@ const entitlementContext = {
     features: ['file_upload'],
     limits: { members: 1 },
   },
+  usage: { members: 1 },
   appliedOverrides: [],
 };
 
@@ -92,6 +99,12 @@ const entitlementContextWithCapacity = {
     ...entitlementContext.effective,
     limits: { members: 5 },
   },
+  usage: { members: 4 },
+};
+
+const entitlementContextWithSaturatedCapacity = {
+  ...entitlementContextWithCapacity,
+  usage: { members: 5 },
 };
 
 
@@ -144,9 +157,10 @@ describe('PlatformEntitlementOverrideForm', () => {
 
     expect(screen.getByText('1 limite associée')).toBeInTheDocument();
     expect(screen.getByText('Ajustement requis')).toBeInTheDocument();
-    expect(screen.getByText(/ne permet pas d’utiliser réellement/i)).toBeInTheDocument();
-    expect(screen.getByRole('slider', { name: 'Limite Membres' })).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getByText(/capacité restante est insuffisante/i)).toBeInTheDocument();
+    expect(screen.getByText(/Utilisé : 1/)).toBeInTheDocument();
+    const slider = screen.getByRole('slider', { name: 'Limite Membres' });
+    expect(slider).toHaveAttribute('aria-valuenow', '2');
 
     await user.type(
       screen.getByLabelText('Nom de la dérogation'),
@@ -174,7 +188,7 @@ describe('PlatformEntitlementOverrideForm', () => {
     });
   });
 
-  it('conserve la limite effective lorsqu’elle rend déjà la feature utilisable', async () => {
+  it('conserve la limite effective lorsqu’une place reste disponible', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
 
@@ -189,7 +203,7 @@ describe('PlatformEntitlementOverrideForm', () => {
       />,
     );
 
-    expect(screen.getByText(/Plan : 5 · Effectif : 5/)).toBeInTheDocument();
+    expect(screen.getByText(/Plan : 5 · Effectif : 5 · Utilisé : 4/)).toBeInTheDocument();
     expect(screen.getByText(/valeur effective actuelle sera conservée/i)).toBeInTheDocument();
 
     await user.type(
@@ -207,6 +221,23 @@ describe('PlatformEntitlementOverrideForm', () => {
       featureKey: 'team_management',
       relatedLimits: [],
     }));
+  });
+
+  it('force une nouvelle limite lorsqu’un quota supérieur est déjà saturé', () => {
+    render(
+      <PlatformEntitlementOverrideForm
+        capabilities={capabilities}
+        entitlementContext={entitlementContextWithSaturatedCapacity}
+        mode="create"
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+        workspaceId="workspace-id"
+      />,
+    );
+
+    expect(screen.getByText('Ajustement requis')).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: 'Limite Membres' }))
+      .toHaveAttribute('aria-valuenow', '6');
   });
 
   it('construit une suspension exceptionnelle sur une feature active', async () => {
