@@ -77,6 +77,14 @@ const capabilities = {
       category: 'files',
       categoryLabel: 'Fichiers',
       metricKeys: ['storage_bytes'],
+      overridePolicy: {
+        requiredLimits: {
+          storage_bytes: {
+            minimumEffectiveValue: 100 * 1024 * 1024,
+            minimumRemainingCapacity: 1,
+          },
+        },
+      },
     },
     {
       key: 'team_management',
@@ -84,11 +92,37 @@ const capabilities = {
       category: 'workspace',
       categoryLabel: 'Collaboration',
       metricKeys: ['members'],
+      overridePolicy: {
+        requiredLimits: {
+          members: {
+            minimumEffectiveValue: 2,
+            minimumRemainingCapacity: 1,
+          },
+        },
+      },
     },
   ],
   metrics: [
-    { key: 'storage_bytes', presentation: { label: 'Stockage', unit: 'bytes' } },
-    { key: 'members', presentation: { label: 'Membres', unit: 'count' } },
+    {
+      key: 'storage_bytes',
+      presentation: { label: 'Stockage', unit: 'bytes' },
+      overridePolicy: {
+        control: 'preset_slider',
+        values: [0, 100 * 1024 * 1024, 500 * 1024 * 1024, 1024 * 1024 * 1024],
+        allowUnlimited: false,
+      },
+    },
+    {
+      key: 'members',
+      presentation: { label: 'Membres', unit: 'count' },
+      overridePolicy: {
+        control: 'linear_slider',
+        min: 0,
+        max: 50,
+        step: 1,
+        allowUnlimited: false,
+      },
+    },
   ],
 };
 
@@ -153,6 +187,7 @@ describe('PlatformEntitlementOverridesPage', () => {
               features: ['file_upload'],
               limits: { members: 1 },
             },
+            usage: { members: 1 },
             appliedOverrides: [],
             nextEntitlementChangeAt: null,
           }
@@ -259,7 +294,7 @@ describe('PlatformEntitlementOverridesPage', () => {
     ).not.toBeDisabled();
   });
 
-  it('crée une dérogation groupée avec la limite associée', async () => {
+  it('crée une dérogation groupée avec la limite associée requise', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -267,18 +302,17 @@ describe('PlatformEntitlementOverridesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Dérogation exceptionnelle' }));
     const drawer = screen.getByRole('dialog', { name: 'Dérogation exceptionnelle' });
 
-    expect(within(drawer).getByText('Gestion d’équipe')).toBeInTheDocument();
+    expect(within(drawer).getAllByText('Gestion d’équipe')).toHaveLength(2);
     expect(within(drawer).queryByText('Téléversement de fichiers')).not.toBeInTheDocument();
     expect(within(drawer).getByText('1 limite associée')).toBeInTheDocument();
+    expect(within(drawer).getByText('Ajustement requis')).toBeInTheDocument();
+    expect(within(drawer).getByRole('slider', { name: 'Limite Membres' })).toBeInTheDocument();
+    expect(within(drawer).getByText(/Plan : 1 · Effectif : 1 · Utilisé : 1/)).toBeInTheDocument();
 
     await user.type(
       within(drawer).getByLabelText('Nom de la dérogation'),
       'Découverte équipe',
     );
-    await user.click(within(drawer).getByLabelText('Ajuster cette limite'));
-    const limitInput = within(drawer).getByLabelText('Limite');
-    await user.clear(limitInput);
-    await user.type(limitInput, '5');
     await user.type(within(drawer).getByLabelText('Motif'), 'Essai commercial validé');
     await user.click(
       within(drawer).getByRole('button', {
@@ -292,7 +326,7 @@ describe('PlatformEntitlementOverridesPage', () => {
         featureKey: 'team_management',
         featureEnabled: true,
         groupName: 'Découverte équipe',
-        relatedLimits: [{ metricKey: 'members', limitValue: 5 }],
+        relatedLimits: [{ metricKey: 'members', limitValue: 2 }],
         reason: 'Essai commercial validé',
       }));
     });
