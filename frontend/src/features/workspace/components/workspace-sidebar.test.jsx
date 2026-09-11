@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
 import { WorkspaceSidebar } from '@/features/workspace/components/workspace-sidebar';
 import { WORKSPACE_FEATURE } from '@/features/workspace/constants/workspace-features';
@@ -33,19 +34,21 @@ function renderSidebar(
 ) {
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
-      <WorkspaceProvider
-        features={features}
-        membership={membership}
-        permissions={permissions}
-        workspace={workspace}
-      >
-        <WorkspaceSidebar
-          collapsed={collapsed}
-          navigation={coreWorkspaceNavigation}
-          onToggle={vi.fn()}
+      <TooltipProvider>
+        <WorkspaceProvider
+          features={features}
+          membership={membership}
+          permissions={permissions}
           workspace={workspace}
-        />
-      </WorkspaceProvider>
+        >
+          <WorkspaceSidebar
+            collapsed={collapsed}
+            navigation={coreWorkspaceNavigation}
+            onToggle={vi.fn()}
+            workspace={workspace}
+          />
+        </WorkspaceProvider>
+      </TooltipProvider>
     </MemoryRouter>,
   );
 }
@@ -219,7 +222,7 @@ describe('WorkspaceSidebar', () => {
     expect(settingsLink).toHaveAttribute('href', '/workspaces/workspace-1/settings');
   });
 
-  it('réutilise le tooltip partagé pour la navigation réduite', async () => {
+  it('réutilise le tooltip shadcn/Base UI pour la navigation réduite', async () => {
     const user = userEvent.setup();
 
     renderSidebar(
@@ -228,17 +231,13 @@ describe('WorkspaceSidebar', () => {
     );
 
     const dashboardLink = screen.getByRole('link', { name: 'Tableau de bord' });
-    const tooltip = screen.getByRole('tooltip', { hidden: true });
-
-    expect(tooltip).toHaveTextContent('Tableau de bord');
-    expect(tooltip).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getAllByText('Tableau de bord')).toHaveLength(1);
 
     await user.hover(dashboardLink);
-    expect(tooltip).toHaveAttribute('aria-hidden', 'false');
-    expect(dashboardLink).toHaveAttribute('aria-describedby', tooltip.id);
+    expect((await screen.findAllByText('Tableau de bord')).length).toBeGreaterThan(1);
 
     await user.keyboard('{Escape}');
-    expect(tooltip).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getAllByText('Tableau de bord')).toHaveLength(1);
   });
 
   it('ouvre un flyout explicite en mode réduit et le ferme avec Escape', async () => {
