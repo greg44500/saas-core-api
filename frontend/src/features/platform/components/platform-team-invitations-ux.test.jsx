@@ -1,9 +1,4 @@
-import {
-  cleanup,
-  render,
-  screen,
-  waitForElementToBeRemoved,
-} from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -125,7 +120,7 @@ describe('PlatformTeamInvitationsSection UX', () => {
     expect(await screen.findByText('Renvoyer')).toBeInTheDocument();
 
     await user.unhover(resendButton);
-    await waitForElementToBeRemoved(() => screen.queryByText('Renvoyer'));
+    expect(screen.queryByText('Renvoyer')).not.toBeInTheDocument();
 
     await user.hover(revokeButton);
     expect(await screen.findByText('Révoquer')).toBeInTheDocument();
