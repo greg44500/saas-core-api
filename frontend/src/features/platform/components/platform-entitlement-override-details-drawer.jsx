@@ -40,14 +40,11 @@ function getValueLabel(targetType) {
     : 'Valeur appliquée';
 }
 
-function formatLimitValue(override) {
-  if (override.limitValue === null) return 'Illimité';
-  return String(override.limitValue ?? '—');
-}
-
 function PlatformEntitlementOverrideDetails({
   error,
   featureGroup = null,
+  featureGroupError = null,
+  featureGroupLoading = false,
   isLoading,
   onEdit,
   onRetry,
@@ -79,6 +76,10 @@ function PlatformEntitlementOverrideDetails({
   }
 
   if (!override) return null;
+
+  const featureRequiresGroup = override.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE;
+  const groupUnavailable = featureRequiresGroup
+    && (featureGroupLoading || Boolean(featureGroupError));
 
   return (
     <div className="space-y-6">
@@ -146,7 +147,7 @@ function PlatformEntitlementOverrideDetails({
               <DetailRow
                 key={relatedOverride.id}
                 label={formatPlatformPlanMetric(relatedOverride.metricKey)}
-                value={formatLimitValue(relatedOverride)}
+                value={formatPlatformEntitlementOverrideValue(relatedOverride)}
               />
             ))}
           </dl>
@@ -180,10 +181,21 @@ function PlatformEntitlementOverrideDetails({
           </p>
         </div>
 
+        {featureGroupError && (
+          <p className="text-sm text-destructive" role="alert">
+            Les limites associées n’ont pas pu être chargées. La modification est désactivée pour éviter une édition partielle.
+          </p>
+        )}
+
         {isEditablePlatformEntitlementOverride(override) ? (
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => onEdit(override)} type="button" variant="secondary">
-              Modifier
+            <Button
+              disabled={groupUnavailable}
+              onClick={() => onEdit(override)}
+              type="button"
+              variant="secondary"
+            >
+              {featureGroupLoading ? 'Chargement…' : 'Modifier'}
             </Button>
             <Button onClick={() => onRevoke(override)} type="button" variant="destructive">
               Révoquer
@@ -202,6 +214,8 @@ function PlatformEntitlementOverrideDetails({
 function PlatformEntitlementOverrideDetailsDrawer({
   error,
   featureGroup = null,
+  featureGroupError = null,
+  featureGroupLoading = false,
   isLoading,
   onClose,
   onEdit,
@@ -225,6 +239,8 @@ function PlatformEntitlementOverrideDetailsDrawer({
       <PlatformEntitlementOverrideDetails
         error={error}
         featureGroup={featureGroup}
+        featureGroupError={featureGroupError}
+        featureGroupLoading={featureGroupLoading}
         isLoading={isLoading}
         onEdit={onEdit}
         onRetry={onRetry}
