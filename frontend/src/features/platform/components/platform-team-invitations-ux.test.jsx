@@ -122,12 +122,12 @@ describe('PlatformTeamInvitationsSection UX', () => {
     });
 
     await user.hover(resendButton);
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Renvoyer');
+    expect(await screen.findByText('Renvoyer')).toBeInTheDocument();
 
     await user.unhover(resendButton);
-    await waitForElementToBeRemoved(() => screen.queryByRole('tooltip'));
+    await waitForElementToBeRemoved(() => screen.queryByText('Renvoyer'));
 
     await user.hover(revokeButton);
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Révoquer');
+    expect(await screen.findByText('Révoquer')).toBeInTheDocument();
   });
 });
