@@ -6,6 +6,7 @@ import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { SelectField } from '@/components/shared/select-field';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
@@ -333,9 +334,15 @@ function PlatformEntitlementOverridesPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dérogations</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <div className="min-w-0">
+          <div className="flex items-start gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">Dérogations</h1>
+            <InfoTooltip
+              content="Personnalisez l’offre d’un workspace sans modifier le plan catalogue partagé."
+              label="À propos des dérogations"
+            />
+          </div>
+          <p className="sr-only">
             Personnalisez l’offre d’un workspace sans modifier le plan catalogue partagé.
           </p>
         </div>
@@ -354,12 +361,16 @@ function PlatformEntitlementOverridesPage() {
       </div>
 
       <section className="rounded-xl border border-border bg-card p-5">
-        <div>
+        <div className="flex items-start gap-2">
           <h2 className="text-lg font-semibold">Filtres</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Sélectionnez un workspace pour afficher ses fonctionnalités actives et créer une dérogation contextualisée.
-          </p>
+          <InfoTooltip
+            content="Sélectionnez un workspace pour afficher ses fonctionnalités actives et créer une dérogation contextualisée."
+            label="À propos des filtres"
+          />
         </div>
+        <p className="sr-only">
+          Sélectionnez un workspace pour afficher ses fonctionnalités actives et créer une dérogation contextualisée.
+        </p>
 
         <div className="mt-4 grid gap-4 md:grid-cols-3">
           <SelectField
