@@ -5,6 +5,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PlatformOverviewPeriodFilter } from '@/features/platform/components/platform-overview-period-filter';
 import { OVERVIEW_PERIOD_PRESET } from '@/features/platform/lib/platform-overview-period';
 
+async function choosePeriod(user, optionName) {
+  await user.click(screen.getByRole('combobox', { name: 'Période d’analyse' }));
+  await user.click(await screen.findByRole('option', { name: optionName }));
+}
+
 describe('PlatformOverviewPeriodFilter', () => {
   afterEach(() => cleanup());
 
@@ -23,10 +28,7 @@ describe('PlatformOverviewPeriodFilter', () => {
       />,
     );
 
-    await user.selectOptions(
-      screen.getByLabelText('Période d’analyse'),
-      OVERVIEW_PERIOD_PRESET.DAYS_90,
-    );
+    await choosePeriod(user, '90 derniers jours');
 
     expect(onChange).toHaveBeenCalledWith({
       preset: OVERVIEW_PERIOD_PRESET.DAYS_90,
@@ -50,10 +52,7 @@ describe('PlatformOverviewPeriodFilter', () => {
       />,
     );
 
-    await user.selectOptions(
-      screen.getByLabelText('Période d’analyse'),
-      OVERVIEW_PERIOD_PRESET.CUSTOM,
-    );
+    await choosePeriod(user, 'Période personnalisée');
 
     expect(onChange).not.toHaveBeenCalled();
 
