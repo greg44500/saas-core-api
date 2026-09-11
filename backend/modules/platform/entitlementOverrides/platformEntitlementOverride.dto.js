@@ -88,6 +88,8 @@ const serializePlatformEntitlementOverride = ({
 }) => ({
     id: override._id.toString(),
     workspace: serializeWorkspace(override.workspace),
+    groupId: toId(override.groupId),
+    groupName: override.groupName ?? null,
     targetType: override.targetType,
     featureKey: override.featureKey ?? null,
     metricKey: override.metricKey ?? null,
