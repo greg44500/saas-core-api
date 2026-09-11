@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  EXCEPTION_KIND,
   PlatformEntitlementOverrideForm,
 } from '@/features/platform/components/platform-entitlement-override-form';
 
