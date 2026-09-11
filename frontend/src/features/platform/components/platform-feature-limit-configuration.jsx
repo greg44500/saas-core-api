@@ -26,10 +26,13 @@ function isOperationalValueSufficient(value, requirement = {}, usage = 0) {
 function PlatformFeatureLimitConfiguration({
   effectiveLimits = {},
   featureDefinition,
+  featureEnabled = true,
   metricsByKey,
+  onFeatureEnabledChange = null,
   onUpdateRelatedLimit,
   planLimits = {},
   relatedLimits,
+  showFeatureState = false,
   usage = {},
 }) {
   const metricKeys = featureDefinition?.metricKeys ?? [];
@@ -38,29 +41,46 @@ function PlatformFeatureLimitConfiguration({
   const requiredLimits = featureDefinition?.overridePolicy?.requiredLimits ?? {};
 
   return (
-    <section className="rounded-xl border border-border bg-background">
-      <div className="space-y-1 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
+    <section className="rounded-lg border border-border bg-background">
+      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold">{featureLabel}</p>
-            {featureDescription && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                {featureDescription}
-              </p>
-            )}
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              {metricKeys.length === 0
+                ? 'Sans quota associé'
+                : `${metricKeys.length} limite${metricKeys.length > 1 ? 's' : ''}`}
+            </span>
           </div>
-          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-            {metricKeys.length === 0
-              ? 'Aucune limite associée'
-              : `${metricKeys.length} limite${metricKeys.length > 1 ? 's' : ''} associée${metricKeys.length > 1 ? 's' : ''}`}
-          </span>
+          {featureDescription && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {featureDescription}
+            </p>
+          )}
         </div>
+
+        {showFeatureState && (
+          <div className="w-full space-y-1 sm:w-36">
+            <label className="text-xs font-medium" htmlFor="override-feature-enabled">
+              État
+            </label>
+            <select
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              id="override-feature-enabled"
+              onChange={(event) => onFeatureEnabledChange?.(event.target.value === 'true')}
+              value={String(featureEnabled)}
+            >
+              <option value="true">Activée</option>
+              <option value="false">Désactivée</option>
+            </select>
+          </div>
+        )}
       </div>
 
       {metricKeys.length > 0 && (
         <details className="border-t border-border" open>
           <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">
-            Limites et quotas de cette fonctionnalité
+            Limites et quotas
           </summary>
 
           <div className="space-y-3 border-t border-border bg-muted/20 p-4">
@@ -120,9 +140,9 @@ function PlatformFeatureLimitConfiguration({
                     </label>
                   </div>
 
-                  {needsAdjustment && (
+                  {needsAdjustment && featureEnabled && (
                     <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground">
-                      La capacité restante est insuffisante pour utiliser réellement cette fonctionnalité. Une nouvelle limite est obligatoire pour valider la dérogation.
+                      La capacité restante est insuffisante pour utiliser réellement cette fonctionnalité. Une nouvelle limite est obligatoire si la fonctionnalité reste active.
                     </p>
                   )}
 
