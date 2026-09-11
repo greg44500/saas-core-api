@@ -5,6 +5,9 @@ import {
     getPlanFeatureMetricKeys,
 } from '../../../config/applicationCapability.registry.js';
 import {
+    isLimitValueAllowedByOverridePolicy,
+} from '../../../config/entitlementOverridePolicy.registry.js';
+import {
     ENTITLEMENT_OVERRIDE_SOURCE,
 } from '../../../constants/entitlementOverride.constants.js';
 
@@ -54,10 +57,21 @@ const metricKeySchema = z
         'Métrique inconnue du registre de capabilities.',
     );
 
-const relatedLimitSchema = z.strictObject({
-    metricKey: metricKeySchema,
-    limitValue: limitValueSchema,
-});
+const relatedLimitSchema = z
+    .strictObject({
+        metricKey: metricKeySchema,
+        limitValue: limitValueSchema,
+    })
+    .superRefine((value, context) => {
+        if (!isLimitValueAllowedByOverridePolicy(value)) {
+            context.addIssue({
+                code: 'custom',
+                message:
+                    'La valeur demandée dépasse les garde-fous autorisés pour cette métrique.',
+                path: ['limitValue'],
+            });
+        }
+    });
 
 const validatePeriod = (value, context) => {
     if (
