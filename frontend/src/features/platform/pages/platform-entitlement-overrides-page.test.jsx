@@ -81,7 +81,7 @@ const capabilities = {
         requiredLimits: {
           storage_bytes: {
             minimumEffectiveValue: 100 * 1024 * 1024,
-            minimumRemainingCapacity: 1,
+            minimumHeadroom: 1,
           },
         },
       },
@@ -96,7 +96,7 @@ const capabilities = {
         requiredLimits: {
           members: {
             minimumEffectiveValue: 2,
-            minimumRemainingCapacity: 1,
+            minimumHeadroom: 1,
           },
         },
       },
@@ -178,7 +178,6 @@ describe('PlatformEntitlementOverridesPage', () => {
             workspace: { id: 'workspace-id', name: 'Workspace Démo' },
             plan: {
               id: 'plan-id',
-              key: 'free',
               name: 'Free',
               features: ['file_upload'],
               limits: { members: 1 },
@@ -304,7 +303,7 @@ describe('PlatformEntitlementOverridesPage', () => {
 
     expect(within(drawer).getAllByText('Gestion d’équipe')).toHaveLength(2);
     expect(within(drawer).queryByText('Téléversement de fichiers')).not.toBeInTheDocument();
-    expect(within(drawer).getAllByText('1 limite associée')).toHaveLength(2);
+    expect(within(drawer).getByText('1 limite')).toBeInTheDocument();
     expect(within(drawer).getByText('Ajustement requis')).toBeInTheDocument();
     expect(within(drawer).getByRole('slider', { name: 'Limite Membres' })).toBeInTheDocument();
     expect(within(drawer).getByText(/Plan : 1 · Effectif : 1 · Utilisé : 1/)).toBeInTheDocument();
