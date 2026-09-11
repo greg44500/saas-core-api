@@ -127,7 +127,7 @@ describe('PlatformEntitlementOverrideForm', () => {
 
     expect(screen.getByText('Workspace Démo')).toBeInTheDocument();
     expect(screen.getByText('Free')).toBeInTheDocument();
-    expect(screen.getByText('Gestion d’équipe')).toBeInTheDocument();
+    expect(screen.getAllByText('Gestion d’équipe')).toHaveLength(2);
     expect(screen.queryByText('Téléversement de fichiers')).not.toBeInTheDocument();
     expect(screen.getByText('Collaboration')).toBeInTheDocument();
 
@@ -155,7 +155,7 @@ describe('PlatformEntitlementOverrideForm', () => {
       />,
     );
 
-    expect(screen.getByText('1 limite associée')).toBeInTheDocument();
+    expect(screen.getAllByText('1 limite associée')).toHaveLength(2);
     expect(screen.getByText('Ajustement requis')).toBeInTheDocument();
     expect(screen.getByText(/capacité restante est insuffisante/i)).toBeInTheDocument();
     expect(screen.getByText(/Utilisé : 1/)).toBeInTheDocument();
