@@ -45,7 +45,7 @@ function getFeatureDescription(row, planName) {
     return 'Ajoutée par dérogation pour ce workspace';
   }
 
-  return `Non incluse dans le plan ${planName}`;
+  return `Non incluse dans le plan ${planName} — utilisez « Dérogation exceptionnelle » pour l’accorder avec ses limites associées.`;
 }
 
 function isByteMetric(metric) {
@@ -175,6 +175,15 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
 
   async function changeFeature(row, desiredState) {
     if (desiredState === row.effectiveEnabled) return;
+
+    /*
+     * Une nouvelle feature hors plan peut avoir des quotas associés. Elle doit
+     * donc toujours passer par le flow complet de dérogation, jamais par ce
+     * raccourci qui ne connaît qu'une capability atomique.
+     */
+    if (desiredState && !row.planEnabled && !row.effectiveEnabled) {
+      return;
+    }
 
     setPendingFeatureKey(row.featureKey);
 
@@ -338,16 +347,20 @@ function PlatformWorkspaceFeatureOverrides({ capabilities, workspaceId }) {
     {
       id: 'feature',
       header: 'Fonctionnalités',
-      cell: (row) => (
-        <FeatureToggle
-          checked={row.effectiveEnabled}
-          description={getFeatureDescription(row, planName)}
-          disabled={pendingFeatureKey !== null}
-          helpText={row.helpText}
-          label={row.label}
-          onCheckedChange={(checked) => changeFeature(row, checked)}
-        />
-      ),
+      cell: (row) => {
+        const requiresFullGrantFlow = !row.planEnabled && !row.effectiveEnabled;
+
+        return (
+          <FeatureToggle
+            checked={row.effectiveEnabled}
+            description={getFeatureDescription(row, planName)}
+            disabled={pendingFeatureKey !== null || requiresFullGrantFlow}
+            helpText={row.helpText}
+            label={row.label}
+            onCheckedChange={(checked) => changeFeature(row, checked)}
+          />
+        );
+      },
     },
   ];
 
