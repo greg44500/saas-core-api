@@ -14,6 +14,9 @@ function isByteMetric(metric) {
 function getLinearSliderValue({ policy, value, minimumValue }) {
   const min = Math.max(policy.min, minimumValue ?? policy.min);
   const max = policy.max;
+
+  if (min > max) return null;
+
   const step = policy.step;
   const candidate = Number.isInteger(value) ? value : min;
   const clamped = Math.min(max, Math.max(min, candidate));
@@ -92,6 +95,14 @@ function PlatformMetricLimitControl({
   const label = metric?.presentation?.label
     ?? formatPlatformPlanMetric(metric?.key);
   const unlimitedAllowed = policy?.allowUnlimited === true;
+
+  if (policy && !slider) {
+    return (
+      <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-foreground" role="alert">
+        Aucune valeur de dérogation autorisée ne permet de conserver la capacité minimale requise. Le plan ou la politique de limite doit être réévalué.
+      </p>
+    );
+  }
 
   if (slider) {
     const effectiveMode = unlimitedAllowed ? mode : 'limited';
@@ -185,7 +196,9 @@ function PlatformMetricLimitControl({
             className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
             disabled={disabled}
             id={`${idPrefix}-value`}
-            min={minimumValue ?? 0}
+            min={isByteMetric(metric) && minimumValue !== null
+              ? minimumValue / (1024 * 1024)
+              : minimumValue ?? 0}
             onChange={(event) => {
               const numericValue = Number(event.target.value);
               if (!Number.isFinite(numericValue) || numericValue < 0) return;
