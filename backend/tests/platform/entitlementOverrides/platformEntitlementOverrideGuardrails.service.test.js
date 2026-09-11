@@ -18,12 +18,22 @@ import {
 import {
     getWorkspaceEffectiveEntitlement,
 } from '../../../modules/subscriptions/subscription.service.js';
+import {
+    getUsageMetricValue,
+} from '../../../modules/usageMetric/usageMetric.service.js';
 
 
 vi.mock(
     '../../../modules/subscriptions/subscription.service.js',
     () => ({
         getWorkspaceEffectiveEntitlement: vi.fn(),
+    }),
+);
+
+vi.mock(
+    '../../../modules/usageMetric/usageMetric.service.js',
+    () => ({
+        getUsageMetricValue: vi.fn(),
     }),
 );
 
@@ -39,7 +49,7 @@ const buildSelectLeanQuery = (result) => {
     return query;
 };
 
-const mockEffectiveLimits = (limits) => {
+const mockEffectiveLimits = (limits, usage = {}) => {
     getWorkspaceEffectiveEntitlement.mockResolvedValue({
         effectiveCapabilities: {
             features: [],
@@ -47,6 +57,8 @@ const mockEffectiveLimits = (limits) => {
             appliedOverrides: [],
         },
     });
+    getUsageMetricValue.mockImplementation(({ metricKey }) =>
+        Promise.resolve(usage[metricKey] ?? 0));
 };
 
 const captureError = (callback) => {
@@ -68,7 +80,7 @@ describe('platformEntitlementOverrideGuardrails.service', () => {
 
     it('refuse d’activer la gestion d’équipe lorsque members reste à 1', async () => {
         const workspaceId = createId();
-        mockEffectiveLimits({ members: 1 });
+        mockEffectiveLimits({ members: 1 }, { members: 1 });
 
         await expect(assertCreateFeatureOverrideGroupOperational({
             groupData: {
@@ -84,7 +96,7 @@ describe('platformEntitlementOverrideGuardrails.service', () => {
 
     it('accepte la gestion d’équipe avec une dérogation members à 2', async () => {
         const workspaceId = createId();
-        mockEffectiveLimits({ members: 1 });
+        mockEffectiveLimits({ members: 1 }, { members: 1 });
 
         await expect(assertCreateFeatureOverrideGroupOperational({
             groupData: {
@@ -98,9 +110,9 @@ describe('platformEntitlementOverrideGuardrails.service', () => {
         })).resolves.toBeUndefined();
     });
 
-    it('n’impose pas une nouvelle limite si la capacité effective est déjà suffisante', async () => {
+    it('n’impose pas une nouvelle limite si une place reste réellement disponible', async () => {
         const workspaceId = createId();
-        mockEffectiveLimits({ members: 5 });
+        mockEffectiveLimits({ members: 5 }, { members: 4 });
 
         await expect(assertCreateFeatureOverrideGroupOperational({
             groupData: {
@@ -110,6 +122,22 @@ describe('platformEntitlementOverrideGuardrails.service', () => {
             },
             now: NOW,
         })).resolves.toBeUndefined();
+    });
+
+    it('refuse un quota members supérieur mais déjà entièrement consommé', async () => {
+        const workspaceId = createId();
+        mockEffectiveLimits({ members: 5 }, { members: 5 });
+
+        await expect(assertCreateFeatureOverrideGroupOperational({
+            groupData: {
+                workspaceId: workspaceId.toString(),
+                featureKey: 'team_management',
+                relatedLimits: [],
+            },
+            now: NOW,
+        })).rejects.toMatchObject({
+            statusCode: 409,
+        });
     });
 
     it('refuse une limite members au-delà du maximum administratif', () => {
