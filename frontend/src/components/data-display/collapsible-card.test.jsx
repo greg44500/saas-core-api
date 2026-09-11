@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { CollapsibleCard } from '@/components/data-display/collapsible-card';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 describe('CollapsibleCard', () => {
   afterEach(() => cleanup());
@@ -11,13 +12,15 @@ describe('CollapsibleCard', () => {
     const user = userEvent.setup();
 
     render(
-      <CollapsibleCard
-        description="Consommation actuelle"
-        summary={<p>Résumé visible</p>}
-        title="Usage de la plateforme"
-      >
-        <p>Détail secondaire</p>
-      </CollapsibleCard>,
+      <TooltipProvider>
+        <CollapsibleCard
+          description="Consommation actuelle"
+          summary={<p>Résumé visible</p>}
+          title="Usage de la plateforme"
+        >
+          <p>Détail secondaire</p>
+        </CollapsibleCard>
+      </TooltipProvider>,
     );
 
     expect(screen.getByText('Résumé visible')).toBeInTheDocument();
@@ -27,7 +30,7 @@ describe('CollapsibleCard', () => {
     });
     await user.hover(infoButton);
 
-    expect(screen.getByRole('tooltip')).toHaveTextContent('Consommation actuelle');
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Consommation actuelle');
 
     const toggle = screen.getByRole('button', { name: 'Afficher le détail' });
     const content = document.getElementById(toggle.getAttribute('aria-controls'));
