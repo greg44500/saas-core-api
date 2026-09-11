@@ -1,9 +1,14 @@
+import { SelectField } from '@/components/shared/select-field';
 import { PlatformMetricLimitControl } from '@/features/platform/components/platform-metric-limit-control';
 import {
   formatPlatformPlanLimit,
   formatPlatformPlanMetric,
 } from '@/features/platform/lib/platform-plan-formatters';
 
+const FEATURE_STATE_ITEMS = Object.freeze([
+  { value: 'true', label: 'Activée' },
+  { value: 'false', label: 'Désactivée' },
+]);
 
 function getRequiredLimitValue(requirement = {}, usage = 0) {
   const minimumEffectiveValue = requirement.minimumEffectiveValue ?? 0;
@@ -60,19 +65,14 @@ function PlatformFeatureLimitConfiguration({
         </div>
 
         {showFeatureState && (
-          <div className="w-full space-y-1 sm:w-36">
-            <label className="text-xs font-medium" htmlFor="override-feature-enabled">
-              État
-            </label>
-            <select
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+          <div className="w-full sm:w-40">
+            <SelectField
               id="override-feature-enabled"
-              onChange={(event) => onFeatureEnabledChange?.(event.target.value === 'true')}
+              items={FEATURE_STATE_ITEMS}
+              label="État"
+              onValueChange={(value) => onFeatureEnabledChange?.(value === 'true')}
               value={String(featureEnabled)}
-            >
-              <option value="true">Activée</option>
-              <option value="false">Désactivée</option>
-            </select>
+            />
           </div>
         )}
       </div>
@@ -170,7 +170,6 @@ function PlatformFeatureLimitConfiguration({
     </section>
   );
 }
-
 
 export {
   PlatformFeatureLimitConfiguration,
