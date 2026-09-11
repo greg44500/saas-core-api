@@ -5,6 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 /**
  * Champ Select partagé pour les listes simples. Les catalogues volumineux avec
@@ -12,16 +13,19 @@ import {
  * sur la même primitive shadcn/Base UI.
  */
 function SelectField({
+  className,
   disabled = false,
   error,
   hint,
   id,
   items = [],
   label,
+  labelClassName,
   name,
   onBlur,
   onValueChange,
   placeholder = 'Sélectionner…',
+  triggerClassName,
   value,
 }) {
   const labelId = `${id}-label`;
@@ -29,8 +33,8 @@ function SelectField({
   const hasMessage = Boolean(error || hint);
 
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium" id={labelId}>
+    <div className={cn('space-y-2', className)}>
+      <label className={cn('text-sm font-medium', labelClassName)} id={labelId}>
         {label}
       </label>
       <Select
@@ -45,6 +49,7 @@ function SelectField({
           aria-describedby={hasMessage ? messageId : undefined}
           aria-invalid={error ? true : undefined}
           aria-labelledby={labelId}
+          className={triggerClassName}
           disabled={disabled}
           id={id}
           onBlur={onBlur}
