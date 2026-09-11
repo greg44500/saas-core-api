@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { DateTimePicker } from '@/components/forms/date-time-picker';
+import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -26,6 +27,33 @@ const EXCEPTION_KIND = Object.freeze({
   SUSPEND_FEATURE: 'suspend_feature',
   ADJUST_LIMIT: 'adjust_limit',
 });
+
+const EXCEPTION_KIND_ITEMS = Object.freeze([
+  {
+    value: EXCEPTION_KIND.GRANT_FEATURE,
+    label: 'Accorder une fonctionnalité actuellement inactive',
+  },
+  {
+    value: EXCEPTION_KIND.SUSPEND_FEATURE,
+    label: 'Suspendre une fonctionnalité actuellement active',
+  },
+  {
+    value: EXCEPTION_KIND.ADJUST_LIMIT,
+    label: 'Modifier exceptionnellement une limite',
+  },
+]);
+
+const FEATURE_STATE_ITEMS = Object.freeze([
+  { value: 'true', label: 'Activée' },
+  { value: 'false', label: 'Désactivée' },
+]);
+
+const SOURCE_ITEMS = Object.freeze(
+  Object.values(ENTITLEMENT_OVERRIDE_SOURCE).map((value) => ({
+    value,
+    label: formatPlatformEntitlementOverrideSource(value),
+  })),
+);
 
 function getFeatureLabel(featureKey, definitionsByKey) {
   return definitionsByKey.get(featureKey)?.label
@@ -112,6 +140,13 @@ function PlatformEntitlementOverrideForm({
   const metrics = capabilities?.metrics ?? [];
   const metricsByKey = useMemo(
     () => new Map(metrics.map((metric) => [metric.key, metric])),
+    [metrics],
+  );
+  const metricItems = useMemo(
+    () => metrics.map((metric) => ({
+      value: metric.key,
+      label: metric.presentation?.label ?? formatPlatformPlanMetric(metric.key),
+    })),
     [metrics],
   );
   const effectiveFeatureSet = useMemo(
@@ -452,25 +487,13 @@ function PlatformEntitlementOverrideForm({
             </p>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="override-exception-kind">Nature</label>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              id="override-exception-kind"
-              onChange={(event) => setExceptionKind(event.target.value)}
-              value={exceptionKind}
-            >
-              <option value={EXCEPTION_KIND.GRANT_FEATURE}>
-                Accorder une fonctionnalité actuellement inactive
-              </option>
-              <option value={EXCEPTION_KIND.SUSPEND_FEATURE}>
-                Suspendre une fonctionnalité actuellement active
-              </option>
-              <option value={EXCEPTION_KIND.ADJUST_LIMIT}>
-                Modifier exceptionnellement une limite
-              </option>
-            </select>
-          </div>
+          <SelectField
+            id="override-exception-kind"
+            items={EXCEPTION_KIND_ITEMS}
+            label="Nature"
+            onValueChange={setExceptionKind}
+            value={exceptionKind}
+          />
 
           {effectiveTargetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE ? (
             <div className="space-y-3">
@@ -493,21 +516,13 @@ function PlatformEntitlementOverrideForm({
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="override-metric">Métrique</label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                id="override-metric"
-                onChange={(event) => setMetricKey(event.target.value)}
-                value={metricKey}
-              >
-                {metrics.map((metric) => (
-                  <option key={metric.key} value={metric.key}>
-                    {metric.presentation?.label ?? formatPlatformPlanMetric(metric.key)}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <SelectField
+              id="override-metric"
+              items={metricItems}
+              label="Métrique"
+              onValueChange={setMetricKey}
+              value={metricKey}
+            />
           )}
         </section>
       ) : (
@@ -568,18 +583,13 @@ function PlatformEntitlementOverrideForm({
         && !isGroupedFeatureEdit) && (
         <section className="space-y-4">
           <h3 className="font-semibold">Valeur appliquée</h3>
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="override-feature-enabled">État</label>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              id="override-feature-enabled"
-              onChange={(event) => setFeatureEnabled(event.target.value === 'true')}
-              value={String(featureEnabled)}
-            >
-              <option value="true">Activée</option>
-              <option value="false">Désactivée</option>
-            </select>
-          </div>
+          <SelectField
+            id="override-feature-enabled"
+            items={FEATURE_STATE_ITEMS}
+            label="État"
+            onValueChange={(value) => setFeatureEnabled(value === 'true')}
+            value={String(featureEnabled)}
+          />
         </section>
       )}
 
@@ -623,21 +633,13 @@ function PlatformEntitlementOverrideForm({
       <section className="space-y-4">
         <h3 className="font-semibold">Cadre commercial</h3>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium" htmlFor="override-source">Origine</label>
-          <select
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            id="override-source"
-            onChange={(event) => setSource(event.target.value)}
-            value={source}
-          >
-            {Object.values(ENTITLEMENT_OVERRIDE_SOURCE).map((value) => (
-              <option key={value} value={value}>
-                {formatPlatformEntitlementOverrideSource(value)}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SelectField
+          id="override-source"
+          items={SOURCE_ITEMS}
+          label="Origine"
+          onValueChange={setSource}
+          value={source}
+        />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
