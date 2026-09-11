@@ -56,4 +56,21 @@ describe('getSliderConfiguration', () => {
     });
     expect(configuration.resolveRawValue(2)).toBe(1024 * MiB);
   });
+
+  it('n’expose aucun slider lorsque le minimum requis dépasse le plafond autorisé', () => {
+    expect(getSliderConfiguration({
+      metric: {
+        key: 'members',
+        overridePolicy: {
+          control: 'linear_slider',
+          min: 0,
+          max: 50,
+          step: 1,
+          allowUnlimited: false,
+        },
+      },
+      value: 50,
+      minimumValue: 51,
+    })).toBeNull();
+  });
 });
