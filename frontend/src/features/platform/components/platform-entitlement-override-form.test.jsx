@@ -76,7 +76,6 @@ const entitlementContext = {
   workspace: { id: 'workspace-id', name: 'Workspace Démo' },
   plan: {
     id: 'plan-id',
-    key: 'free',
     name: 'Free',
     features: ['file_upload'],
     limits: { members: 1 },
@@ -107,11 +106,37 @@ const entitlementContextWithSaturatedCapacity = {
   usage: { members: 5 },
 };
 
+const groupedOverride = {
+  id: 'override-id',
+  workspace: { id: 'workspace-id', name: 'Workspace Démo' },
+  targetType: 'feature',
+  featureKey: 'team_management',
+  featureEnabled: true,
+  source: 'support',
+  startsAt: '2026-09-10T10:00:00.000Z',
+  endsAt: null,
+  reason: 'Essai commercial',
+};
+
+const featureGroup = {
+  groupId: 'group-id',
+  groupName: 'Découverte équipe',
+  featureKey: 'team_management',
+  primaryOverride: groupedOverride,
+  relatedOverrides: [
+    {
+      id: 'limit-id',
+      targetType: 'limit',
+      metricKey: 'members',
+      limitValue: 5,
+    },
+  ],
+};
 
 describe('PlatformEntitlementOverrideForm', () => {
   afterEach(() => cleanup());
 
-  it('propose seulement les fonctionnalités compatibles avec la nature choisie', async () => {
+  it('utilise un sélecteur compact et conserve la recherche par fonctionnalité', async () => {
     const user = userEvent.setup();
 
     render(
@@ -127,17 +152,16 @@ describe('PlatformEntitlementOverrideForm', () => {
 
     expect(screen.getByText('Workspace Démo')).toBeInTheDocument();
     expect(screen.getByText('Free')).toBeInTheDocument();
-    expect(screen.getAllByText('Gestion d’équipe')).toHaveLength(2);
-    expect(screen.queryByText('Téléversement de fichiers')).not.toBeInTheDocument();
-    expect(screen.getByText('Collaboration')).toBeInTheDocument();
+    expect(screen.getByLabelText('Rechercher fonctionnalité')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Fonctionnalité' })).toHaveTextContent('Gestion d’équipe');
 
     await user.selectOptions(
       screen.getByLabelText('Nature'),
       EXCEPTION_KIND.SUSPEND_FEATURE,
     );
 
-    expect(screen.getByText('Téléversement de fichiers')).toBeInTheDocument();
-    expect(screen.queryByText('Gestion d’équipe')).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Fonctionnalité' }))
+      .toHaveTextContent('Téléversement de fichiers');
   });
 
   it('rend automatiquement utilisable une feature dont la limite actuelle est saturée', async () => {
@@ -155,22 +179,16 @@ describe('PlatformEntitlementOverrideForm', () => {
       />,
     );
 
-    expect(screen.getAllByText('1 limite associée')).toHaveLength(2);
     expect(screen.getByText('Ajustement requis')).toBeInTheDocument();
     expect(screen.getByText(/capacité restante est insuffisante/i)).toBeInTheDocument();
     expect(screen.getByText(/Utilisé : 1/)).toBeInTheDocument();
     const slider = screen.getByRole('slider', { name: 'Limite Membres' });
     expect(slider).toHaveAttribute('aria-valuenow', '2');
 
-    await user.type(
-      screen.getByLabelText('Nom de la dérogation'),
-      'Découverte équipe',
-    );
+    await user.type(screen.getByLabelText('Nom de la dérogation'), 'Découverte équipe');
     await user.type(screen.getByLabelText('Motif'), 'Geste de support validé');
     await user.click(
-      screen.getByRole('button', {
-        name: 'Créer la dérogation exceptionnelle',
-      }),
+      screen.getByRole('button', { name: 'Créer la dérogation exceptionnelle' }),
     );
 
     expect(onSubmit).toHaveBeenCalledWith({
@@ -182,9 +200,7 @@ describe('PlatformEntitlementOverrideForm', () => {
       featureKey: 'team_management',
       featureEnabled: true,
       groupName: 'Découverte équipe',
-      relatedLimits: [
-        { metricKey: 'members', limitValue: 2 },
-      ],
+      relatedLimits: [{ metricKey: 'members', limitValue: 2 }],
     });
   });
 
@@ -206,15 +222,10 @@ describe('PlatformEntitlementOverrideForm', () => {
     expect(screen.getByText(/Plan : 5 · Effectif : 5 · Utilisé : 4/)).toBeInTheDocument();
     expect(screen.getByText(/valeur effective actuelle sera conservée/i)).toBeInTheDocument();
 
-    await user.type(
-      screen.getByLabelText('Nom de la dérogation'),
-      'Accès équipe temporaire',
-    );
+    await user.type(screen.getByLabelText('Nom de la dérogation'), 'Accès équipe temporaire');
     await user.type(screen.getByLabelText('Motif'), 'Test sans modification de quota');
     await user.click(
-      screen.getByRole('button', {
-        name: 'Créer la dérogation exceptionnelle',
-      }),
+      screen.getByRole('button', { name: 'Créer la dérogation exceptionnelle' }),
     );
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
@@ -240,6 +251,61 @@ describe('PlatformEntitlementOverrideForm', () => {
       .toHaveAttribute('aria-valuenow', '6');
   });
 
+  it('recalcule en modification une limite groupée devenue saturée', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <PlatformEntitlementOverrideForm
+        capabilities={capabilities}
+        entitlementContext={entitlementContextWithSaturatedCapacity}
+        featureGroup={featureGroup}
+        mode="edit"
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+        override={groupedOverride}
+      />,
+    );
+
+    expect(screen.getByLabelText('Nom de la dérogation')).toHaveValue('Découverte équipe');
+    expect(screen.getByLabelText('État')).toHaveValue('true');
+    expect(screen.getByText(/Plan : 5 · Effectif : 5 · Utilisé : 5/)).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: 'Limite Membres' }))
+      .toHaveAttribute('aria-valuenow', '6');
+
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      groupName: 'Découverte équipe',
+      featureEnabled: true,
+      relatedLimits: [{ metricKey: 'members', limitValue: 6 }],
+    }));
+  });
+
+  it('permet de désactiver une feature groupée même si son quota est saturé', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <PlatformEntitlementOverrideForm
+        capabilities={capabilities}
+        entitlementContext={entitlementContextWithSaturatedCapacity}
+        featureGroup={featureGroup}
+        mode="edit"
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+        override={groupedOverride}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText('État'), 'false');
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      featureEnabled: false,
+    }));
+  });
+
   it('construit une suspension exceptionnelle sur une feature active', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
@@ -261,9 +327,7 @@ describe('PlatformEntitlementOverrideForm', () => {
     );
     await user.type(screen.getByLabelText('Motif'), 'Suspension contractuelle');
     await user.click(
-      screen.getByRole('button', {
-        name: 'Créer la dérogation exceptionnelle',
-      }),
+      screen.getByRole('button', { name: 'Créer la dérogation exceptionnelle' }),
     );
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
