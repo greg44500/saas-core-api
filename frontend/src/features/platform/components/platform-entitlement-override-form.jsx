@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { DateTimePicker } from '@/components/forms/date-time-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PlatformFeatureLimitConfiguration } from '@/features/platform/components/platform-feature-limit-configuration';
 import { PlatformFeatureSelector } from '@/features/platform/components/platform-feature-selector';
+import { PlatformMetricLimitControl } from '@/features/platform/components/platform-metric-limit-control';
 import {
   ENTITLEMENT_OVERRIDE_SOURCE,
   ENTITLEMENT_OVERRIDE_TARGET,
@@ -11,6 +13,7 @@ import {
 } from '@/features/platform/lib/platform-entitlement-override-formatters';
 import {
   formatPlatformPlanFeature,
+  formatPlatformPlanLimit,
   formatPlatformPlanMetric,
 } from '@/features/platform/lib/platform-plan-formatters';
 
@@ -20,43 +23,73 @@ const EXCEPTION_KIND = Object.freeze({
   ADJUST_LIMIT: 'adjust_limit',
 });
 
-function isByteMetric(metric) {
-  return metric?.presentation?.unit === 'bytes'
-    || metric?.unit === 'bytes'
-    || metric?.key === 'storage_bytes';
-}
-
 function getFeatureLabel(featureKey, definitionsByKey) {
   return definitionsByKey.get(featureKey)?.label
     ?? formatPlatformPlanFeature(featureKey);
 }
 
-function formatLimitInputValue(value, metric) {
-  if (value === null || value === undefined) return '';
-  return isByteMetric(metric)
-    ? String(value / (1024 * 1024))
-    : String(value);
+function getInitialPolicyValue(metric, minimumValue = 0) {
+  const policy = metric?.overridePolicy;
+
+  if (policy?.control === 'linear_slider') {
+    return Math.min(
+      policy.max,
+      Math.max(policy.min, minimumValue ?? policy.min),
+    );
+  }
+
+  if (policy?.control === 'preset_slider') {
+    return policy.values.find((value) => value >= (minimumValue ?? 0))
+      ?? policy.values.at(-1)
+      ?? 0;
+  }
+
+  return Math.max(0, minimumValue ?? 0);
+}
+
+function isLimitValueAllowedByPolicy(metric, limitValue) {
+  const policy = metric?.overridePolicy;
+  if (!policy) return true;
+
+  if (limitValue === null) return policy.allowUnlimited === true;
+  if (!Number.isInteger(limitValue) || limitValue < 0) return false;
+
+  if (policy.control === 'linear_slider') {
+    return limitValue >= policy.min
+      && limitValue <= policy.max
+      && (limitValue - policy.min) % policy.step === 0;
+  }
+
+  if (policy.control === 'preset_slider') {
+    return policy.values.includes(limitValue);
+  }
+
+  return false;
 }
 
 function parseLimitValue({ value, mode, metric }) {
-  if (mode === 'unlimited') return null;
+  const limitValue = mode === 'unlimited' ? null : Number(value);
 
-  const normalizedValue = String(value).replace(',', '.').trim();
-  const numericValue = Number(normalizedValue);
-
-  if (!normalizedValue || !Number.isFinite(numericValue) || numericValue < 0) {
-    throw new Error('La limite doit être un nombre positif ou nul.');
+  if (
+    limitValue !== null
+    && (!Number.isInteger(limitValue) || limitValue < 0)
+  ) {
+    throw new Error('La limite doit être un entier positif ou nul.');
   }
 
-  if (isByteMetric(metric)) {
-    return Math.round(numericValue * 1024 * 1024);
+  if (!isLimitValueAllowedByPolicy(metric, limitValue)) {
+    throw new Error(
+      'La limite demandée dépasse les garde-fous autorisés pour cette métrique.',
+    );
   }
 
-  if (!Number.isInteger(numericValue)) {
-    throw new Error('La limite doit être un entier.');
-  }
+  return limitValue;
+}
 
-  return numericValue;
+function isOperationalValueSufficient(value, minimumValue) {
+  if (minimumValue === null || minimumValue === undefined) return true;
+  if (value === null) return true;
+  return Number.isInteger(value) && value >= minimumValue;
 }
 
 function PlatformEntitlementOverrideForm({
@@ -118,23 +151,16 @@ function PlatformEntitlementOverrideForm({
   );
   const [relatedLimits, setRelatedLimits] = useState({});
   const [limitMode, setLimitMode] = useState(
-    override?.targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT && override?.limitValue === null
+    override?.targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT
+      && override?.limitValue === null
       ? 'unlimited'
       : 'limited',
   );
-  const [limitValue, setLimitValue] = useState(() => {
-    if (
-      override?.targetType !== ENTITLEMENT_OVERRIDE_TARGET.LIMIT
-      || override?.limitValue == null
-    ) {
-      return '';
-    }
-
-    return formatLimitInputValue(
-      override.limitValue,
-      metricsByKey.get(override.metricKey),
-    );
-  });
+  const [limitValue, setLimitValue] = useState(
+    override?.targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT
+      ? override?.limitValue
+      : null,
+  );
   const [source, setSource] = useState(
     override?.source ?? ENTITLEMENT_OVERRIDE_SOURCE.ADMINISTRATIVE,
   );
@@ -165,7 +191,10 @@ function PlatformEntitlementOverrideForm({
   const effectiveMetricKey = mode === 'edit' ? override?.metricKey : metricKey;
   const effectiveMetric = metricsByKey.get(effectiveMetricKey);
   const selectedFeatureDefinition = featureDefinitionsByKey.get(featureKey);
-  const associatedMetricKeys = selectedFeatureDefinition?.metricKeys ?? [];
+  const associatedMetricKeys = useMemo(
+    () => selectedFeatureDefinition?.metricKeys ?? [],
+    [selectedFeatureDefinition],
+  );
   const isGroupedFeatureCreate = mode === 'create'
     && effectiveTargetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
     && createFeatureEnabled;
@@ -173,6 +202,39 @@ function PlatformEntitlementOverrideForm({
     && effectiveTargetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
     && Boolean(featureGroup?.groupId);
   const managesFeatureLimits = isGroupedFeatureCreate || isGroupedFeatureEdit;
+
+  useEffect(() => {
+    if (
+      mode !== 'create'
+      || effectiveTargetType !== ENTITLEMENT_OVERRIDE_TARGET.LIMIT
+      || !effectiveMetric
+    ) {
+      return;
+    }
+
+    const effectiveValue = entitlementContext?.effective?.limits?.[effectiveMetricKey];
+    const policy = effectiveMetric.overridePolicy;
+
+    if (effectiveValue === null && policy?.allowUnlimited === true) {
+      setLimitMode('unlimited');
+      setLimitValue(null);
+      return;
+    }
+
+    setLimitMode('limited');
+    setLimitValue(
+      Number.isInteger(effectiveValue)
+        && isLimitValueAllowedByPolicy(effectiveMetric, effectiveValue)
+        ? effectiveValue
+        : getInitialPolicyValue(effectiveMetric),
+    );
+  }, [
+    effectiveMetric,
+    effectiveMetricKey,
+    effectiveTargetType,
+    entitlementContext,
+    mode,
+  ]);
 
   useEffect(() => {
     if (!managesFeatureLimits) {
@@ -185,21 +247,40 @@ function PlatformEntitlementOverrideForm({
         (item) => [item.metricKey, item],
       ),
     );
+    const requiredLimits =
+      selectedFeatureDefinition?.overridePolicy?.requiredLimits ?? {};
 
     setRelatedLimits(Object.fromEntries(
       associatedMetricKeys.map((key) => {
         const metric = metricsByKey.get(key);
         const existing = existingByMetric.get(key);
         const effectiveValue = entitlementContext?.effective?.limits?.[key];
-        const value = existing?.limitValue ?? effectiveValue ?? null;
+        const minimumEffectiveValue =
+          requiredLimits?.[key]?.minimumEffectiveValue ?? null;
+        const needsAdjustment = !isOperationalValueSufficient(
+          effectiveValue,
+          minimumEffectiveValue,
+        );
+        const policy = metric?.overridePolicy;
+        const existingUnlimited = existing?.limitValue === null;
+        const canKeepUnlimited = existingUnlimited
+          && policy?.allowUnlimited === true;
+        const value = Number.isInteger(existing?.limitValue)
+          ? existing.limitValue
+          : needsAdjustment
+            ? getInitialPolicyValue(metric, minimumEffectiveValue)
+            : Number.isInteger(effectiveValue)
+              && isLimitValueAllowedByPolicy(metric, effectiveValue)
+              ? effectiveValue
+              : getInitialPolicyValue(metric, minimumEffectiveValue ?? 0);
 
         return [
           key,
           {
-            enabled: Boolean(existing),
+            enabled: Boolean(existing) || needsAdjustment,
             locked: Boolean(existing),
-            mode: value === null ? 'unlimited' : 'limited',
-            value: formatLimitInputValue(value, metric),
+            mode: canKeepUnlimited ? 'unlimited' : 'limited',
+            value,
           },
         ];
       }),
@@ -210,6 +291,7 @@ function PlatformEntitlementOverrideForm({
     featureGroup,
     managesFeatureLimits,
     metricsByKey,
+    selectedFeatureDefinition,
   ]);
 
   function updateRelatedLimit(metricKeyToUpdate, patch) {
@@ -235,6 +317,37 @@ function PlatformEntitlementOverrideForm({
       }));
   }
 
+  const hasOperationalLimitGap = useMemo(() => {
+    if (!managesFeatureLimits) return false;
+
+    const requiredLimits =
+      selectedFeatureDefinition?.overridePolicy?.requiredLimits ?? {};
+
+    return Object.entries(requiredLimits).some(([
+      requiredMetricKey,
+      requiredPolicy,
+    ]) => {
+      const configuration = relatedLimits[requiredMetricKey];
+      const currentEffectiveValue =
+        entitlementContext?.effective?.limits?.[requiredMetricKey];
+      const projectedValue = configuration?.enabled
+        ? configuration.mode === 'unlimited'
+          ? null
+          : configuration.value
+        : currentEffectiveValue;
+
+      return !isOperationalValueSufficient(
+        projectedValue,
+        requiredPolicy.minimumEffectiveValue,
+      );
+    });
+  }, [
+    entitlementContext,
+    managesFeatureLimits,
+    relatedLimits,
+    selectedFeatureDefinition,
+  ]);
+
   async function handleSubmit(event) {
     event.preventDefault();
     setFormError(null);
@@ -251,6 +364,12 @@ function PlatformEntitlementOverrideForm({
         && new Date(endsAt) <= new Date(startsAt)
       ) {
         throw new Error('La fin de la dérogation doit être postérieure à son début.');
+      }
+
+      if (hasOperationalLimitGap) {
+        throw new Error(
+          'Une limite associée doit être augmentée pour rendre la fonctionnalité réellement utilisable.',
+        );
       }
 
       const payload = {
@@ -404,7 +523,7 @@ function PlatformEntitlementOverrideForm({
       )}
 
       {managesFeatureLimits && (
-        <section className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+        <section className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="override-group-name">
               Nom de la dérogation
@@ -421,94 +540,16 @@ function PlatformEntitlementOverrideForm({
             </p>
           </div>
 
-          <div>
-            <h3 className="font-semibold">Limites associées</h3>
-            {associatedMetricKeys.length === 0 ? (
-              <p className="mt-2 text-sm text-muted-foreground">
-                Cette fonctionnalité ne possède actuellement aucune limite associée.
-              </p>
-            ) : (
-              <div className="mt-3 space-y-3">
-                {associatedMetricKeys.map((key) => {
-                  const metric = metricsByKey.get(key);
-                  const configuration = relatedLimits[key] ?? {};
-                  const planValue = entitlementContext?.plan?.limits?.[key];
-                  const effectiveValue = entitlementContext?.effective?.limits?.[key];
-                  const label = metric?.presentation?.label ?? formatPlatformPlanMetric(key);
-
-                  return (
-                    <div className="rounded-lg border border-border bg-background p-3" key={key}>
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-sm font-medium">{label}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Plan : {planValue === null ? 'Illimité' : planValue ?? '—'} · Effectif : {effectiveValue === null ? 'Illimité' : effectiveValue ?? '—'}
-                          </p>
-                        </div>
-                        <label className="flex items-center gap-2 text-sm">
-                          <input
-                            checked={Boolean(configuration.enabled)}
-                            disabled={configuration.locked}
-                            onChange={(event) => updateRelatedLimit(key, {
-                              enabled: event.target.checked,
-                            })}
-                            type="checkbox"
-                          />
-                          {configuration.locked ? 'Dérogation liée' : 'Ajuster cette limite'}
-                        </label>
-                      </div>
-
-                      {configuration.enabled && (
-                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-2">
-                            <label className="text-xs font-medium" htmlFor={`override-related-limit-mode-${key}`}>
-                              Mode
-                            </label>
-                            <select
-                              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                              id={`override-related-limit-mode-${key}`}
-                              onChange={(event) => updateRelatedLimit(key, {
-                                mode: event.target.value,
-                              })}
-                              value={configuration.mode ?? 'limited'}
-                            >
-                              <option value="limited">Plafond défini</option>
-                              <option value="unlimited">Illimité</option>
-                            </select>
-                          </div>
-
-                          {configuration.mode !== 'unlimited' && (
-                            <div className="space-y-2">
-                              <label className="text-xs font-medium" htmlFor={`override-related-limit-value-${key}`}>
-                                {isByteMetric(metric) ? 'Limite en Mo' : 'Limite'}
-                              </label>
-                              <input
-                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                id={`override-related-limit-value-${key}`}
-                                min="0"
-                                onChange={(event) => updateRelatedLimit(key, {
-                                  value: event.target.value,
-                                })}
-                                step={isByteMetric(metric) ? '0.01' : '1'}
-                                type="number"
-                                value={configuration.value ?? ''}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {!configuration.enabled && (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Sans dérogation de limite, la valeur effective actuelle sera conservée.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {selectedFeatureDefinition && (
+            <PlatformFeatureLimitConfiguration
+              effectiveLimits={entitlementContext?.effective?.limits ?? {}}
+              featureDefinition={selectedFeatureDefinition}
+              metricsByKey={metricsByKey}
+              onUpdateRelatedLimit={updateRelatedLimit}
+              planLimits={entitlementContext?.plan?.limits ?? {}}
+              relatedLimits={relatedLimits}
+            />
+          )}
         </section>
       )}
 
@@ -533,37 +574,36 @@ function PlatformEntitlementOverrideForm({
       {effectiveTargetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT && (
         <section className="space-y-4">
           <h3 className="font-semibold">Valeur appliquée</h3>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="override-limit-mode">Mode</label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                id="override-limit-mode"
-                onChange={(event) => setLimitMode(event.target.value)}
-                value={limitMode}
-              >
-                <option value="limited">Plafond défini</option>
-                <option value="unlimited">Illimité</option>
-              </select>
-            </div>
-
-            {limitMode === 'limited' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="override-limit-value">
-                  {isByteMetric(effectiveMetric) ? 'Limite en Mo' : 'Limite'}
-                </label>
-                <input
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  id="override-limit-value"
-                  min="0"
-                  onChange={(event) => setLimitValue(event.target.value)}
-                  step={isByteMetric(effectiveMetric) ? '0.01' : '1'}
-                  type="number"
-                  value={limitValue}
-                />
+          {effectiveMetric && (
+            <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+              <div>
+                <p className="text-sm font-medium">
+                  {effectiveMetric.presentation?.label
+                    ?? formatPlatformPlanMetric(effectiveMetric.key)}
+                </p>
+                {mode === 'create' && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Plan : {formatPlatformPlanLimit(
+                      effectiveMetric.key,
+                      entitlementContext?.plan?.limits?.[effectiveMetric.key],
+                    )} · Effectif : {formatPlatformPlanLimit(
+                      effectiveMetric.key,
+                      entitlementContext?.effective?.limits?.[effectiveMetric.key],
+                    )}
+                  </p>
+                )}
               </div>
-            )}
-          </div>
+
+              <PlatformMetricLimitControl
+                idPrefix="override-limit"
+                metric={effectiveMetric}
+                mode={limitMode}
+                onModeChange={setLimitMode}
+                onValueChange={setLimitValue}
+                value={limitValue}
+              />
+            </div>
+          )}
         </section>
       )}
 
@@ -635,7 +675,7 @@ function PlatformEntitlementOverrideForm({
           Annuler
         </Button>
         <Button
-          disabled={pending || (
+          disabled={pending || hasOperationalLimitGap || (
             mode === 'create'
             && effectiveTargetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
             && !featureKey
