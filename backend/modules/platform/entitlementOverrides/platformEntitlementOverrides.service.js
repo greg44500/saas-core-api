@@ -30,6 +30,8 @@ import {
 const OVERRIDE_READ_PROJECTION = [
     '_id',
     'workspace',
+    'groupId',
+    'groupName',
     'targetType',
     'featureKey',
     'metricKey',
@@ -198,25 +200,9 @@ const buildLifecycleFilter = ({ lifecycle, at }) => {
         };
     }
 
-    throw new TypeError('lifecycle must be a supported override lifecycle');
+    throw new TypeError('lifecycle is invalid');
 };
 
-/**
- * Liste paginée des overrides visibles depuis Platform.
- *
- * Les filtres sont construits côté serveur avant pagination. Le lifecycle reste
- * dérivé des bornes temporelles et de la révocation ; il n'est pas persisté.
- *
- * @param {object} params
- * @param {number} [params.page]
- * @param {number} [params.limit]
- * @param {string|null} [params.workspaceId]
- * @param {string|null} [params.targetType]
- * @param {string|null} [params.source]
- * @param {string|null} [params.lifecycle]
- * @param {Date} [params.at]
- * @returns {Promise<{overrides: object[], pagination: object}>}
- */
 const listPlatformEntitlementOverrides = async ({
     page = 1,
     limit = 20,
@@ -232,60 +218,52 @@ const listPlatformEntitlementOverrides = async ({
         throw new TypeError('at must be a valid Date');
     }
 
+    if (workspaceId !== null) {
+        assertObjectId(workspaceId, 'workspaceId');
+    }
+
     if (
         targetType !== null
         && !Object.values(ENTITLEMENT_OVERRIDE_TARGET).includes(targetType)
     ) {
-        throw new TypeError('targetType must be a supported override target');
+        throw new TypeError('targetType is invalid');
     }
 
     if (
         source !== null
         && !Object.values(ENTITLEMENT_OVERRIDE_SOURCE).includes(source)
     ) {
-        throw new TypeError('source must be a supported override source');
+        throw new TypeError('source is invalid');
     }
 
     if (
         lifecycle !== null
         && !Object.values(ENTITLEMENT_OVERRIDE_LIFECYCLE).includes(lifecycle)
     ) {
-        throw new TypeError('lifecycle must be a supported override lifecycle');
+        throw new TypeError('lifecycle is invalid');
     }
 
-    const filter = buildLifecycleFilter({ lifecycle, at });
-
-    if (workspaceId !== null) {
-        assertObjectId(workspaceId, 'workspaceId');
-        filter.workspace = workspaceId;
-    }
-
-    if (targetType !== null) {
-        filter.targetType = targetType;
-    }
-
-    if (source !== null) {
-        filter.source = source;
-    }
-
+    const filter = {
+        ...(workspaceId !== null ? { workspace: workspaceId } : {}),
+        ...(targetType !== null ? { targetType } : {}),
+        ...(source !== null ? { source } : {}),
+        ...buildLifecycleFilter({ lifecycle, at }),
+    };
     const skip = (page - 1) * limit;
 
-    const query = populatePlatformOverrideQuery(
-        EntitlementOverride.find(filter)
-            .select(OVERRIDE_READ_PROJECTION),
-    )
-        .sort({ createdAt: -1, _id: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean();
-
-    const [documents, total] = await Promise.all([
-        query,
+    const [overrides, total] = await Promise.all([
+        populatePlatformOverrideQuery(
+            EntitlementOverride.find(filter)
+                .select(OVERRIDE_READ_PROJECTION)
+                .sort({ createdAt: -1, _id: -1 })
+                .skip(skip)
+                .limit(limit),
+        ).lean(),
         EntitlementOverride.countDocuments(filter),
     ]);
 
     return {
-        overrides: documents.map((override) =>
+        overrides: overrides.map((override) =>
             serializePlatformEntitlementOverride({
                 override,
                 at,
@@ -294,19 +272,11 @@ const listPlatformEntitlementOverrides = async ({
             page,
             limit,
             total,
-            totalPages: Math.ceil(total / limit),
+            totalPages: total === 0 ? 0 : Math.ceil(total / limit),
         },
     };
 };
 
-/**
- * Retourne un override administratif avec ses références minimales peuplées.
- *
- * @param {object} params
- * @param {string|mongoose.Types.ObjectId} params.overrideId
- * @param {Date} [params.at]
- * @returns {Promise<object>}
- */
 const getPlatformEntitlementOverrideById = async ({
     overrideId,
     at = new Date(),
@@ -332,163 +302,83 @@ const getPlatformEntitlementOverrideById = async ({
     });
 };
 
-/**
- * Crée une exception commerciale sans modifier le Plan catalogue.
- *
- * Les chevauchements temporels ne sont volontairement pas rejetés ici : le
- * resolver Core possède une priorité déterministe. Garantir l'absence absolue
- * d'overlap concurrent nécessiterait une sérialisation dédiée qui dépasse la
- * V1 et ne doit pas être simulée par un simple check-then-insert fragile.
- *
- * L'override et son AuditLog sont validés dans la même transaction. La réponse
- * est construite depuis le document committé : aucune seconde lecture
- * obligatoire ne peut transformer un succès durable en faux échec HTTP.
- *
- * @param {object} params
- * @param {object} params.overrideData
- * @param {string|mongoose.Types.ObjectId} params.actorId
- * @param {Date} [params.now]
- * @param {object} [params.registry]
- * @param {string|null} [params.ipAddress]
- * @param {string|null} [params.userAgent]
- * @returns {Promise<object>}
- */
 const createPlatformEntitlementOverride = async ({
     overrideData,
     actorId,
-    now = new Date(),
     registry = ACTIVE_PLAN_CAPABILITY_REGISTRY,
+    now = new Date(),
     ipAddress = null,
     userAgent = null,
 }) => {
     if (!overrideData) {
-        throw new TypeError('overrideData is required to create an entitlement override');
+        throw new TypeError('overrideData is required');
     }
 
     assertObjectId(actorId, 'actorId');
     assertObjectId(overrideData.workspaceId, 'workspaceId');
-    assertRegisteredOverrideCapability({
-        overrideData,
-        registry,
-    });
 
     if (!isValidDate(now)) {
         throw new TypeError('now must be a valid Date');
     }
 
-    let createdOverride;
+    assertRegisteredOverrideCapability({
+        overrideData,
+        registry,
+    });
 
-    await mongoose.connection.transaction(async (session) => {
-        const workspace = await Workspace.findById(
-            overrideData.workspaceId,
-        )
-            .select('_id')
-            .session(session);
+    const workspace = await Workspace.findById(overrideData.workspaceId)
+        .select('_id')
+        .lean();
 
-        if (!workspace) {
-            throw new AppError('Workspace introuvable.', 404);
-        }
+    if (!workspace) {
+        throw new AppError('Workspace introuvable.', 404);
+    }
 
-        const documentData = {
-            workspace: workspace._id,
-            targetType: overrideData.targetType,
-            featureKey: overrideData.featureKey ?? null,
-            metricKey: overrideData.metricKey ?? null,
-            featureEnabled: overrideData.featureEnabled ?? null,
-            limitValue: overrideData.limitValue ?? null,
-            source: overrideData.source,
-            startsAt: overrideData.startsAt ?? now,
-            endsAt: overrideData.endsAt ?? null,
-            reason: overrideData.reason,
-            grantedBy: actorId,
-            updatedBy: null,
-        };
+    const override = await EntitlementOverride.create({
+        workspace: overrideData.workspaceId,
+        targetType: overrideData.targetType,
+        featureKey:
+            overrideData.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
+                ? overrideData.featureKey
+                : null,
+        metricKey:
+            overrideData.targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT
+                ? overrideData.metricKey
+                : null,
+        featureEnabled:
+            overrideData.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
+                ? overrideData.featureEnabled
+                : null,
+        limitValue:
+            overrideData.targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT
+                ? overrideData.limitValue
+                : null,
+        source: overrideData.source,
+        startsAt: overrideData.startsAt ?? now,
+        endsAt: overrideData.endsAt ?? null,
+        reason: overrideData.reason,
+        grantedBy: actorId,
+        updatedBy: null,
+    });
 
-        [createdOverride] = await EntitlementOverride.create(
-            [documentData],
-            { session },
-        );
-
-        await createAuditLog(
-            {
-                actor: actorId,
-                workspace: workspace._id,
-                action: AUDIT_ACTION.ENTITLEMENT_OVERRIDE_CREATED,
-                entityType: AUDIT_ENTITY_TYPE.ENTITLEMENT_OVERRIDE,
-                entityId: createdOverride._id,
-                status: AUDIT_STATUS.SUCCESS,
-                ipAddress,
-                userAgent,
-                metadata: snapshotOverride(createdOverride),
-            },
-            { session },
-        );
+    await createAuditLog({
+        actor: actorId,
+        workspace: overrideData.workspaceId,
+        action: AUDIT_ACTION.ENTITLEMENT_OVERRIDE_CREATED,
+        entityType: AUDIT_ENTITY_TYPE.ENTITLEMENT_OVERRIDE,
+        entityId: override._id,
+        status: AUDIT_STATUS.SUCCESS,
+        ipAddress,
+        userAgent,
+        metadata: snapshotOverride(override),
     });
 
     return serializePlatformEntitlementOverride({
-        override: createdOverride,
-        at: now,
-    });
-};
-
-const assertMutableOverride = ({ override, now }) => {
-    const lifecycle = resolveEntitlementOverrideLifecycle({
         override,
         at: now,
     });
-
-    if (lifecycle === 'revoked') {
-        throw new AppError(
-            'Une dérogation révoquée ne peut plus être modifiée.',
-            409,
-        );
-    }
-
-    if (lifecycle === 'expired') {
-        throw new AppError(
-            'Une dérogation expirée est historique et ne peut plus être modifiée.',
-            409,
-        );
-    }
 };
 
-const assertUpdateMatchesTarget = ({ override, overrideData }) => {
-    if (
-        override.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
-        && Object.hasOwn(overrideData, 'limitValue')
-    ) {
-        throw new AppError(
-            'Une dérogation de feature ne peut pas recevoir une limite.',
-            409,
-        );
-    }
-
-    if (
-        override.targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT
-        && Object.hasOwn(overrideData, 'featureEnabled')
-    ) {
-        throw new AppError(
-            'Une dérogation de limite ne peut pas recevoir un état de feature.',
-            409,
-        );
-    }
-};
-
-/**
- * Modifie uniquement les propriétés mutables d'un override planifié ou actif.
- *
- * Une dérogation expirée ou révoquée est un fait historique : elle n'est jamais
- * réécrite. Une nouvelle exception doit être créée pour un nouveau besoin.
- *
- * @param {object} params
- * @param {string|mongoose.Types.ObjectId} params.overrideId
- * @param {object} params.overrideData
- * @param {string|mongoose.Types.ObjectId} params.actorId
- * @param {Date} [params.now]
- * @param {string|null} [params.ipAddress]
- * @param {string|null} [params.userAgent]
- * @returns {Promise<object>}
- */
 const updatePlatformEntitlementOverride = async ({
     overrideId,
     overrideData,
@@ -501,87 +391,78 @@ const updatePlatformEntitlementOverride = async ({
     assertObjectId(actorId, 'actorId');
 
     if (!overrideData || Object.keys(overrideData).length === 0) {
-        throw new TypeError('overrideData is required to update an entitlement override');
+        throw new TypeError('overrideData is required');
     }
 
     if (!isValidDate(now)) {
         throw new TypeError('now must be a valid Date');
     }
 
-    let updatedOverride;
+    const override = await EntitlementOverride.findById(overrideId);
 
-    await mongoose.connection.transaction(async (session) => {
-        const override = await EntitlementOverride.findById(
-            overrideId,
-        ).session(session);
+    if (!override) {
+        throw new AppError('Dérogation introuvable.', 404);
+    }
 
-        if (!override) {
-            throw new AppError('Dérogation introuvable.', 404);
-        }
+    const lifecycle = resolveEntitlementOverrideLifecycle({
+        override,
+        at: now,
+    });
 
-        assertMutableOverride({ override, now });
-        assertUpdateMatchesTarget({ override, overrideData });
-
-        const previous = snapshotOverride(override);
-
-        for (const field of [
-            'featureEnabled',
-            'limitValue',
-            'source',
-            'startsAt',
-            'endsAt',
-            'reason',
-        ]) {
-            if (Object.hasOwn(overrideData, field)) {
-                override[field] = overrideData[field];
-            }
-        }
-
-        override.updatedBy = actorId;
-        await override.save({ session });
-        updatedOverride = override;
-
-        await createAuditLog(
-            {
-                actor: actorId,
-                workspace: override.workspace,
-                action: AUDIT_ACTION.ENTITLEMENT_OVERRIDE_UPDATED,
-                entityType: AUDIT_ENTITY_TYPE.ENTITLEMENT_OVERRIDE,
-                entityId: override._id,
-                status: AUDIT_STATUS.SUCCESS,
-                ipAddress,
-                userAgent,
-                metadata: {
-                    previous,
-                    next: snapshotOverride(override),
-                },
-            },
-            { session },
+    if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.REVOKED) {
+        throw new AppError(
+            'Une dérogation révoquée ne peut plus être modifiée.',
+            409,
         );
+    }
+
+    if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.EXPIRED) {
+        throw new AppError(
+            'Une dérogation expirée est historique et ne peut plus être modifiée.',
+            409,
+        );
+    }
+
+    const previous = snapshotOverride(override);
+    const mutableFields = [
+        'featureEnabled',
+        'limitValue',
+        'source',
+        'startsAt',
+        'endsAt',
+        'reason',
+    ];
+
+    for (const field of mutableFields) {
+        if (Object.hasOwn(overrideData, field)) {
+            override[field] = overrideData[field];
+        }
+    }
+
+    override.updatedBy = actorId;
+    await override.save();
+
+    await createAuditLog({
+        actor: actorId,
+        workspace: override.workspace,
+        action: AUDIT_ACTION.ENTITLEMENT_OVERRIDE_UPDATED,
+        entityType: AUDIT_ENTITY_TYPE.ENTITLEMENT_OVERRIDE,
+        entityId: override._id,
+        status: AUDIT_STATUS.SUCCESS,
+        ipAddress,
+        userAgent,
+        metadata: {
+            previous,
+            current: snapshotOverride(override),
+        },
     });
 
     return serializePlatformEntitlementOverride({
-        override: updatedOverride,
+        override,
         at: now,
     });
 };
 
-/**
- * Révoque immédiatement un override planifié ou actif.
- *
- * La révocation conserve date, acteur et motif dans le document, puis écrit la
- * trace AuditLog dans la même transaction afin que l'action et sa preuve soient
- * validées ou annulées ensemble.
- *
- * @param {object} params
- * @param {string|mongoose.Types.ObjectId} params.overrideId
- * @param {string} params.reason
- * @param {string|mongoose.Types.ObjectId} params.actorId
- * @param {Date} [params.now]
- * @param {string|null} [params.ipAddress]
- * @param {string|null} [params.userAgent]
- * @returns {Promise<object>}
- */
 const revokePlatformEntitlementOverride = async ({
     overrideId,
     reason,
@@ -594,63 +475,65 @@ const revokePlatformEntitlementOverride = async ({
     assertObjectId(actorId, 'actorId');
 
     if (typeof reason !== 'string' || reason.trim().length < 3) {
-        throw new TypeError('reason is required to revoke an entitlement override');
+        throw new TypeError('reason is required');
     }
 
     if (!isValidDate(now)) {
         throw new TypeError('now must be a valid Date');
     }
 
-    let revokedOverride;
+    const override = await EntitlementOverride.findById(overrideId);
 
-    await mongoose.connection.transaction(async (session) => {
-        const override = await EntitlementOverride.findById(
-            overrideId,
-        ).session(session);
+    if (!override) {
+        throw new AppError('Dérogation introuvable.', 404);
+    }
 
-        if (!override) {
-            throw new AppError('Dérogation introuvable.', 404);
-        }
+    const lifecycle = resolveEntitlementOverrideLifecycle({
+        override,
+        at: now,
+    });
 
-        assertMutableOverride({ override, now });
+    if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.REVOKED) {
+        throw new AppError('Cette dérogation est déjà révoquée.', 409);
+    }
 
-        override.revokedAt = now;
-        override.revokedBy = actorId;
-        override.revokeReason = reason.trim();
-        override.updatedBy = actorId;
-        await override.save({ session });
-        revokedOverride = override;
-
-        await createAuditLog(
-            {
-                actor: actorId,
-                workspace: override.workspace,
-                action: AUDIT_ACTION.ENTITLEMENT_OVERRIDE_REVOKED,
-                entityType: AUDIT_ENTITY_TYPE.ENTITLEMENT_OVERRIDE,
-                entityId: override._id,
-                status: AUDIT_STATUS.SUCCESS,
-                ipAddress,
-                userAgent,
-                metadata: {
-                    targetType: override.targetType,
-                    featureKey: override.featureKey ?? null,
-                    metricKey: override.metricKey ?? null,
-                    revokedAt: now,
-                    reason: override.revokeReason,
-                },
-            },
-            { session },
+    if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.EXPIRED) {
+        throw new AppError(
+            'Une dérogation expirée est déjà historique.',
+            409,
         );
+    }
+
+    override.revokedAt = now;
+    override.revokedBy = actorId;
+    override.revokeReason = reason.trim();
+    override.updatedBy = actorId;
+    await override.save();
+
+    await createAuditLog({
+        actor: actorId,
+        workspace: override.workspace,
+        action: AUDIT_ACTION.ENTITLEMENT_OVERRIDE_REVOKED,
+        entityType: AUDIT_ENTITY_TYPE.ENTITLEMENT_OVERRIDE,
+        entityId: override._id,
+        status: AUDIT_STATUS.SUCCESS,
+        ipAddress,
+        userAgent,
+        metadata: {
+            revokeReason: override.revokeReason,
+            revokedAt: override.revokedAt,
+        },
     });
 
     return serializePlatformEntitlementOverride({
-        override: revokedOverride,
+        override,
         at: now,
     });
 };
 
 
 export {
+    assertRegisteredOverrideCapability,
     buildLifecycleFilter,
     createPlatformEntitlementOverride,
     getPlatformEntitlementOverrideById,
