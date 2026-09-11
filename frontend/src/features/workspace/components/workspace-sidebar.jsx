@@ -3,8 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
 
 import { APPLICATION_IDENTITY } from '@/app/application-identity';
-import { Tooltip } from '@/components/shared/tooltip';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 import { cn } from '@/lib/utils';
 
@@ -91,8 +95,9 @@ function WorkspaceNavigationLink({
   if (!collapsed) return link;
 
   return (
-    <Tooltip content={item.label} side="right" wrapperClassName="flex w-full">
-      {link}
+    <Tooltip>
+      <TooltipTrigger render={link} />
+      <TooltipContent side="right">{item.label}</TooltipContent>
     </Tooltip>
   );
 }
@@ -170,8 +175,9 @@ function WorkspaceNavigationGroup({
       }}
     >
       {collapsed ? (
-        <Tooltip content={group.label} side="right" wrapperClassName="flex w-full">
-          {trigger}
+        <Tooltip>
+          <TooltipTrigger render={trigger} />
+          <TooltipContent side="right">{group.label}</TooltipContent>
         </Tooltip>
       ) : trigger}
 
