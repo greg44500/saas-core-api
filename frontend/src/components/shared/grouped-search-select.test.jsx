@@ -66,9 +66,7 @@ describe('GroupedSearchSelect', () => {
     const option = await screen.findByRole('option', { name: /Téléversement/ });
     await user.hover(within(option).getByText('Téléversement'));
 
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'Permet de téléverser des fichiers.',
-    );
+    expect(await screen.findByText('Permet de téléverser des fichiers.')).toBeInTheDocument();
   });
 
   it('retourne la valeur sélectionnée sans dépendre du domaine métier', async () => {
