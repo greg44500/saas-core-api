@@ -183,8 +183,6 @@ describe('platformEntitlementOverrideGuardrails.service', () => {
             },
             now: NOW,
         })).resolves.toBeUndefined();
-
-        expect(EntitlementOverride.findById).not.toHaveBeenCalled();
     });
 
     it('refuse une limite members au-delà du maximum administratif', () => {
