@@ -204,10 +204,41 @@ const buildLifecycleFilter = ({ lifecycle, at }) => {
 };
 
 /**
+ * Les limites enfants d'un groupe sont des paramètres techniques de la décision
+ * commerciale portée par l'override FEATURE primaire. Elles ne doivent donc pas
+ * être paginées ni comptées comme des dérogations autonomes dans la liste
+ * Platform. Les overrides LIMIT historiques ou explicitement autonomes restent
+ * visibles car leur groupId est nul.
+ */
+const applyCommercialListScope = ({ filter, targetType }) => {
+    if (targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT) {
+        filter.targetType = targetType;
+        filter.groupId = null;
+        return;
+    }
+
+    if (targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE) {
+        filter.targetType = targetType;
+        return;
+    }
+
+    filter.$and = [
+        mongoose.trusted({
+            $or: [
+                { targetType: ENTITLEMENT_OVERRIDE_TARGET.FEATURE },
+                { groupId: null },
+            ],
+        }),
+    ];
+};
+
+/**
  * Liste paginée des overrides visibles depuis Platform.
  *
  * Les filtres sont construits côté serveur avant pagination. Le lifecycle reste
  * dérivé des bornes temporelles et de la révocation ; il n'est pas persisté.
+ * Les limites enfants d'un groupe sont exclues avant le count et la pagination :
+ * une décision commerciale groupée occupe donc toujours une seule ligne.
  *
  * @param {object} params
  * @param {number} [params.page]
@@ -262,9 +293,7 @@ const listPlatformEntitlementOverrides = async ({
         filter.workspace = workspaceId;
     }
 
-    if (targetType !== null) {
-        filter.targetType = targetType;
-    }
+    applyCommercialListScope({ filter, targetType });
 
     if (source !== null) {
         filter.source = source;
@@ -653,6 +682,7 @@ const revokePlatformEntitlementOverride = async ({
 
 
 export {
+    applyCommercialListScope,
     buildLifecycleFilter,
     createPlatformEntitlementOverride,
     getPlatformEntitlementOverrideById,
