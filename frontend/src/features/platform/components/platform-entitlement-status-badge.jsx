@@ -7,8 +7,8 @@ import {
 function getPlatformEntitlementLifecycleTone(lifecycle) {
   if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.ACTIVE) return 'success';
   if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.SCHEDULED) return 'info';
-  if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.EXPIRED) return 'neutral';
-  if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.REVOKED) return 'neutral';
+  if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.EXPIRED) return 'archive';
+  if (lifecycle === ENTITLEMENT_OVERRIDE_LIFECYCLE.REVOKED) return 'archive';
   return 'neutral';
 }
 
