@@ -18,6 +18,7 @@ import {
   useListPlatformEntitlementOverridesQuery,
   useRevokePlatformEntitlementOverrideMutation,
   useUpdatePlatformEntitlementOverrideMutation,
+  useGetPlatformFeatureOverrideGroupQuery,
 } from '@/features/platform/api/platform-entitlement-overrides-api';
 import { useListPlatformPlanCapabilitiesQuery } from '@/features/platform/api/platform-plans-api';
 import { PlatformEntitlementOverrideDetails } from '@/features/platform/components/platform-entitlement-override-details-drawer';
@@ -62,6 +63,9 @@ function PlatformEntitlementOverridesDrilldownContent({
   });
   const detailQuery = useGetPlatformEntitlementOverrideQuery(selectedId, {
     skip: !selectedId,
+  });
+  const featureGroupQuery = useGetPlatformFeatureOverrideGroupQuery(selectedId, {
+    skip: !selectedId || detailQuery.data?.targetType !== 'feature',
   });
   const capabilitiesQuery = useListPlatformPlanCapabilitiesQuery();
   const [updateOverride, updateState] = useUpdatePlatformEntitlementOverrideMutation();
@@ -290,6 +294,11 @@ function PlatformEntitlementOverridesDrilldownContent({
               onRevoke={requestRevoke}
               onViewWorkspace={viewWorkspace}
               override={detailQuery.data}
+              featureGroup={featureGroupQuery.data}
+              featureGroupError={featureGroupQuery.error}
+              featureGroupLoading={
+                featureGroupQuery.isLoading || featureGroupQuery.isFetching
+              }
             />
           )}
 
