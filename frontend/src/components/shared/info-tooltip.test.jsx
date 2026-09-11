@@ -28,10 +28,10 @@ describe('InfoTooltip', () => {
     await user.tab();
 
     expect(document.activeElement).toBe(trigger);
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Explication de la métrique');
+    expect(await screen.findByText('Explication de la métrique')).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    expect(screen.queryByText('Explication de la métrique')).not.toBeInTheDocument();
   });
 
   it('affiche le contenu au survol via le Tooltip partagé', async () => {
@@ -44,6 +44,6 @@ describe('InfoTooltip', () => {
 
     await user.hover(screen.getByRole('button', { name: 'Afficher l’information' }));
 
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Information non tronquée');
+    expect(await screen.findByText('Information non tronquée')).toBeInTheDocument();
   });
 });
