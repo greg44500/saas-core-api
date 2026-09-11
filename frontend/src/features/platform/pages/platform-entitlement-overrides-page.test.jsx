@@ -304,7 +304,7 @@ describe('PlatformEntitlementOverridesPage', () => {
 
     expect(within(drawer).getAllByText('Gestion d’équipe')).toHaveLength(2);
     expect(within(drawer).queryByText('Téléversement de fichiers')).not.toBeInTheDocument();
-    expect(within(drawer).getByText('1 limite associée')).toBeInTheDocument();
+    expect(within(drawer).getAllByText('1 limite associée')).toHaveLength(2);
     expect(within(drawer).getByText('Ajustement requis')).toBeInTheDocument();
     expect(within(drawer).getByRole('slider', { name: 'Limite Membres' })).toBeInTheDocument();
     expect(within(drawer).getByText(/Plan : 1 · Effectif : 1 · Utilisé : 1/)).toBeInTheDocument();
