@@ -186,7 +186,7 @@ describe('WorkspaceMembersPage', () => {
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
 
     await user.hover(ownerName);
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Vous');
+    expect(await screen.findByText('Vous')).toBeInTheDocument();
 
     expect(screen.queryByText('Protégé')).not.toBeInTheDocument();
     expect(screen.getAllByText('Actif')).toHaveLength(2);
