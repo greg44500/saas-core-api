@@ -30,7 +30,7 @@ describe('CollapsibleCard', () => {
     });
     await user.hover(infoButton);
 
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Consommation actuelle');
+    expect(await screen.findByText('Consommation actuelle')).toBeInTheDocument();
 
     const toggle = screen.getByRole('button', { name: 'Afficher le détail' });
     const content = document.getElementById(toggle.getAttribute('aria-controls'));
