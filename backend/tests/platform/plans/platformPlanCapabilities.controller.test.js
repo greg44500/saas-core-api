@@ -49,6 +49,7 @@ describe('listPlanCapabilities', () => {
                         requiredLimits: {
                             members: {
                                 minimumEffectiveValue: 2,
+                                minimumHeadroom: 1,
                             },
                         },
                     },
