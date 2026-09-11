@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état courant du Core au 2026-09-11, avec D-011 validée, D-020 intégrée, D-021 en cours sur une branche dédiée, les évolutions récentes du système d’entitlements Platform et les conventions UI transversales désormais formalisées. Le code, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
+> Cette synthèse décrit l’état courant du Core au 2026-09-11, avec D-011 validée, D-020 intégrée mais encore en clôture manuelle, D-021 en cours sur une branche dédiée, les évolutions récentes du système d’entitlements Platform et les conventions UI transversales désormais formalisées. Le code, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
 > **Dernière mise à jour : 2026-09-11**
 
@@ -32,37 +32,51 @@ Branche de travail active :
 feature/d-021-auth-hardening-registration-security
 ```
 
-`main` reste la branche de référence validée. Les travaux D-021 et les correctifs associés ne doivent pas être considérés comme validés tant que les gates locales complètes n’ont pas été réellement exécutées et confirmées.
-
-Dernier incident connu avant la présente mise à jour :
+HEAD distant confirmé au terme du dernier lot :
 
 ```text
-frontend build
-→ échec sur un import résiduel vers components/shared/tooltip
+8209dd8fdc41b1edca353f0984c2c97239ffadc9
 ```
 
-Correction intégrée sur la branche :
+Derniers commits structurants du lot de stabilisation :
 
 ```text
-LogoutShortcut
-→ migré vers components/ui/tooltip.jsx
+9164db75e49f15cc1066fb5e19a11ee7996ac4ba
+fix(frontend): load feature override groups in entitlement drilldown
 
-test associé
-→ aligné sur le comportement réel Base UI
-
-ESLint
-→ interdit désormais tout import vers l’ancien components/shared/tooltip
+8209dd8fdc41b1edca353f0984c2c97239ffadc9
+test(frontend): align Base UI and entitlement contracts
 ```
 
-La validation locale finale reste à exécuter dans cet ordre :
+Lors du dernier contrôle, la branche était :
 
 ```text
-frontend lint
-→ frontend tests
-→ frontend build
+246 commits devant main
+0 commit derrière main
 ```
 
-Ne pas déclarer ce lot validé avant retour réel de ces trois gates.
+Cette comparaison doit être revérifiée à chaque reprise ; elle n’est pas une donnée permanente.
+
+`main` reste la branche de référence validée. La branche D-021 contient désormais un volume important de travaux cohérents et validés localement, mais **elle ne doit pas être fusionnée tant que D-021 n’est pas clôturée**. Ne pas interpréter la réussite des gates frontend comme une validation de la gate sécurité complète.
+
+Dernières gates réellement exécutées et confirmées après les correctifs du lot :
+
+```text
+frontend npm test      → VERT
+frontend npm run lint  → VERT
+frontend npm run build → VERT
+git diff --check       → PROPRE
+```
+
+Le diff a également été inspecté avant commit. Cette inspection a permis de détecter et restaurer un test Sidebar supprimé accidentellement alors que la suite Vitest restait verte. L’inspection du diff fait donc désormais partie de la gate qualité obligatoire.
+
+Les migrations UI récentes ont notamment stabilisé :
+
+```text
+Tooltip → components/ui/tooltip.jsx, basé sur la primitive shadcn/Base UI du dépôt
+Select  → composant partagé basé sur la primitive UI canonique
+ancien components/shared/tooltip → supprimé et interdit par ESLint
+```
 
 ---
 
@@ -258,6 +272,8 @@ primitives Base UI utilisées par les composants shadcn du dépôt
 Tailwind CSS / tokens du Design System
 ```
 
+Le projet ne mélange pas arbitrairement plusieurs familles de primitives. Lorsqu’un composant shadcn du dépôt repose sur Base UI, cette convention doit être conservée ; une feature ne réintroduit pas localement une variante Radix ou un moteur maison équivalent sans décision d’architecture explicite.
+
 Ordre obligatoire avant toute création :
 
 ```text
@@ -268,7 +284,7 @@ Ordre obligatoire avant toute création :
 5. feature locale seulement si le besoin est réellement spécifique
 ```
 
-Lorsqu’une primitive shadcn/Base UI adaptée existe, elle doit être utilisée ou composée. Une feature ne recrée pas localement la mécanique d’un Button, Select, Tooltip, Dialog, Drawer/Sheet, Slider, Tabs, Accordion, Skeleton, etc.
+Lorsqu’une primitive shadcn/Base UI adaptée existe, elle doit être utilisée ou composée. Une feature ne recrée pas localement la mécanique d’un Button, Select, Tooltip, Dialog, Drawer/Sheet, Slider, Tabs, Accordion, Skeleton, Sidebar, etc.
 
 Un wrapper partagé n’est acceptable que s’il apporte une abstraction transverse réelle : sémantique produit, accessibilité, assemblage réutilisable ou convention du Design System. Il ne doit jamais simplement recopier la mécanique de la primitive shadcn/Base UI.
 
@@ -300,14 +316,47 @@ Toute migration ou suppression d’un composant transverse doit suivre :
 ```text
 inventaire exhaustif des imports/usages
 → migration complète
+→ tests ciblés
+→ tests globaux applicables
 → lint
-→ tests
 → build
+→ inspection du diff
 ```
 
 Le build ne doit plus être utilisé comme moyen principal pour découvrir successivement des imports cassés.
 
-### 6.3 Statuts
+### 6.3 Convention de tests shadcn/Base UI
+
+Les tests doivent privilégier :
+
+```text
+sémantique accessible
++
+interaction utilisateur
++
+résultat fonctionnel/métier
+```
+
+et éviter de figer un détail interne spécifique à une ancienne primitive UI.
+
+Tooltip : ne pas supposer `role="tooltip"` si la primitive Base UI réellement utilisée ne l’expose pas dans le DOM de test. Vérifier le trigger accessible puis l’apparition du contenu après hover/focus.
+
+Select : avec Base UI/JSDOM, utiliser un comportement utilisateur fiable. Pattern actuellement validé lorsque nécessaire :
+
+```js
+const trigger = screen.getByRole('combobox', { name: label });
+
+trigger.focus();
+await user.keyboard('{ArrowDown}');
+
+await user.click(
+  await screen.findByRole('option', { name: optionName }),
+);
+```
+
+Un test ne doit pas être affaibli pour « faire passer » une migration de primitive : il doit conserver l’invariant utilisateur ou métier qu’il protégeait.
+
+### 6.4 Statuts
 
 Composant partagé :
 
@@ -326,7 +375,7 @@ neutral      → gris    → archivé / inactif sans anomalie
 
 Chaque domaine définit explicitement son mapping métier. Le composant générique ne devine jamais la couleur depuis la chaîne du statut.
 
-### 6.4 Langue des saisies
+### 6.5 Langue des saisies
 
 Le document HTML est déclaré :
 
@@ -375,6 +424,21 @@ Les grouped overrides conservent leurs enfants techniques en persistance pour au
 
 Le backend de liste a été adapté pour exclure les LIMIT enfants groupés de la pagination commerciale principale tout en conservant les overrides LIMIT autonomes legacy.
 
+### 7.1 Correctif drilldown validé le 2026-09-11
+
+Une régression frontend a été corrigée dans le drilldown des dérogations :
+
+```text
+override targetType=feature
+→ chargement du FeatureOverrideGroup associé
+→ transmission featureGroup / loading / error au détail
+→ bouton Modifier de nouveau disponible lorsque le groupe est chargé
+```
+
+Le correctif est porté par le commit `9164db75e49f15cc1066fb5e19a11ee7996ac4ba` et ses tests ont été intégrés au passage des gates globales frontend.
+
+Ce correctif ne clôt **pas** les risques backend/lifecycle du sous-système.
+
 Points encore à sécuriser avant de considérer ce sous-système finalisé :
 
 ```text
@@ -385,7 +449,7 @@ cohérence lifecycle complète
 validation resolver / precedence
 ```
 
-Ne pas traiter ces points comme clôturés tant que le code et les tests correspondants ne sont pas validés.
+Ne pas traiter ces points comme clôturés tant que le code et les tests correspondants ne sont pas validés. Ils restent distincts de D-021 sauf interaction sécurité démontrée.
 
 ---
 
@@ -420,40 +484,149 @@ Google SSO reste dans D-010 et ne bloque pas Core 1.0 selon le cadrage canonique
 
 ## 9. D-021 — Gate sécurité Auth / invitations / tokens
 
-D-021 est en cours sur :
+D-021 est **EN COURS** sur :
 
 ```text
 feature/d-021-auth-hardening-registration-security
 ```
 
-Premier bloc déjà travaillé :
+Le statut de `docs/DEBT.md` a été synchronisé le 2026-09-11 : D-021 n’est plus `PLANIFIÉ`, mais il n’est pas `VALIDÉ`.
+
+### 9.1 Bloc déjà travaillé et validé localement
 
 ```text
-politique mot de passe
+politique centralisée de mot de passe
 endpoint public de politique
 séparation credential / new-password
-rate limiting login / forgot password
+validation backend stricte associée
+rate limiting login / forgot-password
 reset password <= 15 minutes
-UX frontend mot de passe
-acceptation légale des flows de création de compte
-parcours invitation workspace / nouveau compte
+UX frontend de politique de mot de passe
+acceptation légale des flows de création de compte concernés
+parcours WorkspaceInvitation / nouveau compte
+premières adaptations PlatformInvitation / CommercialInvitation présentes sur la branche
 ```
 
-D-021 ne doit cependant pas être clôturée avant audit et validation du reste :
+La qualité frontend associée au lot comprend également la migration vers les primitives shadcn/Base UI canoniques, la suppression du moteur Tooltip maison, la stabilisation des tests Base UI et le correctif du drilldown Entitlement Override. Ces éléments ne constituent pas, à eux seuls, la clôture de D-021.
+
+### 9.2 Audit sécurité restant obligatoire
+
+D-021 est d’abord une **gate d’audit de l’existant**. La prochaine conversation doit commencer par inspecter les modèles, services, routes, validations, middlewares et tests réels sans modifier le dépôt.
+
+Pour chacun des flows suivants :
 
 ```text
 WorkspaceInvitation
 PlatformInvitation
 CommercialInvitation
-single-use / rotation / révocation / replay / concurrence
-anti-enumeration
-rate limiting des endpoints publics sensibles
-stratégie anti-bot explicite
-protection de /invitations/accept-new
-secrets / URLs / logs
+forgot-password
+reset-password
+register
+login
+preview d’invitation
+acceptation d’invitation
+/invitations/accept-new et autres endpoints publics sensibles
 ```
 
-La migration UI récente autour des composants shadcn/Base UI est un travail de qualité frontend associé à la branche, pas une preuve que la gate de sécurité D-021 est terminée.
+établir une matrice :
+
+```text
+source du secret
+entropie
+stockage brut ou hashé
+TTL
+expiration serveur
+single-use
+atomicité
+révocation
+resend
+rotation du secret
+invalidation de l’ancien secret
+replay
+double consommation concurrente
+identité bénéficiaire
+anti-enumeration
+rate limiting
+audit log
+fuite URL
+fuite logs
+fuite erreurs
+couverture unitaire
+couverture intégration
+```
+
+Chaque point doit être classé :
+
+```text
+CONFORME
+PARTIEL
+ABSENT
+À CONFIRMER
+```
+
+Ne pas coder avant d’avoir produit cette matrice et identifié les écarts réels.
+
+### 9.3 Politique cible invitations
+
+À confirmer par l’audit du code actuel :
+
+```text
+WorkspaceInvitation
+PlatformInvitation
+CommercialInvitation
+→ expiration par défaut : 7 jours
+```
+
+Exigences : secret cryptographiquement aléatoire, secret brut jamais persisté lorsque le modèle permet un hash, expiration serveur, single-use atomique, révocation, resend avec rotation, protection replay/concurrence, absence de fuite logs/URLs persistantes, audit et tests.
+
+### 9.4 Forgot / reset password
+
+Politique cible :
+
+```text
+reset password token
+→ durée : 15 minutes
+→ usage unique
+→ nouvelle demande requise après expiration
+```
+
+À auditer explicitement : token fort/hashé, expiration serveur, consommation atomique, anti-enumeration, rate limiting, notification après changement, invalidation des sessions après reset, replay et concurrence.
+
+### 9.5 Rate limiting et anti-automation
+
+Auditer séparément `register`, `login`, `forgot-password`, preview/acceptation d’invitations et endpoints Auth sensibles.
+
+Ne pas installer automatiquement un CAPTCHA. La logique cible reste :
+
+```text
+protection serveur de base
+→ validation stricte
+→ rate limiting
+→ analyse du risque réel
+→ challenge anti-bot complémentaire/adaptatif si nécessaire
+```
+
+L’inscription publique doit être protégée contre création massive de comptes/trials et `forgot-password` contre le mail bombing.
+
+### 9.6 Google SSO hors D-021
+
+Google SSO reste dans D-010 et ne bloque pas Core 1.0.
+
+### 9.7 Ordre recommandé pour terminer D-021
+
+```text
+D-021.1 inventaire sécurité transverse
+→ D-021.2 WorkspaceInvitation
+→ D-021.3 PlatformInvitation
+→ D-021.4 CommercialInvitation
+→ D-021.5 Auth tokens temporaires
+→ D-021.6 endpoints publics / anti-automation
+→ D-021.7 secrets / logs / URLs
+→ D-021.8 replay / concurrence / atomicité
+→ D-021.9 gates globales + documentation
+→ D-021 VALIDÉ
+→ fusion seulement ensuite dans main
+```
 
 ---
 
@@ -476,26 +649,91 @@ Cette opération de maintenance ne remplace aucune dette fonctionnelle.
 
 ---
 
-## 11. Méthode de reprise obligatoire
+## 11. Bloc Sidebar planifié après D-021
+
+Le prochain refactor UI structurel est **planifié mais ne doit pas être mélangé à D-021**.
+
+Séquence obligatoire :
+
+```text
+terminer D-021
+→ gates globales
+→ documentation synchronisée
+→ fusion D-021 dans main
+→ repartir de main
+→ branche dédiée Sidebar
+```
+
+Nom de branche recommandé :
+
+```text
+refactor/frontend-shadcn-sidebar
+```
+
+La Sidebar Platform actuelle contient encore une mécanique custom de largeur/collapse/labels/flyouts. Les symptômes observés incluent notamment le clipping visuel des labels en mode réduit et une complexité croissante des tests liée aux détails CSS.
+
+Le futur travail ne doit pas consister à empiler des correctifs CSS locaux. Il doit commencer par auditer la Sidebar canonique shadcn compatible avec les primitives Base UI retenues par le dépôt, puis déterminer si elle peut devenir la fondation partagée.
+
+Architecture cible :
+
+```text
+components/ui/sidebar.jsx
+→ primitive shadcn/Base UI canonique adaptée au dépôt
+
+components/shared
+→ uniquement composition transverse réelle si nécessaire
+
+features/platform/components/platform-sidebar.jsx
+→ navigation métier Platform, routes, groupes, RBAC
+
+features/workspace/components/workspace-sidebar.jsx
+→ navigation métier Workspace
+```
+
+La primitive UI ne doit connaître ni permissions Platform, ni workspace, ni subscription, ni features métier.
+
+Ce bloc devra préserver : active route, navigation clavier, responsive/mobile, collapse icon-only, tooltips, flyouts/submenus, RBAC et accessibilité. Aucun nouveau moteur Sidebar maison ne doit être créé si la primitive shadcn/Base UI couvre le besoin.
+
+---
+
+## 12. Méthode de reprise et Git obligatoire
 
 Au début de la prochaine conversation :
 
-1. vérifier la branche courante et synchroniser le dépôt ;
+1. vérifier la branche courante, son HEAD et la synchronisation distante ;
 2. lire `docs/REPRISE-CURRENT.md` ;
 3. lire D-020 et D-021 dans `docs/DEBT.md` ;
 4. lire `docs/frontend/COMPONENTS-POLICY.md` avant toute modification UI ;
 5. lire les contrats canoniques concernés par le lot ;
 6. inspecter le code et les tests réels avant toute modification ;
-7. ne jamais déclarer une gate verte sans exécution réellement communiquée ;
-8. ne jamais remplacer une primitive shadcn/Base UI par un composant maison équivalent ;
-9. ne jamais dupliquer une mécanique UI réutilisable dans une feature ;
-10. ne jamais mélanger plusieurs dettes dans un même lot sans décision explicite.
+7. pour D-021, produire d’abord la matrice d’audit avant tout code ;
+8. ne jamais déclarer une gate verte sans exécution réellement communiquée ;
+9. ne jamais remplacer une primitive shadcn/Base UI par un composant maison équivalent ;
+10. ne jamais dupliquer une mécanique UI réutilisable dans une feature ;
+11. ne jamais mélanger plusieurs dettes dans un même lot sans décision explicite.
+
+Pour chaque lot de code :
+
+```text
+modifier
+→ tests ciblés
+→ tests globaux applicables
+→ lint
+→ build
+→ git diff --check
+→ git diff --stat
+→ inspection complète du git diff
+→ commit
+→ push
+```
+
+Ne pas commit/push avant inspection du diff. Ne pas fusionner une dette structurante simplement parce qu’un sous-lot passe les tests ; la gate fonctionnelle/sécurité de la dette doit être réellement clôturée.
 
 Les petits correctifs isolés et à faible risque peuvent rester sur `main`. Les fonctionnalités, refactors structurés, lots multi-fichiers significatifs, changements d’architecture ou travaux à risque utilisent une branche dédiée.
 
 ---
 
-## 12. Références principales
+## 13. Références principales
 
 ```text
 docs/DEBT.md
