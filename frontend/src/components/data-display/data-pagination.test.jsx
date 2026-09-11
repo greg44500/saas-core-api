@@ -1,10 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
 
 describe('DataPagination', () => {
-  it('ne rend rien lorsqu’une seule page est disponible', () => {
+  it('ne rend rien lorsqu’une seule page est disponible sans choix de taille', () => {
     const { container } = render(
       <DataPagination
         onPageChange={vi.fn()}
@@ -23,17 +24,37 @@ describe('DataPagination', () => {
       <DataPagination
         onPageChange={onPageChange}
         page={2}
-        pagination={{ page: 2, totalPages: 4 }}
+        pagination={{ page: 2, total: 40, totalPages: 4 }}
       />,
     );
 
-    expect(screen.getByText('Page 2 sur 4')).toBeInTheDocument();
+    expect(screen.getByText(/Page 2 sur 4/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Précédent' }));
     fireEvent.click(screen.getByRole('button', { name: 'Suivant' }));
 
     expect(onPageChange).toHaveBeenNthCalledWith(1, 1);
     expect(onPageChange).toHaveBeenNthCalledWith(2, 3);
+  });
+
+  it('permet à une liste serveur d’exposer un choix réutilisable de taille de page', async () => {
+    const user = userEvent.setup();
+    const onPageSizeChange = vi.fn();
+
+    render(
+      <DataPagination
+        onPageChange={vi.fn()}
+        onPageSizeChange={onPageSizeChange}
+        page={1}
+        pageSize={10}
+        pagination={{ page: 1, limit: 10, total: 11, totalPages: 2 }}
+      />,
+    );
+
+    await user.click(screen.getByRole('combobox', { name: 'Nombre de lignes par page' }));
+    await user.click(screen.getByRole('option', { name: '20' }));
+
+    expect(onPageSizeChange).toHaveBeenCalledWith(20);
   });
 
   it('accepte un résumé métier sans dupliquer les contrôles', () => {
