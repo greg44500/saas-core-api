@@ -18,6 +18,16 @@ function workspaceTag(workspaceId) {
     : null;
 }
 
+function dependentTags(workspaceId) {
+  return [
+    { type: 'PlatformEntitlementOverrides', id: 'LIST' },
+    entitlementContextTag(workspaceId),
+    workspaceTag(workspaceId),
+    'PlatformOverview',
+    'WorkspaceSubscription',
+  ].filter(Boolean);
+}
+
 const platformEntitlementOverridesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     listPlatformEntitlementOverrides: builder.query({
@@ -65,6 +75,15 @@ const platformEntitlementOverridesApi = baseApi.injectEndpoints({
       ],
     }),
 
+    getPlatformFeatureOverrideGroup: builder.query({
+      query: (overrideId) =>
+        `/platform/entitlement-overrides/feature-groups/${overrideId}`,
+      transformResponse: (response) => response?.data?.group ?? null,
+      providesTags: (_result, _error, overrideId) => [
+        { type: 'PlatformEntitlementOverrides', id: overrideId },
+      ],
+    }),
+
     getPlatformEntitlementContext: builder.query({
       query: (workspaceId) =>
         `/platform/entitlement-overrides/workspaces/${workspaceId}/context`,
@@ -80,13 +99,18 @@ const platformEntitlementOverridesApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: (_result, _error, body) => [
-        { type: 'PlatformEntitlementOverrides', id: 'LIST' },
-        entitlementContextTag(body?.workspaceId),
-        workspaceTag(body?.workspaceId),
-        'PlatformOverview',
-        'WorkspaceSubscription',
-      ].filter(Boolean),
+      invalidatesTags: (_result, _error, body) =>
+        dependentTags(body?.workspaceId),
+    }),
+
+    createPlatformFeatureOverrideGroup: builder.mutation({
+      query: (body) => ({
+        url: '/platform/entitlement-overrides/feature-groups',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (_result, _error, body) =>
+        dependentTags(body?.workspaceId),
     }),
 
     updatePlatformEntitlementOverride: builder.mutation({
@@ -96,13 +120,21 @@ const platformEntitlementOverridesApi = baseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_result, _error, { overrideId, workspaceId }) => [
-        { type: 'PlatformEntitlementOverrides', id: 'LIST' },
         { type: 'PlatformEntitlementOverrides', id: overrideId },
-        entitlementContextTag(workspaceId),
-        workspaceTag(workspaceId),
-        'PlatformOverview',
-        'WorkspaceSubscription',
-      ].filter(Boolean),
+        ...dependentTags(workspaceId),
+      ],
+    }),
+
+    updatePlatformFeatureOverrideGroup: builder.mutation({
+      query: ({ overrideId, workspaceId: _workspaceId, ...body }) => ({
+        url: `/platform/entitlement-overrides/feature-groups/${overrideId}`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { overrideId, workspaceId }) => [
+        { type: 'PlatformEntitlementOverrides', id: overrideId },
+        ...dependentTags(workspaceId),
+      ],
     }),
 
     revokePlatformEntitlementOverride: builder.mutation({
@@ -112,22 +144,21 @@ const platformEntitlementOverridesApi = baseApi.injectEndpoints({
         body: { reason },
       }),
       invalidatesTags: (_result, _error, { overrideId, workspaceId }) => [
-        { type: 'PlatformEntitlementOverrides', id: 'LIST' },
         { type: 'PlatformEntitlementOverrides', id: overrideId },
-        entitlementContextTag(workspaceId),
-        workspaceTag(workspaceId),
-        'PlatformOverview',
-        'WorkspaceSubscription',
-      ].filter(Boolean),
+        ...dependentTags(workspaceId),
+      ],
     }),
   }),
 });
 
 export const {
   useCreatePlatformEntitlementOverrideMutation,
+  useCreatePlatformFeatureOverrideGroupMutation,
   useGetPlatformEntitlementContextQuery,
   useGetPlatformEntitlementOverrideQuery,
+  useGetPlatformFeatureOverrideGroupQuery,
   useListPlatformEntitlementOverridesQuery,
   useRevokePlatformEntitlementOverrideMutation,
   useUpdatePlatformEntitlementOverrideMutation,
+  useUpdatePlatformFeatureOverrideGroupMutation,
 } = platformEntitlementOverridesApi;
