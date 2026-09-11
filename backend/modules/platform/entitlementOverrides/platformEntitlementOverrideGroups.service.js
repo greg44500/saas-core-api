@@ -257,9 +257,11 @@ const createPlatformFeatureOverrideGroup = async ({
             })),
         ];
 
+        // Mongoose 9 exige explicitement ordered=true lorsqu'une création de
+        // plusieurs documents est rattachée à une session transactionnelle.
         const createdOverrides = await EntitlementOverride.create(
             documents,
-            { session },
+            { session, ordered: true },
         );
 
         [primaryOverride, ...relatedOverrides] = createdOverrides;
@@ -450,7 +452,7 @@ const updatePlatformFeatureOverrideGroup = async ({
                         updatedBy: null,
                     },
                 ],
-                { session },
+                { session, ordered: true },
             );
 
             related.push(createdLimit);
