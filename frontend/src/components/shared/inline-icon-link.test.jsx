@@ -21,9 +21,13 @@ describe('InlineIconLink', () => {
 
     const control = screen.getByRole('button', { name: 'Voir le workspace' });
     expect(control).toHaveClass('size-6');
+    expect(screen.queryByText('Voir le workspace', { selector: '[data-base-ui-focusable]' })).not.toBeInTheDocument();
 
     await user.hover(control);
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Voir le workspace');
+
+    expect(
+      await screen.findByText('Voir le workspace', { selector: '[data-base-ui-focusable]' }),
+    ).toBeInTheDocument();
 
     await user.click(control);
     expect(onClick).toHaveBeenCalledTimes(1);
