@@ -11,6 +11,12 @@ import {
     updatePlatformFeatureOverrideGroup,
 } from './platformEntitlementOverrideGroups.service.js';
 import {
+    assertCreateFeatureOverrideGroupOperational,
+    assertLimitValueWithinPolicy,
+    assertUpdateFeatureOverrideGroupOperational,
+    assertUpdateLimitOverrideWithinPolicy,
+} from './platformEntitlementOverrideGuardrails.service.js';
+import {
     getPlatformEntitlementContext,
 } from './platformEntitlementContext.service.js';
 
@@ -62,6 +68,13 @@ const getEntitlementContext = async (req, res) => {
 };
 
 const createEntitlementOverride = async (req, res) => {
+    if (req.validated.body.metricKey) {
+        assertLimitValueWithinPolicy({
+            metricKey: req.validated.body.metricKey,
+            limitValue: req.validated.body.limitValue,
+        });
+    }
+
     const override = await createPlatformEntitlementOverride({
         overrideData: req.validated.body,
         actorId: req.user._id,
@@ -76,6 +89,10 @@ const createEntitlementOverride = async (req, res) => {
 };
 
 const createFeatureOverrideGroup = async (req, res) => {
+    await assertCreateFeatureOverrideGroupOperational({
+        groupData: req.validated.body,
+    });
+
     const group = await createPlatformFeatureOverrideGroup({
         groupData: req.validated.body,
         actorId: req.user._id,
@@ -90,6 +107,11 @@ const createFeatureOverrideGroup = async (req, res) => {
 };
 
 const updateEntitlementOverride = async (req, res) => {
+    await assertUpdateLimitOverrideWithinPolicy({
+        overrideId: req.validated.params.overrideId,
+        overrideData: req.validated.body,
+    });
+
     const override = await updatePlatformEntitlementOverride({
         overrideId: req.validated.params.overrideId,
         overrideData: req.validated.body,
@@ -105,6 +127,11 @@ const updateEntitlementOverride = async (req, res) => {
 };
 
 const updateFeatureOverrideGroup = async (req, res) => {
+    await assertUpdateFeatureOverrideGroupOperational({
+        overrideId: req.validated.params.overrideId,
+        groupData: req.validated.body,
+    });
+
     const group = await updatePlatformFeatureOverrideGroup({
         overrideId: req.validated.params.overrideId,
         groupData: req.validated.body,
