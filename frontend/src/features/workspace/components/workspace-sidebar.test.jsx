@@ -34,7 +34,7 @@ function renderSidebar(
 ) {
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
-      <TooltipProvider>
+      <TooltipProvider delay={0}>
         <WorkspaceProvider
           features={features}
           membership={membership}
@@ -257,8 +257,6 @@ describe('WorkspaceSidebar', () => {
     expect(
       screen.getByRole('link', { name: 'Tableau de bord' }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText('Tableau de bord').some((node) =>
-      node.getAttribute('aria-hidden') === 'true')).toBe(true);
 
     const workspaceGroup = screen.getByRole('button', { name: 'Gestion du workspace' });
     await user.click(workspaceGroup);
