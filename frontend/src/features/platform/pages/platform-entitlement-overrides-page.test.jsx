@@ -141,6 +141,11 @@ function renderPage(initialEntry = '/platform/entitlement-overrides') {
   );
 }
 
+async function chooseSelectOption(user, label, optionName) {
+  await user.click(screen.getByRole('combobox', { name: label }));
+  await user.click(screen.getByRole('option', { name: optionName }));
+}
+
 describe('PlatformEntitlementOverridesPage', () => {
   beforeEach(() => {
     mocks.useListPlatformEntitlementOverridesQuery.mockReturnValue({
@@ -238,13 +243,14 @@ describe('PlatformEntitlementOverridesPage', () => {
     expect(within(table).getByText('Téléversement de fichiers')).toBeInTheDocument();
     expect(within(table).getByText('Activée')).toBeInTheDocument();
     expect(within(table).getByText('Active')).toBeInTheDocument();
+    expect(within(table).getByText('Cible')).toBeInTheDocument();
   });
 
   it('rejoue la liste avec les filtres conservés dans l’URL', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.selectOptions(screen.getByLabelText('Type'), 'feature');
+    await chooseSelectOption(user, 'Type', 'Fonctionnalité');
 
     await waitFor(() => {
       expect(mocks.useListPlatformEntitlementOverridesQuery).toHaveBeenLastCalledWith({
@@ -261,7 +267,7 @@ describe('PlatformEntitlementOverridesPage', () => {
   it('applique le filtre lifecycle transmis par un drill-down du dashboard', () => {
     renderPage('/platform/entitlement-overrides?lifecycle=active');
 
-    expect(screen.getByLabelText('État')).toHaveValue('active');
+    expect(screen.getByRole('combobox', { name: 'État' })).toHaveTextContent('Active');
     expect(mocks.useListPlatformEntitlementOverridesQuery).toHaveBeenCalledWith({
       page: 1,
       limit: 20,
@@ -280,7 +286,7 @@ describe('PlatformEntitlementOverridesPage', () => {
       screen.getByRole('button', { name: 'Dérogation exceptionnelle' }),
     ).toBeDisabled();
 
-    await user.selectOptions(screen.getByLabelText('Espace de travail'), 'workspace-id');
+    await chooseSelectOption(user, 'Espace de travail', 'Workspace Démo');
 
     expect(
       await screen.findByRole('heading', { name: 'Droits et limites du workspace' }),
@@ -297,7 +303,7 @@ describe('PlatformEntitlementOverridesPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.selectOptions(screen.getByLabelText('Espace de travail'), 'workspace-id');
+    await chooseSelectOption(user, 'Espace de travail', 'Workspace Démo');
     await user.click(screen.getByRole('button', { name: 'Dérogation exceptionnelle' }));
     const drawer = screen.getByRole('dialog', { name: 'Dérogation exceptionnelle' });
 
