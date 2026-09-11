@@ -13,26 +13,55 @@ const capabilities = {
     {
       key: 'file_upload',
       label: 'Téléversement de fichiers',
+      description: 'Permet de téléverser des fichiers.',
       category: 'files',
       categoryLabel: 'Fichiers',
       metricKeys: ['storage_bytes'],
+      overridePolicy: {
+        requiredLimits: {
+          storage_bytes: { minimumEffectiveValue: 100 * 1024 * 1024 },
+        },
+      },
     },
     {
       key: 'team_management',
       label: 'Gestion d’équipe',
+      description: 'Permet d’administrer les membres du workspace.',
       category: 'workspace',
       categoryLabel: 'Collaboration',
       metricKeys: ['members'],
+      overridePolicy: {
+        requiredLimits: {
+          members: { minimumEffectiveValue: 2 },
+        },
+      },
     },
   ],
   metrics: [
     {
       key: 'storage_bytes',
       presentation: { label: 'Stockage', unit: 'bytes' },
+      overridePolicy: {
+        control: 'preset_slider',
+        values: [
+          0,
+          100 * 1024 * 1024,
+          500 * 1024 * 1024,
+          1024 * 1024 * 1024,
+        ],
+        allowUnlimited: false,
+      },
     },
     {
       key: 'members',
       presentation: { label: 'Membres', unit: 'count' },
+      overridePolicy: {
+        control: 'linear_slider',
+        min: 0,
+        max: 50,
+        step: 1,
+        allowUnlimited: false,
+      },
     },
   ],
 };
@@ -52,6 +81,19 @@ const entitlementContext = {
   },
   appliedOverrides: [],
 };
+
+const entitlementContextWithCapacity = {
+  ...entitlementContext,
+  plan: {
+    ...entitlementContext.plan,
+    limits: { members: 5 },
+  },
+  effective: {
+    ...entitlementContext.effective,
+    limits: { members: 5 },
+  },
+};
+
 
 describe('PlatformEntitlementOverrideForm', () => {
   afterEach(() => cleanup());
@@ -85,7 +127,7 @@ describe('PlatformEntitlementOverrideForm', () => {
     expect(screen.queryByText('Gestion d’équipe')).not.toBeInTheDocument();
   });
 
-  it('construit une dérogation groupée avec le quota associé sélectionné', async () => {
+  it('rend automatiquement utilisable une feature dont la limite actuelle est saturée', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
 
@@ -100,14 +142,16 @@ describe('PlatformEntitlementOverrideForm', () => {
       />,
     );
 
+    expect(screen.getByText('1 limite associée')).toBeInTheDocument();
+    expect(screen.getByText('Ajustement requis')).toBeInTheDocument();
+    expect(screen.getByText(/ne permet pas d’utiliser réellement/i)).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: 'Limite Membres' })).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
+
     await user.type(
       screen.getByLabelText('Nom de la dérogation'),
       'Découverte équipe',
     );
-    await user.click(screen.getByLabelText('Ajuster cette limite'));
-    const limitInput = screen.getByLabelText('Limite');
-    await user.clear(limitInput);
-    await user.type(limitInput, '5');
     await user.type(screen.getByLabelText('Motif'), 'Geste de support validé');
     await user.click(
       screen.getByRole('button', {
@@ -125,19 +169,19 @@ describe('PlatformEntitlementOverrideForm', () => {
       featureEnabled: true,
       groupName: 'Découverte équipe',
       relatedLimits: [
-        { metricKey: 'members', limitValue: 5 },
+        { metricKey: 'members', limitValue: 2 },
       ],
     });
   });
 
-  it('permet de conserver le quota effectif sans créer de dérogation de limite', async () => {
+  it('conserve la limite effective lorsqu’elle rend déjà la feature utilisable', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
 
     render(
       <PlatformEntitlementOverrideForm
         capabilities={capabilities}
-        entitlementContext={entitlementContext}
+        entitlementContext={entitlementContextWithCapacity}
         mode="create"
         onCancel={vi.fn()}
         onSubmit={onSubmit}
@@ -145,7 +189,7 @@ describe('PlatformEntitlementOverrideForm', () => {
       />,
     );
 
-    expect(screen.getByText(/Plan : 1 · Effectif : 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Plan : 5 · Effectif : 5/)).toBeInTheDocument();
     expect(screen.getByText(/valeur effective actuelle sera conservée/i)).toBeInTheDocument();
 
     await user.type(
