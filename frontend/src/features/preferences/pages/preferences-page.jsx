@@ -2,13 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 
-import { FormField } from '@/components/forms/form-field';
 import { ErrorState } from '@/components/shared/error-state';
 import { FormSectionSkeleton } from '@/components/shared/form-section-skeleton';
+import { SelectField } from '@/components/shared/select-field';
 import { useTheme } from '@/components/shared/theme-provider';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
   useGetCurrentUserPreferencesQuery,
@@ -40,7 +39,6 @@ function PreferencesPage() {
     useUpdateCurrentUserPreferencesMutation();
   const {
     control,
-    register,
     handleSubmit,
     reset,
     formState: { errors, isDirty },
@@ -158,50 +156,45 @@ function PreferencesPage() {
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <FormField
-              error={errors.theme?.message}
-              hint="Système suit automatiquement le thème clair ou sombre de votre appareil."
-              id="theme"
-              label="Thème"
-            >
-              <Select id="theme" {...register('theme')}>
-                {THEME_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
+            <Controller
+              control={control}
+              name="theme"
+              render={({ field }) => (
+                <SelectField
+                  disabled={isSaving}
+                  error={errors.theme?.message}
+                  hint="Système suit automatiquement le thème clair ou sombre de votre appareil."
+                  id="theme"
+                  items={THEME_OPTIONS}
+                  label="Thème"
+                  name={field.name}
+                  onBlur={field.onBlur}
+                  onValueChange={field.onChange}
+                  value={field.value}
+                />
+              )}
+            />
 
-            <FormField
-              error={errors.fontFamily?.message}
-              id="fontFamily"
-              label="Police"
-            >
-              <Controller
-                control={control}
-                name="fontFamily"
-                render={({ field }) => (
-                  <Select
-                    id="fontFamily"
-                    name={field.name}
-                    onBlur={field.onBlur}
-                    onChange={(event) => previewFontFamily(
-                      event.target.value,
-                      field.onChange,
-                    )}
-                    ref={field.ref}
-                    value={field.value}
-                  >
-                    {FONT_FAMILY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                )}
-              />
-            </FormField>
+            <Controller
+              control={control}
+              name="fontFamily"
+              render={({ field }) => (
+                <SelectField
+                  disabled={isSaving}
+                  error={errors.fontFamily?.message}
+                  id="fontFamily"
+                  items={FONT_FAMILY_OPTIONS}
+                  label="Police"
+                  name={field.name}
+                  onBlur={field.onBlur}
+                  onValueChange={(fontFamily) => previewFontFamily(
+                    fontFamily,
+                    field.onChange,
+                  )}
+                  value={field.value}
+                />
+              )}
+            />
           </div>
 
           <Controller
