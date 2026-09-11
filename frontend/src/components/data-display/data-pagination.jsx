@@ -33,6 +33,10 @@ function DataPagination({
   const resolvedPageSize = pageSize ?? pagination?.limit ?? null;
   const showNavigation = totalPages > 1;
   const showPageSize = Boolean(onPageSizeChange && resolvedPageSize && total > 0);
+  const pageSizeItems = pageSizeOptions.map((option) => ({
+    value: String(option),
+    label: String(option),
+  }));
 
   if (!showNavigation && !showPageSize) return null;
 
@@ -43,6 +47,7 @@ function DataPagination({
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Afficher</span>
             <Select
+              items={pageSizeItems}
               onValueChange={(value) => onPageSizeChange(Number(value))}
               value={String(resolvedPageSize)}
             >
@@ -54,9 +59,9 @@ function DataPagination({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {pageSizeOptions.map((option) => (
-                  <SelectItem key={option} value={String(option)}>
-                    {option}
+                {pageSizeItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
                   </SelectItem>
                 ))}
               </SelectContent>
