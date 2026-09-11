@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router/dom';
 import { appRouter } from '@/app/router';
 import { ThemeProvider } from '@/components/shared/theme-provider';
 import { ToastProvider } from '@/components/shared/toast-provider';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { SessionBootstrap } from '@/features/auth/components/session-bootstrap';
 import {
   UserPreferencesBootstrap,
@@ -18,13 +19,15 @@ function AppProviders({
   return (
     <Provider store={store}>
       <ThemeProvider storageScope={themeScope}>
-        <ToastProvider>
-          <SessionBootstrap>
-            <UserPreferencesBootstrap>
-              <RouterProvider router={router} />
-            </UserPreferencesBootstrap>
-          </SessionBootstrap>
-        </ToastProvider>
+        <TooltipProvider>
+          <ToastProvider>
+            <SessionBootstrap>
+              <UserPreferencesBootstrap>
+                <RouterProvider router={router} />
+              </UserPreferencesBootstrap>
+            </SessionBootstrap>
+          </ToastProvider>
+        </TooltipProvider>
       </ThemeProvider>
     </Provider>
   );
