@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Registre canonique des dettes actives
 
 **Statut :** source de vérité documentaire pour les dettes non résolues  
-**Dernière mise à jour :** 2026-09-10  
+**Dernière mise à jour :** 2026-09-11  
 **Périmètre :** Core clonable et, lorsque précisé, applications dérivées
 
 ---
@@ -64,7 +64,7 @@ produit dérivé automatiquement production-ready
 |---|---|---|
 | D-020 | Invitation commerciale client et offres privées de découverte | EN COURS |
 | D-011 | Design System Core, préférences utilisateur et affichage métier | VALIDÉ |
-| D-021 | Gate sécurité Auth, invitations et tokens temporaires | PLANIFIÉ |
+| D-021 | Gate sécurité Auth, invitations et tokens temporaires | EN COURS |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
 | D-002 | Corbeille et restauration des fichiers | PLANIFIÉ |
@@ -492,7 +492,7 @@ Contrat : `docs/contracts/COMMERCIAL-INVITATIONS.md`.
 
 ## D-021 — Gate sécurité Auth, invitations et tokens temporaires
 
-**Statut :** PLANIFIÉ  
+**Statut :** EN COURS  
 **Périmètre :** Core Auth + WorkspaceInvitation + PlatformInvitation + CommercialInvitation et tout lien sensible temporaire  
 **Blocage Core 1.0 :** oui, avant D-015  
 **Dépendances :** Auth/session et domaines d'invitation existants  
@@ -554,7 +554,7 @@ DOC-CODE-1 documentation source                             VALIDÉ
 D-011.A stabilisation Design System Core                    VALIDÉ
 D-011.B préférences de confort                              VALIDÉ
 D-011.C préférences d'affichage métier                      VALIDÉ
-→ D-021 gate sécurité Auth / invitations / tokens           PLANIFIÉ
+→ D-021 gate sécurité Auth / invitations / tokens           EN COURS
 → D-015 release/version/provenance/migrations               PLANIFIÉ
 → D-016 Playwright E2E Core                                 PLANIFIÉ
 → D-002 corbeille / restauration Files                      PLANIFIÉ — avant première dérivation
