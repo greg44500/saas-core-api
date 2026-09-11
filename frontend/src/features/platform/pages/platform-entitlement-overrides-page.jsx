@@ -11,11 +11,14 @@ import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import {
   useCreatePlatformEntitlementOverrideMutation,
+  useCreatePlatformFeatureOverrideGroupMutation,
   useGetPlatformEntitlementContextQuery,
   useGetPlatformEntitlementOverrideQuery,
+  useGetPlatformFeatureOverrideGroupQuery,
   useListPlatformEntitlementOverridesQuery,
   useRevokePlatformEntitlementOverrideMutation,
   useUpdatePlatformEntitlementOverrideMutation,
+  useUpdatePlatformFeatureOverrideGroupMutation,
 } from '@/features/platform/api/platform-entitlement-overrides-api';
 import { useListPlatformPlanCapabilitiesQuery } from '@/features/platform/api/platform-plans-api';
 import { useListPlatformWorkspacesQuery } from '@/features/platform/api/platform-workspaces-api';
@@ -61,6 +64,7 @@ function PlatformEntitlementOverridesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createError, setCreateError] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
+  const [editFeatureGroup, setEditFeatureGroup] = useState(null);
   const [editError, setEditError] = useState(null);
   const [revokeTarget, setRevokeTarget] = useState(null);
   const [revokeError, setRevokeError] = useState(null);
@@ -82,15 +86,31 @@ function PlatformEntitlementOverridesPage() {
   const detailQuery = useGetPlatformEntitlementOverrideQuery(selectedId, {
     skip: !selectedId,
   });
+  const selectedIsFeature = detailQuery.data?.targetType
+    === ENTITLEMENT_OVERRIDE_TARGET.FEATURE;
+  const selectedFeatureGroupQuery = useGetPlatformFeatureOverrideGroupQuery(
+    detailQuery.data?.id,
+    {
+      skip: !detailQuery.data?.id || !selectedIsFeature,
+    },
+  );
   const entitlementContextQuery = useGetPlatformEntitlementContextQuery(
     workspaceId,
     { skip: !workspaceId },
+  );
+  const editEntitlementContextQuery = useGetPlatformEntitlementContextQuery(
+    editTarget?.workspace?.id,
+    { skip: !editTarget?.workspace?.id },
   );
   const capabilitiesQuery = useListPlatformPlanCapabilitiesQuery();
   const workspacesQuery = useListPlatformWorkspacesQuery({ page: 1, limit: 100 });
 
   const [createOverride, createState] = useCreatePlatformEntitlementOverrideMutation();
+  const [createFeatureGroup, createFeatureGroupState] =
+    useCreatePlatformFeatureOverrideGroupMutation();
   const [updateOverride, updateState] = useUpdatePlatformEntitlementOverrideMutation();
+  const [updateFeatureGroup, updateFeatureGroupState] =
+    useUpdatePlatformFeatureOverrideGroupMutation();
   const [revokeOverride, revokeState] = useRevokePlatformEntitlementOverrideMutation();
 
   const overrides = listQuery.data?.overrides ?? [];
@@ -100,6 +120,8 @@ function PlatformEntitlementOverridesPage() {
     featureDefinitions: [],
     metrics: [],
   };
+  const createPending = createState.isLoading || createFeatureGroupState.isLoading;
+  const editPending = updateState.isLoading || updateFeatureGroupState.isLoading;
 
   function updateFilter(key, value) {
     setSearchParams((current) => {
@@ -126,8 +148,19 @@ function PlatformEntitlementOverridesPage() {
 
   async function submitCreate(payload) {
     setCreateError(null);
+
     try {
-      await createOverride(payload).unwrap();
+      const isGroupedFeature = payload.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
+        && payload.featureEnabled === true
+        && payload.groupName;
+
+      if (isGroupedFeature) {
+        const { targetType: _targetType, ...groupPayload } = payload;
+        await createFeatureGroup(groupPayload).unwrap();
+      } else {
+        await createOverride(payload).unwrap();
+      }
+
       toast({
         title: 'Dérogation exceptionnelle créée',
         variant: 'success',
@@ -141,14 +174,25 @@ function PlatformEntitlementOverridesPage() {
   async function submitEdit(payload) {
     if (!editTarget) return;
     setEditError(null);
+
     try {
-      await updateOverride({
-        overrideId: editTarget.id,
-        workspaceId: editTarget.workspace?.id,
-        ...payload,
-      }).unwrap();
+      if (editFeatureGroup?.groupId) {
+        await updateFeatureGroup({
+          overrideId: editTarget.id,
+          workspaceId: editTarget.workspace?.id,
+          ...payload,
+        }).unwrap();
+      } else {
+        await updateOverride({
+          overrideId: editTarget.id,
+          workspaceId: editTarget.workspace?.id,
+          ...payload,
+        }).unwrap();
+      }
+
       toast({ title: 'Dérogation mise à jour', variant: 'success' });
       setEditTarget(null);
+      setEditFeatureGroup(null);
     } catch (error) {
       setEditError(getApiMessage(error, 'La dérogation n’a pas pu être mise à jour.'));
     }
@@ -399,9 +443,15 @@ function PlatformEntitlementOverridesPage() {
 
       <PlatformEntitlementOverrideDetailsDrawer
         error={detailQuery.error}
+        featureGroup={selectedFeatureGroupQuery.data}
         isLoading={detailQuery.isLoading || detailQuery.isFetching}
         onClose={() => setSelectedId(null)}
         onEdit={(override) => {
+          setEditFeatureGroup(
+            override.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
+              ? selectedFeatureGroupQuery.data
+              : null,
+          );
           setSelectedId(null);
           setEditError(null);
           setEditTarget(override);
@@ -425,7 +475,7 @@ function PlatformEntitlementOverridesPage() {
       <EntityDetailsDrawer
         description="Accordez ou suspendez exceptionnellement une capability, éventuellement pour une période précise, sans modifier le plan catalogue."
         onClose={() => {
-          if (!createState.isLoading) setCreateOpen(false);
+          if (!createPending) setCreateOpen(false);
         }}
         open={createOpen}
         title="Dérogation exceptionnelle"
@@ -436,7 +486,7 @@ function PlatformEntitlementOverridesPage() {
           mode="create"
           onCancel={() => setCreateOpen(false)}
           onSubmit={submitCreate}
-          pending={createState.isLoading}
+          pending={createPending}
           submitError={createError}
           workspaceId={workspaceId}
         />
@@ -445,19 +495,27 @@ function PlatformEntitlementOverridesPage() {
       <EntityDetailsDrawer
         description="Modifiez la valeur, la période, l’origine ou le motif. La cible de la dérogation reste immuable."
         onClose={() => {
-          if (!updateState.isLoading) setEditTarget(null);
+          if (!editPending) {
+            setEditTarget(null);
+            setEditFeatureGroup(null);
+          }
         }}
         open={Boolean(editTarget)}
-        title="Modifier la dérogation"
+        title={editFeatureGroup?.groupName ?? 'Modifier la dérogation'}
       >
         {editTarget && (
           <PlatformEntitlementOverrideForm
             capabilities={capabilities}
+            entitlementContext={editEntitlementContextQuery.data}
+            featureGroup={editFeatureGroup}
             mode="edit"
-            onCancel={() => setEditTarget(null)}
+            onCancel={() => {
+              setEditTarget(null);
+              setEditFeatureGroup(null);
+            }}
             onSubmit={submitEdit}
             override={editTarget}
-            pending={updateState.isLoading}
+            pending={editPending || editEntitlementContextQuery.isLoading}
             submitError={editError}
           />
         )}
