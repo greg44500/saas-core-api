@@ -2,6 +2,11 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { useDialogFocus } from '@/hooks/use-dialog-focus';
 
@@ -112,18 +117,24 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
               </p>
             )}
           </div>
-          <Button
-            aria-label="Fermer"
-            className="shrink-0"
-            onClick={onClose}
-            ref={closeButtonRef}
-            size="icon"
-            title="Fermer"
-            type="button"
-            variant="ghost"
-          >
-            <X aria-hidden="true" className="size-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <Button
+                  aria-label="Fermer"
+                  className="shrink-0"
+                  onClick={onClose}
+                  ref={closeButtonRef}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                />
+              )}
+            >
+              <X aria-hidden="true" className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>Fermer</TooltipContent>
+          </Tooltip>
         </header>
 
         <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-5 [scrollbar-gutter:stable]">
