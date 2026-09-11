@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 const mocks = vi.hoisted(() => ({
   createInvitation: vi.fn(),
@@ -59,15 +60,17 @@ function resolvedMutation(mock) {
 
 function renderPage(permissions) {
   return render(
-    <ToastProvider>
-      <WorkspaceProvider
-        workspace={workspace}
-        membership={membership}
-        permissions={permissions}
-      >
-        <WorkspaceMembersPage />
-      </WorkspaceProvider>
-    </ToastProvider>,
+    <TooltipProvider>
+      <ToastProvider>
+        <WorkspaceProvider
+          workspace={workspace}
+          membership={membership}
+          permissions={permissions}
+        >
+          <WorkspaceMembersPage />
+        </WorkspaceProvider>
+      </ToastProvider>
+    </TooltipProvider>,
   );
 }
 
@@ -166,7 +169,9 @@ describe('WorkspaceMembersPage', () => {
     vi.clearAllMocks();
   });
 
-  it('affiche les membres sans répéter un statut technique de protection', () => {
+  it('affiche les membres sans répéter un statut technique de protection', async () => {
+    const user = userEvent.setup();
+
     renderPage([
       WORKSPACE_PERMISSION.MEMBER_READ,
       WORKSPACE_PERMISSION.MEMBER_UPDATE,
@@ -176,9 +181,13 @@ describe('WorkspaceMembersPage', () => {
     ]);
 
     expect(screen.getByRole('heading', { name: 'Membres' })).toBeInTheDocument();
-    expect(screen.getByText('Owner User')).toBeInTheDocument();
+    const ownerName = screen.getByText('Owner User');
+    expect(ownerName).toBeInTheDocument();
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    expect(screen.getByText('Vous')).toBeInTheDocument();
+
+    await user.hover(ownerName);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Vous');
+
     expect(screen.queryByText('Protégé')).not.toBeInTheDocument();
     expect(screen.getAllByText('Actif')).toHaveLength(2);
     expect(screen.getByRole('button', { name: 'Suspendre' })).toBeInTheDocument();
