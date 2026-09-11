@@ -39,7 +39,7 @@ function SelectContent({ className, children, sideOffset = 4, ...props }) {
   return (
     <BaseSelect.Portal>
       <BaseSelect.Positioner
-        className="z-50 outline-none"
+        className="z-[var(--layer-modal)] outline-none"
         sideOffset={sideOffset}
       >
         <BaseSelect.Popup
