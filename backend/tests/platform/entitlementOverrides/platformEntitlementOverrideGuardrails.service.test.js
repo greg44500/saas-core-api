@@ -13,6 +13,7 @@ import {
 import {
     assertCreateFeatureOverrideGroupOperational,
     assertLimitValueWithinPolicy,
+    assertUpdateFeatureOverrideGroupOperational,
     assertUpdateLimitOverrideWithinPolicy,
 } from '../../../modules/platform/entitlementOverrides/platformEntitlementOverrideGuardrails.service.js';
 import {
@@ -21,7 +22,6 @@ import {
 import {
     getUsageMetricValue,
 } from '../../../modules/usageMetric/usageMetric.service.js';
-
 
 vi.mock(
     '../../../modules/subscriptions/subscription.service.js',
@@ -71,7 +71,6 @@ const captureError = (callback) => {
     return null;
 };
 
-
 describe('platformEntitlementOverrideGuardrails.service', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
@@ -89,9 +88,7 @@ describe('platformEntitlementOverrideGuardrails.service', () => {
                 relatedLimits: [],
             },
             now: NOW,
-        })).rejects.toMatchObject({
-            statusCode: 409,
-        });
+        })).rejects.toMatchObject({ statusCode: 409 });
     });
 
     it('accepte la gestion d’équipe avec une dérogation members à 2', async () => {
@@ -135,9 +132,59 @@ describe('platformEntitlementOverrideGuardrails.service', () => {
                 relatedLimits: [],
             },
             now: NOW,
-        })).rejects.toMatchObject({
-            statusCode: 409,
-        });
+        })).rejects.toMatchObject({ statusCode: 409 });
+    });
+
+    it('exige aussi une capacité restante lors de la modification d’un groupe actif', async () => {
+        const overrideId = createId();
+        const workspaceId = createId();
+        mockEffectiveLimits({ members: 5 }, { members: 5 });
+
+        vi.spyOn(EntitlementOverride, 'findById')
+            .mockReturnValue(buildSelectLeanQuery({
+                _id: overrideId,
+                workspace: workspaceId,
+                targetType: 'feature',
+                featureKey: 'team_management',
+                featureEnabled: true,
+                startsAt: NOW,
+            }));
+
+        await expect(assertUpdateFeatureOverrideGroupOperational({
+            overrideId,
+            groupData: {
+                featureEnabled: true,
+                relatedLimits: [
+                    { metricKey: 'members', limitValue: 5 },
+                ],
+            },
+            now: NOW,
+        })).rejects.toMatchObject({ statusCode: 409 });
+
+        await expect(assertUpdateFeatureOverrideGroupOperational({
+            overrideId,
+            groupData: {
+                featureEnabled: true,
+                relatedLimits: [
+                    { metricKey: 'members', limitValue: 6 },
+                ],
+            },
+            now: NOW,
+        })).resolves.toBeUndefined();
+    });
+
+    it('autorise la désactivation du groupe sans imposer de capacité résiduelle', async () => {
+        const overrideId = createId();
+
+        await expect(assertUpdateFeatureOverrideGroupOperational({
+            overrideId,
+            groupData: {
+                featureEnabled: false,
+            },
+            now: NOW,
+        })).resolves.toBeUndefined();
+
+        expect(EntitlementOverride.findById).not.toHaveBeenCalled();
     });
 
     it('refuse une limite members au-delà du maximum administratif', () => {
@@ -171,8 +218,6 @@ describe('platformEntitlementOverrideGuardrails.service', () => {
             overrideData: {
                 limitValue: 100,
             },
-        })).rejects.toMatchObject({
-            statusCode: 400,
-        });
+        })).rejects.toMatchObject({ statusCode: 400 });
     });
 });
