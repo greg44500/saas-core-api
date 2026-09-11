@@ -36,10 +36,15 @@ describe('LogoutShortcut', () => {
     );
 
     const button = screen.getByRole('button', { name: 'Déconnexion' });
-    expect(screen.getAllByText('Déconnexion')).toHaveLength(1);
+
+    expect(button).toBeInTheDocument();
+    expect(screen.queryByText('Déconnexion')).not.toBeInTheDocument();
 
     await user.hover(button);
-    expect((await screen.findAllByText('Déconnexion')).length).toBeGreaterThan(1);
+
+    expect(
+      await screen.findByText('Déconnexion'),
+    ).toBeInTheDocument();
 
     await user.click(button);
 

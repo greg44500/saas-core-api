@@ -43,11 +43,12 @@ describe('PlatformPlanForm dynamic capabilities', () => {
     const infoButton = screen.getByRole('button', {
       name: 'Informations sur Historique des prix',
     });
+
     await user.hover(infoButton);
 
-    expect(screen.getByRole('tooltip')).toHaveTextContent(
-      'Consulter les évolutions de prix.',
-    );
+    expect(
+      await screen.findByText('Consulter les évolutions de prix.'),
+    ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Nom'), 'Premium');
     await user.click(

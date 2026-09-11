@@ -120,22 +120,44 @@ describe('PlatformSidebar', () => {
       name: 'Sécurité & données',
     });
 
-    expect(screen.queryByText('Sécurité & données', { exact: true })).not.toBeInTheDocument();
+    const hiddenLabel = screen.getByText('Sécurité & données', {
+      exact: true,
+    });
+
+    expect(hiddenLabel).toHaveClass('max-w-0', 'opacity-0');
 
     await user.hover(securityGroup);
-    expect(await screen.findByText('Sécurité & données', { exact: true })).toBeInTheDocument();
+
+    expect(
+      (await screen.findAllByText('Sécurité & données', { exact: true })).length,
+    ).toBeGreaterThan(1);
 
     await user.unhover(securityGroup);
-    expect(screen.queryByText('Sécurité & données', { exact: true })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Rétention & purge' })).not.toBeInTheDocument();
+
+    expect(
+      screen.getAllByText('Sécurité & données', { exact: true }),
+    ).toHaveLength(1);
+
+    expect(hiddenLabel).toHaveClass('max-w-0', 'opacity-0');
+
+    expect(
+      screen.queryByRole('link', { name: 'Rétention & purge' }),
+    ).not.toBeInTheDocument();
 
     await user.click(securityGroup);
-    expect(screen.getByRole('link', { name: 'Rétention & purge' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: 'Rétention & purge' }));
-    expect(screen.queryByRole('link', { name: 'Rétention & purge' })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Rétention & purge' }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('link', { name: 'Rétention & purge' }),
+    );
+
+    expect(
+      screen.queryByRole('link', { name: 'Rétention & purge' }),
+    ).not.toBeInTheDocument();
   });
-
   it('déclenche le changement d’état de la sidebar', async () => {
     const user = userEvent.setup();
     const onToggle = vi.fn();
@@ -143,7 +165,9 @@ describe('PlatformSidebar', () => {
     renderSidebar({ onToggle });
 
     await user.click(
-      screen.getByRole('button', { name: 'Réduire la navigation d’administration' }),
+      screen.getByRole('button', {
+        name: 'Réduire la navigation d’administration',
+      }),
     );
 
     expect(onToggle).toHaveBeenCalledOnce();

@@ -41,7 +41,11 @@ describe('platformEntitlementOverridesApi', () => {
       '/platform/entitlement-overrides/override-id',
     );
 
-    expect(captured.queries[2].query('workspace-id')).toBe(
+    expect(captured.queries[2].query('override-id')).toBe(
+      '/platform/entitlement-overrides/feature-groups/override-id',
+    );
+
+    expect(captured.queries[3].query('workspace-id')).toBe(
       '/platform/entitlement-overrides/workspaces/workspace-id/context',
     );
 
@@ -60,6 +64,20 @@ describe('platformEntitlementOverridesApi', () => {
     });
 
     expect(captured.mutations[1].query({
+      workspaceId: 'workspace-id',
+      featureKey: 'file_upload',
+      reason: 'Support groupé',
+    })).toEqual({
+      url: '/platform/entitlement-overrides/feature-groups',
+      method: 'POST',
+      body: {
+        workspaceId: 'workspace-id',
+        featureKey: 'file_upload',
+        reason: 'Support groupé',
+      },
+    });
+
+    expect(captured.mutations[2].query({
       overrideId: 'override-id',
       workspaceId: 'workspace-id',
       reason: 'Mise à jour',
@@ -68,8 +86,16 @@ describe('platformEntitlementOverridesApi', () => {
       method: 'PATCH',
       body: { reason: 'Mise à jour' },
     });
-
-    expect(captured.mutations[2].query({
+    expect(captured.mutations[3].query({
+      overrideId: 'override-id',
+      workspaceId: 'workspace-id',
+      reason: 'Mise à jour groupée',
+    })).toEqual({
+      url: '/platform/entitlement-overrides/feature-groups/override-id',
+      method: 'PATCH',
+      body: { reason: 'Mise à jour groupée' },
+    });
+    expect(captured.mutations[4].query({
       overrideId: 'override-id',
       workspaceId: 'workspace-id',
       reason: 'Révocation',

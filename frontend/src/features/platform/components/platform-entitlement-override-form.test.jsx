@@ -133,8 +133,14 @@ const featureGroup = {
 };
 
 async function chooseSelectOption(user, label, optionName) {
-  await user.click(screen.getByRole('combobox', { name: label }));
-  await user.click(screen.getByRole('option', { name: optionName }));
+  const trigger = screen.getByRole('combobox', { name: label });
+
+  trigger.focus();
+  await user.keyboard('{ArrowDown}');
+
+  await user.click(
+    await screen.findByRole('option', { name: optionName }),
+  );
 }
 
 describe('PlatformEntitlementOverrideForm', () => {
