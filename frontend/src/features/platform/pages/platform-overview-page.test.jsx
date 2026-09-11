@@ -215,6 +215,7 @@ describe('PlatformOverviewPage', () => {
     const attention = screen.getByRole('region', { name: 'Points nécessitant une attention' });
 
     expect(screen.getByRole('heading', { name: 'Vue d’ensemble' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'À propos de la vue d’ensemble' })).toBeInTheDocument();
     expect(screen.getByText('Plateforme')).toBeInTheDocument();
     expect(within(kpis).getByText('100')).toBeInTheDocument();
     expect(within(kpis).getByText('50')).toBeInTheDocument();
@@ -272,10 +273,8 @@ describe('PlatformOverviewPage', () => {
 
     expect(mocks.useGetPlatformOverviewQuery.mock.calls[0][0]).toEqual({});
 
-    await user.selectOptions(
-      screen.getByLabelText('Période d’analyse'),
-      '90d',
-    );
+    await user.click(screen.getByRole('combobox', { name: 'Période d’analyse' }));
+    await user.click(await screen.findByRole('option', { name: '90 derniers jours' }));
 
     const lastArgs = mocks.useGetPlatformOverviewQuery.mock.calls.at(-1)[0];
     const duration = new Date(lastArgs.to).getTime() - new Date(lastArgs.from).getTime();
