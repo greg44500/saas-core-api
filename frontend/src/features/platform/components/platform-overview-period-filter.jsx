@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { DatePicker, toIsoDate } from '@/components/forms/date-picker';
+import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
 import {
   OVERVIEW_PERIOD_PRESET,
@@ -33,8 +34,7 @@ function PlatformOverviewPeriodFilter({
     setError(null);
   }, [period.from, period.preset, period.to]);
 
-  function handleModeChange(event) {
-    const nextMode = event.target.value;
+  function handleModeChange(nextMode) {
     setMode(nextMode);
     setError(null);
 
@@ -60,21 +60,17 @@ function PlatformOverviewPeriodFilter({
 
   return (
     <div className="flex flex-col gap-3 lg:items-end">
-      <label className="flex flex-col gap-1.5 text-sm font-medium">
-        Période d’analyse
-        <select
-          className="h-10 min-w-52 rounded-md border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          disabled={disabled}
-          onChange={handleModeChange}
-          value={mode}
-        >
-          {PERIOD_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <SelectField
+        className="w-full lg:w-auto"
+        disabled={disabled}
+        id="platform-overview-period"
+        items={PERIOD_OPTIONS}
+        label="Période d’analyse"
+        labelClassName="sr-only"
+        onValueChange={handleModeChange}
+        triggerClassName="min-w-52"
+        value={mode}
+      />
 
       {mode === OVERVIEW_PERIOD_PRESET.CUSTOM && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
