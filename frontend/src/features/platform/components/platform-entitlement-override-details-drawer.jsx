@@ -3,10 +3,13 @@ import { EntityDetailsSkeleton } from '@/components/shared/entity-details-skelet
 import { InlineIconLink } from '@/components/shared/inline-icon-link';
 import { Button } from '@/components/ui/button';
 import {
+  PlatformEntitlementEffectBadge,
+  PlatformEntitlementLifecycleBadge,
+} from '@/features/platform/components/platform-entitlement-status-badge';
+import {
   ENTITLEMENT_OVERRIDE_TARGET,
   formatPlatformEntitlementOverrideCapability,
   formatPlatformEntitlementOverrideDate,
-  formatPlatformEntitlementOverrideLifecycle,
   formatPlatformEntitlementOverrideSource,
   formatPlatformEntitlementOverrideValue,
   isEditablePlatformEntitlementOverride,
@@ -30,14 +33,28 @@ function formatActor(actor) {
 
 function getTargetLabel(targetType) {
   if (targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE) return 'Fonctionnalité';
-  if (targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT) return 'Limite';
+  if (targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT) return 'Paramètre';
   return 'Cible';
 }
 
 function getValueLabel(targetType) {
   return targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
-    ? 'Action appliquée'
+    ? 'Effet'
     : 'Valeur appliquée';
+}
+
+function renderOverrideValue(override) {
+  const value = formatPlatformEntitlementOverrideValue(override);
+
+  if (override.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE) {
+    return (
+      <PlatformEntitlementEffectBadge override={override}>
+        {value}
+      </PlatformEntitlementEffectBadge>
+    );
+  }
+
+  return value;
 }
 
 function PlatformEntitlementOverrideDetails({
@@ -127,11 +144,11 @@ function PlatformEntitlementOverrideDetails({
           />
           <DetailRow
             label={getValueLabel(override.targetType)}
-            value={formatPlatformEntitlementOverrideValue(override)}
+            value={renderOverrideValue(override)}
           />
           <DetailRow
-            label="Statut de la dérogation"
-            value={formatPlatformEntitlementOverrideLifecycle(override.lifecycle)}
+            label="Statut"
+            value={<PlatformEntitlementLifecycleBadge lifecycle={override.lifecycle} />}
           />
           <DetailRow label="Origine" value={formatPlatformEntitlementOverrideSource(override.source)} />
           <DetailRow label="Début" value={formatPlatformEntitlementOverrideDate(override.startsAt)} />
@@ -143,7 +160,7 @@ function PlatformEntitlementOverrideDetails({
       {featureGroup?.relatedOverrides?.length > 0 && (
         <section>
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Limites associées
+            Paramètres associés
           </h3>
           <dl className="mt-2">
             {featureGroup.relatedOverrides.map((relatedOverride) => (
@@ -186,7 +203,7 @@ function PlatformEntitlementOverrideDetails({
 
         {featureGroupError && (
           <p className="text-sm text-destructive" role="alert">
-            Les limites associées n’ont pas pu être chargées. La modification est désactivée pour éviter une édition partielle.
+            Les paramètres associés n’ont pas pu être chargés. La modification est désactivée pour éviter une édition partielle.
           </p>
         )}
 
@@ -234,7 +251,7 @@ function PlatformEntitlementOverrideDetailsDrawer({
 
   return (
     <EntityDetailsDrawer
-      description="Dérogation commerciale appliquée au calcul d’entitlement du workspace. Les informations internes restent réservées à Platform."
+      description="Dérogation commerciale appliquée au calcul des droits du workspace. Les informations internes restent réservées à Platform."
       onClose={onClose}
       open={open}
       title={title}
