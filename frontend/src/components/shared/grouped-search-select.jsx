@@ -11,6 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 function normalizeSearch(value) {
   return String(value ?? '')
@@ -108,10 +113,20 @@ function GroupedSearchSelect({
                         ? `${item.label}. ${item.description}`
                         : item.label}
                       key={item.value}
-                      title={item.description ?? undefined}
                       value={item.value}
                     >
-                      {item.label}
+                      {item.description ? (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={<span className="block min-w-0 truncate" />}
+                          >
+                            {item.label}
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            {item.description}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : item.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>
