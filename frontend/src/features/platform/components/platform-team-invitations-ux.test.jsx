@@ -1,7 +1,13 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import {
+  cleanup,
+  render,
+  screen,
+  waitForElementToBeRemoved,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 
 const mocks = vi.hoisted(() => ({
@@ -55,6 +61,14 @@ const invitation = {
   },
 };
 
+function renderSection() {
+  return render(
+    <TooltipProvider delay={0}>
+      <PlatformTeamInvitationsSection now={NOW} />
+    </TooltipProvider>,
+  );
+}
+
 describe('PlatformTeamInvitationsSection UX', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -88,7 +102,7 @@ describe('PlatformTeamInvitationsSection UX', () => {
   afterEach(() => cleanup());
 
   it('utilise un tableau fixe sans scroll horizontal', () => {
-    render(<PlatformTeamInvitationsSection now={NOW} />);
+    renderSection();
 
     const table = screen.getByRole('table');
 
@@ -98,7 +112,7 @@ describe('PlatformTeamInvitationsSection UX', () => {
 
   it('affiche des tooltips courts sans dégrader les libellés accessibles', async () => {
     const user = userEvent.setup();
-    render(<PlatformTeamInvitationsSection now={NOW} />);
+    renderSection();
 
     const resendButton = screen.getByRole('button', {
       name: 'Renvoyer l’invitation à Commercial Service',
@@ -108,10 +122,12 @@ describe('PlatformTeamInvitationsSection UX', () => {
     });
 
     await user.hover(resendButton);
-    expect(screen.getByRole('tooltip')).toHaveTextContent('Renvoyer');
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Renvoyer');
 
     await user.unhover(resendButton);
+    await waitForElementToBeRemoved(() => screen.queryByRole('tooltip'));
+
     await user.hover(revokeButton);
-    expect(screen.getByRole('tooltip')).toHaveTextContent('Révoquer');
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Révoquer');
   });
 });
