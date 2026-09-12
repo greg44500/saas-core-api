@@ -17,6 +17,7 @@ import {
     getFeatureOverrideGroup,
     listEntitlementOverrides,
     revokeEntitlementOverride,
+    revokeFeatureOverrideGroup,
     updateEntitlementOverride,
     updateFeatureOverrideGroup,
 } from './platformEntitlementOverrides.controller.js';
@@ -100,6 +101,18 @@ platformEntitlementOverridesRouter.patch(
         body: updatePlatformFeatureOverrideGroupBodySchema,
     }),
     updateFeatureOverrideGroup,
+);
+
+platformEntitlementOverridesRouter.patch(
+    '/feature-groups/:overrideId/revoke',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.ENTITLEMENT_OVERRIDES_REVOKE,
+    ),
+    validateRequest({
+        params: platformFeatureOverrideGroupParamsSchema,
+        body: revokePlatformEntitlementOverrideBodySchema,
+    }),
+    revokeFeatureOverrideGroup,
 );
 
 platformEntitlementOverridesRouter.get(

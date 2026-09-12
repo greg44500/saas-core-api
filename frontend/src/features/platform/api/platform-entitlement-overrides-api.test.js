@@ -18,11 +18,15 @@ vi.mock('@/services/api/base-api', () => ({
       endpoints(builder);
       return {
         useCreatePlatformEntitlementOverrideMutation: vi.fn(),
+        useCreatePlatformFeatureOverrideGroupMutation: vi.fn(),
         useGetPlatformEntitlementContextQuery: vi.fn(),
         useGetPlatformEntitlementOverrideQuery: vi.fn(),
+        useGetPlatformFeatureOverrideGroupQuery: vi.fn(),
         useListPlatformEntitlementOverridesQuery: vi.fn(),
         useRevokePlatformEntitlementOverrideMutation: vi.fn(),
+        useRevokePlatformFeatureOverrideGroupMutation: vi.fn(),
         useUpdatePlatformEntitlementOverrideMutation: vi.fn(),
+        useUpdatePlatformFeatureOverrideGroupMutation: vi.fn(),
       };
     },
   },
@@ -103,6 +107,15 @@ describe('platformEntitlementOverridesApi', () => {
       url: '/platform/entitlement-overrides/override-id/revoke',
       method: 'PATCH',
       body: { reason: 'Révocation' },
+    });
+    expect(captured.mutations[5].query({
+      overrideId: 'override-id',
+      workspaceId: 'workspace-id',
+      reason: 'Révocation groupée',
+    })).toEqual({
+      url: '/platform/entitlement-overrides/feature-groups/override-id/revoke',
+      method: 'PATCH',
+      body: { reason: 'Révocation groupée' },
     });
   });
 });

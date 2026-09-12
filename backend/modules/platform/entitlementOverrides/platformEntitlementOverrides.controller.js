@@ -8,6 +8,7 @@ import {
 import {
     createPlatformFeatureOverrideGroup,
     getPlatformFeatureOverrideGroup,
+    revokePlatformFeatureOverrideGroup,
     updatePlatformFeatureOverrideGroup,
 } from './platformEntitlementOverrideGroups.service.js';
 import {
@@ -146,6 +147,21 @@ const updateFeatureOverrideGroup = async (req, res) => {
     });
 };
 
+const revokeFeatureOverrideGroup = async (req, res) => {
+    const group = await revokePlatformFeatureOverrideGroup({
+        overrideId: req.validated.params.overrideId,
+        reason: req.validated.body.reason,
+        actorId: req.user._id,
+        ipAddress: req.context?.ipAddress ?? null,
+        userAgent: req.context?.userAgent ?? null,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: { group },
+    });
+};
+
 const revokeEntitlementOverride = async (req, res) => {
     const override = await revokePlatformEntitlementOverride({
         overrideId: req.validated.params.overrideId,
@@ -170,6 +186,7 @@ export {
     getFeatureOverrideGroup,
     listEntitlementOverrides,
     revokeEntitlementOverride,
+    revokeFeatureOverrideGroup,
     updateEntitlementOverride,
     updateFeatureOverrideGroup,
 };

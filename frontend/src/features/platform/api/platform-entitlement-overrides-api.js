@@ -148,6 +148,18 @@ const platformEntitlementOverridesApi = baseApi.injectEndpoints({
         ...dependentTags(workspaceId),
       ],
     }),
+
+    revokePlatformFeatureOverrideGroup: builder.mutation({
+      query: ({ overrideId, reason, workspaceId: _workspaceId }) => ({
+        url: `/platform/entitlement-overrides/feature-groups/${overrideId}/revoke`,
+        method: 'PATCH',
+        body: { reason },
+      }),
+      invalidatesTags: (_result, _error, { overrideId, workspaceId }) => [
+        { type: 'PlatformEntitlementOverrides', id: overrideId },
+        ...dependentTags(workspaceId),
+      ],
+    }),
   }),
 });
 
@@ -159,6 +171,7 @@ export const {
   useGetPlatformFeatureOverrideGroupQuery,
   useListPlatformEntitlementOverridesQuery,
   useRevokePlatformEntitlementOverrideMutation,
+  useRevokePlatformFeatureOverrideGroupMutation,
   useUpdatePlatformEntitlementOverrideMutation,
   useUpdatePlatformFeatureOverrideGroupMutation,
 } = platformEntitlementOverridesApi;
