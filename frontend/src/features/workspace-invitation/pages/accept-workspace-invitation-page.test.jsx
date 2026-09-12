@@ -1,12 +1,12 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createMemoryRouter, useLocation } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+
 import {
-  MemoryRouter,
-  Route,
-  Routes,
-  useLocation,
-} from 'react-router';
+  clearWorkspaceInvitationTokenInMemory,
+} from '@/features/workspace-invitation/lib/workspace-invitation-token';
 
 const mocks = vi.hoisted(() => ({
   acceptExisting: vi.fn(),
@@ -73,29 +73,34 @@ function LoginTarget() {
         <span>Invitation workspace acceptée</span>
       )}
       {location.state?.from?.pathname && (
-        <span data-testid="login-return-to">{location.state.from.pathname}</span>
+        <span data-testid="login-return-to">
+          {`${location.state.from.pathname}${location.state.from.search ?? ''}`}
+        </span>
       )}
     </div>
   );
 }
 
-function renderPage(path = `/workspace-invitations/accept?token=${TOKEN}`) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route
-          path="/workspace-invitations/accept"
-          element={<AcceptWorkspaceInvitationPage />}
-        />
-        <Route path="/login" element={<LoginTarget />} />
-      </Routes>
-    </MemoryRouter>,
+function renderPage(path = `/invitations/accept#token=${TOKEN}`) {
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/invitations/accept',
+        Component: AcceptWorkspaceInvitationPage,
+      },
+      { path: '/login', Component: LoginTarget },
+    ],
+    { initialEntries: [path] },
   );
+
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
 describe('AcceptWorkspaceInvitationPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearWorkspaceInvitationTokenInMemory();
     mocks.authStatus = 'unauthenticated';
     mocks.acceptNew.mockImplementation(() => ({
       unwrap: vi.fn().mockResolvedValue({
@@ -117,6 +122,18 @@ describe('AcceptWorkspaceInvitationPage', () => {
 
   afterEach(() => cleanup());
 
+  it('capture le secret depuis le fragment puis nettoie immédiatement l’URL', async () => {
+    const router = renderPage();
+
+    await waitFor(() => {
+      expect(router.state.location.hash).toBe('');
+    });
+
+    expect(router.state.location.search).toBe('');
+    expect(router.state.location.state).toBeNull();
+    expect(screen.getByLabelText('Prénom')).toBeInTheDocument();
+  });
+
   it('ne demande jamais l’email au nouveau destinataire', () => {
     renderPage();
 
@@ -124,6 +141,25 @@ describe('AcceptWorkspaceInvitationPage', () => {
     expect(screen.getByLabelText('Nom')).toBeInTheDocument();
     expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Créer mon accès' })).toBeDisabled();
+  });
+
+  it('ne place pas le secret dans history.state pendant un passage par le login', async () => {
+    const user = userEvent.setup();
+    const router = renderPage();
+
+    await waitFor(() => {
+      expect(router.state.location.hash).toBe('');
+    });
+
+    await user.click(
+      screen.getByRole('link', { name: 'Se connecter pour accepter' }),
+    );
+
+    expect(screen.getByText('Login cible')).toBeInTheDocument();
+    expect(screen.getByTestId('login-return-to')).toHaveTextContent(
+      '/invitations/accept',
+    );
+    expect(screen.getByTestId('login-return-to')).not.toHaveTextContent(TOKEN);
   });
 
   it('crée le compte puis renvoie vers le login et le workspace accepté', async () => {

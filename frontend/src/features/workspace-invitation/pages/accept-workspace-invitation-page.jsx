@@ -1,12 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSelector } from 'react-redux';
 import {
   Link,
   useLocation,
   useNavigate,
-  useSearchParams,
 } from 'react-router';
 
 import { FormField } from '@/components/forms/form-field';
@@ -23,6 +22,10 @@ import {
   useAcceptWorkspaceInvitationMutation,
 } from '@/features/workspace-invitation/api/workspace-invitation-api';
 import {
+  clearWorkspaceInvitationTokenInMemory,
+  getWorkspaceInvitationTokenFromHash,
+} from '@/features/workspace-invitation/lib/workspace-invitation-token';
+import {
   workspaceInvitationNewAccountSchema,
   workspaceInvitationTokenSchema,
 } from '@/features/workspace-invitation/validation/workspace-invitation-schemas';
@@ -35,10 +38,11 @@ function AcceptWorkspaceInvitationPage() {
   const authStatus = useSelector((state) => state.auth.authStatus);
   const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [acceptedMembership, setAcceptedMembership] = useState(null);
+  const [token] = useState(() =>
+    getWorkspaceInvitationTokenFromHash(location.hash));
   const tokenResult = workspaceInvitationTokenSchema.safeParse(
-    searchParams.get('token') ?? '',
+    token ?? '',
   );
   const { data: passwordPolicy } = useGetPasswordPolicyQuery();
   const { data: workspaces = [] } = useListWorkspacesQuery(undefined, {
@@ -48,6 +52,28 @@ function AcceptWorkspaceInvitationPage() {
     useAcceptWorkspaceInvitationMutation();
   const [acceptNewInvitation, newState] =
     useAcceptNewWorkspaceInvitationMutation();
+
+  useLayoutEffect(() => {
+    if (!location.hash) return;
+
+    navigate(
+      {
+        pathname: location.pathname,
+        search: location.search,
+        hash: '',
+      },
+      {
+        replace: true,
+        state: location.state,
+      },
+    );
+  }, [
+    location.hash,
+    location.pathname,
+    location.search,
+    location.state,
+    navigate,
+  ]);
 
   const {
     register,
@@ -127,13 +153,11 @@ function AcceptWorkspaceInvitationPage() {
     );
   }
 
-  const token = tokenResult.data;
-
   const handleExistingAcceptance = async () => {
     try {
-      const membership = await acceptInvitation(token).unwrap();
+      const membership = await acceptInvitation(tokenResult.data).unwrap();
+      clearWorkspaceInvitationTokenInMemory();
       setAcceptedMembership(membership);
-      setSearchParams({}, { replace: true });
     } catch (error) {
       setError('root.acceptance', {
         type: 'server',
@@ -148,9 +172,11 @@ function AcceptWorkspaceInvitationPage() {
   const handleNewAcceptance = async ({ confirmPassword: _confirmPassword, ...values }) => {
     try {
       const membership = await acceptNewInvitation({
-        token,
+        token: tokenResult.data,
         ...values,
       }).unwrap();
+
+      clearWorkspaceInvitationTokenInMemory();
 
       navigate('/login', {
         replace: true,
@@ -299,7 +325,12 @@ function AcceptWorkspaceInvitationPage() {
           Vous avez déjà un compte ?{' '}
           <Link
             className="font-medium text-primary hover:underline"
-            state={{ from: location }}
+            state={{
+              from: {
+                pathname: location.pathname,
+                search: location.search,
+              },
+            }}
             to="/login"
           >
             Se connecter pour accepter
