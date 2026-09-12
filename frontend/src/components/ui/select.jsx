@@ -1,10 +1,50 @@
+import { Children, isValidElement } from 'react';
 import { Select as BaseSelect } from '@base-ui/react/select';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-function Select(props) {
-  return <BaseSelect.Root {...props} />;
+/**
+ * Base UI affiche la valeur technique par défaut. Notre primitive shared
+ * reconstruit donc le catalogue à partir des SelectItem déclarés afin que
+ * SelectValue rende le libellé utilisateur, comme attendu d'un Select shadcn.
+ */
+function collectSelectItems(children) {
+  const items = [];
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement(child)) return;
+
+    if (
+      child.type === SelectItem
+      && Object.prototype.hasOwnProperty.call(child.props, 'value')
+    ) {
+      items.push({
+        value: child.props.value,
+        label: child.props.children,
+      });
+      return;
+    }
+
+    if (child.props?.children) {
+      items.push(...collectSelectItems(child.props.children));
+    }
+  });
+
+  return items;
+}
+
+function Select({ children, items, ...props }) {
+  const inferredItems = items ?? collectSelectItems(children);
+
+  return (
+    <BaseSelect.Root
+      items={inferredItems.length > 0 ? inferredItems : undefined}
+      {...props}
+    >
+      {children}
+    </BaseSelect.Root>
+  );
 }
 
 function SelectTrigger({ className, children, ...props }) {
