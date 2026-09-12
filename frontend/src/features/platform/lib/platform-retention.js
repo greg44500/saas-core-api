@@ -9,6 +9,12 @@ const RETENTION_EXECUTION_TRIGGER_LABELS = Object.freeze({
   scheduled: 'Planifiée',
 });
 
+const RETENTION_EXECUTION_ERROR_LABELS = Object.freeze({
+  RETENTION_LOCK_LOST: 'Verrou d’exécution perdu',
+  RETENTION_EXECUTION_INTERRUPTED: 'Exécution interrompue',
+  RETENTION_TARGET_EXECUTION_FAILED: 'Échec du traitement de purge',
+});
+
 function hasPlatformPermission(platformAccess, permission) {
   return platformAccess?.status === 'active'
     && Array.isArray(platformAccess.permissions)
@@ -33,6 +39,11 @@ function getRetentionExecutionStatusLabel(status) {
 
 function getRetentionExecutionTriggerLabel(trigger) {
   return RETENTION_EXECUTION_TRIGGER_LABELS[trigger] ?? trigger ?? '—';
+}
+
+function getRetentionExecutionErrorLabel(errorCode) {
+  if (!errorCode) return '—';
+  return RETENTION_EXECUTION_ERROR_LABELS[errorCode] ?? 'Erreur technique non reconnue';
 }
 
 /**
@@ -205,6 +216,7 @@ export {
   buildRetentionPolicyPayload,
   createRetentionPolicyFormState,
   formatRetentionDate,
+  getRetentionExecutionErrorLabel,
   getRetentionExecutionStatusLabel,
   getRetentionExecutionTriggerLabel,
   getRetentionManualExecutionAvailability,
