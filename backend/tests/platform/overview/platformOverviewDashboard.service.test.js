@@ -17,11 +17,15 @@ const FROM = new Date('2026-08-03T12:00:00.000Z');
 const TO = new Date('2026-09-03T12:00:00.000Z');
 
 describe('platformOverviewDashboard.service', () => {
-    it('partage le même instant puis compose les KPI économiques avant projection', async () => {
+    it('partage le même instant puis compose les KPI économiques et la population utilisateurs avant projection', async () => {
         const getOverview = vi.fn(async () => ({
             generatedAt: AT,
             kpis: {
+                users: { total: 12 },
                 workspaces: { total: 6 },
+            },
+            users: {
+                byStatus: { active: 12 },
             },
             attention: {
                 totalSignals: 3,
@@ -43,11 +47,15 @@ describe('platformOverviewDashboard.service', () => {
             },
             activeTrials: 0,
         }));
+        const getUserPopulation = vi.fn(async () => ({
+            withCurrentClientAccess: 8,
+        }));
         const projectOverview = vi.fn(({ overview }) => overview);
         const service = createPlatformOverviewDashboardService({
             getOverview,
             getAttention,
             getEconomicKpis,
+            getUserPopulation,
             projectOverview,
         });
         const permissions = [
@@ -73,10 +81,12 @@ describe('platformOverviewDashboard.service', () => {
             at: AT,
         });
         expect(getEconomicKpis).toHaveBeenCalledWith({ at: AT });
+        expect(getUserPopulation).toHaveBeenCalledWith();
         expect(projectOverview).toHaveBeenCalledWith({
             overview: {
                 generatedAt: AT,
                 kpis: {
+                    users: { total: 12 },
                     workspaces: { total: 6 },
                     paidActiveSubscriptions: 2,
                     freeActiveAccesses: {
@@ -84,6 +94,14 @@ describe('platformOverviewDashboard.service', () => {
                         viaCommercialInvitation: 1,
                     },
                     activeTrials: 0,
+                },
+                users: {
+                    byStatus: { active: 12 },
+                    population: {
+                        total: 12,
+                        withCurrentClientAccess: 8,
+                        withoutCurrentClientAccess: 4,
+                    },
                 },
                 attention: {
                     totalSignals: 3,
@@ -102,6 +120,31 @@ describe('platformOverviewDashboard.service', () => {
         expect(overview.attention.items).toHaveLength(1);
     });
 
+    it('borne la population client au total de comptes pour éviter une incohérence analytique', async () => {
+        const service = createPlatformOverviewDashboardService({
+            getOverview: vi.fn(async () => ({
+                generatedAt: AT,
+                kpis: { users: { total: 3 } },
+                users: { byStatus: { active: 3 } },
+                attention: { counts: {} },
+            })),
+            getAttention: vi.fn(async () => []),
+            getEconomicKpis: vi.fn(async () => ({})),
+            getUserPopulation: vi.fn(async () => ({
+                withCurrentClientAccess: 5,
+            })),
+            projectOverview: vi.fn(({ overview }) => overview),
+        });
+
+        const overview = await service({ at: AT });
+
+        expect(overview.users.population).toEqual({
+            total: 3,
+            withCurrentClientAccess: 3,
+            withoutCurrentClientAccess: 0,
+        });
+    });
+
     it('est fail-closed si aucune permission runtime n’est transmise', async () => {
         const getOverview = vi.fn(async () => ({
             generatedAt: AT,
@@ -116,10 +159,14 @@ describe('platformOverviewDashboard.service', () => {
             freeActiveAccesses: { total: 2, viaCommercialInvitation: 1 },
             activeTrials: 0,
         }));
+        const getUserPopulation = vi.fn(async () => ({
+            withCurrentClientAccess: 8,
+        }));
         const service = createPlatformOverviewDashboardService({
             getOverview,
             getAttention,
             getEconomicKpis,
+            getUserPopulation,
         });
 
         const overview = await service({ at: AT });
