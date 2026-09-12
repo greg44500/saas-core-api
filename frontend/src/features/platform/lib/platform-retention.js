@@ -35,6 +35,65 @@ function getRetentionExecutionTriggerLabel(trigger) {
   return RETENTION_EXECUTION_TRIGGER_LABELS[trigger] ?? trigger ?? '—';
 }
 
+/**
+ * Explique l'état du déclenchement manuel sans dupliquer les garde-fous dans
+ * plusieurs composants. Le backend reste l'autorité finale au moment de
+ * l'exécution ; cette fonction ne sert qu'à rendre l'UX explicite.
+ */
+function getRetentionManualExecutionAvailability({
+  canExecute,
+  policy,
+  preview,
+  runtime,
+}) {
+  if (!policy) {
+    return {
+      allowed: false,
+      reason: 'Enregistrez d’abord une politique de rétention.',
+    };
+  }
+
+  if (policy.config?.enabled !== true) {
+    return {
+      allowed: false,
+      reason: 'La politique de rétention doit être active.',
+    };
+  }
+
+  if (policy.config?.manualExecutionEnabled !== true) {
+    return {
+      allowed: false,
+      reason: 'L’exécution manuelle doit être autorisée dans la politique de rétention.',
+    };
+  }
+
+  if (!canExecute) {
+    return {
+      allowed: false,
+      reason: 'Votre rôle ne dispose pas du droit de lancer une purge manuelle.',
+    };
+  }
+
+  if (runtime?.locked === true) {
+    return {
+      allowed: false,
+      reason: 'Une autre purge est déjà en cours.',
+    };
+  }
+
+  if (!preview) {
+    return {
+      allowed: false,
+      reason: 'Prévisualisez la purge avant de pouvoir la confirmer.',
+    };
+  }
+
+  return {
+    allowed: true,
+    reason: 'La purge manuelle est disponible. Une confirmation sera demandée avant la suppression définitive.',
+  };
+}
+
 function createRetentionPolicyFormState(policy) {
   const config = policy?.config ?? null;
 
@@ -148,5 +207,6 @@ export {
   formatRetentionDate,
   getRetentionExecutionStatusLabel,
   getRetentionExecutionTriggerLabel,
+  getRetentionManualExecutionAvailability,
   hasPlatformPermission,
 };
