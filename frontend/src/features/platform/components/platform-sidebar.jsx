@@ -1,12 +1,17 @@
 import {
+  BadgeEuro,
   Building2,
   ClipboardList,
-  CreditCard,
   Database,
   LayoutDashboard,
+  Lock,
+  MailPlus,
+  ReceiptText,
   ShieldCheck,
   SlidersHorizontal,
   Tags,
+  User,
+  UserCog,
   Users,
 } from 'lucide-react';
 import { useLocation } from 'react-router';
@@ -21,19 +26,23 @@ import {
   platformNavigationSections,
 } from '@/features/platform/lib/platform-navigation';
 
+/**
+ * Une icône distincte par entrée réduit les ambiguïtés en mode compact, où
+ * l'icône devient le principal repère visuel avant l'affichage du tooltip.
+ */
 const PLATFORM_NAVIGATION_ICONS = Object.freeze({
   overview: LayoutDashboard,
   clients: Users,
-  users: Users,
+  users: User,
   workspaces: Building2,
-  commercial: CreditCard,
+  commercial: BadgeEuro,
   plans: Tags,
-  subscriptions: CreditCard,
-  'commercial-invitations': CreditCard,
+  subscriptions: ReceiptText,
+  'commercial-invitations': MailPlus,
   'entitlement-overrides': SlidersHorizontal,
   'platform-team': ShieldCheck,
-  team: ShieldCheck,
-  'security-data': ClipboardList,
+  team: UserCog,
+  'security-data': Lock,
   'audit-logs': ClipboardList,
   retention: Database,
 });

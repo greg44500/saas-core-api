@@ -5,6 +5,10 @@ import { MemoryRouter } from 'react-router';
 
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import {
+  PLATFORM_NAVIGATION_ICONS,
+  PlatformSidebar,
+} from '@/features/platform/components/platform-sidebar';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 
 const useGetCurrentPlatformContextQueryMock = vi.hoisted(() => vi.fn());
@@ -12,8 +16,6 @@ const useGetCurrentPlatformContextQueryMock = vi.hoisted(() => vi.fn());
 vi.mock('@/features/platform/api/platform-current-context-api', () => ({
   useGetCurrentPlatformContextQuery: useGetCurrentPlatformContextQueryMock,
 }));
-
-import { PlatformSidebar } from '@/features/platform/components/platform-sidebar';
 
 const allNavigationPermissions = Object.values(PLATFORM_PERMISSION);
 
@@ -58,6 +60,12 @@ describe('PlatformSidebar', () => {
     expect(screen.getByRole('button', { name: 'Sécurité & données' })).toBeInTheDocument();
   });
 
+  it('associe une icône distincte à chaque entrée Platform', () => {
+    const icons = Object.values(PLATFORM_NAVIGATION_ICONS);
+
+    expect(new Set(icons).size).toBe(icons.length);
+  });
+
   it('ouvre le groupe de la route active et ne garde qu’un groupe ouvert', async () => {
     const user = userEvent.setup();
     renderSidebar({ path: '/platform/retention' });
@@ -89,6 +97,21 @@ describe('PlatformSidebar', () => {
     expect(screen.getByRole('link', { name: 'Vue d’ensemble' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Gestion clients' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Sécurité & données' })).not.toBeInTheDocument();
+  });
+
+  it('utilise le tooltip shadcn pour les groupes en mode réduit', async () => {
+    const user = userEvent.setup();
+    renderSidebar({ collapsed: true });
+
+    const clientGroup = screen.getByRole('button', { name: 'Gestion clients' });
+
+    expect(clientGroup).not.toHaveAttribute('title');
+
+    await user.hover(clientGroup);
+
+    expect(
+      (await screen.findAllByText('Gestion clients', { exact: true })).length,
+    ).toBeGreaterThan(1);
   });
 
   it('ouvre un groupe Platform en popover quand la sidebar est réduite puis le ferme après navigation', async () => {

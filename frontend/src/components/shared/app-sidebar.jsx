@@ -25,7 +25,6 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarTrigger,
-  sidebarMenuButtonVariants,
   useSidebar,
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
@@ -84,20 +83,16 @@ function CollapsedSidebarGroup({
   return (
     <SidebarMenuItem>
       <Popover onOpenChange={setOpen} open={open}>
-        <PopoverTrigger
-          render={(
-            <button
-              aria-label={group.label}
-              className={sidebarMenuButtonVariants()}
-              data-active={active}
-              title={group.label}
-              type="button"
-            />
-          )}
+        <SidebarMenuButton
+          aria-label={group.label}
+          isActive={active}
+          render={<PopoverTrigger />}
+          tooltip={group.label}
+          type="button"
         >
           {Icon && <Icon aria-hidden="true" />}
           <span className="sr-only">{group.label}</span>
-        </PopoverTrigger>
+        </SidebarMenuButton>
         <PopoverContent align="start" className="w-64" side="right" sideOffset={12}>
           <p className="px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {group.label}
