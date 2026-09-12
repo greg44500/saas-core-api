@@ -192,6 +192,14 @@ const AUDIT_ACTION_REGISTRY = freezeRegistry({
         value: 'WORKSPACE_CLOSED',
         label: 'Espace de travail clôturé',
     },
+    WORKSPACE_OWNERSHIP_TRANSFER_AUTHORIZED: {
+        value: 'WORKSPACE_OWNERSHIP_TRANSFER_AUTHORIZED',
+        label: 'Transfert de propriété temporairement autorisé',
+    },
+    WORKSPACE_OWNERSHIP_TRANSFER_AUTHORIZATION_REVOKED: {
+        value: 'WORKSPACE_OWNERSHIP_TRANSFER_AUTHORIZATION_REVOKED',
+        label: 'Autorisation de transfert de propriété révoquée',
+    },
     WORKSPACE_OWNERSHIP_TRANSFERRED: {
         value: 'WORKSPACE_OWNERSHIP_TRANSFERRED',
         label: 'Propriété de l’espace de travail transférée',

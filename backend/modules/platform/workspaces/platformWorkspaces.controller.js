@@ -1,4 +1,9 @@
 import {
+    authorizeWorkspaceOwnershipTransfer,
+    getWorkspaceOwnershipTransferAuthorization,
+    revokeWorkspaceOwnershipTransferAuthorization,
+} from '../../workspace/workspaceOwnershipTransferAuthorization.service.js';
+import {
     closePlatformWorkspace,
 } from './services/closePlatformWorkspace.service.js';
 import { getPlatformWorkspace } from './services/getPlatformWorkspace.service.js';
@@ -34,6 +39,46 @@ const getWorkspaceById = async (req, res) => {
     return res.status(200).json({
         status: 'success',
         data: { workspace },
+    });
+};
+
+const getOwnershipTransferAuthorization = async (req, res) => {
+    const authorization = await getWorkspaceOwnershipTransferAuthorization({
+        workspaceId: req.validated.params.workspaceId,
+    });
+
+    return res.status(200).json({
+        status: 'success',
+        data: { authorization },
+    });
+};
+
+const authorizeOwnershipTransfer = async (req, res) => {
+    const authorization = await authorizeWorkspaceOwnershipTransfer({
+        workspaceId: req.validated.params.workspaceId,
+        actorId: req.user.id,
+        ipAddress: req.context?.ipAddress ?? null,
+        userAgent: req.context?.userAgent ?? null,
+    });
+
+    return res.status(201).json({
+        status: 'success',
+        data: { authorization },
+    });
+};
+
+const revokeOwnershipTransferAuthorization = async (req, res) => {
+    const authorization =
+        await revokeWorkspaceOwnershipTransferAuthorization({
+            workspaceId: req.validated.params.workspaceId,
+            actorId: req.user.id,
+            ipAddress: req.context?.ipAddress ?? null,
+            userAgent: req.context?.userAgent ?? null,
+        });
+
+    return res.status(200).json({
+        status: 'success',
+        data: { authorization },
     });
 };
 
@@ -84,9 +129,12 @@ const closeWorkspace = async (req, res) => {
 };
 
 export {
+    authorizeOwnershipTransfer,
     closeWorkspace,
+    getOwnershipTransferAuthorization,
     getWorkspaceById,
     listWorkspaces,
     reactivateWorkspace,
+    revokeOwnershipTransferAuthorization,
     suspendWorkspace,
 };

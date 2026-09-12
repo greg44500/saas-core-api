@@ -104,6 +104,14 @@ const CORE_PLATFORM_PERMISSION_DEFINITIONS = Object.freeze([
         sensitivity: PLATFORM_PERMISSION_SENSITIVITY.RESERVED,
     }),
     freezeDefinition({
+        key: PLATFORM_PERMISSION.WORKSPACES_OWNERSHIP_TRANSFER_AUTHORIZE,
+        label: 'Autoriser temporairement un transfert de propriété',
+        category: 'workspaces',
+        categoryLabel: 'Workspaces',
+        description: 'Ouvrir pour un workspace précis une fenêtre temporaire et single-use permettant à son propriétaire courant d’exécuter le transfert.',
+        sensitivity: PLATFORM_PERMISSION_SENSITIVITY.RESERVED,
+    }),
+    freezeDefinition({
         key: PLATFORM_PERMISSION.PLANS_READ,
         label: 'Consulter les plans',
         category: 'plans',

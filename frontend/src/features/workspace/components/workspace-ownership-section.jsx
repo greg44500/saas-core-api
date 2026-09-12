@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
@@ -9,6 +9,13 @@ import { FormSectionSkeleton } from '@/components/shared/form-section-skeleton';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useListWorkspaceMembersQuery } from '@/features/workspace-members/api/workspace-members-api';
 import { useListWorkspaceRolesQuery } from '@/features/workspace-roles/api/workspace-roles-api';
 import { useTransferWorkspaceOwnershipMutation } from '@/features/workspace/api/workspace-api';
@@ -16,31 +23,30 @@ import { getWorkspaceApiErrorMessage } from '@/features/workspace/lib/get-worksp
 import { transferWorkspaceOwnershipSchema } from '@/features/workspace/validation/workspace-schemas';
 
 const MEMBERS_PAGE_SIZE = 20;
+const EMPTY_MEMBER_VALUE = '__no_member__';
+const EMPTY_ROLE_VALUE = '__no_role__';
 
-const selectClassName =
-  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
+function formatAuthorizationExpiry(value) {
+  if (!value) return 'une date inconnue';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'une date inconnue';
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
+}
 
 /**
  * Orchestre le transfert d'ownership d'un workspace comme opération sensible.
  *
- * Le composant compose les données serveur nécessaires au choix du nouveau
- * owner et du rôle de remplacement de l'ancien owner, puis exige une nouvelle
- * confirmation du mot de passe courant et une confirmation explicite des
- * conséquences avant d'envoyer la mutation.
- *
- * Les filtres locaux (membre actif, rôle non-owner) et la validation Zod
- * améliorent l'UX mais ne sont pas une frontière de sécurité. Le backend reste
- * l'autorité sur l'identité du propriétaire courant, le mot de passe, l'état du
- * membership, les rôles autorisés, la transaction et le recalcul des permissions.
- *
- * Après succès, la navigation remplace l'historique vers le dashboard car les
- * droits du demandeur viennent de changer et l'écran courant ne doit pas être
- * considéré comme encore autorisé par simple continuité d'interface.
- *
- * @param {object} props
- * @param {string} props.workspaceId Workspace dont la propriété est transférée.
+ * Cette surface n'est rendue que lorsque le backend confirme une autorisation
+ * exceptionnelle active. Cette visibilité améliore l'UX mais ne constitue pas
+ * une frontière de sécurité : le service backend revalide et consomme la même
+ * autorisation atomiquement au moment du transfert.
  */
-function WorkspaceOwnershipSection({ workspaceId }) {
+function WorkspaceOwnershipSection({ authorization, workspaceId }) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [membersPage, setMembersPage] = useState(1);
@@ -62,6 +68,7 @@ function WorkspaceOwnershipSection({ workspaceId }) {
   const [transferWorkspaceOwnership, { isLoading: isTransferring }] =
     useTransferWorkspaceOwnershipMutation();
   const {
+    control,
     formState: { errors },
     handleSubmit,
     register,
@@ -141,8 +148,11 @@ function WorkspaceOwnershipSection({ workspaceId }) {
       <div className="space-y-2">
         <p className="text-sm font-medium text-destructive">Opération sensible</p>
         <h2 className="text-lg font-semibold">Transférer la propriété</h2>
+        <p className="text-sm font-medium">
+          Autorisation exceptionnelle active jusqu’au {formatAuthorizationExpiry(authorization?.expiresAt)}.
+        </p>
         <p className="text-sm text-muted-foreground">
-          Le nouveau propriétaire recevra le rôle owner. Votre rôle sera remplacé par celui que vous choisissez ci-dessous et vos permissions seront recalculées par le backend.
+          Le nouveau propriétaire recevra le rôle owner. Votre rôle sera remplacé par celui que vous choisissez ci-dessous et vos permissions seront recalculées par le backend. Cette autorisation est valable pour un seul transfert réussi.
         </p>
       </div>
 
@@ -158,21 +168,37 @@ function WorkspaceOwnershipSection({ workspaceId }) {
             id="new-owner-member"
             label="Nouveau propriétaire"
           >
-            <select
-              aria-describedby="new-owner-member-message"
-              aria-invalid={Boolean(errors.newOwnerMemberId) || undefined}
-              className={selectClassName}
-              disabled={isReferenceDataLoading || isTransferring}
-              id="new-owner-member"
-              {...register('newOwnerMemberId')}
-            >
-              <option value="">Sélectionner un membre actif</option>
-              {candidateMembers.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.user?.firstName} {member.user?.lastName} — {member.role?.name}
-                </option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="newOwnerMemberId"
+              render={({ field }) => (
+                <Select
+                  disabled={isReferenceDataLoading || isTransferring}
+                  onValueChange={(value) => field.onChange(
+                    value === EMPTY_MEMBER_VALUE ? '' : value,
+                  )}
+                  value={field.value || EMPTY_MEMBER_VALUE}
+                >
+                  <SelectTrigger
+                    aria-describedby="new-owner-member-message"
+                    aria-invalid={Boolean(errors.newOwnerMemberId) || undefined}
+                    id="new-owner-member"
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EMPTY_MEMBER_VALUE}>Sélectionner un membre actif</SelectItem>
+                    {candidateMembers.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.user?.firstName} {member.user?.lastName} — {member.role?.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </FormField>
 
           <DataPagination
@@ -192,21 +218,37 @@ function WorkspaceOwnershipSection({ workspaceId }) {
             id="previous-owner-role"
             label="Votre rôle après le transfert"
           >
-            <select
-              aria-describedby="previous-owner-role-message"
-              aria-invalid={Boolean(errors.previousOwnerRoleId) || undefined}
-              className={selectClassName}
-              disabled={isReferenceDataLoading || isTransferring}
-              id="previous-owner-role"
-              {...register('previousOwnerRoleId')}
-            >
-              <option value="">Sélectionner un rôle de remplacement</option>
-              {replacementRoles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="previousOwnerRoleId"
+              render={({ field }) => (
+                <Select
+                  disabled={isReferenceDataLoading || isTransferring}
+                  onValueChange={(value) => field.onChange(
+                    value === EMPTY_ROLE_VALUE ? '' : value,
+                  )}
+                  value={field.value || EMPTY_ROLE_VALUE}
+                >
+                  <SelectTrigger
+                    aria-describedby="previous-owner-role-message"
+                    aria-invalid={Boolean(errors.previousOwnerRoleId) || undefined}
+                    id="previous-owner-role"
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EMPTY_ROLE_VALUE}>Sélectionner un rôle de remplacement</SelectItem>
+                    {replacementRoles.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </FormField>
 
           <FormField
@@ -265,4 +307,4 @@ function WorkspaceOwnershipSection({ workspaceId }) {
   );
 }
 
-export { WorkspaceOwnershipSection };
+export { WorkspaceOwnershipSection, formatAuthorizationExpiry };

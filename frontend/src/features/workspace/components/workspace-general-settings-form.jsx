@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { FormField } from '@/components/forms/form-field';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,11 +58,12 @@ function WorkspaceGeneralSettingsForm({ canUpdate, workspace }) {
 
   return (
     <section className="space-y-5 rounded-xl border border-border bg-card p-6 text-card-foreground">
-      <div className="space-y-1">
+      <div className="flex items-center gap-1">
         <h2 className="text-lg font-semibold">Informations générales</h2>
-        <p className="text-sm text-muted-foreground">
-          Modifiez les informations courantes du workspace. Les autorisations sont vérifiées à nouveau par le backend lors de l’enregistrement.
-        </p>
+        <InfoTooltip
+          content="Modifiez les informations courantes du workspace. Les autorisations sont vérifiées à nouveau par le backend lors de l’enregistrement."
+          label="À propos des informations générales"
+        />
       </div>
 
       <form className="space-y-4" noValidate onSubmit={handleSubmit(onSubmit)}>

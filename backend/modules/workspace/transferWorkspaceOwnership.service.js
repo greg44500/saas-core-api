@@ -22,20 +22,23 @@ import { Role } from '../role/role.model.js';
 import {
     WorkspaceMember,
 } from '../workspaceMember/workspaceMember.model.js';
+import {
+    getWorkspaceOwnershipTransferAuthorization,
+} from './workspaceOwnershipTransferAuthorization.service.js';
 import { Workspace } from './workspace.model.js';
 
 
 /**
  * Transfère atomiquement la propriété d'un workspace à un membre actif.
  *
+ * Le workflow est fermé par défaut : une autorisation exceptionnelle Platform,
+ * ciblée sur le workspace et encore active, doit exister avant même la
+ * réauthentification du propriétaire. Cette autorisation est ensuite
+ * revalidée et consommée atomiquement dans la transaction métier.
+ *
  * L'ancien owner reçoit explicitement un rôle de remplacement fourni par
  * l'appelant. Ce choix évite de figer une politique métier implicite telle que
  * "l'ancien owner devient toujours admin".
- *
- * Une confirmation du mot de passe courant est exigée avant toute transaction.
- * Le Workspace est ensuite écrit dans la transaction via ownershipVersion :
- * deux transferts concurrents entrent ainsi en conflit sur le même document
- * MongoDB au lieu de pouvoir modifier indépendamment les deux memberships.
  *
  * @param {object} params
  * @param {string|mongoose.Types.ObjectId} params.workspaceId
@@ -65,6 +68,18 @@ const transferWorkspaceOwnership = async ({
     ) {
         throw new TypeError(
             'workspaceId, newOwnerMemberId, previousOwnerRoleId, actorId and currentPassword are required to transfer workspace ownership',
+        );
+    }
+
+    const authorization =
+        await getWorkspaceOwnershipTransferAuthorization({
+            workspaceId,
+        });
+
+    if (!authorization.active || !authorization.id) {
+        throw new AppError(
+            'Le transfert de propriété doit être autorisé temporairement par un Super administrateur.',
+            403,
         );
     }
 
@@ -161,27 +176,38 @@ const transferWorkspaceOwnership = async ({
             );
         }
 
+        const transferAt = new Date();
+
         /*
-         * Ce write est le point de sérialisation du workflow ownership.
-         *
-         * Deux transactions concurrentes qui ont lu le même owner tentent de
-         * modifier le même document Workspace. MongoDB déclenche alors un
-         * conflit d'écriture ; lors d'un éventuel retry transactionnel, la
-         * relecture des memberships constate que l'acteur n'est plus owner.
+         * Ce write est à la fois le point de sérialisation du workflow ownership
+         * et la consommation single-use de l'autorisation Platform. Le même
+         * identifiant doit encore être actif au moment exact de l'écriture.
          */
         const workspaceWrite = await Workspace.updateOne(
-            { _id: workspaceId },
+            {
+                _id: workspaceId,
+                'ownershipTransferAuthorization._id': authorization.id,
+                'ownershipTransferAuthorization.revokedAt': null,
+                'ownershipTransferAuthorization.consumedAt': null,
+                'ownershipTransferAuthorization.expiresAt': mongoose.trusted({
+                    $gt: transferAt,
+                }),
+            },
             {
                 $inc: { ownershipVersion: 1 },
-                $set: { updatedBy: actorId },
+                $set: {
+                    updatedBy: actorId,
+                    'ownershipTransferAuthorization.consumedAt': transferAt,
+                    'ownershipTransferAuthorization.consumedBy': actorId,
+                },
             },
             { session },
         );
 
         if (workspaceWrite.matchedCount !== 1) {
             throw new AppError(
-                'Workspace indisponible pour le transfert de propriété',
-                409,
+                'L’autorisation temporaire de transfert n’est plus active.',
+                403,
             );
         }
 
@@ -220,6 +246,7 @@ const transferWorkspaceOwnership = async ({
                 ipAddress,
                 userAgent,
                 metadata: {
+                    authorizationId: authorization.id,
                     previousOwnerUserId,
                     newOwnerUserId,
                     previousOwnerMemberId:

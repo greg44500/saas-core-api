@@ -9,10 +9,13 @@ import {
 import { validateRequest } from '../../../middlewares/validateRequest.js';
 import { paginationQuerySchema } from '../../../utils/validations/pagination.validation.js';
 import {
+    authorizeOwnershipTransfer,
     closeWorkspace,
+    getOwnershipTransferAuthorization,
     getWorkspaceById,
     listWorkspaces,
     reactivateWorkspace,
+    revokeOwnershipTransferAuthorization,
     suspendWorkspace,
 } from './platformWorkspaces.controller.js';
 import {
@@ -39,6 +42,33 @@ platformWorkspacesRouter.get(
     ),
     validateRequest({ params: platformWorkspaceIdParamsSchema }),
     getWorkspaceById,
+);
+
+platformWorkspacesRouter.get(
+    '/:workspaceId/ownership-transfer-authorization',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.WORKSPACES_OWNERSHIP_TRANSFER_AUTHORIZE,
+    ),
+    validateRequest({ params: platformWorkspaceIdParamsSchema }),
+    getOwnershipTransferAuthorization,
+);
+
+platformWorkspacesRouter.post(
+    '/:workspaceId/ownership-transfer-authorization',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.WORKSPACES_OWNERSHIP_TRANSFER_AUTHORIZE,
+    ),
+    validateRequest({ params: platformWorkspaceIdParamsSchema }),
+    authorizeOwnershipTransfer,
+);
+
+platformWorkspacesRouter.delete(
+    '/:workspaceId/ownership-transfer-authorization',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.WORKSPACES_OWNERSHIP_TRANSFER_AUTHORIZE,
+    ),
+    validateRequest({ params: platformWorkspaceIdParamsSchema }),
+    revokeOwnershipTransferAuthorization,
 );
 
 platformWorkspacesRouter.patch(

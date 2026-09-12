@@ -1,7 +1,15 @@
 import { useState } from 'react';
 
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useListPublicPlansQuery } from '@/features/plan/api/plan-api';
 import { PlanCard } from '@/features/plan/components/plan-card';
 import {
@@ -187,11 +195,12 @@ function WorkspaceSubscriptionPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Abonnement</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Consultez le plan, la période d’essai et les droits commerciaux effectifs de {workspace.name}.
-        </p>
+        <InfoTooltip
+          content={`Consultez le plan, la période d’essai et les droits commerciaux effectifs de ${workspace.name}.`}
+          label="À propos de l’abonnement"
+        />
       </div>
 
       <SubscriptionSummaryCard subscription={subscription} />
@@ -233,10 +242,13 @@ function WorkspaceSubscriptionPage() {
       <section className="space-y-4" aria-labelledby="plan-catalog-title">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 id="plan-catalog-title" className="text-xl font-semibold">Offres disponibles</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Les tarifs et conditions d’essai ci-dessous proviennent du catalogue public.
-            </p>
+            <div className="flex items-center gap-1">
+              <h2 id="plan-catalog-title" className="text-xl font-semibold">Offres disponibles</h2>
+              <InfoTooltip
+                content="Les tarifs et conditions d’essai proviennent du catalogue public actuellement publié."
+                label="À propos des offres disponibles"
+              />
+            </div>
             {!isOwner && (
               <p className="mt-2 text-sm text-muted-foreground">
                 Votre rôle permet la consultation de l’abonnement, mais seul le propriétaire peut modifier le contrat commercial.
@@ -251,22 +263,28 @@ function WorkspaceSubscriptionPage() {
 
           {ownerCanChooseTrialInterval && (
             <div className="space-y-1">
-              <label className="text-sm font-medium" htmlFor="trial-billing-interval">
-                Périodicité de référence
-              </label>
-              <select
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              <div className="flex items-center gap-1">
+                <label className="text-sm font-medium" htmlFor="trial-billing-interval">
+                  Périodicité de référence
+                </label>
+                <InfoTooltip
+                  content="Aucun moyen de paiement n’est demandé pendant l’essai."
+                  label="À propos de la périodicité de référence"
+                />
+              </div>
+              <Select
                 disabled={mutationPending}
-                id="trial-billing-interval"
-                onChange={(event) => setBillingInterval(event.target.value)}
+                onValueChange={setBillingInterval}
                 value={billingInterval}
               >
-                <option value="monthly">Mensuelle</option>
-                <option value="yearly">Annuelle</option>
-              </select>
-              <p className="text-xs text-muted-foreground">
-                Aucun moyen de paiement n’est demandé pendant l’essai.
-              </p>
+                <SelectTrigger id="trial-billing-interval" className="min-w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Mensuelle</SelectItem>
+                  <SelectItem value="yearly">Annuelle</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
         </div>

@@ -34,15 +34,20 @@ function ActorValue({ actor }) {
 }
 
 function PlatformWorkspaceDetailsDrawer({
+  canAuthorizeOwnershipTransfer = false,
   error,
   isLoading,
   onClose,
   onRequestAction,
   onRetry,
   open,
+  ownershipAuthorization,
+  ownershipAuthorizationLoading = false,
   workspace,
 }) {
   const isInitialLoading = isLoading && !workspace;
+  const canManageOwnershipAuthorization = canAuthorizeOwnershipTransfer
+    && workspace?.status === PLATFORM_WORKSPACE_STATUS.ACTIVE;
 
   return (
     <EntityDetailsDrawer
@@ -124,6 +129,52 @@ function PlatformWorkspaceDetailsDrawer({
                 </p>
               )}
           </section>
+
+          {canManageOwnershipAuthorization && (
+            <section className="space-y-3 rounded-xl border border-destructive/30 bg-card p-4">
+              <div>
+                <p className="text-sm font-medium text-destructive">Capacité opérationnelle exceptionnelle</p>
+                <h3 className="mt-1 font-semibold">Transfert de propriété</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Cette action ne transfère pas le workspace. Elle ouvre temporairement et pour un seul transfert le workflow réservé au propriétaire courant, qui devra confirmer lui-même son mot de passe et les conséquences de l’opération.
+                </p>
+              </div>
+
+              {ownershipAuthorizationLoading ? (
+                <p className="text-sm text-muted-foreground">Vérification de l’autorisation…</p>
+              ) : ownershipAuthorization?.active ? (
+                <div className="space-y-3">
+                  <p className="text-sm">
+                    Autorisation active jusqu’au{' '}
+                    <span className="font-medium">
+                      {formatPlatformWorkspaceDate(ownershipAuthorization.expiresAt)}
+                    </span>.
+                  </p>
+                  <Button
+                    onClick={() => onRequestAction({
+                      type: 'revoke-ownership-transfer',
+                      workspace,
+                    })}
+                    type="button"
+                    variant="destructive"
+                  >
+                    Révoquer l’autorisation de transfert
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={() => onRequestAction({
+                    type: 'authorize-ownership-transfer',
+                    workspace,
+                  })}
+                  type="button"
+                  variant="outline"
+                >
+                  Autoriser temporairement le transfert
+                </Button>
+              )}
+            </section>
+          )}
         </div>
       )}
     </EntityDetailsDrawer>

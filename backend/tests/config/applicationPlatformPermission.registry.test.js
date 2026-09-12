@@ -12,6 +12,7 @@ import {
     ACTIVE_PLATFORM_PERMISSION_REGISTRY,
     LEGACY_PLATFORM_PERMISSION_KEYS,
     composeApplicationPlatformPermissions,
+    getPlatformPermissionDefinition,
 } from '../../config/applicationPlatformPermission.registry.js';
 
 
@@ -33,6 +34,19 @@ describe('applicationPlatformPermission registry', () => {
             ACTIVE_PLATFORM_PERMISSION_REGISTRY.permissionKeys,
         ).toEqual(
             expect.arrayContaining(LEGACY_PLATFORM_PERMISSION_KEYS),
+        );
+    });
+
+    it('réserve au niveau Platform la capacité exceptionnelle de transfert de propriété', () => {
+        expect(
+            getPlatformPermissionDefinition(
+                PLATFORM_PERMISSION.WORKSPACES_OWNERSHIP_TRANSFER_AUTHORIZE,
+            ),
+        ).toEqual(
+            expect.objectContaining({
+                category: 'workspaces',
+                sensitivity: PLATFORM_PERMISSION_SENSITIVITY.RESERVED,
+            }),
         );
     });
 

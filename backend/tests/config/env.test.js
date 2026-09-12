@@ -19,6 +19,7 @@ const createValidEnvironment = (overrides = {}) => ({
     JWT_ACCESS_AUDIENCE: 'saas-core-api',
     REFRESH_TOKEN_EXPIRES_IN_DAYS: '7',
     PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES: '15',
+    WORKSPACE_OWNERSHIP_TRANSFER_AUTHORIZATION_TTL_HOURS: '24',
     SMTP_HOST: 'smtp.test.local',
     SMTP_PORT: '587',
     SMTP_SECURE: 'false',
@@ -59,6 +60,24 @@ describe('validateEnvironment', () => {
         );
 
         expect(result.success).toBe(false);
+    });
+
+    it('refuse une autorisation de transfert supérieure à 24 heures', () => {
+        const result = validateEnvironment(
+            createValidEnvironment({
+                WORKSPACE_OWNERSHIP_TRANSFER_AUTHORIZATION_TTL_HOURS: '25',
+            }),
+        );
+
+        expect(result.success).toBe(false);
+        if (result.success) return;
+
+        expect(
+            result.error.issues.some(
+                (issue) => issue.path[0]
+                    === 'WORKSPACE_OWNERSHIP_TRANSFER_AUTHORIZATION_TTL_HOURS',
+            ),
+        ).toBe(true);
     });
 
     it.each([

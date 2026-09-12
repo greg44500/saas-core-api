@@ -20,6 +20,7 @@ import {
     workspaceIdParamsSchema,
 } from './workspace.validation.js';
 import {
+    getOwnershipAuthorization,
     transferOwnership,
 } from './workspaceOwnership.controller.js';
 import {
@@ -30,6 +31,20 @@ import {
 const router = Router({
     mergeParams: true,
 });
+
+
+router.get(
+    '/authorization',
+    authenticate,
+    validateRequest({
+        params: workspaceIdParamsSchema,
+    }),
+    loadWorkspaceContext,
+    authorizePermission(
+        CORE_PERMISSION.WORKSPACE_OWNERSHIP_TRANSFER,
+    ),
+    getOwnershipAuthorization,
+);
 
 
 router.patch(

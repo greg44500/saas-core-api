@@ -2,6 +2,8 @@ const PLATFORM_PERMISSION = Object.freeze({
   OVERVIEW_READ: 'platform:overview:read',
   USERS_READ: 'platform:users:read',
   WORKSPACES_READ: 'platform:workspaces:read',
+  WORKSPACES_OWNERSHIP_TRANSFER_AUTHORIZE:
+    'platform:workspaces:ownership_transfer_authorize',
   PLANS_READ: 'platform:plans:read',
   SUBSCRIPTIONS_READ: 'platform:subscriptions:read',
   COMMERCIAL_INVITATIONS_READ: 'platform:commercial_invitations:read',

@@ -9,16 +9,28 @@ import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
+import {
+  useAuthorizePlatformWorkspaceOwnershipTransferMutation,
+  useGetPlatformWorkspaceOwnershipTransferAuthorizationQuery,
   useGetPlatformWorkspaceQuery,
   useListPlatformWorkspacesQuery,
   useReactivatePlatformWorkspaceMutation,
+  useRevokePlatformWorkspaceOwnershipTransferAuthorizationMutation,
   useSuspendPlatformWorkspaceMutation,
 } from '@/features/platform/api/platform-workspaces-api';
 import { PlatformTablePageSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PlatformWorkspaceDetailsDrawer } from '@/features/platform/components/platform-workspace-details-drawer';
 import { PlatformWorkspaceStatusBadge } from '@/features/platform/components/platform-workspace-status-badge';
+import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 import {
   PLATFORM_WORKSPACE_STATUS_REASON,
   PLATFORM_WORKSPACE_STATUS_REASON_LABEL,
@@ -27,6 +39,7 @@ import {
 } from '@/features/platform/lib/platform-workspace-formatters';
 
 const PAGE_SIZE = 20;
+const EMPTY_STATUS_REASON = '__none__';
 
 const suspendWorkspaceSchema = z
   .strictObject({
@@ -60,13 +73,33 @@ function PlatformWorkspacesPage() {
   const [statusReasonDetails, setStatusReasonDetails] = useState('');
   const selectedWorkspaceId = searchParams.get('workspaceId');
 
+  const platformContextQuery = useGetCurrentPlatformContextQuery();
+  const canAuthorizeOwnershipTransfer = Boolean(
+    platformContextQuery.data?.permissions?.includes(
+      PLATFORM_PERMISSION.WORKSPACES_OWNERSHIP_TRANSFER_AUTHORIZE,
+    ),
+  );
   const workspacesQuery = useListPlatformWorkspacesQuery({ page, limit: PAGE_SIZE });
   const workspaceDetailsQuery = useGetPlatformWorkspaceQuery(selectedWorkspaceId, {
     skip: !selectedWorkspaceId,
   });
+  const ownershipAuthorizationQuery =
+    useGetPlatformWorkspaceOwnershipTransferAuthorizationQuery(
+      selectedWorkspaceId,
+      {
+        skip: !selectedWorkspaceId || !canAuthorizeOwnershipTransfer,
+      },
+    );
+  const [authorizeOwnershipTransfer, authorizeOwnershipTransferState] =
+    useAuthorizePlatformWorkspaceOwnershipTransferMutation();
+  const [revokeOwnershipTransfer, revokeOwnershipTransferState] =
+    useRevokePlatformWorkspaceOwnershipTransferAuthorizationMutation();
   const [suspendWorkspace, suspendState] = useSuspendPlatformWorkspaceMutation();
   const [reactivateWorkspace, reactivateState] = useReactivatePlatformWorkspaceMutation();
-  const mutationPending = suspendState.isLoading || reactivateState.isLoading;
+  const mutationPending = suspendState.isLoading
+    || reactivateState.isLoading
+    || authorizeOwnershipTransferState.isLoading
+    || revokeOwnershipTransferState.isLoading;
 
   function selectWorkspace(workspaceId) {
     setSearchParams((current) => {
@@ -130,6 +163,27 @@ function PlatformWorkspacesPage() {
         toast({ title: 'Workspace réactivé', variant: 'success' });
       }
 
+      if (pendingAction.type === 'authorize-ownership-transfer') {
+        const authorization = await authorizeOwnershipTransfer(
+          pendingAction.workspace.id,
+        ).unwrap();
+        toast({
+          title: 'Transfert de propriété temporairement autorisé',
+          description: authorization?.expiresAt
+            ? `L’autorisation expire le ${formatPlatformWorkspaceDate(authorization.expiresAt)}.`
+            : undefined,
+          variant: 'success',
+        });
+      }
+
+      if (pendingAction.type === 'revoke-ownership-transfer') {
+        await revokeOwnershipTransfer(pendingAction.workspace.id).unwrap();
+        toast({
+          title: 'Autorisation de transfert révoquée',
+          variant: 'success',
+        });
+      }
+
       setPendingAction(null);
       setStatusReason('');
       setStatusReasonDetails('');
@@ -138,6 +192,28 @@ function PlatformWorkspacesPage() {
         getApiMessage(error, "L’action d’administration n’a pas pu être effectuée."),
       );
     }
+  }
+
+  function getPendingActionDescription() {
+    if (!pendingAction?.workspace) return '';
+
+    if (pendingAction.type === 'suspend') {
+      return `Suspendre ${pendingAction.workspace.name} ? Le workspace restera conservé mais son utilisation sera bloquée.`;
+    }
+
+    if (pendingAction.type === 'reactivate') {
+      return `Réactiver ${pendingAction.workspace.name} ?`;
+    }
+
+    if (pendingAction.type === 'authorize-ownership-transfer') {
+      return `Autoriser temporairement le transfert de propriété de ${pendingAction.workspace.name} ? Seul son propriétaire courant pourra exécuter le transfert avec son propre mot de passe. La durée est limitée par la configuration de sécurité du serveur.`;
+    }
+
+    if (pendingAction.type === 'revoke-ownership-transfer') {
+      return `Révoquer immédiatement l’autorisation de transfert de propriété de ${pendingAction.workspace.name} ?`;
+    }
+
+    return '';
   }
 
   if (workspacesQuery.isLoading || (workspacesQuery.isFetching && workspacesQuery.data === undefined)) {
@@ -231,24 +307,24 @@ function PlatformWorkspacesPage() {
       </section>
 
       <PlatformWorkspaceDetailsDrawer
+        canAuthorizeOwnershipTransfer={canAuthorizeOwnershipTransfer}
         error={workspaceDetailsQuery.error}
         isLoading={workspaceDetailsQuery.isLoading || workspaceDetailsQuery.isFetching}
         onClose={closeWorkspaceDetails}
         onRequestAction={openPendingAction}
         onRetry={workspaceDetailsQuery.refetch}
         open={Boolean(selectedWorkspaceId)}
+        ownershipAuthorization={ownershipAuthorizationQuery.data}
+        ownershipAuthorizationLoading={
+          ownershipAuthorizationQuery.isLoading
+          || ownershipAuthorizationQuery.isFetching
+        }
         workspace={workspaceDetailsQuery.data}
       />
 
       <ConfirmationDialog
         confirmVariant={pendingAction?.type === 'suspend' ? 'destructive' : 'default'}
-        description={
-          pendingAction?.type === 'suspend'
-            ? `Suspendre ${pendingAction.workspace.name} ? Le workspace restera conservé mais son utilisation sera bloquée.`
-            : pendingAction?.type === 'reactivate'
-              ? `Réactiver ${pendingAction.workspace.name} ?`
-              : ''
-        }
+        description={getPendingActionDescription()}
         errorMessage={pendingActionError}
         onCancel={closePendingAction}
         onConfirm={confirmPendingAction}
@@ -262,19 +338,24 @@ function PlatformWorkspacesPage() {
               <label className="text-sm font-medium" htmlFor="platform-workspace-status-reason">
                 Motif de suspension
               </label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                id="platform-workspace-status-reason"
-                onChange={(event) => setStatusReason(event.target.value)}
-                value={statusReason}
+              <Select
+                onValueChange={(value) => setStatusReason(
+                  value === EMPTY_STATUS_REASON ? '' : value,
+                )}
+                value={statusReason || EMPTY_STATUS_REASON}
               >
-                <option value="">Choisir un motif</option>
-                {Object.values(PLATFORM_WORKSPACE_STATUS_REASON).map((reason) => (
-                  <option key={reason} value={reason}>
-                    {PLATFORM_WORKSPACE_STATUS_REASON_LABEL[reason] ?? reason}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="platform-workspace-status-reason">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={EMPTY_STATUS_REASON}>Choisir un motif</SelectItem>
+                  {Object.values(PLATFORM_WORKSPACE_STATUS_REASON).map((reason) => (
+                    <SelectItem key={reason} value={reason}>
+                      {PLATFORM_WORKSPACE_STATUS_REASON_LABEL[reason] ?? reason}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

@@ -3,6 +3,13 @@ import { useMemo, useState } from 'react';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   useRevokeWorkspaceCancellationMutation,
   useRevokeWorkspaceDowngradeMutation,
   useScheduleWorkspaceCancellationMutation,
@@ -236,17 +243,20 @@ function CommercialLifecycleSection({
             <label className="text-sm font-medium" htmlFor="downgrade-target-plan">
               Offre cible
             </label>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            <Select
               disabled={pending}
-              id="downgrade-target-plan"
-              onChange={(event) => setTargetPlanId(event.target.value)}
+              onValueChange={setTargetPlanId}
               value={targetPlanId}
             >
-              {downgradeCandidates.map((plan) => (
-                <option key={plan.id} value={plan.id}>{plan.name}</option>
-              ))}
-            </select>
+              <SelectTrigger id="downgrade-target-plan">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {downgradeCandidates.map((plan) => (
+                  <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CommercialActionDialog>
       );

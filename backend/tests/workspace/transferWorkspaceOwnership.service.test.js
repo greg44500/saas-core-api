@@ -29,6 +29,9 @@ import { Role } from '../../modules/role/role.model.js';
 import {
     transferWorkspaceOwnership,
 } from '../../modules/workspace/transferWorkspaceOwnership.service.js';
+import {
+    getWorkspaceOwnershipTransferAuthorization,
+} from '../../modules/workspace/workspaceOwnershipTransferAuthorization.service.js';
 import { Workspace } from '../../modules/workspace/workspace.model.js';
 import {
     WorkspaceMember,
@@ -40,6 +43,7 @@ vi.mock('mongoose', () => ({
         connection: {
             transaction: vi.fn(),
         },
+        trusted: vi.fn((value) => value),
     },
 }));
 
@@ -67,6 +71,13 @@ vi.mock('../../modules/workspace/workspace.model.js', () => ({
 }));
 
 vi.mock(
+    '../../modules/workspace/workspaceOwnershipTransferAuthorization.service.js',
+    () => ({
+        getWorkspaceOwnershipTransferAuthorization: vi.fn(),
+    }),
+);
+
+vi.mock(
     '../../modules/workspaceMember/workspaceMember.model.js',
     () => ({
         WorkspaceMember: {
@@ -89,6 +100,7 @@ describe('transferWorkspaceOwnership', () => {
     const currentPassword = 'current-password-value';
     const newOwnerMemberId = 'new-owner-member-id';
     const previousOwnerRoleId = 'admin-role-id';
+    const authorizationId = 'authorization-id';
 
     const ownerRole = {
         _id: 'owner-role-id',
@@ -108,6 +120,11 @@ describe('transferWorkspaceOwnership', () => {
     beforeEach(() => {
         vi.clearAllMocks();
 
+        getWorkspaceOwnershipTransferAuthorization.mockResolvedValue({
+            id: authorizationId,
+            active: true,
+            status: 'active',
+        });
         confirmCurrentUserPassword.mockResolvedValue(undefined);
 
         mongoose.connection.transaction.mockImplementation(
@@ -150,7 +167,7 @@ describe('transferWorkspaceOwnership', () => {
     });
 
 
-    it('confirme l’owner puis sérialise et transfère atomiquement la propriété', async () => {
+    it('confirme l’owner puis consomme l’autorisation et transfère atomiquement la propriété', async () => {
         const result = await transferWorkspaceOwnership({
             workspaceId,
             newOwnerMemberId,
@@ -161,6 +178,9 @@ describe('transferWorkspaceOwnership', () => {
             userAgent: 'Vitest',
         });
 
+        expect(getWorkspaceOwnershipTransferAuthorization).toHaveBeenCalledWith({
+            workspaceId,
+        });
         expect(confirmCurrentUserPassword).toHaveBeenCalledWith({
             userId: actorId,
             password: currentPassword,
@@ -204,10 +224,22 @@ describe('transferWorkspaceOwnership', () => {
         );
 
         expect(Workspace.updateOne).toHaveBeenCalledWith(
-            { _id: workspaceId },
+            expect.objectContaining({
+                _id: workspaceId,
+                'ownershipTransferAuthorization._id': authorizationId,
+                'ownershipTransferAuthorization.revokedAt': null,
+                'ownershipTransferAuthorization.consumedAt': null,
+                'ownershipTransferAuthorization.expiresAt': {
+                    $gt: expect.any(Date),
+                },
+            }),
             {
                 $inc: { ownershipVersion: 1 },
-                $set: { updatedBy: actorId },
+                $set: {
+                    updatedBy: actorId,
+                    'ownershipTransferAuthorization.consumedAt': expect.any(Date),
+                    'ownershipTransferAuthorization.consumedBy': actorId,
+                },
             },
             { session },
         );
@@ -239,6 +271,7 @@ describe('transferWorkspaceOwnership', () => {
                 ipAddress: '127.0.0.1',
                 userAgent: 'Vitest',
                 metadata: {
+                    authorizationId,
                     previousOwnerUserId: actorId,
                     newOwnerUserId: 'new-owner-user-id',
                     previousOwnerMemberId:
@@ -254,6 +287,33 @@ describe('transferWorkspaceOwnership', () => {
             previousOwner: currentOwner,
             newOwner,
         });
+    });
+
+
+    it('refuse le workflow avant réauthentification sans autorisation exceptionnelle active', async () => {
+        getWorkspaceOwnershipTransferAuthorization.mockResolvedValue({
+            id: null,
+            active: false,
+            status: 'inactive',
+        });
+
+        await expect(
+            transferWorkspaceOwnership({
+                workspaceId,
+                newOwnerMemberId,
+                previousOwnerRoleId,
+                actorId,
+                currentPassword,
+            }),
+        ).rejects.toMatchObject({
+            statusCode: 403,
+            message:
+                'Le transfert de propriété doit être autorisé temporairement par un Super administrateur.',
+        });
+
+        expect(confirmCurrentUserPassword).not.toHaveBeenCalled();
+        expect(mongoose.connection.transaction).not.toHaveBeenCalled();
+        expect(Workspace.updateOne).not.toHaveBeenCalled();
     });
 
 
@@ -383,7 +443,7 @@ describe('transferWorkspaceOwnership', () => {
     });
 
 
-    it('refuse le transfert si le point de sérialisation workspace est indisponible', async () => {
+    it('refuse le transfert si l’autorisation expire ou est révoquée au point de sérialisation', async () => {
         Workspace.updateOne.mockResolvedValue({
             matchedCount: 0,
         });
@@ -397,9 +457,9 @@ describe('transferWorkspaceOwnership', () => {
                 currentPassword,
             }),
         ).rejects.toMatchObject({
-            statusCode: 409,
+            statusCode: 403,
             message:
-                'Workspace indisponible pour le transfert de propriété',
+                'L’autorisation temporaire de transfert n’est plus active.',
         });
 
         expect(currentOwner.save).not.toHaveBeenCalled();
@@ -434,7 +494,7 @@ describe('transferWorkspaceOwnership', () => {
     });
 
 
-    it('refuse les paramètres obligatoires manquants avant toute confirmation', async () => {
+    it('refuse les paramètres obligatoires manquants avant tout contrôle', async () => {
         await expect(
             transferWorkspaceOwnership({
                 workspaceId,
@@ -446,6 +506,7 @@ describe('transferWorkspaceOwnership', () => {
             'workspaceId, newOwnerMemberId, previousOwnerRoleId, actorId and currentPassword are required to transfer workspace ownership',
         );
 
+        expect(getWorkspaceOwnershipTransferAuthorization).not.toHaveBeenCalled();
         expect(confirmCurrentUserPassword).not.toHaveBeenCalled();
         expect(mongoose.connection.transaction).not.toHaveBeenCalled();
     });

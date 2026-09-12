@@ -67,6 +67,18 @@ const envSchema = z.object({
         .max(15)
         .default(15),
 
+    /*
+     * Fenêtre de sécurité d'une autorisation exceptionnelle de transfert de
+     * propriété. Le plafond code-owned de 24 h empêche une mauvaise
+     * configuration de laisser ce workflow sensible ouvert trop longtemps.
+     */
+    WORKSPACE_OWNERSHIP_TRANSFER_AUTHORIZATION_TTL_HOURS: z.coerce
+        .number()
+        .int()
+        .min(1)
+        .max(24)
+        .default(24),
+
     SMTP_HOST: z
         .string()
         .trim()

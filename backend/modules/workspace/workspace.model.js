@@ -10,6 +10,54 @@ const { Schema, model } = mongoose;
 
 
 /**
+ * État courant d'une autorisation exceptionnelle de transfert de propriété.
+ *
+ * L'historique n'est pas conservé dans le Workspace : AuditLog en reste la
+ * source d'historique. Ce sous-document ne représente que la dernière fenêtre
+ * accordée, sa révocation ou sa consommation.
+ */
+const workspaceOwnershipTransferAuthorizationSchema = new Schema(
+    {
+        authorizedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+        },
+        authorizedAt: {
+            type: Date,
+            required: true,
+        },
+        expiresAt: {
+            type: Date,
+            required: true,
+        },
+        revokedAt: {
+            type: Date,
+            default: null,
+        },
+        revokedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            default: null,
+        },
+        consumedAt: {
+            type: Date,
+            default: null,
+        },
+        consumedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            default: null,
+        },
+    },
+    {
+        _id: true,
+        id: false,
+    },
+);
+
+
+/**
  * Représente un espace de travail isolé au sein de la plateforme.
  *
  * Le workspace définit la frontière multi-tenant des futures données métier.
@@ -95,6 +143,16 @@ const workspaceSchema = new Schema(
             type: Schema.Types.ObjectId,
             ref: 'User',
             required: true,
+        },
+
+        /**
+         * Autorisation Platform exceptionnelle permettant au propriétaire
+         * courant d'ouvrir le workflow de transfert pendant une courte fenêtre.
+         * Elle est fermée par défaut, révocable et consommée au premier succès.
+         */
+        ownershipTransferAuthorization: {
+            type: workspaceOwnershipTransferAuthorizationSchema,
+            default: null,
         },
 
         /**

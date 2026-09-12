@@ -39,6 +39,11 @@ import { WorkspaceOwnershipSection } from '@/features/workspace/components/works
 const workspaceId = '507f1f77bcf86cd799439011';
 const newOwnerMemberId = '507f191e810c19729de860ea';
 const adminRoleId = '507f191e810c19729de860eb';
+const authorization = {
+  id: 'authorization-id',
+  active: true,
+  expiresAt: '2026-09-13T12:00:00.000Z',
+};
 
 function configureReferenceData() {
   useListWorkspaceMembersQueryMock.mockReturnValue({
@@ -89,14 +94,21 @@ function configureReferenceData() {
   });
 }
 
+async function chooseSelectOption(user, label, optionName) {
+  await user.click(screen.getByLabelText(label));
+  await user.click(await screen.findByRole('option', { name: optionName }));
+}
+
 async function completeTransferForm(user) {
-  await user.selectOptions(
-    screen.getByLabelText('Nouveau propriétaire'),
-    newOwnerMemberId,
+  await chooseSelectOption(
+    user,
+    'Nouveau propriétaire',
+    'Marie Martin — Administrateur',
   );
-  await user.selectOptions(
-    screen.getByLabelText('Votre rôle après le transfert'),
-    adminRoleId,
+  await chooseSelectOption(
+    user,
+    'Votre rôle après le transfert',
+    'Administrateur',
   );
   await user.type(
     screen.getByLabelText('Mot de passe actuel'),
@@ -107,7 +119,10 @@ async function completeTransferForm(user) {
 function renderSection() {
   return render(
     <ToastProvider>
-      <WorkspaceOwnershipSection workspaceId={workspaceId} />
+      <WorkspaceOwnershipSection
+        authorization={authorization}
+        workspaceId={workspaceId}
+      />
     </ToastProvider>,
   );
 }
@@ -129,7 +144,7 @@ describe('WorkspaceOwnershipSection', () => {
     cleanup();
   });
 
-  it('propose uniquement les membres actifs non-owner et exige la confirmation explicite', async () => {
+  it('affiche l’expiration, propose uniquement les membres actifs non-owner et exige la confirmation explicite', async () => {
     const user = userEvent.setup();
     transferUnwrapMock.mockResolvedValue({
       previousOwnerMemberId: '507f191e810c19729de860e1',
@@ -138,9 +153,13 @@ describe('WorkspaceOwnershipSection', () => {
 
     renderSection();
 
-    expect(screen.getByRole('option', { name: 'Marie Martin — Administrateur' })).toBeInTheDocument();
+    expect(screen.getByText(/Autorisation exceptionnelle active jusqu’au/)).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('Nouveau propriétaire'));
+    expect(await screen.findByRole('option', { name: 'Marie Martin — Administrateur' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /Greg Owner/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /Jean Suspendu/ })).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
 
     await completeTransferForm(user);
 

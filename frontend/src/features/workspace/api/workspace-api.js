@@ -14,6 +14,13 @@ const workspaceApi = baseApi.injectEndpoints({
         { type: 'Workspace', id: workspaceId },
       ],
     }),
+    getWorkspaceOwnershipTransferAuthorization: build.query({
+      query: (workspaceId) => `/workspaces/${workspaceId}/ownership/authorization`,
+      transformResponse: (response) => response?.data?.authorization ?? null,
+      providesTags: (_result, _error, workspaceId) => [
+        { type: 'WorkspaceOwnershipTransferAuthorization', id: workspaceId },
+      ],
+    }),
     createWorkspace: build.mutation({
       query: (payload) => ({
         url: '/workspaces',
@@ -49,6 +56,7 @@ const workspaceApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, { workspaceId }) => [
         { type: 'Workspace', id: workspaceId },
         { type: 'WorkspaceMembers', id: workspaceId },
+        { type: 'WorkspaceOwnershipTransferAuthorization', id: workspaceId },
       ],
     }),
     archiveWorkspace: build.mutation({
@@ -76,6 +84,7 @@ export const {
   useArchiveWorkspaceMutation,
   useCreateWorkspaceMutation,
   useGetWorkspaceByIdQuery,
+  useGetWorkspaceOwnershipTransferAuthorizationQuery,
   useListWorkspacesQuery,
   useTransferWorkspaceOwnershipMutation,
   useUpdateWorkspaceMutation,

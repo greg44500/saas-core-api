@@ -163,6 +163,7 @@ describe('WorkspaceSubscriptionPage', () => {
 
     expect(mocks.useGetWorkspaceSubscriptionQuery).toHaveBeenCalledWith('workspace-1');
     expect(screen.getByRole('heading', { name: 'Abonnement' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'À propos de l’abonnement' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Premium' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Fonctionnalités et limites' })).toBeInTheDocument();
     expect(screen.getByText('Téléversement de fichiers')).toBeInTheDocument();
@@ -172,8 +173,12 @@ describe('WorkspaceSubscriptionPage', () => {
     expect(screen.getByRole('heading', { name: 'Période d’essai en cours' })).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Offres disponibles' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'À propos des offres disponibles' })).toBeInTheDocument();
     expect(screen.getByLabelText('Périodicité de référence')).toBeInTheDocument();
-    expect(screen.getByText('Aucun moyen de paiement n’est demandé pendant l’essai.')).toBeInTheDocument();
+    expect(screen.getByRole('button', {
+      name: 'À propos de la périodicité de référence',
+    })).toBeInTheDocument();
+    expect(screen.queryByText('Aucun moyen de paiement n’est demandé pendant l’essai.')).not.toBeInTheDocument();
   });
 
   it('change de plan pendant le trial sans promettre de nouvelle durée et confirme par toast', async () => {
@@ -183,7 +188,8 @@ describe('WorkspaceSubscriptionPage', () => {
 
     renderPage();
 
-    await user.selectOptions(screen.getByLabelText('Périodicité de référence'), 'yearly');
+    await user.click(screen.getByLabelText('Périodicité de référence'));
+    await user.click(await screen.findByRole('option', { name: 'Annuelle' }));
     await user.click(screen.getByRole('button', { name: 'Tester ce plan pendant l’essai' }));
 
     expect(mocks.startOrChangeTrial).toHaveBeenCalledWith({

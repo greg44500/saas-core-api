@@ -75,6 +75,8 @@ const PLATFORM_PERMISSION = Object.freeze({
     WORKSPACES_SUSPEND: 'platform:workspaces:suspend',
     WORKSPACES_REACTIVATE: 'platform:workspaces:reactivate',
     WORKSPACES_CLOSE: 'platform:workspaces:close',
+    WORKSPACES_OWNERSHIP_TRANSFER_AUTHORIZE:
+        'platform:workspaces:ownership_transfer_authorize',
 
     AUDIT_LOGS_READ: 'platform:audit_logs:read',
 

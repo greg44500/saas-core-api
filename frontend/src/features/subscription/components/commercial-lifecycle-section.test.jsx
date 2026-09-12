@@ -168,8 +168,12 @@ describe('CommercialLifecycleSection', () => {
       screen.getByRole('button', { name: 'Programmer un changement de plan' }),
     );
 
-    expect(screen.getByLabelText('Offre cible')).toHaveValue('standard');
+    const targetPlanTrigger = screen.getByLabelText('Offre cible');
+    expect(targetPlanTrigger).toHaveTextContent('Standard');
+    await user.click(targetPlanTrigger);
+    expect(await screen.findByRole('option', { name: 'Standard' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: 'Free' })).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
 
     await user.click(screen.getByRole('button', { name: 'Confirmer le changement' }));
 

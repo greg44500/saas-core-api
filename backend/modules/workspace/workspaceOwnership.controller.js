@@ -1,6 +1,21 @@
 import {
     transferWorkspaceOwnership,
 } from './transferWorkspaceOwnership.service.js';
+import {
+    serializeWorkspaceOwnershipTransferAuthorization,
+} from './workspaceOwnershipTransferAuthorization.service.js';
+
+
+const getOwnershipAuthorization = async (req, res) => {
+    const authorization = serializeWorkspaceOwnershipTransferAuthorization(
+        req.workspace.ownershipTransferAuthorization,
+    );
+
+    return res.status(200).json({
+        status: 'success',
+        data: { authorization },
+    });
+};
 
 
 /**
@@ -41,4 +56,7 @@ const transferOwnership = async (req, res) => {
 };
 
 
-export { transferOwnership };
+export {
+    getOwnershipAuthorization,
+    transferOwnership,
+};

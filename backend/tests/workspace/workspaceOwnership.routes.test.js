@@ -28,6 +28,7 @@ import {
     workspaceIdParamsSchema,
 } from '../../modules/workspace/workspace.validation.js';
 import {
+    getOwnershipAuthorization,
     transferOwnership,
 } from '../../modules/workspace/workspaceOwnership.controller.js';
 import {
@@ -36,7 +37,6 @@ import {
 import {
     transferWorkspaceOwnershipBodySchema,
 } from '../../modules/workspace/workspaceOwnership.validation.js';
-
 
 const {
     validationMiddleware,
@@ -54,13 +54,13 @@ const {
     workspaceContextMiddleware: vi.fn((req, res, next) => {
         req.workspace = {
             _id: req.params.workspaceId,
+            ownershipTransferAuthorization: null,
         };
         next();
     }),
     permissionMiddleware: vi.fn((req, res, next) => next()),
     workspaceAccessMiddleware: vi.fn((req, res, next) => next()),
 }));
-
 
 vi.mock('../../middlewares/authenticate.js', () => ({
     authenticate: vi.fn((req, res, next) => {
@@ -90,13 +90,12 @@ vi.mock('../../middlewares/enforceWorkspaceAccessMode.js', () => ({
 vi.mock(
     '../../modules/workspace/workspaceOwnership.controller.js',
     () => ({
+        getOwnershipAuthorization: vi.fn((req, res) =>
+            res.status(200).json({ status: 'success' })),
         transferOwnership: vi.fn((req, res) =>
-            res.status(200).json({
-                status: 'success',
-            })),
+            res.status(200).json({ status: 'success' })),
     }),
 );
-
 
 const app = express();
 app.use(express.json());
@@ -104,7 +103,6 @@ app.use(
     '/workspaces/:workspaceId/ownership',
     workspaceOwnershipRouter,
 );
-
 
 beforeEach(() => {
     /*
@@ -118,16 +116,51 @@ beforeEach(() => {
     workspaceContextMiddleware.mockClear();
     permissionMiddleware.mockClear();
     workspaceAccessMiddleware.mockClear();
+    getOwnershipAuthorization.mockClear();
     transferOwnership.mockClear();
 });
 
-
 describe('workspaceOwnership.routes', () => {
+    const workspacePath = '/workspaces/507f1f77bcf86cd799439011/ownership';
+
+    it('expose l’état de l’autorisation avec la permission ownership', async () => {
+        const response = await request(app)
+            .get(`${workspacePath}/authorization`);
+
+        expect(response.status).toBe(200);
+        expect(validateRequest).toHaveBeenCalledWith({
+            params: workspaceIdParamsSchema,
+        });
+        expect(authorizePermission).toHaveBeenCalledWith(
+            CORE_PERMISSION.WORKSPACE_OWNERSHIP_TRANSFER,
+        );
+        expect(authenticate).toHaveBeenCalledOnce();
+        expect(validationMiddleware).toHaveBeenCalledOnce();
+        expect(workspaceContextMiddleware).toHaveBeenCalledOnce();
+        expect(permissionMiddleware).toHaveBeenCalledOnce();
+        expect(getOwnershipAuthorization).toHaveBeenCalledOnce();
+        expect(workspaceAccessMiddleware).not.toHaveBeenCalled();
+
+        expect(
+            validationMiddleware.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            workspaceContextMiddleware.mock.invocationCallOrder[0],
+        );
+        expect(
+            workspaceContextMiddleware.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            permissionMiddleware.mock.invocationCallOrder[0],
+        );
+        expect(
+            permissionMiddleware.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            getOwnershipAuthorization.mock.invocationCallOrder[0],
+        );
+    });
+
     it('protège, valide et autorise explicitement le transfert en remédiation', async () => {
         const response = await request(app)
-            .patch(
-                '/workspaces/507f1f77bcf86cd799439011/ownership',
-            )
+            .patch(workspacePath)
             .send({
                 newOwnerMemberId:
                     '507f1f77bcf86cd799439012',

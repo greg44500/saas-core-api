@@ -26,6 +26,52 @@ const platformWorkspacesApi = baseApi.injectEndpoints({
         { type: 'PlatformWorkspaces', id: workspaceId },
       ],
     }),
+    getPlatformWorkspaceOwnershipTransferAuthorization: builder.query({
+      query: (workspaceId) => (
+        `/platform/workspaces/${workspaceId}/ownership-transfer-authorization`
+      ),
+      transformResponse: (response) => response?.data?.authorization ?? null,
+      providesTags: (_result, _error, workspaceId) => [
+        {
+          type: 'PlatformWorkspaceOwnershipTransferAuthorization',
+          id: workspaceId,
+        },
+      ],
+    }),
+    authorizePlatformWorkspaceOwnershipTransfer: builder.mutation({
+      query: (workspaceId) => ({
+        url: `/platform/workspaces/${workspaceId}/ownership-transfer-authorization`,
+        method: 'POST',
+      }),
+      transformResponse: (response) => response?.data?.authorization ?? null,
+      invalidatesTags: (_result, _error, workspaceId) => [
+        {
+          type: 'PlatformWorkspaceOwnershipTransferAuthorization',
+          id: workspaceId,
+        },
+        {
+          type: 'WorkspaceOwnershipTransferAuthorization',
+          id: workspaceId,
+        },
+      ],
+    }),
+    revokePlatformWorkspaceOwnershipTransferAuthorization: builder.mutation({
+      query: (workspaceId) => ({
+        url: `/platform/workspaces/${workspaceId}/ownership-transfer-authorization`,
+        method: 'DELETE',
+      }),
+      transformResponse: (response) => response?.data?.authorization ?? null,
+      invalidatesTags: (_result, _error, workspaceId) => [
+        {
+          type: 'PlatformWorkspaceOwnershipTransferAuthorization',
+          id: workspaceId,
+        },
+        {
+          type: 'WorkspaceOwnershipTransferAuthorization',
+          id: workspaceId,
+        },
+      ],
+    }),
     suspendPlatformWorkspace: builder.mutation({
       query: ({ workspaceId, statusReason, statusReasonDetails }) => ({
         url: `/platform/workspaces/${workspaceId}/suspend`,
@@ -54,15 +100,21 @@ const platformWorkspacesApi = baseApi.injectEndpoints({
 });
 
 const {
+  useAuthorizePlatformWorkspaceOwnershipTransferMutation,
+  useGetPlatformWorkspaceOwnershipTransferAuthorizationQuery,
   useGetPlatformWorkspaceQuery,
   useListPlatformWorkspacesQuery,
   useReactivatePlatformWorkspaceMutation,
+  useRevokePlatformWorkspaceOwnershipTransferAuthorizationMutation,
   useSuspendPlatformWorkspaceMutation,
 } = platformWorkspacesApi;
 
 export {
+  useAuthorizePlatformWorkspaceOwnershipTransferMutation,
+  useGetPlatformWorkspaceOwnershipTransferAuthorizationQuery,
   useGetPlatformWorkspaceQuery,
   useListPlatformWorkspacesQuery,
   useReactivatePlatformWorkspaceMutation,
+  useRevokePlatformWorkspaceOwnershipTransferAuthorizationMutation,
   useSuspendPlatformWorkspaceMutation,
 };

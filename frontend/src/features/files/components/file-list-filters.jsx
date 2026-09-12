@@ -1,6 +1,15 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { FILE_UPLOAD_CATEGORY_OPTIONS } from '@/features/files/constants/file-upload.constants';
+
+const ALL_CATEGORIES_VALUE = '__all__';
 
 function FileListFilters({
   category,
@@ -31,19 +40,24 @@ function FileListFilters({
         <label className="sr-only" htmlFor="file-category-filter">
           Filtrer par catégorie
         </label>
-        <select
-          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-          id="file-category-filter"
-          onChange={(event) => onCategoryChange(event.target.value)}
-          value={category}
+        <Select
+          onValueChange={(value) => onCategoryChange(
+            value === ALL_CATEGORIES_VALUE ? '' : value,
+          )}
+          value={category || ALL_CATEGORIES_VALUE}
         >
-          <option value="">Toutes les catégories</option>
-          {FILE_UPLOAD_CATEGORY_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger id="file-category-filter">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_CATEGORIES_VALUE}>Toutes les catégories</SelectItem>
+            {FILE_UPLOAD_CATEGORY_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {hasFilters && (
