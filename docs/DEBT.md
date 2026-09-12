@@ -93,6 +93,7 @@ D-013 configuration / déploiement production
 D-008 notifications étendues
 D-009 API Keys / Webhooks
 D-010 authentification avancée — dont Google SSO
+D-023 demande gouvernée de capacité exceptionnelle de transfert de propriété — cible Core 1.1
 ```
 
 ---
@@ -594,6 +595,107 @@ Les tests ciblés backend/frontend, les suites globales, le lint et le build app
 
 ---
 
+## D-023 — Demande gouvernée de capacité exceptionnelle de transfert de propriété
+
+**Statut :** DIFFÉRÉ — cible Core 1.1  
+**Périmètre :** Core Workspace ownership + sécurité Platform + audit + frontend Workspace/Platform  
+**Blocage Core 1.0 :** non, sous réserve de conserver le workflow fermé par défaut et de ne pas exposer avant D-023 de commande owner `Demander capacité de transfert`  
+**Dépendances :** gate de transfert exceptionnelle existante, permission Platform réservée, TTL serveur de l'autorisation et AuditLog  
+**Déclencheur :** décision produit/sécurité du 2026-09-12 — remplacer à terme l'ouverture manuelle d'une capacité sensible par un workflow gouverné, traçable et sans ressaisie d'identité/workspace.
+
+### Positionnement v1.0
+
+Le mécanisme bas niveau déjà implémenté reste une capacité opérationnelle exceptionnelle : il est fermé par défaut, réservé au Super administrateur pour l'ouverture d'une fenêtre courte, révocable et single-use. L'owner ne voit le formulaire de transfert que lorsqu'une autorisation serveur active existe.
+
+Avant D-023, **aucun bouton ou parcours utilisateur `Demander capacité de transfert` n'est ajouté**. La fonctionnalité n'est pas commercialisée ni présentée comme un droit normal du propriétaire. Ce choix permet de finaliser/versionner Core 1.0 sans figer prématurément le workflow de demande.
+
+### Workflow cible Core 1.1
+
+Surface utilisateur envisagée : `Paramètres > Sécurité > Demander capacité de transfert`.
+
+```text
+owner courant
+→ crée une demande de transfert pour son workspace
+→ données d'identité/workspace résolues côté serveur par IDs
+→ éventuellement cible future + rôle de remplacement sélectionnés depuis des données serveur
+→ demande persistée et auditée
+→ file de demandes Platform visible uniquement aux acteurs autorisés
+→ Super administrateur examine la demande
+→ Autoriser / Refuser sans ressaisir nom, email ou workspace
+→ Autoriser crée la fenêtre exceptionnelle existante
+→ owner voit temporairement le formulaire de transfert
+→ réauthentification owner + revalidation serveur
+→ transfert transactionnel
+→ autorisation consommée single-use
+→ demande clôturée + audit complet
+```
+
+Le Super administrateur ne doit jamais recopier manuellement un nom de workspace, un email ou un identifiant fourni en texte libre pour activer la capacité. L'action Platform part d'un `requestId` et le backend résout les références autoritatives.
+
+Une collection dédiée de type `WorkspaceOwnershipTransferRequest` est préférable au stockage de la demande dans le sous-document d'autorisation courant : la demande possède son propre cycle de vie, alimente une file Platform et doit rester traçable indépendamment de la fenêtre d'autorisation éphémère.
+
+États à cadrer autour d'une machine d'état explicite, par exemple :
+
+```text
+requested
+→ authorized
+→ completed
+
+ou
+→ rejected
+→ cancelled
+→ expired
+```
+
+L'autorisation temporaire créée après validation reste distincte de la demande et conserve son contrat existant : TTL serveur borné, révocation possible et consommation au premier transfert réussi.
+
+### Éligibilité et revalidation de sécurité
+
+Les conditions ne doivent pas être contrôlées uniquement lors de la création de la demande. Elles doivent être revalidées au minimum lors de la demande, lors de l'autorisation Super Admin et immédiatement avant le transfert.
+
+Invariants/candidats de blocage :
+
+- demandeur toujours owner actif du workspace ;
+- workspace `active`, ni suspendu, ni archivé, ni engagé dans une fermeture/suppression terminale ;
+- exactement un owner actif avant le transfert ;
+- absence d'autre demande de transfert encore active et absence d'autorisation exceptionnelle concurrente ;
+- cible, lorsqu'elle est pré-sélectionnée, toujours membre actif éligible et distincte de l'owner courant ;
+- comptes concernés toujours utilisables selon leurs statuts ;
+- aucune dette commerciale bloquante : au minimum une subscription commerciale `past_due` ou un futur état provider explicitement bloquant doit empêcher l'autorisation/le transfert ; une baseline gratuite n'est pas bloquée pour absence de paiement ;
+- confirmation du mot de passe courant de l'owner maintenue au moment du transfert ;
+- règles de permissions et d'isolation tenant revalidées côté backend ;
+- données affichées dans la file Platform résolues depuis les références serveur, sans faire confiance à un snapshot frontend.
+
+Une simple remédiation de quota ne doit pas être déclarée bloquante par défaut : elle peut être sans rapport avec la gouvernance du workspace. Toute nouvelle condition de blocage doit être justifiée par un risque métier, financier ou de sécurité réel.
+
+Une demande en attente doit elle-même avoir une durée de vie serveur bornée afin d'éviter les demandes anciennes devenues incohérentes. Le TTL exact et son éventuelle configuration `.env` seront décidés lors de l'implémentation ; il reste distinct du TTL maximal de l'autorisation exceptionnelle déjà existante.
+
+### UI Platform et réutilisabilité
+
+La file Super Admin doit utiliser les composants partagés existants, notamment `DataTable`, états loading/empty/error, Drawer/Dialog et confirmations communes. Une ligne de demande doit permettre d'identifier sans ambiguïté le workspace, l'owner demandeur, la cible prévue lorsqu'elle existe, la date de demande et son état.
+
+L'action `Autoriser` utilise les données préremplies/référencées par la demande. Une action `Refuser` doit être auditée ; la nécessité d'un motif structuré ou libre sera cadrée à l'implémentation.
+
+Les notifications éventuelles owner/Super Admin peuvent réutiliser les mécanismes transactionnels disponibles mais ne doivent pas rendre D-023 dépendante d'un système de notifications étendues D-008.
+
+### Audit attendu
+
+Le journal doit permettre de reconstruire le cycle sans exposer de secret :
+
+```text
+demande créée
+refusée / annulée / expirée
+autorisation accordée
+révocation éventuelle
+transfert exécuté
+```
+
+Les audits doivent référencer les IDs utiles (`requestId`, `workspaceId`, acteurs, memberships/cible lorsque pertinent) et la relation avec l'autorisation temporaire, sans dupliquer inutilement des données personnelles en clair.
+
+**Critère de clôture :** demande owner disponible dans la zone Sécurité, modèle et machine d'état persistés, file Super Admin avec données serveur préremplies, activation sans ressaisie, règles d'éligibilité revalidées à chaque étape, authorization gate existante réutilisée, TTLs bornés, single-use/révocation conservés, audit complet, tests sécurité/concurrence et E2E du parcours validés.
+
+---
+
 ## 6. Éléments volontairement non intégrés comme dette active
 
 Ne sont pas ajoutés par anticipation : packages `@saas-core/*`, provider de paiement imposé au Core, CMP fictive sans traceurs applicables, limite universelle du nombre de Workspaces ou CAPTCHA/provider anti-bot imposé sans besoin démontré.
@@ -620,9 +722,11 @@ D-022 intégrité Entitlement Override Groups                 VALIDÉ — 2026-0
 → audit final architecture / sécurité / qualité
 → D-017 dérivation + upgrade pilote                         PLANIFIÉ
 → taguer uniquement ensuite la release Core stable
+--- évolution post-v1.0 ---
+→ D-023 demande gouvernée de transfert de propriété        DIFFÉRÉ — cible Core 1.1
 ```
 
-Aucune première dérivation métier avant D-002 `VALIDÉ`. Aucune release `v1.0.0` avant clôture/reclassification explicite des blockers Core applicables ; D-020 reste le blocker immédiat avant D-015.
+Aucune première dérivation métier avant D-002 `VALIDÉ`. Aucune release `v1.0.0` avant clôture/reclassification explicite des blockers Core applicables ; D-020 reste le blocker immédiat avant D-015. D-023 ne bloque pas Core 1.0 tant que le workflow owner reste fermé par défaut et qu'aucune surface `Demander capacité de transfert` n'est exposée avant son traitement.
 
 ---
 
