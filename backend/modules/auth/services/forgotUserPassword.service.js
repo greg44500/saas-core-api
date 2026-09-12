@@ -2,11 +2,18 @@ import { performance } from 'node:perf_hooks';
 
 import { env } from '../../../config/env.js';
 import {
+    AUDIT_ACTION,
+    AUDIT_STATUS,
+} from '../../../constants/auditActions.constants.js';
+import {
     AUTH_PROVIDER,
 } from '../../../constants/authProvider.constants.js';
 import {
     USER_STATUS,
 } from '../../../constants/userStatus.constants.js';
+import {
+    createAuditLog,
+} from '../../auditLog/auditLog.service.js';
 import {
     buildPasswordResetEmail,
 } from '../../../services/emailTemplates/passwordResetEmail.js';
@@ -64,7 +71,35 @@ const completeForgotPasswordRequest = async (
             FORGOT_PASSWORD_RESPONSE_MESSAGE,
     };
 };
-
+/**
+ * Tente d'auditer une demande publique de récupération.
+ *
+ * L'audit reste volontairement anonyme afin de ne pas créer de différence
+ * entre une adresse inconnue, un compte non local et un compte éligible.
+ *
+ * Une panne de l'AuditLog ne doit jamais modifier la réponse publique.
+ *
+ * @param {object} auditData
+ * @returns {Promise<void>}
+ */
+const writeForgotPasswordAuditLog = async (
+    auditData,
+) => {
+    try {
+        await createAuditLog(auditData);
+    } catch (error) {
+        /*
+         * Aucun email, token ou autre secret n'est journalisé.
+         */
+        console.error(
+            'Password recovery audit log creation failed',
+            {
+                action: auditData.action,
+                errorName: error?.name,
+            },
+        );
+    }
+};
 /**
  * Lance le workflow public de récupération de mot de passe sans révéler
  * l'existence, le statut ou le provider d'authentification d'un compte.
@@ -91,6 +126,17 @@ const forgotUserPassword = async ({
 }) => {
     const startedAt = performance.now();
     const emailCanonical = canonicalizeEmail(email);
+    await writeForgotPasswordAuditLog({
+        actor: null,
+        action:
+            AUDIT_ACTION.FORGOT_PASSWORD_REQUESTED,
+        entityType: null,
+        entityId: null,
+        status: AUDIT_STATUS.SUCCESS,
+        ipAddress,
+        userAgent,
+        metadata: {},
+    });
 
     const user = await User.findOne({
         emailCanonical,

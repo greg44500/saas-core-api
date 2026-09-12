@@ -698,6 +698,9 @@ describe('forgotUserPassword', () => {
          * produire de faux positifs dans les assertions de sécurité.
          */
         vi.clearAllMocks();
+        createAuditLog.mockResolvedValue(
+            undefined,
+        );
     });
 
     it('crée un token et envoie l’email pour un compte local existant', async () => {
@@ -812,7 +815,7 @@ describe('forgotUserPassword', () => {
             buildPasswordResetEmail,
         ).toHaveBeenCalledWith({
             resetUrl:
-                'http://localhost:5173/reset-password?token=opaque-reset-token',
+                'http://localhost:5173/reset-password#token=opaque-reset-token',
             expiresInMinutes: 15,
         });
 
@@ -867,7 +870,19 @@ describe('forgotUserPassword', () => {
             ipAddress: '127.0.0.1',
             userAgent: 'Mozilla/5.0 Test Browser',
         });
-
+        expect(
+            createAuditLog,
+        ).toHaveBeenCalledWith({
+            actor: null,
+            action:
+                AUDIT_ACTION.FORGOT_PASSWORD_REQUESTED,
+            entityType: null,
+            entityId: null,
+            status: AUDIT_STATUS.SUCCESS,
+            ipAddress: '127.0.0.1',
+            userAgent: 'Mozilla/5.0 Test Browser',
+            metadata: {},
+        });
         /*
          * L'absence du compte ne doit déclencher aucune création de token
          * ni aucun email, mais elle ne doit pas être révélée à l'appelant.
@@ -1074,6 +1089,42 @@ it('conserve la réponse générique et révoque le token si SMTP échoue', asyn
         );
 
     consoleErrorSpy.mockRestore();
+
+    it("ne bloque pas forgot-password si l'AuditLog échoue", async () => {
+        User.findOne.mockResolvedValue(null);
+
+        createAuditLog.mockRejectedValue(
+            new Error('Audit unavailable'),
+        );
+
+        const consoleErrorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => { });
+
+        const result = await forgotUserPassword({
+            email: 'unknown@example.com',
+            ipAddress: '127.0.0.1',
+            userAgent: 'Vitest',
+        });
+
+        expect(result).toEqual({
+            message:
+                'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.',
+        });
+
+        expect(consoleErrorSpy)
+            .toHaveBeenCalledWith(
+                'Password recovery audit log creation failed',
+                {
+                    action:
+                        AUDIT_ACTION
+                            .FORGOT_PASSWORD_REQUESTED,
+                    errorName: 'Error',
+                },
+            );
+
+        consoleErrorSpy.mockRestore();
+    });
 });
 
 
