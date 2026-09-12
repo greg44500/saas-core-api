@@ -29,7 +29,7 @@ describe('PlatformRetentionExecutionsTable', () => {
     expect(screen.getByText('Politique')).toBeInTheDocument();
   });
 
-  it('signale visuellement une erreur d’exécution', () => {
+  it('signale visuellement une erreur d’exécution avec un libellé utilisateur français', () => {
     render(
       <PlatformRetentionExecutionsTable
         executions={[{
@@ -47,6 +47,10 @@ describe('PlatformRetentionExecutionsTable', () => {
 
     expect(screen.getByText('Échouée')).toHaveClass('text-destructive');
     expect(screen.getByRole('alert')).toHaveClass('text-destructive');
-    expect(screen.getByRole('alert')).toHaveTextContent('RETENTION_LOCK_LOST');
+    expect(screen.getByRole('alert')).toHaveTextContent('Verrou d’exécution perdu');
+    expect(screen.getByRole('alert')).toHaveAttribute(
+      'title',
+      'Code technique : RETENTION_LOCK_LOST',
+    );
   });
 });
