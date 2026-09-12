@@ -21,6 +21,7 @@ import {
 import {
     calculateGrowthPercent,
     calculateSharePercent,
+    resolveOverviewPeriod,
 } from './platformOverview.service.js';
 
 
@@ -245,16 +246,11 @@ const createPlatformOverviewUserPopulationService = ({
 } = {}) => async ({
     from,
     to,
-    previousFrom,
-    previousTo,
-}) => {
+    at = new Date(),
+} = {}) => {
+    const period = resolveOverviewPeriod({ from, to, at });
     const [result = {}] = await UserModel.aggregate(
-        buildCurrentClientUserPopulationPipeline({
-            from,
-            to,
-            previousFrom,
-            previousTo,
-        }),
+        buildCurrentClientUserPopulationPipeline(period),
     );
 
     const total = countFacet(result.total);
