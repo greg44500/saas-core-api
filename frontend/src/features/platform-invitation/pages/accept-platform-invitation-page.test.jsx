@@ -1,12 +1,8 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  MemoryRouter,
-  Route,
-  Routes,
-  useLocation,
-} from 'react-router';
+import { createMemoryRouter, useLocation } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
 
 import {
   clearPlatformInvitationTokenInMemory,
@@ -71,17 +67,6 @@ import { AcceptPlatformInvitationPage } from '@/features/platform-invitation/pag
 
 const TOKEN = 'a'.repeat(64);
 
-function LocationProbe() {
-  const location = useLocation();
-
-  return (
-    <>
-      <span data-testid="location-search">{location.search}</span>
-      <span data-testid="location-hash">{location.hash}</span>
-    </>
-  );
-}
-
 function LoginTarget() {
   const location = useLocation();
   const from = location.state?.from;
@@ -102,20 +87,21 @@ function LoginTarget() {
 }
 
 function renderPage(path = `/platform-invitations/accept#token=${TOKEN}`) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <LocationProbe />
-      <Routes>
-        <Route
-          path="/platform-invitations/accept"
-          element={<AcceptPlatformInvitationPage />}
-        />
-        <Route path="/login" element={<LoginTarget />} />
-        <Route path="/platform/users" element={<h1>Utilisateurs</h1>} />
-        <Route path="/account/profile" element={<h1>Profil</h1>} />
-      </Routes>
-    </MemoryRouter>,
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/platform-invitations/accept',
+        Component: AcceptPlatformInvitationPage,
+      },
+      { path: '/login', Component: LoginTarget },
+      { path: '/platform/users', Component: () => <h1>Utilisateurs</h1> },
+      { path: '/account/profile', Component: () => <h1>Profil</h1> },
+    ],
+    { initialEntries: [path] },
   );
+
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
 describe('AcceptPlatformInvitationPage', () => {
@@ -143,12 +129,14 @@ describe('AcceptPlatformInvitationPage', () => {
   afterEach(() => cleanup());
 
   it('capture le secret depuis le fragment puis nettoie immédiatement l’URL', async () => {
-    renderPage();
+    const router = renderPage();
 
     await waitFor(() => {
-      expect(screen.getByTestId('location-hash')).toBeEmptyDOMElement();
+      expect(router.state.location.hash).toBe('');
     });
-    expect(screen.getByTestId('location-search')).toBeEmptyDOMElement();
+
+    expect(router.state.location.search).toBe('');
+    expect(router.state.location.state).toBeNull();
     expect(screen.getByLabelText('Mot de passe')).toBeInTheDocument();
   });
 
@@ -195,7 +183,11 @@ describe('AcceptPlatformInvitationPage', () => {
 
   it('conserve le retour vers l’invitation sans placer le secret dans history.state', async () => {
     const user = userEvent.setup();
-    renderPage();
+    const router = renderPage();
+
+    await waitFor(() => {
+      expect(router.state.location.hash).toBe('');
+    });
 
     await user.click(
       screen.getByRole('link', { name: 'Se connecter pour accepter' }),

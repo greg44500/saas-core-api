@@ -1,12 +1,8 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  MemoryRouter,
-  Route,
-  Routes,
-  useLocation,
-} from 'react-router';
+import { createMemoryRouter, useLocation } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
 
 import {
   clearWorkspaceInvitationTokenInMemory,
@@ -67,17 +63,6 @@ import { AcceptWorkspaceInvitationPage } from '@/features/workspace-invitation/p
 
 const TOKEN = 'a'.repeat(64);
 
-function LocationProbe() {
-  const location = useLocation();
-
-  return (
-    <>
-      <span data-testid="location-search">{location.search}</span>
-      <span data-testid="location-hash">{location.hash}</span>
-    </>
-  );
-}
-
 function LoginTarget() {
   const location = useLocation();
 
@@ -97,18 +82,19 @@ function LoginTarget() {
 }
 
 function renderPage(path = `/invitations/accept#token=${TOKEN}`) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <LocationProbe />
-      <Routes>
-        <Route
-          path="/invitations/accept"
-          element={<AcceptWorkspaceInvitationPage />}
-        />
-        <Route path="/login" element={<LoginTarget />} />
-      </Routes>
-    </MemoryRouter>,
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/invitations/accept',
+        Component: AcceptWorkspaceInvitationPage,
+      },
+      { path: '/login', Component: LoginTarget },
+    ],
+    { initialEntries: [path] },
   );
+
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
 describe('AcceptWorkspaceInvitationPage', () => {
@@ -137,12 +123,14 @@ describe('AcceptWorkspaceInvitationPage', () => {
   afterEach(() => cleanup());
 
   it('capture le secret depuis le fragment puis nettoie immédiatement l’URL', async () => {
-    renderPage();
+    const router = renderPage();
 
     await waitFor(() => {
-      expect(screen.getByTestId('location-hash')).toBeEmptyDOMElement();
+      expect(router.state.location.hash).toBe('');
     });
-    expect(screen.getByTestId('location-search')).toBeEmptyDOMElement();
+
+    expect(router.state.location.search).toBe('');
+    expect(router.state.location.state).toBeNull();
     expect(screen.getByLabelText('Prénom')).toBeInTheDocument();
   });
 
@@ -157,7 +145,11 @@ describe('AcceptWorkspaceInvitationPage', () => {
 
   it('ne place pas le secret dans history.state pendant un passage par le login', async () => {
     const user = userEvent.setup();
-    renderPage();
+    const router = renderPage();
+
+    await waitFor(() => {
+      expect(router.state.location.hash).toBe('');
+    });
 
     await user.click(
       screen.getByRole('link', { name: 'Se connecter pour accepter' }),
