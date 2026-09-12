@@ -51,8 +51,20 @@ describe('DataPagination', () => {
       />,
     );
 
-    await user.click(screen.getByRole('combobox', { name: 'Nombre de lignes par page' }));
-    await user.click(screen.getByRole('option', { name: '20' }));
+    const trigger = screen.getByRole('combobox', { name: 'Nombre de lignes par page' });
+
+    /*
+     * Base UI masque volontairement un popup lorsque son ancre mesure 0 × 0.
+     * JSDOM retourne cette géométrie par défaut, contrairement à un navigateur.
+     * On ne simule donc que le rectangle réel du trigger testé, sans modifier
+     * globalement la géométrie des autres composants.
+     */
+    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(
+      DOMRect.fromRect({ x: 24, y: 24, width: 160, height: 36 }),
+    );
+
+    await user.click(trigger);
+    await user.click(await screen.findByRole('option', { name: '20' }));
 
     expect(onPageSizeChange).toHaveBeenCalledWith(20);
   });
