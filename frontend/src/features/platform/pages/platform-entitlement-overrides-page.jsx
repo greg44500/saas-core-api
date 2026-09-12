@@ -18,6 +18,7 @@ import {
   useGetPlatformFeatureOverrideGroupQuery,
   useListPlatformEntitlementOverridesQuery,
   useRevokePlatformEntitlementOverrideMutation,
+  useRevokePlatformFeatureOverrideGroupMutation,
   useUpdatePlatformEntitlementOverrideMutation,
   useUpdatePlatformFeatureOverrideGroupMutation,
 } from '@/features/platform/api/platform-entitlement-overrides-api';
@@ -116,6 +117,8 @@ function PlatformEntitlementOverridesPage() {
   const [updateFeatureGroup, updateFeatureGroupState] =
     useUpdatePlatformFeatureOverrideGroupMutation();
   const [revokeOverride, revokeState] = useRevokePlatformEntitlementOverrideMutation();
+  const [revokeFeatureGroup, revokeFeatureGroupState] =
+    useRevokePlatformFeatureOverrideGroupMutation();
 
   const overrides = listQuery.data?.overrides ?? [];
   const workspaces = workspacesQuery.data?.workspaces ?? [];
@@ -126,6 +129,7 @@ function PlatformEntitlementOverridesPage() {
   };
   const createPending = createState.isLoading || createFeatureGroupState.isLoading;
   const editPending = updateState.isLoading || updateFeatureGroupState.isLoading;
+  const revokePending = revokeState.isLoading || revokeFeatureGroupState.isLoading;
 
   function updateFilter(key, value) {
     setSearchParams((current) => {
@@ -222,7 +226,11 @@ function PlatformEntitlementOverridesPage() {
 
     setRevokeError(null);
     try {
-      await revokeOverride({
+      const revokeMutation = revokeTarget.groupId
+        ? revokeFeatureGroup
+        : revokeOverride;
+
+      await revokeMutation({
         overrideId: revokeTarget.id,
         workspaceId: revokeTarget.workspace?.id,
         reason,
@@ -538,13 +546,13 @@ function PlatformEntitlementOverridesPage() {
       <PlatformEntitlementOverrideRevokeDialog
         errorMessage={revokeError}
         onCancel={() => {
-          if (revokeState.isLoading) return;
+          if (revokePending) return;
           setRevokeTarget(null);
           setRevokeError(null);
         }}
         onConfirm={confirmRevoke}
         override={revokeTarget}
-        pending={revokeState.isLoading}
+        pending={revokePending}
       />
     </div>
   );
