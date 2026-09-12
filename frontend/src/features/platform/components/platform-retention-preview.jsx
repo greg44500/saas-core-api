@@ -1,9 +1,13 @@
 import { useState } from 'react';
 
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { formatRetentionDate } from '@/features/platform/lib/platform-retention';
+import {
+  formatRetentionDate,
+  getRetentionManualExecutionAvailability,
+} from '@/features/platform/lib/platform-retention';
 
 function PreviewMetric({ label, value }) {
   return (
@@ -29,18 +33,18 @@ function PlatformRetentionPreview({
   const [confirmationValue, setConfirmationValue] = useState('');
   const [confirmationError, setConfirmationError] = useState(null);
 
-  const manualAllowed = policy?.config?.enabled === true
-    && policy?.config?.manualExecutionEnabled === true;
-  const executeDisabled = !preview
-    || !canExecute
-    || !manualAllowed
-    || runtime?.locked === true;
+  const executionAvailability = getRetentionManualExecutionAvailability({
+    canExecute,
+    policy,
+    preview,
+    runtime,
+  });
 
   async function handleConfirm() {
     const expectedPhrase = preview?.confirmation?.phrase;
 
     if (!expectedPhrase || confirmationValue !== expectedPhrase) {
-      setConfirmationError('La phrase saisie ne correspond pas à la confirmation fournie par la preview.');
+      setConfirmationError('La phrase saisie ne correspond pas à la confirmation fournie par la prévisualisation.');
       return;
     }
 
@@ -71,45 +75,66 @@ function PlatformRetentionPreview({
         )}
 
         {canExecute && (
-          <Button
-            disabled={executeDisabled}
-            onClick={() => {
-              setConfirmationError(null);
-              setConfirmationValue('');
-              setConfirmationOpen(true);
-            }}
-            type="button"
-            variant="destructive"
-          >
-            Purger les éléments prévisualisés
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              disabled={!executionAvailability.allowed}
+              onClick={() => {
+                setConfirmationError(null);
+                setConfirmationValue('');
+                setConfirmationOpen(true);
+              }}
+              type="button"
+              variant="destructive"
+            >
+              Purger les éléments prévisualisés
+            </Button>
+            <InfoTooltip
+              content={(
+                <div className="space-y-2">
+                  <p>
+                    Pour lancer une purge manuelle, la politique doit être active,
+                    l’exécution manuelle autorisée, une prévisualisation réalisée et
+                    aucune autre purge en cours.
+                  </p>
+                  <p className="font-medium">État actuel : {executionAvailability.reason}</p>
+                </div>
+              )}
+              label="Pourquoi la purge est-elle disponible ou indisponible ?"
+            />
+          </div>
         )}
       </div>
 
       {!canPreview && (
         <p className="text-sm text-muted-foreground">
-          Votre rôle permet la consultation de la policy, mais pas sa prévisualisation.
+          Votre rôle permet la consultation de la politique de rétention, mais pas sa prévisualisation.
         </p>
       )}
 
       {runtime?.locked && (
-        <p className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-          Une exécution est actuellement verrouillée jusqu’au {formatRetentionDate(runtime.lockExpiresAt)}.
+        <p className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+          Une purge est actuellement verrouillée jusqu’au {formatRetentionDate(runtime.lockExpiresAt)}.
         </p>
       )}
 
       {preview && (
         <div className="space-y-3 rounded-lg border border-border p-4">
-          <div>
-            <h3 className="font-semibold text-foreground">Impact calculé par le backend</h3>
-            <p className="text-sm text-muted-foreground">
-              Cutoff serveur : {formatRetentionDate(preview.cutoffAt)}. Le frontend ne fournit jamais cette date.
-            </p>
+          <div className="flex items-start gap-2">
+            <div>
+              <h3 className="font-semibold text-foreground">Impact calculé par le serveur</h3>
+              <p className="text-sm text-muted-foreground">
+                Date limite de prise en compte : {formatRetentionDate(preview.cutoffAt)}.
+              </p>
+            </div>
+            <InfoTooltip
+              content="Cette date est calculée exclusivement par le serveur à partir de la politique de rétention active. L’interface ne peut pas la modifier."
+              label="Comment la date limite est-elle calculée ?"
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <PreviewMetric label="Éligibles" value={preview.eligibleCount} />
-            <PreviewMetric label="Maximum ce run" value={preview.maxAffectedThisRun} />
+            <PreviewMetric label="Maximum pour cette exécution" value={preview.maxAffectedThisRun} />
             <PreviewMetric label="Lots estimés" value={preview.estimatedBatches} />
             <PreviewMetric label="Taille de lot" value={preview.batchSize} />
           </div>
@@ -124,7 +149,7 @@ function PlatformRetentionPreview({
 
       <ConfirmationDialog
         confirmLabel="Confirmer la purge"
-        description="Cette action détruit définitivement les AuditLogs éligibles. La preview sera recalculée côté serveur avant l’exécution."
+        description="Cette action détruit définitivement les journaux d’audit éligibles. La prévisualisation sera recalculée côté serveur avant l’exécution."
         errorMessage={confirmationError}
         onCancel={() => {
           setConfirmationOpen(false);
