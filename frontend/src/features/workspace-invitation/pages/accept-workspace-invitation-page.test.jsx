@@ -140,9 +140,9 @@ describe('AcceptWorkspaceInvitationPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByTestId('location-hash')).toHaveTextContent('');
+      expect(screen.getByTestId('location-hash')).toBeEmptyDOMElement();
     });
-    expect(screen.getByTestId('location-search')).toHaveTextContent('');
+    expect(screen.getByTestId('location-search')).toBeEmptyDOMElement();
     expect(screen.getByLabelText('Prénom')).toBeInTheDocument();
   });
 
