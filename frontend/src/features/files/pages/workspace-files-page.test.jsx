@@ -112,6 +112,10 @@ describe('WorkspaceFilesPage', () => {
       limit: 20,
     });
     expect(screen.getByRole('heading', { name: 'Fichiers' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'À propos des fichiers' })).toBeInTheDocument();
+    expect(
+      screen.queryByText('Consultez et téléchargez les fichiers actifs de Acme.'),
+    ).not.toBeInTheDocument();
 
     const table = screen.getByRole('table', { name: 'Fichiers actifs du workspace' });
     const fileName = within(table).getByText('contrat.pdf');
@@ -147,10 +151,8 @@ describe('WorkspaceFilesPage', () => {
     const user = userEvent.setup();
 
     renderPage();
-    await user.selectOptions(
-      screen.getByLabelText('Filtrer par catégorie'),
-      'document',
-    );
+    await user.click(screen.getByLabelText('Filtrer par catégorie'));
+    await user.click(await screen.findByRole('option', { name: 'Document' }));
 
     expect(mocks.useListWorkspaceFilesQuery).toHaveBeenLastCalledWith({
       workspaceId: 'workspace-1',
