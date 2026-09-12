@@ -7,7 +7,7 @@ import { WorkspaceSwitcher } from '@/features/workspace/components/workspace-swi
 import { WorkspaceUserIdentity } from '@/features/workspace/components/workspace-user-identity';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
-function WorkspaceTopbar({ workspace }) {
+function WorkspaceTopbar({ sidebarTrigger = null, workspace }) {
   const { can } = useWorkspaceContext();
   const location = useLocation();
   const canReadSubscription = can(WORKSPACE_PERMISSION.SUBSCRIPTION_READ);
@@ -20,6 +20,7 @@ function WorkspaceTopbar({ workspace }) {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
       <div className="flex min-h-16 items-center gap-4 px-4 sm:px-6">
+        {sidebarTrigger}
         <div className="min-w-0 flex-1">
           <WorkspaceSwitcher currentWorkspace={workspace} />
         </div>
