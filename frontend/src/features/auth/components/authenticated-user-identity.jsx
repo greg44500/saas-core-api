@@ -9,7 +9,14 @@ function getUserDisplayName(user) {
   return fullName || user.email || 'Compte utilisateur';
 }
 
-function AuthenticatedUserIdentity({ secondaryText }) {
+/**
+ * Identité authentifiée commune aux surfaces applicatives.
+ *
+ * `actions` permet à un contexte (Platform, Workspace, futur module) d'ajouter
+ * ses raccourcis juste avant la déconnexion sans coupler ce composant Auth à
+ * une fonctionnalité métier ou d'administration précise.
+ */
+function AuthenticatedUserIdentity({ actions = null, secondaryText }) {
   const { data: user } = useGetCurrentUserQuery();
   const displayName = getUserDisplayName(user);
   const resolvedSecondaryText = secondaryText ?? user?.email ?? null;
@@ -29,6 +36,7 @@ function AuthenticatedUserIdentity({ secondaryText }) {
         </div>
       </div>
 
+      {actions}
       <LogoutShortcut />
     </div>
   );

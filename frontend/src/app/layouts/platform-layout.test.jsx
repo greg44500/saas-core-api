@@ -3,11 +3,20 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router';
 
 vi.mock('@/features/platform/components/platform-dashboard-display-preferences', () => ({
-  PlatformDashboardDisplayPreferences: () => <button type="button">Personnaliser Platform</button>,
+  PlatformDashboardDisplayPreferences: ({ triggerVariant }) => (
+    <button type="button">
+      {triggerVariant === 'icon' ? 'Préférences d’affichage' : 'Personnaliser Platform'}
+    </button>
+  ),
 }));
 
 vi.mock('@/features/platform/components/platform-user-identity', () => ({
-  PlatformUserIdentity: () => <div>Identité Platform</div>,
+  PlatformUserIdentity: ({ actions }) => (
+    <div>
+      <span>Identité Platform</span>
+      {actions}
+    </div>
+  ),
 }));
 
 vi.mock('@/features/platform/components/platform-sidebar', () => ({
@@ -32,22 +41,26 @@ function renderLayout(initialEntry) {
 describe('PlatformLayout', () => {
   afterEach(() => cleanup());
 
-  it('affiche la personnalisation sur la vue d’ensemble Platform', () => {
+  it('affiche la recherche et les préférences d’affichage sur la vue d’ensemble Platform', () => {
     renderLayout('/platform/overview');
 
     expect(
       screen.getByText('Console d’administration globale'),
     ).toBeInTheDocument();
+    expect(screen.getByRole('search', { name: 'Recherche globale' }))
+      .toBeInTheDocument();
     expect(screen.getByText('Identité Platform')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Personnaliser Platform' }))
+    expect(screen.getByRole('button', { name: 'Préférences d’affichage' }))
       .toBeInTheDocument();
   });
 
-  it('n’affiche pas la personnalisation sur les autres écrans Platform', () => {
+  it('conserve la recherche mais masque les préférences d’affichage hors vue d’ensemble', () => {
     renderLayout('/platform/users');
 
     expect(screen.getByText('Utilisateurs Platform')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Personnaliser Platform' }))
+    expect(screen.getByRole('search', { name: 'Recherche globale' }))
+      .toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Préférences d’affichage' }))
       .not.toBeInTheDocument();
   });
 });

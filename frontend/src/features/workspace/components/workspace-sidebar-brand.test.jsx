@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router';
 
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
 import { WorkspaceSidebar } from '@/features/workspace/components/workspace-sidebar';
 
@@ -11,19 +12,19 @@ describe('WorkspaceSidebar application identity', () => {
 
     render(
       <MemoryRouter initialEntries={['/workspaces/workspace-1/dashboard']}>
-        <WorkspaceProvider
-          features={[]}
-          membership={null}
-          permissions={[]}
-          workspace={workspace}
-        >
-          <WorkspaceSidebar
-            collapsed={false}
-            navigation={[]}
-            onToggle={vi.fn()}
+        <SidebarProvider>
+          <WorkspaceProvider
+            features={[]}
+            membership={null}
+            permissions={[]}
             workspace={workspace}
-          />
-        </WorkspaceProvider>
+          >
+            <WorkspaceSidebar
+              navigation={[]}
+              workspace={workspace}
+            />
+          </WorkspaceProvider>
+        </SidebarProvider>
       </MemoryRouter>,
     );
 

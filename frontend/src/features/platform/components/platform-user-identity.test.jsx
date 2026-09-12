@@ -8,8 +8,11 @@ vi.mock('@/features/platform/api/platform-current-context-api', () => ({
 }));
 
 vi.mock('@/features/auth/components/authenticated-user-identity', () => ({
-  AuthenticatedUserIdentity: ({ secondaryText }) => (
-    <div data-testid="authenticated-user-identity">{secondaryText}</div>
+  AuthenticatedUserIdentity: ({ actions, secondaryText }) => (
+    <div data-testid="authenticated-user-identity">
+      <span>{secondaryText}</span>
+      {actions}
+    </div>
   ),
 }));
 
@@ -31,6 +34,24 @@ describe('PlatformUserIdentity', () => {
 
     expect(screen.getByTestId('authenticated-user-identity'))
       .toHaveTextContent('Administrateur Platform');
+  });
+
+  it('transmet les actions propres à la topbar Platform', () => {
+    useGetCurrentPlatformContextQueryMock.mockReturnValue({
+      data: {
+        isFounder: true,
+        role: { name: 'Super administrateur' },
+      },
+    });
+
+    render(
+      <PlatformUserIdentity
+        actions={<button type="button">Préférences d’affichage</button>}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Préférences d’affichage' }))
+      .toBeInTheDocument();
   });
 
   it('distingue le fondateur sans perdre le rôle assigné', () => {

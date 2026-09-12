@@ -8,6 +8,11 @@ import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   useUpdateCurrentUserPreferencesMutation,
 } from '@/features/preferences/api/user-preferences-api';
 
@@ -20,7 +25,11 @@ const EMPTY_HIDDEN_WIDGET_IDS = Object.freeze([]);
  * doit lui fournir uniquement les widgets déjà filtrés par les règles d'accès
  * de la surface concernée (Workspace, Platform ou futur module métier).
  */
-function DashboardDisplayPreferences({ accessibleWidgets, preferencesQuery }) {
+function DashboardDisplayPreferences({
+  accessibleWidgets,
+  preferencesQuery,
+  triggerVariant = 'button',
+}) {
   const { toast } = useToast();
   const { setPreviewHiddenWidgetIds } = useDashboardDisplayPreview();
   const [open, setOpen] = useState(false);
@@ -89,17 +98,41 @@ function DashboardDisplayPreferences({ accessibleWidgets, preferencesQuery }) {
     }
   }
 
+  const trigger = triggerVariant === 'icon' ? (
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <Button
+            aria-label="Préférences d’affichage"
+            disabled={preferencesQuery.isLoading}
+            onClick={openPreferences}
+            size="icon"
+            type="button"
+            variant="ghost"
+          />
+        )}
+      >
+        <SlidersHorizontal aria-hidden="true" />
+      </TooltipTrigger>
+      <TooltipContent align="center" side="bottom">
+        Préférences d’affichage
+      </TooltipContent>
+    </Tooltip>
+  ) : (
+    <Button
+      disabled={preferencesQuery.isLoading}
+      onClick={openPreferences}
+      type="button"
+      variant="outline"
+    >
+      <SlidersHorizontal aria-hidden="true" className="size-4" />
+      Personnaliser le tableau de bord
+    </Button>
+  );
+
   return (
     <>
-      <Button
-        disabled={preferencesQuery.isLoading}
-        onClick={openPreferences}
-        type="button"
-        variant="outline"
-      >
-        <SlidersHorizontal aria-hidden="true" className="size-4" />
-        Personnaliser le tableau de bord
-      </Button>
+      {trigger}
 
       <EntityDetailsDrawer
         description="Choisissez uniquement parmi les indicateurs auxquels vous avez réellement accès. Les changements sont prévisualisés immédiatement et ne modifient jamais vos droits."

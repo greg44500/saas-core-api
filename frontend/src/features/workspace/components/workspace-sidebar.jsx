@@ -1,18 +1,8 @@
-import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { NavLink, useLocation } from 'react-router';
+import { useLocation } from 'react-router';
 
 import { APPLICATION_IDENTITY } from '@/app/application-identity';
-import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { AppSidebar } from '@/components/shared/app-sidebar';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
-import { cn } from '@/lib/utils';
-
-const NAV_ITEM_CLASS = 'group relative flex min-h-10 w-full items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors';
 
 function canDisplayNavigationItem(item, { can, hasFeature }) {
   return (!item.permission || can(item.permission))
@@ -20,9 +10,8 @@ function canDisplayNavigationItem(item, { can, hasFeature }) {
 }
 
 /**
- * Applique les droits effectifs avant le rendu. Un groupe sans enfant visible
- * disparaît entièrement afin que la navigation reflète le produit réellement
- * disponible dans le workspace.
+ * Applique les droits effectifs avant le rendu. Cette visibilité reste une
+ * règle UX : l'autorisation de sécurité demeure imposée par les guards et API.
  */
 function filterWorkspaceNavigation(navigation, access) {
   return navigation.flatMap((entry) => {
@@ -30,26 +19,12 @@ function filterWorkspaceNavigation(navigation, access) {
       return canDisplayNavigationItem(entry, access) ? [entry] : [];
     }
 
-    const items = (entry.items ?? []).filter((item) =>
-      canDisplayNavigationItem(item, access));
+    const items = (entry.items ?? []).filter((item) => (
+      canDisplayNavigationItem(item, access)
+    ));
 
-    return items.length > 0
-      ? [{ ...entry, items }]
-      : [];
+    return items.length > 0 ? [{ ...entry, items }] : [];
   });
-}
-
-function SidebarLabel({ collapsed, children }) {
-  return (
-    <span
-      className={cn(
-        'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ease-in-out',
-        collapsed ? 'max-w-0 opacity-0' : 'max-w-48 opacity-100',
-      )}
-    >
-      {children}
-    </span>
-  );
 }
 
 function isNavigationItemActive({ item, pathname, workspaceId }) {
@@ -58,290 +33,42 @@ function isNavigationItemActive({ item, pathname, workspaceId }) {
 }
 
 function getActiveNavigationGroupId({ navigation, pathname, workspaceId }) {
-  const activeGroup = navigation.find((entry) =>
+  return navigation.find((entry) => (
     entry.type === 'group'
-    && entry.items.some((item) =>
-      isNavigationItemActive({ item, pathname, workspaceId })));
-
-  return activeGroup?.id ?? null;
+    && entry.items.some((item) => (
+      isNavigationItemActive({ item, pathname, workspaceId })
+    ))
+  ))?.id ?? null;
 }
 
-function WorkspaceNavigationLink({
-  collapsed = false,
-  item,
-  nested = false,
-  onNavigate,
-  workspaceId,
-}) {
-  const { Icon } = item;
-  const link = (
-    <NavLink
-      aria-label={collapsed ? item.label : undefined}
-      className={({ isActive }) => cn(
-        NAV_ITEM_CLASS,
-        nested && !collapsed && 'pl-5',
-        isActive
-          ? 'bg-primary text-primary-foreground'
-          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-      )}
-      onClick={onNavigate}
-      to={`/workspaces/${workspaceId}/${item.path}`}
-    >
-      <Icon aria-hidden="true" className="size-4 shrink-0" />
-      <SidebarLabel collapsed={collapsed}>{item.label}</SidebarLabel>
-    </NavLink>
-  );
-
-  if (!collapsed) return link;
-
-  return (
-    <Tooltip>
-      <TooltipTrigger render={link} />
-      <TooltipContent side="right">{item.label}</TooltipContent>
-    </Tooltip>
-  );
-}
-
-function WorkspaceNavigationGroup({
-  collapsed,
-  expanded,
-  group,
-  location,
-  onFlyoutChange,
-  onGroupToggle,
-  openFlyoutGroupId,
-  workspaceId,
-}) {
-  const { Icon } = group;
-  const triggerRef = useRef(null);
-  const active = group.items.some((item) =>
-    isNavigationItemActive({ item, pathname: location.pathname, workspaceId }));
-  const flyoutOpen = collapsed && openFlyoutGroupId === group.id;
-  const flyoutId = `workspace-navigation-${group.id}-flyout`;
-
-  function toggleGroup() {
-    if (collapsed) {
-      onFlyoutChange(flyoutOpen ? null : group.id);
-      return;
-    }
-
-    onGroupToggle(group.id);
-  }
-
-  const trigger = (
-    <button
-      aria-controls={collapsed ? flyoutId : undefined}
-      aria-expanded={collapsed ? flyoutOpen : expanded}
-      aria-label={collapsed ? group.label : undefined}
-      className={cn(
-        NAV_ITEM_CLASS,
-        'justify-start',
-        active
-          ? 'text-foreground'
-          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-      )}
-      onClick={toggleGroup}
-      ref={triggerRef}
-      type="button"
-    >
-      <Icon aria-hidden="true" className="size-4 shrink-0" />
-      <SidebarLabel collapsed={collapsed}>{group.label}</SidebarLabel>
-      {!collapsed && (
-        <ChevronDown
-          aria-hidden="true"
-          className={cn(
-            'ml-auto size-4 shrink-0 transition-transform duration-200',
-            expanded && 'rotate-180',
-          )}
-        />
-      )}
-    </button>
-  );
-
-  return (
-    <div
-      className="relative"
-      onBlurCapture={(event) => {
-        if (flyoutOpen && !event.currentTarget.contains(event.relatedTarget)) {
-          onFlyoutChange(null);
-        }
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape' && flyoutOpen) {
-          event.preventDefault();
-          onFlyoutChange(null);
-          triggerRef.current?.focus();
-        }
-      }}
-    >
-      {collapsed ? (
-        <Tooltip>
-          <TooltipTrigger render={trigger} />
-          <TooltipContent side="right">{group.label}</TooltipContent>
-        </Tooltip>
-      ) : trigger}
-
-      {!collapsed && (
-        <div
-          className={cn(
-            'grid transition-[grid-template-rows,opacity] duration-200 ease-in-out',
-            expanded
-              ? 'grid-rows-[1fr] opacity-100'
-              : 'grid-rows-[0fr] opacity-0',
-          )}
-        >
-          <div className="overflow-hidden">
-            <div className="space-y-1 pt-1">
-              {group.items.map((item) => (
-                <WorkspaceNavigationLink
-                  item={item}
-                  key={item.id}
-                  nested
-                  workspaceId={workspaceId}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {flyoutOpen && (
-        <div
-          aria-label={group.label}
-          className="absolute left-full top-0 z-[var(--layer-flyout)] ml-3 w-64 rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-lg"
-          id={flyoutId}
-          role="group"
-        >
-          <p className="px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {group.label}
-          </p>
-          <div className="space-y-1">
-            {group.items.map((item) => (
-              <WorkspaceNavigationLink
-                item={item}
-                key={item.id}
-                onNavigate={() => onFlyoutChange(null)}
-                workspaceId={workspaceId}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function WorkspaceSidebar({
-  collapsed,
-  navigation = [],
-  onToggle,
-  workspace,
-}) {
+function WorkspaceSidebar({ navigation = [], workspace }) {
   const location = useLocation();
   const { can, hasFeature } = useWorkspaceContext();
-  const visibleNavigation = filterWorkspaceNavigation(navigation, {
-    can,
-    hasFeature,
-  });
-  const activeGroupId = getActiveNavigationGroupId({
-    navigation: visibleNavigation,
+  const visibleNavigation = filterWorkspaceNavigation(navigation, { can, hasFeature });
+  const getHref = (item) => `/workspaces/${workspace.id}/${item.path}`;
+  const isItemActive = (item) => isNavigationItemActive({
+    item,
     pathname: location.pathname,
     workspaceId: workspace.id,
   });
-  const [openGroupId, setOpenGroupId] = useState(() => activeGroupId);
-  const [openFlyoutGroupId, setOpenFlyoutGroupId] = useState(null);
-  const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
-
-  /**
-   * Une vraie navigation resynchronise l'accordéon avec la section courante.
-   * Un simple rerender ne doit en revanche jamais rouvrir un groupe que
-   * l'utilisateur vient volontairement de refermer.
-   */
-  useEffect(() => {
-    setOpenGroupId(activeGroupId);
-    setOpenFlyoutGroupId(null);
-  }, [activeGroupId, location.pathname]);
-
-  function toggleGroup(groupId) {
-    setOpenGroupId((current) => current === groupId ? null : groupId);
-  }
 
   return (
-    <aside
-      className={cn(
-        'sticky top-0 hidden h-svh shrink-0 self-start overflow-visible border-r border-border bg-card transition-[width] duration-300 ease-in-out md:flex md:flex-col',
-        collapsed ? 'w-20' : 'w-64',
-      )}
-    >
-      <div className="flex h-16 shrink-0 items-center border-b border-border px-4">
-        <div className="min-w-0 flex-1 overflow-hidden">
-          <div
-            aria-hidden={collapsed}
-            className={cn(
-              'transition-opacity duration-200',
-              collapsed ? 'opacity-0' : 'opacity-100',
-            )}
-          >
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Application</p>
-            <p className="truncate font-semibold text-card-foreground">
-              {APPLICATION_IDENTITY.name}
-            </p>
-          </div>
-        </div>
-        <Button
-          aria-label={collapsed ? 'Déployer la navigation' : 'Réduire la navigation'}
-          className="shrink-0"
-          onClick={() => {
-            setOpenFlyoutGroupId(null);
-            onToggle();
-          }}
-          size="icon"
-          type="button"
-          variant="ghost"
-        >
-          <ToggleIcon aria-hidden="true" />
-        </Button>
-      </div>
-
-      <nav
-        aria-label="Navigation du workspace"
-        className={cn(
-          'min-h-0 flex-1 space-y-1 p-3',
-          collapsed ? 'overflow-visible' : 'overflow-y-auto overflow-x-hidden',
-        )}
-      >
-        {visibleNavigation.map((entry) => (
-          entry.type === 'group' ? (
-            <WorkspaceNavigationGroup
-              collapsed={collapsed}
-              expanded={openGroupId === entry.id}
-              group={entry}
-              key={entry.id}
-              location={location}
-              onFlyoutChange={setOpenFlyoutGroupId}
-              onGroupToggle={toggleGroup}
-              openFlyoutGroupId={openFlyoutGroupId}
-              workspaceId={workspace.id}
-            />
-          ) : (
-            <WorkspaceNavigationLink
-              collapsed={collapsed}
-              item={entry}
-              key={entry.id}
-              workspaceId={workspace.id}
-            />
-          )
-        ))}
-      </nav>
-    </aside>
+    <AppSidebar
+      eyebrow="Application"
+      getHref={getHref}
+      getIcon={(entry) => entry.Icon}
+      isItemActive={isItemActive}
+      navigation={visibleNavigation}
+      navigationLabel="Navigation du workspace"
+      pathname={location.pathname}
+      title={APPLICATION_IDENTITY.name}
+    />
   );
 }
 
 export {
-  SidebarLabel,
-  WorkspaceNavigationGroup,
-  WorkspaceNavigationLink,
   WorkspaceSidebar,
   filterWorkspaceNavigation,
   getActiveNavigationGroupId,
+  isNavigationItemActive,
 };

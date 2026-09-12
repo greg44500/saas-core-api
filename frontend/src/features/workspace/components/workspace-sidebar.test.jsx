@@ -1,8 +1,9 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router';
 
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
 import { WorkspaceSidebar } from '@/features/workspace/components/workspace-sidebar';
@@ -30,6 +31,7 @@ function renderSidebar(
     collapsed = false,
     features = [],
     initialEntry = '/workspaces/workspace-1/dashboard',
+    navigation = coreWorkspaceNavigation,
   } = {},
 ) {
   render(
@@ -41,12 +43,12 @@ function renderSidebar(
           permissions={permissions}
           workspace={workspace}
         >
-          <WorkspaceSidebar
-            collapsed={collapsed}
-            navigation={coreWorkspaceNavigation}
-            onToggle={vi.fn()}
-            workspace={workspace}
-          />
+          <SidebarProvider defaultOpen={!collapsed}>
+            <WorkspaceSidebar
+              navigation={navigation}
+              workspace={workspace}
+            />
+          </SidebarProvider>
         </WorkspaceProvider>
       </TooltipProvider>
     </MemoryRouter>,
@@ -54,46 +56,21 @@ function renderSidebar(
 }
 
 describe('WorkspaceSidebar', () => {
-  afterEach(() => {
-    cleanup();
-  });
+  afterEach(() => cleanup());
 
-  it('ne conserve que le dashboard quand aucun groupe ne contient d’entrée autorisée', () => {
+  it('expose un landmark de navigation et retire les groupes sans entrée autorisée', () => {
     renderSidebar([WORKSPACE_PERMISSION.WORKSPACE_READ]);
 
-    expect(screen.getByText('Tableau de bord')).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: 'Navigation du workspace' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tableau de bord' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ressources' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Fonctionnalités' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Gestion du workspace' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Compte & offre' })).not.toBeInTheDocument();
   });
 
-  it('reste ancrée au viewport et fait défiler sa navigation en mode déployé', () => {
-    renderSidebar([WORKSPACE_PERMISSION.WORKSPACE_READ]);
-
-    expect(screen.getByRole('complementary')).toHaveClass(
-      'sticky',
-      'top-0',
-      'h-svh',
-      'self-start',
-    );
-    expect(
-      screen.getByRole('navigation', { name: 'Navigation du workspace' }),
-    ).toHaveClass('min-h-0', 'overflow-y-auto', 'overflow-x-hidden');
-  });
-
-  it('préserve les tooltips et flyouts hors du cadre en mode réduit', () => {
-    renderSidebar(
-      [WORKSPACE_PERMISSION.WORKSPACE_READ],
-      { collapsed: true },
-    );
-
-    expect(
-      screen.getByRole('navigation', { name: 'Navigation du workspace' }),
-    ).toHaveClass('overflow-visible');
-  });
-
-  it('masque la gestion d’équipe quand la permission existe mais pas la feature', () => {
+  it('combine permission et feature avant de rendre la gestion d’équipe', () => {
     renderSidebar([
       WORKSPACE_PERMISSION.WORKSPACE_READ,
       WORKSPACE_PERMISSION.MEMBER_READ,
@@ -101,10 +78,9 @@ describe('WorkspaceSidebar', () => {
     ]);
 
     expect(screen.queryByRole('button', { name: 'Gestion du workspace' })).not.toBeInTheDocument();
-    expect(screen.queryByText('Membres')).not.toBeInTheDocument();
   });
 
-  it('n’ouvre qu’un seul groupe à la fois', async () => {
+  it('n’ouvre qu’un groupe à la fois et permet de le refermer', async () => {
     const user = userEvent.setup();
 
     renderSidebar(
@@ -121,66 +97,16 @@ describe('WorkspaceSidebar', () => {
 
     await user.click(workspaceGroup);
     expect(workspaceGroup).toHaveAttribute('aria-expanded', 'true');
-    expect(accountGroup).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('link', { name: 'Membres' })).toBeInTheDocument();
 
     await user.click(accountGroup);
     expect(workspaceGroup).toHaveAttribute('aria-expanded', 'false');
     expect(accountGroup).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('link', { name: 'Abonnement' })).toBeInTheDocument();
-  });
-
-  it('permet de refermer le groupe contenant la route active', async () => {
-    const user = userEvent.setup();
-
-    renderSidebar(
-      [
-        WORKSPACE_PERMISSION.WORKSPACE_READ,
-        WORKSPACE_PERMISSION.FILE_READ,
-      ],
-      {
-        initialEntry: '/workspaces/workspace-1/files',
-      },
-    );
-
-    const resourcesGroup = screen.getByRole('button', { name: 'Ressources' });
-    expect(resourcesGroup).toHaveAttribute('aria-expanded', 'true');
-
-    await user.click(resourcesGroup);
-
-    expect(resourcesGroup).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  it('permet de refermer un groupe ouvert au second clic', async () => {
-    const user = userEvent.setup();
-
-    renderSidebar([
-      WORKSPACE_PERMISSION.WORKSPACE_READ,
-      WORKSPACE_PERMISSION.SUBSCRIPTION_READ,
-    ]);
-
-    const accountGroup = screen.getByRole('button', { name: 'Compte & offre' });
-
-    await user.click(accountGroup);
-    expect(accountGroup).toHaveAttribute('aria-expanded', 'true');
 
     await user.click(accountGroup);
     expect(accountGroup).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  it('rend Fichiers consultable avec file:read même si file_upload est absent', async () => {
-    const user = userEvent.setup();
-
-    renderSidebar([
-      WORKSPACE_PERMISSION.WORKSPACE_READ,
-      WORKSPACE_PERMISSION.FILE_READ,
-    ]);
-
-    expect(screen.queryByRole('button', { name: 'Fonctionnalités' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Ressources' }));
-    const filesLink = screen.getByRole('link', { name: 'Fichiers' });
-
-    expect(filesLink).toHaveAttribute('href', '/workspaces/workspace-1/files');
+    expect(screen.queryByRole('link', { name: 'Abonnement' })).not.toBeInTheDocument();
   });
 
   it('ouvre automatiquement le groupe contenant la route courante', () => {
@@ -195,20 +121,39 @@ describe('WorkspaceSidebar', () => {
       },
     );
 
-    expect(screen.getByRole('button', { name: 'Compte & offre' })).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('link', { name: 'Activité' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Compte & offre' }))
+      .toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('link', { name: 'Activité' })).toHaveAttribute(
+      'href',
+      '/workspaces/workspace-1/activity',
+    );
   });
 
-  it('masque Activité avec audit:read lorsque audit_logs est absent', () => {
+  it('rend Fichiers avec file:read sans exiger la feature d’upload', async () => {
+    const user = userEvent.setup();
+
+    renderSidebar([
+      WORKSPACE_PERMISSION.WORKSPACE_READ,
+      WORKSPACE_PERMISSION.FILE_READ,
+    ]);
+
+    await user.click(screen.getByRole('button', { name: 'Ressources' }));
+    expect(screen.getByRole('link', { name: 'Fichiers' })).toHaveAttribute(
+      'href',
+      '/workspaces/workspace-1/files',
+    );
+  });
+
+  it('masque entièrement Activité quand la feature audit_logs est absente', () => {
     renderSidebar([
       WORKSPACE_PERMISSION.WORKSPACE_READ,
       WORKSPACE_PERMISSION.AUDIT_READ,
     ]);
 
-    expect(screen.queryByText('Activité')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Compte & offre' })).not.toBeInTheDocument();
   });
 
-  it('rend Paramètres dans Gestion du workspace avec workspace:update', async () => {
+  it('rend Paramètres avec workspace:update', async () => {
     const user = userEvent.setup();
 
     renderSidebar([
@@ -217,12 +162,13 @@ describe('WorkspaceSidebar', () => {
     ]);
 
     await user.click(screen.getByRole('button', { name: 'Gestion du workspace' }));
-    const settingsLink = screen.getByRole('link', { name: 'Paramètres' });
-
-    expect(settingsLink).toHaveAttribute('href', '/workspaces/workspace-1/settings');
+    expect(screen.getByRole('link', { name: 'Paramètres' })).toHaveAttribute(
+      'href',
+      '/workspaces/workspace-1/settings',
+    );
   });
 
-  it('réutilise le tooltip shadcn/Base UI pour la navigation réduite', async () => {
+  it('conserve les tooltips shadcn/Base UI pour les entrées directes en mode icône', async () => {
     const user = userEvent.setup();
 
     renderSidebar(
@@ -231,16 +177,12 @@ describe('WorkspaceSidebar', () => {
     );
 
     const dashboardLink = screen.getByRole('link', { name: 'Tableau de bord' });
-    expect(screen.getAllByText('Tableau de bord')).toHaveLength(1);
-
     await user.hover(dashboardLink);
-    expect((await screen.findAllByText('Tableau de bord')).length).toBeGreaterThan(1);
 
-    await user.keyboard('{Escape}');
-    expect(screen.getAllByText('Tableau de bord')).toHaveLength(1);
+    expect((await screen.findAllByText('Tableau de bord')).length).toBeGreaterThan(1);
   });
 
-  it('ouvre un flyout explicite en mode réduit et le ferme avec Escape', async () => {
+  it('ouvre les enfants d’un groupe dans un popover en mode icône et restitue le focus avec Escape', async () => {
     const user = userEvent.setup();
 
     renderSidebar(
@@ -254,21 +196,53 @@ describe('WorkspaceSidebar', () => {
       },
     );
 
-    expect(
-      screen.getByRole('link', { name: 'Tableau de bord' }),
-    ).toBeInTheDocument();
-
     const workspaceGroup = screen.getByRole('button', { name: 'Gestion du workspace' });
     await user.click(workspaceGroup);
 
-    expect(screen.getByRole('group', { name: 'Gestion du workspace' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Membres' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Déployer la navigation' }),
-    ).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
-    expect(screen.queryByRole('group', { name: 'Gestion du workspace' })).not.toBeInTheDocument();
+
+    expect(screen.queryByRole('link', { name: 'Membres' })).not.toBeInTheDocument();
     expect(workspaceGroup).toHaveFocus();
+  });
+
+  it('supporte plusieurs groupes métier sans modifier le renderer Core', async () => {
+    const user = userEvent.setup();
+    const moduleNavigation = [
+      ...coreWorkspaceNavigation,
+      {
+        id: 'module-a',
+        type: 'group',
+        label: 'Module métier A',
+        items: [
+          { id: 'module-a-dashboard', label: 'Vue module A', path: 'module-a' },
+          { id: 'module-a-items', label: 'Éléments module A', path: 'module-a/items' },
+        ],
+      },
+      {
+        id: 'module-b',
+        type: 'group',
+        label: 'Module métier B',
+        items: [
+          { id: 'module-b-dashboard', label: 'Vue module B', path: 'module-b' },
+        ],
+      },
+    ];
+
+    renderSidebar(
+      [WORKSPACE_PERMISSION.WORKSPACE_READ],
+      { navigation: moduleNavigation },
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Module métier A' }));
+    expect(screen.getByRole('link', { name: 'Vue module A' })).toHaveAttribute(
+      'href',
+      '/workspaces/workspace-1/module-a',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Module métier B' }));
+    expect(screen.queryByRole('link', { name: 'Vue module A' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Vue module B' })).toBeInTheDocument();
   });
 });

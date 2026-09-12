@@ -11,11 +11,12 @@ function getPlatformIdentitySecondaryText(platformAccess) {
   return roleName ?? 'Équipe Platform';
 }
 
-function PlatformUserIdentity() {
+function PlatformUserIdentity({ actions = null }) {
   const { data: platformAccess } = useGetCurrentPlatformContextQuery();
 
   return (
     <AuthenticatedUserIdentity
+      actions={actions}
       secondaryText={getPlatformIdentitySecondaryText(platformAccess)}
     />
   );

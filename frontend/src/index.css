@@ -38,17 +38,26 @@
   --color-invalid: var(--invalid);
   --color-disabled: var(--disabled);
   --color-disabled-foreground: var(--disabled-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  --radius-sm: calc(var(--radius) - 0.375rem);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
 }
 
 :root {
   color-scheme: light;
 
   --font-family-app: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --radius: 0.75rem;
 
   /*
    * Les palettes D-011.B surchargent ces tokens sémantiques à partir
@@ -74,6 +83,20 @@
   --input: #b8cbd0;
   --ring: #137c8b;
   --overlay: #000000;
+
+  /*
+   * La future Sidebar shadcn dispose de son propre contrat sémantique. Les
+   * alias gardent aujourd'hui l'identité visuelle du Core tout en permettant
+   * à la navigation d'évoluer sans recoder la palette dans le composant.
+   */
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--card-foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
 
   /*
    * Les tons d'état restent sémantiques et suffisamment contrastés lorsqu'ils

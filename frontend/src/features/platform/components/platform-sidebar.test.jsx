@@ -3,7 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import {
+  PLATFORM_NAVIGATION_ICONS,
+  PlatformSidebar,
+} from '@/features/platform/components/platform-sidebar';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 
 const useGetCurrentPlatformContextQueryMock = vi.hoisted(() => vi.fn());
@@ -12,19 +17,18 @@ vi.mock('@/features/platform/api/platform-current-context-api', () => ({
   useGetCurrentPlatformContextQuery: useGetCurrentPlatformContextQueryMock,
 }));
 
-import { PlatformSidebar } from '@/features/platform/components/platform-sidebar';
-
 const allNavigationPermissions = Object.values(PLATFORM_PERMISSION);
 
 function renderSidebar({
   collapsed = false,
-  onToggle = vi.fn(),
   path = '/platform/overview',
 } = {}) {
   render(
     <MemoryRouter initialEntries={[path]}>
       <TooltipProvider delay={0}>
-        <PlatformSidebar collapsed={collapsed} onToggle={onToggle} />
+        <SidebarProvider defaultOpen={!collapsed}>
+          <PlatformSidebar />
+        </SidebarProvider>
       </TooltipProvider>
     </MemoryRouter>,
   );
@@ -43,61 +47,44 @@ describe('PlatformSidebar', () => {
 
   afterEach(() => cleanup());
 
-  it('reprend la structure Platform figée sans dupliquer les onglets Équipe', () => {
+  it('rend la structure Platform autorisée dans un landmark de navigation', () => {
     renderSidebar();
 
+    expect(
+      screen.getByRole('navigation', { name: 'Navigation de la plateforme' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Vue d’ensemble' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Gestion clients' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Offre commerciale' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Équipe Platform' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sécurité & données' })).toBeInTheDocument();
-    expect(screen.getByText('Gestion des membres')).toBeInTheDocument();
-    expect(screen.getByText('Rétention & purge')).toBeInTheDocument();
   });
 
-  it('reste ancrée au viewport et fait défiler sa navigation en mode déployé', () => {
-    renderSidebar();
+  it('associe une icône distincte à chaque entrée Platform', () => {
+    const icons = Object.values(PLATFORM_NAVIGATION_ICONS);
 
-    expect(screen.getByRole('complementary')).toHaveClass(
-      'sticky',
-      'top-0',
-      'h-svh',
-      'self-start',
-    );
-    expect(
-      screen.getByRole('navigation', { name: 'Navigation de la plateforme' }),
-    ).toHaveClass('min-h-0', 'overflow-y-auto', 'overflow-x-hidden');
+    expect(new Set(icons).size).toBe(icons.length);
   });
 
-  it('préserve les flyouts hors du cadre en mode réduit', () => {
-    renderSidebar({ collapsed: true });
-
-    expect(
-      screen.getByRole('navigation', { name: 'Navigation de la plateforme' }),
-    ).toHaveClass('overflow-visible');
-  });
-
-  it('ouvre le groupe de la route active et ne garde qu’un accordéon ouvert', async () => {
+  it('ouvre le groupe de la route active et ne garde qu’un groupe ouvert', async () => {
     const user = userEvent.setup();
     renderSidebar({ path: '/platform/retention' });
 
-    const securityGroup = screen.getByRole('button', {
-      name: 'Sécurité & données',
-    });
-    const clientGroup = screen.getByRole('button', {
-      name: 'Gestion clients',
-    });
+    const securityGroup = screen.getByRole('button', { name: 'Sécurité & données' });
+    const clientGroup = screen.getByRole('button', { name: 'Gestion clients' });
 
     expect(securityGroup).toHaveAttribute('aria-expanded', 'true');
-    expect(clientGroup).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('link', { name: 'Rétention & purge' })).toBeInTheDocument();
 
     await user.click(clientGroup);
 
     expect(clientGroup).toHaveAttribute('aria-expanded', 'true');
     expect(securityGroup).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('link', { name: 'Rétention & purge' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Utilisateurs' })).toBeInTheDocument();
   });
 
-  it('masque entièrement un groupe sans enfant autorisé', () => {
+  it('masque entièrement les groupes sans enfant autorisé', () => {
     useGetCurrentPlatformContextQueryMock.mockReturnValue({
       data: {
         status: 'active',
@@ -112,64 +99,49 @@ describe('PlatformSidebar', () => {
     expect(screen.queryByRole('button', { name: 'Sécurité & données' })).not.toBeInTheDocument();
   });
 
-  it('utilise le tooltip shadcn/Base UI en sidebar réduite et ferme le flyout après navigation', async () => {
+  it('utilise le tooltip shadcn pour les groupes en mode réduit', async () => {
     const user = userEvent.setup();
     renderSidebar({ collapsed: true });
 
-    const securityGroup = screen.getByRole('button', {
-      name: 'Sécurité & données',
-    });
+    const clientGroup = screen.getByRole('button', { name: 'Gestion clients' });
 
-    const hiddenLabel = screen.getByText('Sécurité & données', {
-      exact: true,
-    });
+    expect(clientGroup).not.toHaveAttribute('title');
 
-    expect(hiddenLabel).toHaveClass('max-w-0', 'opacity-0');
-
-    await user.hover(securityGroup);
+    await user.hover(clientGroup);
 
     expect(
-      (await screen.findAllByText('Sécurité & données', { exact: true })).length,
+      (await screen.findAllByText('Gestion clients', { exact: true })).length,
     ).toBeGreaterThan(1);
+  });
 
-    await user.unhover(securityGroup);
+  it('ouvre un groupe Platform en popover quand la sidebar est réduite puis le ferme après navigation', async () => {
+    const user = userEvent.setup();
+    renderSidebar({ collapsed: true });
 
-    expect(
-      screen.getAllByText('Sécurité & données', { exact: true }),
-    ).toHaveLength(1);
-
-    expect(hiddenLabel).toHaveClass('max-w-0', 'opacity-0');
-
-    expect(
-      screen.queryByRole('link', { name: 'Rétention & purge' }),
-    ).not.toBeInTheDocument();
-
+    const securityGroup = screen.getByRole('button', { name: 'Sécurité & données' });
     await user.click(securityGroup);
 
-    expect(
-      screen.getByRole('link', { name: 'Rétention & purge' }),
-    ).toBeInTheDocument();
+    const retentionLink = screen.getByRole('link', { name: 'Rétention & purge' });
+    expect(retentionLink).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole('link', { name: 'Rétention & purge' }),
-    );
+    await user.click(retentionLink);
 
-    expect(
-      screen.queryByRole('link', { name: 'Rétention & purge' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Rétention & purge' })).not.toBeInTheDocument();
   });
-  it('déclenche le changement d’état de la sidebar', async () => {
+
+  it('fait piloter le mode icône par le SidebarProvider via le trigger shadcn', async () => {
     const user = userEvent.setup();
-    const onToggle = vi.fn();
+    renderSidebar();
 
-    renderSidebar({ onToggle });
+    const trigger = screen.getByRole('button', {
+      name: 'Réduire la navigation d’administration',
+    });
 
-    await user.click(
-      screen.getByRole('button', {
-        name: 'Réduire la navigation d’administration',
-      }),
-    );
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    await user.click(trigger);
 
-    expect(onToggle).toHaveBeenCalledOnce();
+    expect(
+      screen.getByRole('button', { name: 'Déployer la navigation d’administration' }),
+    ).toHaveAttribute('aria-expanded', 'false');
   });
 });
