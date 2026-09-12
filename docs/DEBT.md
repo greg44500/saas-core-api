@@ -65,12 +65,13 @@ produit dérivé automatiquement production-ready
 | D-020 | Invitation commerciale client et offres privées de découverte | EN COURS |
 | D-011 | Design System Core, préférences utilisateur et affichage métier | VALIDÉ |
 | D-021 | Gate sécurité Auth, invitations et tokens temporaires | VALIDÉ |
+| D-022 | Intégrité des Entitlement Override Groups | VALIDÉ |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
 | D-002 | Corbeille et restauration des fichiers | PLANIFIÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
-D-001, D-011, D-014, D-018, D-019 et D-021 sont clôturées.
+D-001, D-011, D-014, D-018, D-019, D-021 et D-022 sont clôturées.
 
 D-020 doit être clôturée ou explicitement reclassifiée avant D-015. D-002 doit être `VALIDÉ` avant D-017 et avant toute première dérivation métier.
 
@@ -451,7 +452,7 @@ Variables/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrati
 **Statut :** PLANIFIÉ  
 **Périmètre :** Core / distribution  
 **Blocage Core 1.0 :** oui  
-**Dépendances :** D-020 doit être clôturée ou explicitement reclassifiée avant ouverture de la release candidate ; D-021 est validée depuis le 2026-09-12
+**Dépendances :** D-020 doit être clôturée ou explicitement reclassifiée avant ouverture de la release candidate ; D-021 et D-022 sont validées depuis le 2026-09-12
 
 À finaliser avant `v1.0.0` : SemVer, tags/releases, changelog/release notes, changements de contrats/configuration, migrations et ordre pre/post-deploy, reprise/rollback, provenance machine-readable et gate de release reproductible.
 
@@ -551,6 +552,48 @@ frontend npm run build    → VERT
 
 ---
 
+## D-022 — Intégrité des Entitlement Override Groups
+
+**Statut :** VALIDÉ — 2026-09-12  
+**Périmètre :** Core entitlement resolver + administration Platform + intégration frontend RTK Query/UI  
+**Blocage Core 1.0 :** levé  
+**Déclencheur :** audit post-D-021 ayant identifié un risque de désynchronisation entre une décision commerciale groupée FEATURE + LIMIT et les mutations unitaires historiques.
+
+Invariants validés :
+
+```text
+groupe FEATURE + LIMIT
+→ création groupée transactionnelle
+→ modification groupée
+→ révocation groupée atomique
+→ même métadonnée de révocation pour tous les membres
+→ audit de chaque override
+```
+
+Une dérogation possédant `groupId` ne peut plus être modifiée ou révoquée via les services unitaires. L'invariant est défendu au niveau service afin qu'un appel interne ne puisse pas contourner la règle par une autre route ou un futur contrôleur.
+
+Le contrat de mise à jour groupée conserve une sémantique de patch partiel : les limites présentes dans `relatedLimits` sont créées ou mises à jour ; les limites omises restent inchangées. L'omission ne constitue jamais une suppression ou une révocation implicite.
+
+Le frontend dispose d'une mutation RTK Query dédiée à `PATCH /platform/entitlement-overrides/feature-groups/:overrideId/revoke`. La page Platform choisit automatiquement cette mutation pour un override groupé et conserve la mutation unitaire pour un override autonome.
+
+La précédence du resolver est déterministe et couverte explicitement :
+
+```text
+startsAt décroissant
+→ puis createdAt décroissant
+→ puis _id décroissant
+```
+
+Les enfants LIMIT groupés restent des détails techniques de résolution et d'audit ; ils ne deviennent pas des décisions commerciales indépendantes dans la vue principale.
+
+### Gates de clôture D-022
+
+Les tests ciblés backend/frontend, les suites globales, le lint et le build applicables ont été exécutés localement et confirmés verts le 2026-09-12.
+
+**Critère de clôture atteint :** invariants de groupe protégés dans les services, révocation groupée atomique exposée backend/frontend, mutation unitaire bloquée pour les groupes, précédence déterministe explicitement testée, tests globaux/lint/build verts et documentation synchronisée.
+
+---
+
 ## 6. Éléments volontairement non intégrés comme dette active
 
 Ne sont pas ajoutés par anticipation : packages `@saas-core/*`, provider de paiement imposé au Core, CMP fictive sans traceurs applicables, limite universelle du nombre de Workspaces ou CAPTCHA/provider anti-bot imposé sans besoin démontré.
@@ -570,6 +613,7 @@ D-011.A stabilisation Design System Core                    VALIDÉ
 D-011.B préférences de confort                              VALIDÉ
 D-011.C préférences d'affichage métier                      VALIDÉ
 D-021 gate sécurité Auth / invitations / tokens             VALIDÉ — 2026-09-12
+D-022 intégrité Entitlement Override Groups                 VALIDÉ — 2026-09-12
 → D-015 release/version/provenance/migrations               PLANIFIÉ
 → D-016 Playwright E2E Core                                 PLANIFIÉ
 → D-002 corbeille / restauration Files                      PLANIFIÉ — avant première dérivation
