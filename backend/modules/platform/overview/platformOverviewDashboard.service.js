@@ -10,6 +10,9 @@ import {
 import {
     projectPlatformOverviewByPermissions,
 } from './platformOverviewProjection.service.js';
+import {
+    getPlatformOverviewUserPopulation,
+} from './platformOverviewUserPopulation.service.js';
 
 /**
  * Compose le cockpit dans une seule frontière de service.
@@ -26,6 +29,7 @@ const createPlatformOverviewDashboardService = ({
     getOverview = getPlatformOverview,
     getAttention = getPlatformOverviewAttention,
     getEconomicKpis = getPlatformOverviewEconomicKpis,
+    getUserPopulation = getPlatformOverviewUserPopulation,
     projectOverview = projectPlatformOverviewByPermissions,
 } = {}) => async ({
     from,
@@ -33,17 +37,38 @@ const createPlatformOverviewDashboardService = ({
     at = new Date(),
     permissions = [],
 } = {}) => {
-    const [overview, attentionItems, economicKpis] = await Promise.all([
+    const [
+        overview,
+        attentionItems,
+        economicKpis,
+        userPopulation,
+    ] = await Promise.all([
         getOverview({ from, to, at }),
         getAttention({ from, to, at }),
         getEconomicKpis({ at }),
+        getUserPopulation(),
     ]);
+
+    const totalUsers = overview.kpis?.users?.total ?? 0;
+    const withCurrentClientAccess = Math.min(
+        userPopulation?.withCurrentClientAccess ?? 0,
+        totalUsers,
+    );
 
     const completeOverview = {
         ...overview,
         kpis: {
             ...overview.kpis,
             ...economicKpis,
+        },
+        users: {
+            ...overview.users,
+            population: {
+                total: totalUsers,
+                withCurrentClientAccess,
+                withoutCurrentClientAccess:
+                    Math.max(totalUsers - withCurrentClientAccess, 0),
+            },
         },
         attention: {
             ...overview.attention,

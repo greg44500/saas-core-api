@@ -30,6 +30,7 @@ import { PlatformEntitlementOverridesDrilldownDrawer } from '@/features/platform
 import { PlatformOverviewSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PlatformOverviewPeriodFilter } from '@/features/platform/components/platform-overview-period-filter';
 import { PlatformTeamSnapshotSection } from '@/features/platform/components/platform-team-snapshot-card';
+import { PlatformUserKpiDescription } from '@/features/platform/components/platform-user-kpi-description';
 import {
   ENTITLEMENT_OVERRIDE_LIFECYCLE,
 } from '@/features/platform/lib/platform-entitlement-override-formatters';
@@ -339,8 +340,12 @@ function PlatformOverviewPage() {
           {sections.users && (
             <MetricCard
               className={getPrimaryKpiItemClass(0, primaryKpiCount)}
-              description="Nombre total de comptes inscrits sur la plateforme."
-              title="Utilisateurs"
+              description={(
+                <PlatformUserKpiDescription
+                  population={overview?.users?.population}
+                />
+              )}
+              title="Comptes utilisateurs"
               value={formatCount(overview?.kpis?.users?.total)}
               {...userTrend}
             />
