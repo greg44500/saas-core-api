@@ -3,9 +3,10 @@ import {
   getUserDisplayName,
 } from '@/features/auth/components/authenticated-user-identity';
 
-function WorkspaceUserIdentity({ planName }) {
+function WorkspaceUserIdentity({ actions = null, planName }) {
   return (
     <AuthenticatedUserIdentity
+      actions={actions}
       secondaryText={planName ? `Plan ${planName}` : undefined}
     />
   );

@@ -5,6 +5,11 @@ import { MemoryRouter } from 'react-router';
 const useWorkspaceContextMock = vi.hoisted(() => vi.fn());
 const useGetWorkspaceSubscriptionQueryMock = vi.hoisted(() => vi.fn());
 
+vi.mock('@/components/shared/expandable-search', () => ({
+  ExpandableSearch: ({ ariaLabel }) => (
+    <div aria-label={ariaLabel} role="search" />
+  ),
+}));
 vi.mock('@/features/workspace/components/workspace-context', () => ({
   useWorkspaceContext: useWorkspaceContextMock,
 }));
@@ -17,13 +22,23 @@ vi.mock('@/features/workspace/components/workspace-switcher', () => ({
   ),
 }));
 vi.mock('@/features/workspace/components/workspace-user-identity', () => ({
-  WorkspaceUserIdentity: ({ planName }) => (
-    <span>{planName ? `Plan ${planName}` : 'Identité utilisateur'}</span>
+  WorkspaceUserIdentity: ({ actions, planName }) => (
+    <div>
+      <span>{planName ? `Plan ${planName}` : 'Identité utilisateur'}</span>
+      {actions}
+    </div>
   ),
 }));
 vi.mock('@/features/workspace/components/workspace-dashboard-display-preferences', () => ({
-  WorkspaceDashboardDisplayPreferences: () => (
-    <button type="button">Personnaliser le tableau de bord</button>
+  WorkspaceDashboardDisplayPreferences: ({ triggerVariant }) => (
+    <button
+      aria-label={triggerVariant === 'icon' ? 'Préférences d’affichage' : undefined}
+      type="button"
+    >
+      {triggerVariant === 'icon'
+        ? 'Préférences'
+        : 'Personnaliser le tableau de bord'}
+    </button>
   ),
 }));
 
@@ -63,22 +78,24 @@ describe('WorkspaceTopbar', () => {
     expect(screen.getByText('Plan Free')).toBeInTheDocument();
   });
 
-  it('place la personnalisation dans la topbar uniquement sur le Dashboard', () => {
+  it('affiche la recherche partout et les préférences uniquement sur le Dashboard', () => {
     useWorkspaceContextMock.mockReturnValue({ can: () => true });
     useGetWorkspaceSubscriptionQueryMock.mockReturnValue({ data: undefined });
 
     const { unmount } = renderTopbar(workspace);
 
-    expect(screen.getByRole('button', {
-      name: 'Personnaliser le tableau de bord',
-    })).toBeInTheDocument();
+    expect(screen.getByRole('search', { name: 'Recherche globale' }))
+      .toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Préférences d’affichage' }))
+      .toBeInTheDocument();
 
     unmount();
     renderTopbar(workspace, '/workspaces/workspace-1/members');
 
-    expect(screen.queryByRole('button', {
-      name: 'Personnaliser le tableau de bord',
-    })).not.toBeInTheDocument();
+    expect(screen.getByRole('search', { name: 'Recherche globale' }))
+      .toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Préférences d’affichage' }))
+      .not.toBeInTheDocument();
   });
 
   it('skip la lecture commerciale lorsque la permission manque', () => {
