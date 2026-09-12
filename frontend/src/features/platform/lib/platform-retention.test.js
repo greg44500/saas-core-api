@@ -4,6 +4,7 @@ import {
   buildManualRetentionExecutionPayload,
   buildRetentionPolicyPayload,
   createRetentionPolicyFormState,
+  getRetentionManualExecutionAvailability,
 } from '@/features/platform/lib/platform-retention';
 
 const target = {
@@ -17,7 +18,7 @@ const target = {
 };
 
 describe('platform retention frontend contract', () => {
-  it('n’invente aucune durée lorsqu’aucune policy n’existe', () => {
+  it('n’invente aucune durée lorsqu’aucune politique n’existe', () => {
     expect(createRetentionPolicyFormState(null)).toEqual({
       enabled: false,
       retentionDays: '',
@@ -29,7 +30,7 @@ describe('platform retention frontend contract', () => {
     });
   });
 
-  it('construit uniquement le body autorisé pour une nouvelle version de policy', () => {
+  it('construit uniquement le body autorisé pour une nouvelle version de politique', () => {
     const result = buildRetentionPolicyPayload({
       currentPolicy: { version: 4 },
       target,
@@ -83,7 +84,7 @@ describe('platform retention frontend contract', () => {
     });
   });
 
-  it('réutilise strictement les gardes renvoyées par la preview pour la purge manuelle', () => {
+  it('réutilise strictement les gardes renvoyées par la prévisualisation pour la purge manuelle', () => {
     const payload = buildManualRetentionExecutionPayload({
       preview: {
         confirmation: {
@@ -104,5 +105,46 @@ describe('platform retention frontend contract', () => {
       confirmation: 'PURGE_AUDIT_LOG_V3',
     });
     expect(payload).not.toHaveProperty('cutoffAt');
+  });
+
+  it('explique pourquoi une purge manuelle est indisponible', () => {
+    expect(getRetentionManualExecutionAvailability({
+      canExecute: true,
+      policy: { config: { enabled: false, manualExecutionEnabled: true } },
+      preview: {},
+      runtime: { locked: false },
+    })).toEqual({
+      allowed: false,
+      reason: 'La politique de rétention doit être active.',
+    });
+
+    expect(getRetentionManualExecutionAvailability({
+      canExecute: true,
+      policy: { config: { enabled: true, manualExecutionEnabled: true } },
+      preview: null,
+      runtime: { locked: false },
+    })).toEqual({
+      allowed: false,
+      reason: 'Prévisualisez la purge avant de pouvoir la confirmer.',
+    });
+  });
+
+  it('autorise l’action UI uniquement lorsque tous les prérequis sont réunis', () => {
+    expect(getRetentionManualExecutionAvailability({
+      canExecute: true,
+      policy: { config: { enabled: true, manualExecutionEnabled: true } },
+      preview: { eligibleCount: 12 },
+      runtime: { locked: false },
+    })).toMatchObject({ allowed: true });
+
+    expect(getRetentionManualExecutionAvailability({
+      canExecute: true,
+      policy: { config: { enabled: true, manualExecutionEnabled: true } },
+      preview: { eligibleCount: 12 },
+      runtime: { locked: true },
+    })).toEqual({
+      allowed: false,
+      reason: 'Une autre purge est déjà en cours.',
+    });
   });
 });
