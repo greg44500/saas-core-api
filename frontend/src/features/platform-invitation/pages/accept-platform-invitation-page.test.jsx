@@ -8,6 +8,10 @@ import {
   useLocation,
 } from 'react-router';
 
+import {
+  clearPlatformInvitationTokenInMemory,
+} from '@/features/platform-invitation/lib/platform-invitation-token';
+
 const mocks = vi.hoisted(() => ({
   acceptExisting: vi.fn(),
   acceptNew: vi.fn(),
@@ -67,6 +71,17 @@ import { AcceptPlatformInvitationPage } from '@/features/platform-invitation/pag
 
 const TOKEN = 'a'.repeat(64);
 
+function LocationProbe() {
+  const location = useLocation();
+
+  return (
+    <>
+      <span data-testid="location-search">{location.search}</span>
+      <span data-testid="location-hash">{location.hash}</span>
+    </>
+  );
+}
+
 function LoginTarget() {
   const location = useLocation();
   const from = location.state?.from;
@@ -86,9 +101,10 @@ function LoginTarget() {
   );
 }
 
-function renderPage(path = `/platform-invitations/accept?token=${TOKEN}`) {
+function renderPage(path = `/platform-invitations/accept#token=${TOKEN}`) {
   return render(
     <MemoryRouter initialEntries={[path]}>
+      <LocationProbe />
       <Routes>
         <Route
           path="/platform-invitations/accept"
@@ -105,6 +121,7 @@ function renderPage(path = `/platform-invitations/accept?token=${TOKEN}`) {
 describe('AcceptPlatformInvitationPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearPlatformInvitationTokenInMemory();
     mocks.authStatus = 'unauthenticated';
     mocks.acceptNew.mockImplementation(() => ({
       unwrap: vi.fn().mockResolvedValue({
@@ -125,8 +142,18 @@ describe('AcceptPlatformInvitationPage', () => {
 
   afterEach(() => cleanup());
 
+  it('capture le secret depuis le fragment puis nettoie immédiatement l’URL', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location-hash')).toHaveTextContent('');
+    });
+    expect(screen.getByTestId('location-search')).toHaveTextContent('');
+    expect(screen.getByLabelText('Mot de passe')).toBeInTheDocument();
+  });
+
   it('refuse localement un token mal formé sans appeler le backend', () => {
-    renderPage('/platform-invitations/accept?token=invalide');
+    renderPage('/platform-invitations/accept#token=invalide');
 
     expect(
       screen.getByRole('heading', { name: 'Ce lien n’est pas utilisable' }),
@@ -166,7 +193,7 @@ describe('AcceptPlatformInvitationPage', () => {
     expect(await screen.findByText('Invitation acceptée')).toBeInTheDocument();
   });
 
-  it('préserve le lien complet lorsqu’un destinataire existant doit se connecter', async () => {
+  it('conserve le retour vers l’invitation sans placer le secret dans history.state', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -176,8 +203,9 @@ describe('AcceptPlatformInvitationPage', () => {
 
     expect(screen.getByText('Login cible')).toBeInTheDocument();
     expect(screen.getByTestId('login-return-to')).toHaveTextContent(
-      `/platform-invitations/accept?token=${TOKEN}`,
+      '/platform-invitations/accept',
     );
+    expect(screen.getByTestId('login-return-to')).not.toHaveTextContent(TOKEN);
   });
 
   it('accepte avec le compte connecté puis ouvre la première destination autorisée', async () => {
