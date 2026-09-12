@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from 'react-router';
 
 import { DashboardDisplayPreviewProvider } from '@/components/shared/dashboard-display-preview-context';
+import { ExpandableSearch } from '@/components/shared/expandable-search';
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -29,9 +30,16 @@ function PlatformLayout() {
                 <p className="truncate font-semibold">Console d’administration globale</p>
               </div>
 
-              <div className="flex items-center gap-3">
-                {isOverview && <PlatformDashboardDisplayPreferences />}
-                <PlatformUserIdentity />
+              <div className="flex min-w-0 items-center gap-3">
+                <ExpandableSearch
+                  ariaLabel="Recherche globale"
+                  placeholder="Rechercher…"
+                />
+                <PlatformUserIdentity
+                  actions={isOverview ? (
+                    <PlatformDashboardDisplayPreferences triggerVariant="icon" />
+                  ) : null}
+                />
               </div>
             </div>
           </header>

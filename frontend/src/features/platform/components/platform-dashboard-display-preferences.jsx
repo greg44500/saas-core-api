@@ -6,7 +6,7 @@ import {
   getAccessiblePlatformDashboardWidgets,
 } from '@/features/platform/lib/platform-dashboard-preferences';
 
-function PlatformDashboardDisplayPreferences() {
+function PlatformDashboardDisplayPreferences({ triggerVariant = 'button' }) {
   const platformContextQuery = useGetCurrentPlatformContextQuery();
   const preferencesQuery = useGetCurrentUserPreferencesQuery();
   const accessibleWidgets = getAccessiblePlatformDashboardWidgets(
@@ -18,6 +18,7 @@ function PlatformDashboardDisplayPreferences() {
     <DashboardDisplayPreferences
       accessibleWidgets={accessibleWidgets}
       preferencesQuery={preferencesQuery}
+      triggerVariant={triggerVariant}
     />
   );
 }

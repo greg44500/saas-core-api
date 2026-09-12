@@ -6,6 +6,7 @@ import {
   DashboardDisplayPreviewProvider,
   useDashboardDisplayPreview,
 } from '@/components/shared/dashboard-display-preview-context';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 const updatePreferences = vi.hoisted(() => vi.fn());
 const toast = vi.hoisted(() => vi.fn());
@@ -77,15 +78,18 @@ function PreviewProbe() {
   );
 }
 
-function renderPreferences(hiddenWidgetIds = []) {
+function renderPreferences(hiddenWidgetIds = [], { triggerVariant = 'button' } = {}) {
   return render(
-    <DashboardDisplayPreviewProvider>
-      <DashboardDisplayPreferences
-        accessibleWidgets={accessibleWidgets}
-        preferencesQuery={createPreferencesQuery(hiddenWidgetIds)}
-      />
-      <PreviewProbe />
-    </DashboardDisplayPreviewProvider>,
+    <TooltipProvider delay={0}>
+      <DashboardDisplayPreviewProvider>
+        <DashboardDisplayPreferences
+          accessibleWidgets={accessibleWidgets}
+          preferencesQuery={createPreferencesQuery(hiddenWidgetIds)}
+          triggerVariant={triggerVariant}
+        />
+        <PreviewProbe />
+      </DashboardDisplayPreviewProvider>
+    </TooltipProvider>,
   );
 }
 
@@ -115,6 +119,18 @@ describe('DashboardDisplayPreferences', () => {
     expect(screen.queryByRole('switch', { name: 'Afficher Statut du workspace' }))
       .not.toBeInTheDocument();
     expect(screen.queryByText('Widget inaccessible')).not.toBeInTheDocument();
+  });
+
+  it('propose un raccourci icône avec l’infobulle Préférences d’affichage', async () => {
+    const user = userEvent.setup();
+
+    renderPreferences([], { triggerVariant: 'icon' });
+
+    const trigger = screen.getByRole('button', { name: 'Préférences d’affichage' });
+    expect(screen.queryByText('Personnaliser le tableau de bord')).not.toBeInTheDocument();
+
+    await user.hover(trigger);
+    expect(await screen.findByText('Préférences d’affichage')).toBeInTheDocument();
   });
 
   it('prévisualise immédiatement un switch puis restaure l’état enregistré avec Annuler', async () => {

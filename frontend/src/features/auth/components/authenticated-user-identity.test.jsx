@@ -36,6 +36,28 @@ describe('AuthenticatedUserIdentity', () => {
     expect(screen.getByRole('button', { name: 'Déconnexion' })).toBeInTheDocument();
   });
 
+  it('place les actions contextuelles juste avant la déconnexion', () => {
+    useGetCurrentUserQueryMock.mockReturnValue({
+      data: {
+        firstName: 'Laetitia',
+        lastName: 'BALLAT',
+        email: 'laetitia@test.com',
+      },
+    });
+
+    render(
+      <AuthenticatedUserIdentity
+        actions={<button type="button">Préférences d’affichage</button>}
+      />,
+    );
+
+    const preferences = screen.getByRole('button', { name: 'Préférences d’affichage' });
+    const logout = screen.getByRole('button', { name: 'Déconnexion' });
+
+    expect(preferences.compareDocumentPosition(logout) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+  });
+
   it('utilise l’email comme sous-titre par défaut hors contexte workspace', () => {
     useGetCurrentUserQueryMock.mockReturnValue({
       data: {

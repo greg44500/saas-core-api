@@ -51,7 +51,7 @@ describe('PlatformDashboardDisplayPreferences', () => {
       },
     });
 
-    render(<PlatformDashboardDisplayPreferences />);
+    render(<PlatformDashboardDisplayPreferences triggerVariant="icon" />);
 
     expect(screen.getByText('Utilisateurs')).toBeInTheDocument();
     expect(screen.getByText('Équipe de la Plateforme')).toBeInTheDocument();
@@ -64,6 +64,7 @@ describe('PlatformDashboardDisplayPreferences', () => {
           expect.objectContaining({ id: 'platform.users' }),
           expect.objectContaining({ id: 'platform.team' }),
         ]),
+        triggerVariant: 'icon',
       }),
     );
   });
