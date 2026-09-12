@@ -3,6 +3,7 @@ import { DataTable } from '@/components/data-display/data-table';
 import { DataTableSkeleton } from '@/components/data-display/data-table-skeleton';
 import {
   formatRetentionDate,
+  getRetentionExecutionErrorLabel,
   getRetentionExecutionStatusLabel,
   getRetentionExecutionTriggerLabel,
 } from '@/features/platform/lib/platform-retention';
@@ -31,8 +32,12 @@ function ExecutionError({ errorCode }) {
   if (!errorCode) return '—';
 
   return (
-    <span className="font-medium text-destructive" role="alert">
-      {errorCode}
+    <span
+      className="font-medium text-destructive"
+      role="alert"
+      title={`Code technique : ${errorCode}`}
+    >
+      {getRetentionExecutionErrorLabel(errorCode)}
     </span>
   );
 }
