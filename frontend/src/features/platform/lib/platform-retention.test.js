@@ -4,6 +4,7 @@ import {
   buildManualRetentionExecutionPayload,
   buildRetentionPolicyPayload,
   createRetentionPolicyFormState,
+  getRetentionExecutionErrorLabel,
   getRetentionManualExecutionAvailability,
 } from '@/features/platform/lib/platform-retention';
 
@@ -105,6 +106,17 @@ describe('platform retention frontend contract', () => {
       confirmation: 'PURGE_AUDIT_LOG_V3',
     });
     expect(payload).not.toHaveProperty('cutoffAt');
+  });
+
+  it('traduit les codes d’erreur techniques pour l’utilisateur', () => {
+    expect(getRetentionExecutionErrorLabel('RETENTION_LOCK_LOST'))
+      .toBe('Verrou d’exécution perdu');
+    expect(getRetentionExecutionErrorLabel('RETENTION_EXECUTION_INTERRUPTED'))
+      .toBe('Exécution interrompue');
+    expect(getRetentionExecutionErrorLabel('RETENTION_TARGET_EXECUTION_FAILED'))
+      .toBe('Échec du traitement de purge');
+    expect(getRetentionExecutionErrorLabel('UNKNOWN_CODE'))
+      .toBe('Erreur technique non reconnue');
   });
 
   it('explique pourquoi une purge manuelle est indisponible', () => {
