@@ -14,6 +14,7 @@ import {
 } from '../../modules/passwordResetTokens/passwordResetToken.model.js';
 import {
     createPasswordResetToken,
+    revokePasswordResetToken,
 } from '../../modules/passwordResetTokens/passwordResetToken.service.js';
 import { hashToken } from '../../utils/token.js';
 
@@ -24,6 +25,7 @@ vi.mock(
         PasswordResetToken: {
             updateMany: vi.fn(),
             create: vi.fn(),
+            updateOne: vi.fn(),
         },
     }),
 );
@@ -238,6 +240,57 @@ describe('createPasswordResetToken', () => {
 
         expect(
             PasswordResetToken.create,
+        ).not.toHaveBeenCalled();
+    });
+});
+
+describe('revokePasswordResetToken', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        PasswordResetToken.updateOne
+            .mockResolvedValue({
+                modifiedCount: 1,
+            });
+    });
+
+
+    it('révoque uniquement un token encore inutilisé', async () => {
+        await revokePasswordResetToken({
+            passwordResetTokenId:
+                'password-reset-token-id',
+        });
+
+        expect(
+            PasswordResetToken.updateOne,
+        ).toHaveBeenCalledWith(
+            {
+                _id:
+                    'password-reset-token-id',
+                usedAt: null,
+                revokedAt: null,
+            },
+            {
+                $set: {
+                    revokedAt:
+                        expect.any(Date),
+                },
+            },
+        );
+    });
+
+
+    it('refuse une révocation sans identifiant de token', async () => {
+        await expect(
+            revokePasswordResetToken({
+                passwordResetTokenId: null,
+            }),
+        ).rejects.toThrow(
+            'passwordResetTokenId is required to revoke a password reset token',
+        );
+
+        expect(
+            PasswordResetToken.updateOne,
         ).not.toHaveBeenCalled();
     });
 });
