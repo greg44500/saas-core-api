@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   createOverride: vi.fn(),
   createFeatureGroup: vi.fn(),
   revokeOverride: vi.fn(),
+  revokeFeatureGroup: vi.fn(),
   updateOverride: vi.fn(),
   updateFeatureGroup: vi.fn(),
   useCreatePlatformEntitlementOverrideMutation: vi.fn(),
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   useGetPlatformFeatureOverrideGroupQuery: vi.fn(),
   useListPlatformEntitlementOverridesQuery: vi.fn(),
   useRevokePlatformEntitlementOverrideMutation: vi.fn(),
+  useRevokePlatformFeatureOverrideGroupMutation: vi.fn(),
   useUpdatePlatformEntitlementOverrideMutation: vi.fn(),
   useUpdatePlatformFeatureOverrideGroupMutation: vi.fn(),
   useListPlatformPlanCapabilitiesQuery: vi.fn(),
@@ -33,6 +35,7 @@ vi.mock('@/features/platform/api/platform-entitlement-overrides-api', () => ({
   useGetPlatformFeatureOverrideGroupQuery: mocks.useGetPlatformFeatureOverrideGroupQuery,
   useListPlatformEntitlementOverridesQuery: mocks.useListPlatformEntitlementOverridesQuery,
   useRevokePlatformEntitlementOverrideMutation: mocks.useRevokePlatformEntitlementOverrideMutation,
+  useRevokePlatformFeatureOverrideGroupMutation: mocks.useRevokePlatformFeatureOverrideGroupMutation,
   useUpdatePlatformEntitlementOverrideMutation: mocks.useUpdatePlatformEntitlementOverrideMutation,
   useUpdatePlatformFeatureOverrideGroupMutation: mocks.useUpdatePlatformFeatureOverrideGroupMutation,
 }));
@@ -246,6 +249,9 @@ describe('PlatformEntitlementOverridesPage', () => {
     mocks.useRevokePlatformEntitlementOverrideMutation.mockReturnValue(
       mutationHook(mocks.revokeOverride),
     );
+    mocks.useRevokePlatformFeatureOverrideGroupMutation.mockReturnValue(
+      mutationHook(mocks.revokeFeatureGroup),
+    );
   });
 
   afterEach(() => {
@@ -382,5 +388,30 @@ describe('PlatformEntitlementOverridesPage', () => {
       }));
     });
     expect(mocks.createOverride).not.toHaveBeenCalled();
+  });
+
+  it('révoque une dérogation groupée via la mutation de groupe', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: 'Voir' }));
+    const detailsDrawer = await screen.findByRole('dialog', { name: 'Accès fichiers' });
+    await user.click(within(detailsDrawer).getByRole('button', { name: 'Révoquer' }));
+
+    const revokeDialog = screen.getByRole('dialog', { name: 'Révoquer la dérogation ?' });
+    await user.type(
+      within(revokeDialog).getByLabelText('Motif de révocation'),
+      'Fin de l’exception commerciale',
+    );
+    await user.click(within(revokeDialog).getByRole('button', { name: 'Révoquer' }));
+
+    await waitFor(() => {
+      expect(mocks.revokeFeatureGroup).toHaveBeenCalledWith({
+        overrideId: 'override-id',
+        workspaceId: 'workspace-id',
+        reason: 'Fin de l’exception commerciale',
+      });
+    });
+    expect(mocks.revokeOverride).not.toHaveBeenCalled();
   });
 });
