@@ -619,8 +619,11 @@ owner courant
 → données d'identité/workspace résolues côté serveur par IDs
 → éventuellement cible future + rôle de remplacement sélectionnés depuis des données serveur
 → demande persistée et auditée
+→ compteur de demandes Platform à traiter
+→ signal visuel dans la Topbar Platform
 → file de demandes Platform visible uniquement aux acteurs autorisés
 → Super administrateur examine la demande
+→ backend recalcule l'éligibilité et les éventuels motifs de blocage
 → Autoriser / Refuser sans ressaisir nom, email ou workspace
 → Autoriser crée la fenêtre exceptionnelle existante
 → owner voit temporairement le formulaire de transfert
@@ -670,13 +673,57 @@ Une simple remédiation de quota ne doit pas être déclarée bloquante par déf
 
 Une demande en attente doit elle-même avoir une durée de vie serveur bornée afin d'éviter les demandes anciennes devenues incohérentes. Le TTL exact et son éventuelle configuration `.env` seront décidés lors de l'implémentation ; il reste distinct du TTL maximal de l'autorisation exceptionnelle déjà existante.
 
-### UI Platform et réutilisabilité
+### Refus gouverné et nouvelle demande
 
-La file Super Admin doit utiliser les composants partagés existants, notamment `DataTable`, états loading/empty/error, Drawer/Dialog et confirmations communes. Une ligne de demande doit permettre d'identifier sans ambiguïté le workspace, l'owner demandeur, la cible prévue lorsqu'elle existe, la date de demande et son état.
+Les motifs de refus objectifs doivent être calculés côté backend et exposés comme des codes structurés, jamais fabriqués uniquement par le frontend. Exemples à cadrer :
 
-L'action `Autoriser` utilise les données préremplies/référencées par la demande. Une action `Refuser` doit être auditée ; la nécessité d'un motif structuré ou libre sera cadrée à l'implémentation.
+```text
+WORKSPACE_SUSPENDED
+WORKSPACE_NOT_ACTIVE
+SUBSCRIPTION_PAST_DUE
+OWNER_NOT_ACTIVE
+TARGET_NOT_ELIGIBLE
+TRANSFER_REQUEST_ALREADY_PENDING
+TRANSFER_AUTHORIZATION_ALREADY_ACTIVE
+```
 
-Les notifications éventuelles owner/Super Admin peuvent réutiliser les mécanismes transactionnels disponibles mais ne doivent pas rendre D-023 dépendante d'un système de notifications étendues D-008.
+Le frontend traduit ces codes en explications actionnables, par exemple régulariser un paiement ou réactiver le workspace avant de renouveler la demande.
+
+Un refus automatique correspond à une règle objective non satisfaite. Un refus manuel du Super administrateur reste possible lorsqu'une appréciation humaine est nécessaire ; il doit alors utiliser un motif structuré et, si utile, un complément borné.
+
+Une demande `rejected` reste immuable dans l'historique : elle n'est pas réactivée. Après correction de la cause, l'owner crée une **nouvelle demande** avec un nouveau `requestId`. Cette règle évite les ambiguïtés d'audit et garantit que chaque décision s'applique à un état métier donné.
+
+### Topbar Platform, cloche et file de demandes
+
+D-023 introduira un signal visuel ciblé dans la Topbar Platform, sans construire par anticipation un système générique de notifications.
+
+La cloche est rendue uniquement lorsque le contexte Platform possède la permission réservée d'autorisation du transfert (`WORKSPACES_OWNERSHIP_TRANSFER_AUTHORIZE`). En pratique cette permission est réservée au Super administrateur, mais le frontend ne doit pas coder en dur `role === super_admin`.
+
+Comportement cible :
+
+```text
+Super administrateur
+→ cloche toujours disponible comme point d'entrée vers la file de demandes
+→ aucune pastille si aucune demande n'attend de décision
+→ pastille 1..9 puis 9+ si demandes `requested` à traiter
+→ accessible name indiquant le nombre de demandes en attente
+→ clic vers /platform/ownership-transfer-requests
+
+autre membre Platform
+→ permission réservée absente
+→ aucune cloche de transfert
+→ aucune route/API de traitement accessible
+```
+
+La pastille représente uniquement le **travail nécessitant une décision**. Les demandes `authorized`, `rejected`, `cancelled`, `expired` ou `completed` ne doivent pas gonfler le compteur d'attente.
+
+Le mécanisme de rafraîchissement du compteur (invalidation RTK Query, polling raisonnable ou futur événement temps réel) sera décidé à l'implémentation. D-023 ne doit pas introduire un bus temps réel ou un centre de notifications générique uniquement pour ce besoin.
+
+La page `/platform/ownership-transfer-requests` doit utiliser les composants partagés existants, notamment `DataTable`, `DataPagination` si nécessaire, états loading/empty/error, Drawer/Dialog et confirmations communes. Une ligne doit identifier sans ambiguïté le workspace, l'owner demandeur, la cible prévue lorsqu'elle existe, la date de demande, l'état et le résultat courant de l'éligibilité serveur.
+
+Les actions `Autoriser` et `Refuser` partent du `requestId`. `Autoriser` utilise les données référencées par la demande, déclenche une nouvelle revalidation serveur puis ouvre la fenêtre exceptionnelle existante. `Refuser` conserve les raisons structurées et informe l'owner de manière actionnable.
+
+Le retour vers l'owner peut être exposé dans `Paramètres > Sécurité` via l'état de sa demande et ses motifs de refus. Un email transactionnel peut compléter le parcours si pertinent, mais D-023 ne dépend pas du système de notifications étendues D-008.
 
 ### Audit attendu
 
@@ -684,15 +731,16 @@ Le journal doit permettre de reconstruire le cycle sans exposer de secret :
 
 ```text
 demande créée
-refusée / annulée / expirée
+refus automatique ou manuel / annulation / expiration
 autorisation accordée
 révocation éventuelle
+nouvelle demande après correction, avec nouveau requestId
 transfert exécuté
 ```
 
-Les audits doivent référencer les IDs utiles (`requestId`, `workspaceId`, acteurs, memberships/cible lorsque pertinent) et la relation avec l'autorisation temporaire, sans dupliquer inutilement des données personnelles en clair.
+Les audits doivent référencer les IDs utiles (`requestId`, `workspaceId`, acteurs, memberships/cible lorsque pertinent), les codes de refus structurés et la relation avec l'autorisation temporaire, sans dupliquer inutilement des données personnelles en clair.
 
-**Critère de clôture :** demande owner disponible dans la zone Sécurité, modèle et machine d'état persistés, file Super Admin avec données serveur préremplies, activation sans ressaisie, règles d'éligibilité revalidées à chaque étape, authorization gate existante réutilisée, TTLs bornés, single-use/révocation conservés, audit complet, tests sécurité/concurrence et E2E du parcours validés.
+**Critère de clôture :** demande owner disponible dans la zone Sécurité, modèle et machine d'état persistés, cloche Platform bornée par permission avec compteur des demandes réellement actionnables, page Super Admin utilisant les composants partagés, données serveur préremplies, activation sans ressaisie, refus structurés et actionnables, nouvelle demande possible après correction sans réactiver l'historique, règles d'éligibilité revalidées à chaque étape, authorization gate existante réutilisée, TTLs bornés, single-use/révocation conservés, audit complet, tests sécurité/concurrence et E2E du parcours validés.
 
 ---
 
