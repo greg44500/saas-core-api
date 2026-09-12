@@ -6,12 +6,17 @@ import {
     vi,
 } from 'vitest';
 
+import { PLATFORM_TEAM_MEMBER_STATUS } from '../../../constants/platformTeam.constants.js';
+import { USER_STATUS } from '../../../constants/userStatus.constants.js';
 import { WORKSPACE_MEMBER_STATUS } from '../../../constants/workspaceMember.constants.js';
+import { PlatformTeamMember } from '../../../modules/platformTeam/platformTeamMember.model.js';
 import { User } from '../../../modules/users/user.model.js';
 import { WorkspaceMember } from '../../../modules/workspaceMember/workspaceMember.model.js';
 
 import {
     CURRENT_CLIENT_MEMBERSHIP_STATUSES,
+    CURRENT_CLIENT_USER_STATUSES,
+    CURRENT_PLATFORM_TEAM_MEMBER_STATUSES,
     listPlatformUsers,
 } from '../../../modules/platform/users/services/listPlatformUsers.service.js';
 
@@ -31,6 +36,17 @@ vi.mock(
         WorkspaceMember: {
             collection: {
                 name: 'workspacemembers',
+            },
+        },
+    }),
+);
+
+vi.mock(
+    '../../../modules/platformTeam/platformTeamMember.model.js',
+    () => ({
+        PlatformTeamMember: {
+            collection: {
+                name: 'platformteammembers',
             },
         },
     }),
@@ -106,7 +122,7 @@ describe('listPlatformUsers', () => {
         expect(result.users[0]).not.toHaveProperty('platformRole');
     });
 
-    it('filtre en base les utilisateurs sans appartenance Workspace courante avant pagination', async () => {
+    it('filtre la population cliente avant pagination', async () => {
         User.aggregate.mockResolvedValue([
             {
                 users: [],
@@ -119,33 +135,57 @@ describe('listPlatformUsers', () => {
             limit: 10,
         });
 
-        expect(User.aggregate).toHaveBeenCalledOnce();
-
         const pipeline = User.aggregate.mock.calls[0][0];
-        const lookupStage = pipeline.find((stage) => stage.$lookup)?.$lookup;
-        const membershipMatch = lookupStage.pipeline.find(
-            (stage) => stage.$match,
-        ).$match;
-        const currentMembershipStage = pipeline.find(
-            (stage) => stage.$match?.['currentWorkspaceMemberships.0'],
-        );
+        const userStatusStage = pipeline[0];
+        const workspaceLookup = pipeline.find(
+            (stage) => stage.$lookup?.as === 'currentWorkspaceMemberships',
+        ).$lookup;
+        const platformLookup = pipeline.find(
+            (stage) => stage.$lookup?.as === 'currentPlatformMemberships',
+        ).$lookup;
         const facetStage = pipeline.find((stage) => stage.$facet)?.$facet;
 
-        expect(lookupStage.from).toBe(
-            WorkspaceMember.collection.name,
-        );
-        expect(membershipMatch).toEqual({
-            status: {
-                $in: [
-                    WORKSPACE_MEMBER_STATUS.ACTIVE,
-                    WORKSPACE_MEMBER_STATUS.SUSPENDED,
-                ],
+        expect(userStatusStage).toEqual({
+            $match: {
+                status: {
+                    $in: [
+                        USER_STATUS.ACTIVE,
+                        USER_STATUS.DISABLED,
+                        USER_STATUS.DELETION_REQUESTED,
+                    ],
+                },
             },
         });
-        expect(currentMembershipStage).toEqual({
+        expect(workspaceLookup.from).toBe(
+            WorkspaceMember.collection.name,
+        );
+        expect(workspaceLookup.pipeline[0]).toEqual({
             $match: {
-                'currentWorkspaceMemberships.0': {
-                    $exists: true,
+                status: {
+                    $in: [
+                        WORKSPACE_MEMBER_STATUS.ACTIVE,
+                        WORKSPACE_MEMBER_STATUS.SUSPENDED,
+                    ],
+                },
+            },
+        });
+        expect(platformLookup.from).toBe(
+            PlatformTeamMember.collection.name,
+        );
+        expect(platformLookup.pipeline[0]).toEqual({
+            $match: {
+                status: {
+                    $in: [
+                        PLATFORM_TEAM_MEMBER_STATUS.ACTIVE,
+                        PLATFORM_TEAM_MEMBER_STATUS.SUSPENDED,
+                    ],
+                },
+            },
+        });
+        expect(pipeline).toContainEqual({
+            $match: {
+                'currentPlatformMemberships.0': {
+                    $exists: false,
                 },
             },
         });
@@ -157,13 +197,25 @@ describe('listPlatformUsers', () => {
         });
     });
 
-    it('considère active et suspended comme relations client courantes, jamais removed', () => {
+    it('fige les statuts constituant une population cliente courante', () => {
         expect(CURRENT_CLIENT_MEMBERSHIP_STATUSES).toEqual([
             WORKSPACE_MEMBER_STATUS.ACTIVE,
             WORKSPACE_MEMBER_STATUS.SUSPENDED,
         ]);
         expect(CURRENT_CLIENT_MEMBERSHIP_STATUSES).not.toContain(
             WORKSPACE_MEMBER_STATUS.REMOVED,
+        );
+        expect(CURRENT_PLATFORM_TEAM_MEMBER_STATUSES).toEqual([
+            PLATFORM_TEAM_MEMBER_STATUS.ACTIVE,
+            PLATFORM_TEAM_MEMBER_STATUS.SUSPENDED,
+        ]);
+        expect(CURRENT_CLIENT_USER_STATUSES).toEqual([
+            USER_STATUS.ACTIVE,
+            USER_STATUS.DISABLED,
+            USER_STATUS.DELETION_REQUESTED,
+        ]);
+        expect(CURRENT_CLIENT_USER_STATUSES).not.toContain(
+            USER_STATUS.CLOSED,
         );
     });
 
