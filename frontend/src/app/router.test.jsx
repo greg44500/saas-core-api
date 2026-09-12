@@ -321,6 +321,7 @@ describe('application routing', () => {
   });
 
   it('rend le shell Platform et sa navigation pour une session authentifiée', async () => {
+    const user = userEvent.setup();
     mockActivePlatformAccess();
     renderRoute('/platform/overview', 'authenticated');
 
@@ -330,6 +331,12 @@ describe('application routing', () => {
     expect(
       screen.getByRole('navigation', { name: 'Navigation de la plateforme' }),
     ).toBeInTheDocument();
+
+    const clientsGroup = screen.getByRole('button', { name: 'Gestion clients' });
+    expect(clientsGroup).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(clientsGroup);
+
     expect(screen.getByRole('link', { name: 'Utilisateurs' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Vue d’ensemble' })).toBeInTheDocument();
   });
@@ -339,6 +346,9 @@ describe('application routing', () => {
     mockActivePlatformAccess();
     const router = renderRoute('/platform/overview', 'authenticated');
 
+    await user.click(
+      await screen.findByRole('button', { name: 'Gestion clients' }),
+    );
     await user.click(await screen.findByRole('link', { name: 'Utilisateurs' }));
 
     await waitFor(() => {
