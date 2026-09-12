@@ -50,6 +50,7 @@ import {
 
 import {
     createPasswordResetToken,
+    revokePasswordResetToken,
 } from '../../modules/passwordResetTokens/passwordResetToken.service.js';
 
 vi.mock('../../modules/users/user.model.js', () => ({
@@ -97,6 +98,7 @@ vi.mock('../../utils/password.js', () => ({
 
 vi.mock('../../modules/passwordResetTokens/passwordResetToken.service.js', () => ({
     createPasswordResetToken: vi.fn(),
+    revokePasswordResetToken: vi.fn(),
 }));
 
 vi.mock('../../modules/auth/passwordResetUrl.js', () => ({
@@ -730,7 +732,7 @@ describe('forgotUserPassword', () => {
         });
 
         buildPasswordResetUrl.mockReturnValue(
-            'http://localhost:5173/reset-password?token=opaque-reset-token',
+            'http://localhost:5173/reset-password#token=opaque-reset-token',
         );
 
         buildPasswordResetEmail.mockReturnValue({
@@ -997,6 +999,80 @@ it('renvoie la réponse générique pour un compte clôturé', async () => {
         startedAt: expect.any(Number),
         minimumMs: 700,
         jitterMs: 150,
+    });
+    it('conserve la réponse générique et révoque le token si SMTP échoue', async () => {
+        const user = {
+            _id: 'user-id',
+            email: 'greg@example.com',
+            status: 'active',
+        };
+
+        User.findOne.mockResolvedValue(user);
+
+        AuthIdentity.exists.mockResolvedValue({
+            _id: 'identity-id',
+        });
+
+        createPasswordResetToken.mockResolvedValue({
+            passwordResetToken: {
+                _id: 'password-reset-token-id',
+            },
+            resetToken: 'opaque-reset-token',
+        });
+
+        buildPasswordResetUrl.mockReturnValue(
+            'http://localhost:5173/reset-password#token=opaque-reset-token',
+        );
+
+        buildPasswordResetEmail.mockReturnValue({
+            subject: 'Réinitialisation',
+            text: 'Version texte',
+            html: '<p>Version HTML</p>',
+        });
+
+        sendEmail.mockRejectedValue(
+            new Error('SMTP unavailable'),
+        );
+
+        revokePasswordResetToken.mockResolvedValue({
+            modifiedCount: 1,
+        });
+
+        const consoleErrorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => { });
+
+        const result = await forgotUserPassword({
+            email: 'greg@example.com',
+            ipAddress: '127.0.0.1',
+            userAgent: 'Vitest',
+        });
+
+        expect(
+            revokePasswordResetToken,
+        ).toHaveBeenCalledWith({
+            passwordResetTokenId:
+                'password-reset-token-id',
+        });
+
+        expect(result).toEqual({
+            message:
+                'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.',
+        });
+
+        expect(
+            ensureMinimumDuration,
+        ).toHaveBeenCalled();
+
+        expect(consoleErrorSpy)
+            .toHaveBeenCalledWith(
+                'Password reset email failed',
+                {
+                    errorName: 'Error',
+                },
+            );
+
+        consoleErrorSpy.mockRestore();
     });
 });
 

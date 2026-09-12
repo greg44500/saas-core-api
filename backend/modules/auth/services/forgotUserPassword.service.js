@@ -24,6 +24,7 @@ import {
 } from '../../authIdentities/authIdentity.model.js';
 import {
     createPasswordResetToken,
+    revokePasswordResetToken,
 } from '../../passwordResetTokens/passwordResetToken.service.js';
 import { User } from '../../users/user.model.js';
 import {
@@ -127,12 +128,14 @@ const forgotUserPassword = async ({
         );
     }
 
-    const { resetToken } =
-        await createPasswordResetToken({
-            userId: user._id,
-            ipAddress,
-            userAgent,
-        });
+    const {
+        passwordResetToken,
+        resetToken,
+    } = await createPasswordResetToken({
+        userId: user._id,
+        ipAddress,
+        userAgent,
+    });
 
     const resetUrl = buildPasswordResetUrl({
         token: resetToken,
@@ -148,12 +151,49 @@ const forgotUserPassword = async ({
             env.PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES,
     });
 
-    await sendEmail({
-        to: user.email,
-        subject,
-        text,
-        html,
-    });
+    try {
+        await sendEmail({
+            to: user.email,
+            subject,
+            text,
+            html,
+        });
+    } catch (error) {
+        /*
+         * Le token n'a pas pu être remis à l'utilisateur.
+         * Il ne doit donc pas rester utilisable inutilement.
+         */
+        try {
+            await revokePasswordResetToken({
+                passwordResetTokenId:
+                    passwordResetToken._id,
+            });
+        } catch (revocationError) {
+            /*
+             * La compensation ne doit jamais casser l'anti-énumération.
+             * Aucun token, email ou autre secret n'est journalisé.
+             */
+            console.error(
+                'Password reset token compensation failed',
+                {
+                    errorName:
+                        revocationError?.name,
+                },
+            );
+        }
+
+        /*
+         * L'échec SMTP reste interne.
+         * La réponse publique doit être identique à celle d'une
+         * adresse inconnue.
+         */
+        console.error(
+            'Password reset email failed',
+            {
+                errorName: error?.name,
+            },
+        );
+    }
 
     return completeForgotPasswordRequest(
         startedAt,
