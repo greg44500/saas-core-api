@@ -13,6 +13,10 @@ import { User } from '../../modules/users/user.model.js';
 import { sendEmail } from '../../services/email.service.js';
 import { ensureMinimumDuration } from '../../utils/securityTiming.js';
 
+vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
+    createAuditLog: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../modules/authIdentities/authIdentity.model.js', () => ({
     AuthIdentity: {
         exists: vi.fn(),

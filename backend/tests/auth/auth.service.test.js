@@ -1089,11 +1089,12 @@ it('conserve la réponse générique et révoque le token si SMTP échoue', asyn
         );
 
     consoleErrorSpy.mockRestore();
+});
 
     it("ne bloque pas forgot-password si l'AuditLog échoue", async () => {
         User.findOne.mockResolvedValue(null);
 
-        createAuditLog.mockRejectedValue(
+        createAuditLog.mockRejectedValueOnce(
             new Error('Audit unavailable'),
         );
 
@@ -1125,7 +1126,6 @@ it('conserve la réponse générique et révoque le token si SMTP échoue', asyn
 
         consoleErrorSpy.mockRestore();
     });
-});
 
 
 describe('resetUserPassword', () => {
