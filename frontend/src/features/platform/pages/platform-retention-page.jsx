@@ -22,6 +22,7 @@ import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-perm
 import {
   buildManualRetentionExecutionPayload,
   formatRetentionDate,
+  getRetentionManualExecutionAvailability,
   hasPlatformPermission,
 } from '@/features/platform/lib/platform-retention';
 
@@ -229,6 +230,12 @@ function PlatformRetentionPage() {
 
   const target = state?.target ?? selectedTarget.target;
   const currentPolicy = state?.currentPolicy ?? selectedTarget.currentPolicy ?? null;
+  const executionAvailability = getRetentionManualExecutionAvailability({
+    canExecute,
+    policy: currentPolicy,
+    preview,
+    runtime: state?.runtime,
+  });
 
   return (
     <div className="space-y-6">
@@ -291,7 +298,16 @@ function PlatformRetentionPage() {
       </Section>
 
       <Section
-        help="Avant toute suppression, l’application calcule les données concernées. La purge n’est disponible que si la politique est active, l’exécution manuelle autorisée, une prévisualisation réalisée et aucun traitement concurrent en cours."
+        help={(
+          <div className="space-y-2">
+            <p>
+              Pour lancer une purge manuelle, la politique doit être active,
+              l’exécution manuelle autorisée, une prévisualisation réalisée et
+              aucune autre purge en cours.
+            </p>
+            <p className="font-medium">État actuel : {executionAvailability.reason}</p>
+          </div>
+        )}
         title="Prévisualisation et purge"
       >
         <PlatformRetentionPreview
