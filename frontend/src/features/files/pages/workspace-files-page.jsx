@@ -5,6 +5,7 @@ import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTableSkeleton } from '@/components/data-display/data-table-skeleton';
 import { EmptyState } from '@/components/shared/empty-state';
 import { ErrorState } from '@/components/shared/error-state';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -145,11 +146,12 @@ function WorkspaceFilesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="flex items-center gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Fichiers</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Consultez et téléchargez les fichiers actifs de {workspace.name}.
-          </p>
+          <InfoTooltip
+            content={`Consultez et téléchargez les fichiers actifs de ${workspace.name}.`}
+            label="À propos des fichiers"
+          />
         </div>
 
         {canUpload && (
