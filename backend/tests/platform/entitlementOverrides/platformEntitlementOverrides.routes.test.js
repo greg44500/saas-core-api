@@ -78,6 +78,9 @@ const {
         revokeEntitlementOverride: vi.fn(
             (req, res) => res.status(200).json({ status: 'success' }),
         ),
+        revokeFeatureOverrideGroup: vi.fn(
+            (req, res) => res.status(200).json({ status: 'success' }),
+        ),
     },
 }));
 
@@ -216,6 +219,24 @@ describe('platformEntitlementOverrides.routes', () => {
             body: updatePlatformFeatureOverrideGroupBodySchema,
         });
         expect(handlers.updateFeatureOverrideGroup).toHaveBeenCalledOnce();
+    });
+
+    it('protège la révocation groupée avec la permission revoke', async () => {
+        const overrideId = '507f1f77bcf86cd799439011';
+
+        const response = await request(app)
+            .patch(`/platform/entitlement-overrides/feature-groups/${overrideId}/revoke`)
+            .send({});
+
+        expect(response.status).toBe(200);
+        expect(authorizePlatformPermission).toHaveBeenCalledWith(
+            PLATFORM_PERMISSION.ENTITLEMENT_OVERRIDES_REVOKE,
+        );
+        expect(validateRequest).toHaveBeenCalledWith({
+            params: platformFeatureOverrideGroupParamsSchema,
+            body: revokePlatformEntitlementOverrideBodySchema,
+        });
+        expect(handlers.revokeFeatureOverrideGroup).toHaveBeenCalledOnce();
     });
 
     it('protège le détail avec la permission de lecture', async () => {
