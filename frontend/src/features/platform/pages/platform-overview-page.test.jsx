@@ -87,6 +87,28 @@ const OVERVIEW = {
       ],
     },
   },
+  users: {
+    byStatus: {
+      active: 75,
+      disabled: 15,
+      deletion_requested: 10,
+    },
+    distributions: {
+      accountStatus: {
+        active: { count: 75, percentage: 75 },
+        disabled: { count: 15, percentage: 15 },
+        deletionRequested: { count: 10, percentage: 10 },
+      },
+      access: {
+        active: { count: 90, percentage: 90 },
+        suspendedOnly: { count: 10, percentage: 10 },
+      },
+      relationship: {
+        owner: { count: 40, percentage: 40 },
+        withoutOwnership: { count: 60, percentage: 60 },
+      },
+    },
+  },
   planDistribution: [
     {
       plan: { id: 'premium-plan', key: 'premium', name: 'Premium' },
@@ -217,6 +239,7 @@ describe('PlatformOverviewPage', () => {
     expect(screen.getByRole('heading', { name: 'Vue d’ensemble' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'À propos de la vue d’ensemble' })).toBeInTheDocument();
     expect(screen.getByText('Plateforme')).toBeInTheDocument();
+    expect(within(kpis).getByText('Utilisateurs clients')).toBeInTheDocument();
     expect(within(kpis).getByText('100')).toBeInTheDocument();
     expect(within(kpis).getByText('50')).toBeInTheDocument();
     expect(within(kpis).getByText('12')).toBeInTheDocument();
@@ -234,22 +257,28 @@ describe('PlatformOverviewPage', () => {
     expect(screen.getByRole('region', { name: 'Santé et exploitation' })).toBeInTheDocument();
   });
 
-  it('visualise la croissance et la répartition sans recalculer les agrégats backend', () => {
+  it('visualise la croissance et les répartitions calculées par le backend', () => {
     renderPage();
 
     const growth = screen.getByRole('group', {
       name: 'Comparaison de la croissance de la plateforme',
     });
-    const distribution = screen.getByRole('group', {
+    const planDistribution = screen.getByRole('group', {
       name: 'Répartition des espaces de travail par plan effectif',
     });
+    const clientStatusDistribution = screen.getByRole('group', {
+      name: 'Répartition des utilisateurs clients par état du compte',
+    });
 
-    expect(within(growth).getByText('Nouveaux utilisateurs')).toBeInTheDocument();
+    expect(within(growth).getByText('Nouveaux utilisateurs clients')).toBeInTheDocument();
     expect(within(growth).getByText('10')).toBeInTheDocument();
     expect(within(growth).getByText('5')).toBeInTheDocument();
-    expect(within(distribution).getByText('Premium')).toBeInTheDocument();
-    expect(within(distribution).getByText('30 espaces · 60 %')).toBeInTheDocument();
-    expect(within(distribution).getByText('20 espaces · 40 %')).toBeInTheDocument();
+    expect(within(clientStatusDistribution).getByText('Comptes actifs')).toBeInTheDocument();
+    expect(within(clientStatusDistribution).getByText('75 utilisateurs · 75 %')).toBeInTheDocument();
+    expect(screen.getByText('Répartition des utilisateurs clients')).toBeInTheDocument();
+    expect(within(planDistribution).getByText('Premium')).toBeInTheDocument();
+    expect(within(planDistribution).getByText('30 espaces · 60 %')).toBeInTheDocument();
+    expect(within(planDistribution).getByText('20 espaces · 40 %')).toBeInTheDocument();
   });
 
   it('ouvre le drill-down des dérogations actives depuis un compteur non nul', async () => {

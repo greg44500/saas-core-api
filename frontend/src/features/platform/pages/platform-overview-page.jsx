@@ -25,12 +25,12 @@ import {
 import { useGetPlatformAuditMetadataQuery } from '@/features/platform/api/platform-audit-logs-api';
 import { useGetPlatformOverviewQuery } from '@/features/platform/api/platform-overview-api';
 import { PlatformAttentionTable } from '@/features/platform/components/platform-attention-table';
+import { PlatformClientUserDistribution } from '@/features/platform/components/platform-client-user-distribution';
 import { PlatformEconomicKpiCards } from '@/features/platform/components/platform-economic-kpi-cards';
 import { PlatformEntitlementOverridesDrilldownDrawer } from '@/features/platform/components/platform-entitlement-overrides-drilldown-drawer';
 import { PlatformOverviewSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PlatformOverviewPeriodFilter } from '@/features/platform/components/platform-overview-period-filter';
 import { PlatformTeamSnapshotSection } from '@/features/platform/components/platform-team-snapshot-card';
-import { PlatformUserKpiDescription } from '@/features/platform/components/platform-user-kpi-description';
 import {
   ENTITLEMENT_OVERRIDE_LIFECYCLE,
 } from '@/features/platform/lib/platform-entitlement-override-formatters';
@@ -198,7 +198,7 @@ function PlatformOverviewPage() {
 
   const userTrend = formatTrend(
     overview?.kpis?.users?.changePercent,
-    'nouvelles inscriptions vs période précédente',
+    'nouveaux comptes clients vs période précédente',
   );
   const workspaceTrend = formatTrend(
     overview?.kpis?.workspaces?.changePercent,
@@ -213,7 +213,7 @@ function PlatformOverviewPage() {
     ...(sections.users
       ? [{
         key: 'users',
-        label: 'Nouveaux utilisateurs',
+        label: 'Nouveaux utilisateurs clients',
         current: overview?.kpis?.users?.createdInPeriod ?? 0,
         previous: overview?.kpis?.users?.createdInPreviousPeriod ?? 0,
       }]
@@ -340,12 +340,8 @@ function PlatformOverviewPage() {
           {sections.users && (
             <MetricCard
               className={getPrimaryKpiItemClass(0, primaryKpiCount)}
-              description={(
-                <PlatformUserKpiDescription
-                  population={overview?.users?.population}
-                />
-              )}
-              title="Comptes utilisateurs"
+              description="Nombre d’utilisateurs clients actuels : comptes non clôturés rattachés à au moins un espace de travail avec une appartenance active ou suspendue. Les membres actuels de l’équipe Platform sont exclus."
+              title="Utilisateurs clients"
               value={formatCount(overview?.kpis?.users?.total)}
               {...userTrend}
             />
@@ -390,6 +386,17 @@ function PlatformOverviewPage() {
                 <ComparisonBarChart
                   aria-label="Comparaison de la croissance de la plateforme"
                   items={growthItems}
+                />
+              </OverviewPanel>
+            )}
+
+            {sections.users && (
+              <OverviewPanel
+                description="Détaille la population cliente actuelle sans inclure les collaborateurs internes de la plateforme. Les catégories à zéro restent visibles pour matérialiser les états possibles."
+                title="Répartition des utilisateurs clients"
+              >
+                <PlatformClientUserDistribution
+                  distributions={overview?.users?.distributions}
                 />
               </OverviewPanel>
             )}

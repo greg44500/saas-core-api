@@ -46,28 +46,33 @@ const createPlatformOverviewDashboardService = ({
         getOverview({ from, to, at }),
         getAttention({ from, to, at }),
         getEconomicKpis({ at }),
-        getUserPopulation(),
+        getUserPopulation({ from, to, at }),
     ]);
-
-    const totalUsers = overview.kpis?.users?.total ?? 0;
-    const withCurrentClientAccess = Math.min(
-        userPopulation?.withCurrentClientAccess ?? 0,
-        totalUsers,
-    );
 
     const completeOverview = {
         ...overview,
         kpis: {
             ...overview.kpis,
+            users: {
+                total: userPopulation.total,
+                createdInPeriod: userPopulation.createdInPeriod,
+                createdInPreviousPeriod:
+                    userPopulation.createdInPreviousPeriod,
+                changePercent: userPopulation.changePercent,
+            },
             ...economicKpis,
         },
         users: {
-            ...overview.users,
-            population: {
-                total: totalUsers,
-                withCurrentClientAccess,
-                withoutCurrentClientAccess:
-                    Math.max(totalUsers - withCurrentClientAccess, 0),
+            byStatus: {
+                active: userPopulation.byStatus.active.count,
+                disabled: userPopulation.byStatus.disabled.count,
+                deletion_requested:
+                    userPopulation.byStatus.deletionRequested.count,
+            },
+            distributions: {
+                accountStatus: userPopulation.byStatus,
+                access: userPopulation.byAccess,
+                relationship: userPopulation.byRelationship,
             },
         },
         attention: {

@@ -16,8 +16,28 @@ const AT = new Date('2026-09-03T12:00:00.000Z');
 const FROM = new Date('2026-08-03T12:00:00.000Z');
 const TO = new Date('2026-09-03T12:00:00.000Z');
 
+const CLIENT_USER_POPULATION = {
+    total: 8,
+    createdInPeriod: 4,
+    createdInPreviousPeriod: 2,
+    changePercent: 100,
+    byStatus: {
+        active: { count: 6, percentage: 75 },
+        disabled: { count: 1, percentage: 12.5 },
+        deletionRequested: { count: 1, percentage: 12.5 },
+    },
+    byAccess: {
+        active: { count: 7, percentage: 87.5 },
+        suspendedOnly: { count: 1, percentage: 12.5 },
+    },
+    byRelationship: {
+        owner: { count: 3, percentage: 37.5 },
+        withoutOwnership: { count: 5, percentage: 62.5 },
+    },
+};
+
 describe('platformOverviewDashboard.service', () => {
-    it('partage le même instant puis compose les KPI économiques et la population utilisateurs avant projection', async () => {
+    it('remplace les métriques User globales par la population cliente avant projection', async () => {
         const getOverview = vi.fn(async () => ({
             generatedAt: AT,
             kpis: {
@@ -47,9 +67,7 @@ describe('platformOverviewDashboard.service', () => {
             },
             activeTrials: 0,
         }));
-        const getUserPopulation = vi.fn(async () => ({
-            withCurrentClientAccess: 8,
-        }));
+        const getUserPopulation = vi.fn(async () => CLIENT_USER_POPULATION);
         const projectOverview = vi.fn(({ overview }) => overview);
         const service = createPlatformOverviewDashboardService({
             getOverview,
@@ -81,12 +99,21 @@ describe('platformOverviewDashboard.service', () => {
             at: AT,
         });
         expect(getEconomicKpis).toHaveBeenCalledWith({ at: AT });
-        expect(getUserPopulation).toHaveBeenCalledWith();
+        expect(getUserPopulation).toHaveBeenCalledWith({
+            from: FROM,
+            to: TO,
+            at: AT,
+        });
         expect(projectOverview).toHaveBeenCalledWith({
             overview: {
                 generatedAt: AT,
                 kpis: {
-                    users: { total: 12 },
+                    users: {
+                        total: 8,
+                        createdInPeriod: 4,
+                        createdInPreviousPeriod: 2,
+                        changePercent: 100,
+                    },
                     workspaces: { total: 6 },
                     paidActiveSubscriptions: 2,
                     freeActiveAccesses: {
@@ -96,11 +123,15 @@ describe('platformOverviewDashboard.service', () => {
                     activeTrials: 0,
                 },
                 users: {
-                    byStatus: { active: 12 },
-                    population: {
-                        total: 12,
-                        withCurrentClientAccess: 8,
-                        withoutCurrentClientAccess: 4,
+                    byStatus: {
+                        active: 6,
+                        disabled: 1,
+                        deletion_requested: 1,
+                    },
+                    distributions: {
+                        accountStatus: CLIENT_USER_POPULATION.byStatus,
+                        access: CLIENT_USER_POPULATION.byAccess,
+                        relationship: CLIENT_USER_POPULATION.byRelationship,
                     },
                 },
                 attention: {
@@ -117,40 +148,16 @@ describe('platformOverviewDashboard.service', () => {
             },
             permissions,
         });
+        expect(overview.kpis.users.total).toBe(8);
         expect(overview.attention.items).toHaveLength(1);
-    });
-
-    it('borne la population client au total de comptes pour éviter une incohérence analytique', async () => {
-        const service = createPlatformOverviewDashboardService({
-            getOverview: vi.fn(async () => ({
-                generatedAt: AT,
-                kpis: { users: { total: 3 } },
-                users: { byStatus: { active: 3 } },
-                attention: { counts: {} },
-            })),
-            getAttention: vi.fn(async () => []),
-            getEconomicKpis: vi.fn(async () => ({})),
-            getUserPopulation: vi.fn(async () => ({
-                withCurrentClientAccess: 5,
-            })),
-            projectOverview: vi.fn(({ overview }) => overview),
-        });
-
-        const overview = await service({ at: AT });
-
-        expect(overview.users.population).toEqual({
-            total: 3,
-            withCurrentClientAccess: 3,
-            withoutCurrentClientAccess: 0,
-        });
     });
 
     it('est fail-closed si aucune permission runtime n’est transmise', async () => {
         const getOverview = vi.fn(async () => ({
             generatedAt: AT,
             period: {},
-            kpis: { users: { total: 10 } },
-            users: { byStatus: { active: 10 } },
+            kpis: { users: { total: 12 } },
+            users: { byStatus: { active: 12 } },
             attention: { counts: {} },
         }));
         const getAttention = vi.fn(async () => []);
@@ -159,9 +166,7 @@ describe('platformOverviewDashboard.service', () => {
             freeActiveAccesses: { total: 2, viaCommercialInvitation: 1 },
             activeTrials: 0,
         }));
-        const getUserPopulation = vi.fn(async () => ({
-            withCurrentClientAccess: 8,
-        }));
+        const getUserPopulation = vi.fn(async () => CLIENT_USER_POPULATION);
         const service = createPlatformOverviewDashboardService({
             getOverview,
             getAttention,
