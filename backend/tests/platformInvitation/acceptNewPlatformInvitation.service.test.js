@@ -11,6 +11,7 @@ import {
     LEGAL_ACCEPTANCE_SOURCE,
 } from '../../constants/legalDocuments.constants.js';
 import {
+    PLATFORM_INVITATION_STATUS,
     PLATFORM_TEAM_ROLE_KEY,
 } from '../../constants/platformTeam.constants.js';
 import { USER_STATUS } from '../../constants/userStatus.constants.js';
@@ -75,6 +76,7 @@ vi.mock('../../modules/platformInvitation/platformInvitation.model.js', () => ({
     PlatformInvitation: {
         exists: vi.fn(),
         findOne: vi.fn(),
+        findOneAndUpdate: vi.fn(),
     },
 }));
 vi.mock('../../utils/password.js', () => ({
@@ -107,7 +109,7 @@ const setup = ({ existingUser = null } = {}) => {
         emailCanonical: 'new.member@example.com',
         firstName: 'Marie',
         lastName: 'Martin',
-        save: vi.fn().mockResolvedValue(undefined),
+        status: PLATFORM_INVITATION_STATUS.PENDING,
     };
     const role = {
         _id: 'role-id',
@@ -130,12 +132,18 @@ const setup = ({ existingUser = null } = {}) => {
         _id: 'membership-id',
         status: 'active',
     };
+    const acceptedInvitation = {
+        ...invitation,
+        status: PLATFORM_INVITATION_STATUS.ACCEPTED,
+        acceptedBy: user._id,
+    };
 
     PlatformInvitation.exists.mockResolvedValue({ _id: 'invitation-id' });
     mongoose.connection.transaction.mockImplementation(
         async (callback) => callback(session),
     );
     PlatformInvitation.findOne.mockReturnValue(sessionResult(invitation));
+    PlatformInvitation.findOneAndUpdate.mockResolvedValue(acceptedInvitation);
     PlatformRole.findById.mockReturnValue(sessionResult(role));
     User.findById.mockReturnValue(chainedResult(inviter));
     User.findOne.mockReturnValue(chainedResult(existingUser));
@@ -150,7 +158,14 @@ const setup = ({ existingUser = null } = {}) => {
         permissions: [],
     });
 
-    return { invitation, membership, role, session, user };
+    return {
+        acceptedInvitation,
+        invitation,
+        membership,
+        role,
+        session,
+        user,
+    };
 };
 
 describe('acceptNewPlatformInvitation', () => {
@@ -173,10 +188,18 @@ describe('acceptNewPlatformInvitation', () => {
         expect(User.create).not.toHaveBeenCalled();
         expect(AuthIdentity.create).not.toHaveBeenCalled();
         expect(PlatformTeamMember.create).not.toHaveBeenCalled();
+        expect(PlatformInvitation.findOneAndUpdate).not.toHaveBeenCalled();
     });
 
-    it('crée User, AuthIdentity, preuve légale et membership dans la même transaction', async () => {
-        const { invitation, membership, role, session, user } = setup();
+    it('crée User, AuthIdentity, preuve légale, membership et consomme l’invitation dans la même transaction', async () => {
+        const {
+            acceptedInvitation,
+            invitation,
+            membership,
+            role,
+            session,
+            user,
+        } = setup();
         const now = new Date('2026-09-10T18:00:00.000Z');
 
         const result = await acceptNewPlatformInvitation({
@@ -217,8 +240,44 @@ describe('acceptNewPlatformInvitation', () => {
             session,
         });
         expect(PlatformTeamMember.create).toHaveBeenCalledOnce();
+        expect(PlatformInvitation.findOneAndUpdate).toHaveBeenCalledWith(
+            {
+                _id: invitation._id,
+                tokenHash: 'digest',
+                status: PLATFORM_INVITATION_STATUS.PENDING,
+                expiresAt: { $gt: now },
+            },
+            {
+                $set: {
+                    status: PLATFORM_INVITATION_STATUS.ACCEPTED,
+                    acceptedBy: user._id,
+                    acceptedAt: now,
+                },
+            },
+            {
+                returnDocument: 'after',
+                runValidators: true,
+                session,
+            },
+        );
         expect(createAuditLog).toHaveBeenCalledOnce();
+        expect(result.invitation).toBe(acceptedInvitation);
         expect(result.user).toBe(user);
         expect(result.membership).toBe(membership);
+    });
+
+    it('échoue fermé si une acceptation concurrente consomme le lien avant la mutation finale', async () => {
+        setup();
+        PlatformInvitation.findOneAndUpdate.mockResolvedValue(null);
+
+        await expect(
+            acceptNewPlatformInvitation({
+                token: 'a'.repeat(64),
+                password: 'Velo bleu sous la pluie, dimanche 47!',
+                legalAccepted: true,
+            }),
+        ).rejects.toMatchObject({ statusCode: 409 });
+
+        expect(createAuditLog).not.toHaveBeenCalled();
     });
 });
