@@ -20,6 +20,8 @@ const isValidLimitValue = (value) =>
  *
  * Un document ne cible volontairement qu'une seule capability afin que la
  * résolution effective, l'audit et la révocation restent déterministes.
+ * Plusieurs documents peuvent cependant partager un `groupId` lorsqu'ils
+ * matérialisent une seule décision commerciale : une feature et ses quotas.
  */
 const entitlementOverrideSchema = new Schema(
     {
@@ -29,6 +31,21 @@ const entitlementOverrideSchema = new Schema(
             required: true,
             immutable: true,
             index: true,
+        },
+
+        groupId: {
+            type: Schema.Types.ObjectId,
+            default: null,
+            immutable: true,
+            index: true,
+        },
+
+        groupName: {
+            type: String,
+            trim: true,
+            minlength: 3,
+            maxlength: 120,
+            default: null,
         },
 
         targetType: {
@@ -140,6 +157,23 @@ const entitlementOverrideSchema = new Schema(
 );
 
 /**
+ * `groupId` et `groupName` forment une identité métier indivisible. Garder un
+ * seul des deux rendrait impossible d'expliquer ou de modifier proprement la
+ * décision commerciale depuis Platform.
+ */
+entitlementOverrideSchema.pre('validate', function validateGroupShape() {
+    const hasGroupId = this.groupId !== null;
+    const hasGroupName = this.groupName !== null;
+
+    if (hasGroupId !== hasGroupName) {
+        this.invalidate(
+            'groupId',
+            'Une dérogation groupée doit conserver son identifiant et son nom.',
+        );
+    }
+});
+
+/**
  * Verrouille la forme discriminée du document au niveau persistance.
  * La validation HTTP sera également stricte, mais le modèle doit rester sûr
  * lorsqu'il est utilisé par un job, un seed ou un service interne.
@@ -214,7 +248,7 @@ entitlementOverrideSchema.pre('validate', function validatePeriod() {
     if (this.endsAt !== null && this.endsAt <= this.startsAt) {
         this.invalidate(
             'endsAt',
-            'La fin de la dérogation doit être postérieure à son début.',
+            'La fin de la dérogation doit être postérieure au début.',
         );
     }
 });
@@ -256,6 +290,12 @@ entitlementOverrideSchema.index({
     targetType: 1,
     metricKey: 1,
     startsAt: -1,
+});
+
+entitlementOverrideSchema.index({
+    workspace: 1,
+    groupId: 1,
+    targetType: 1,
 });
 
 entitlementOverrideSchema.index({

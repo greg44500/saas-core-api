@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Registre canonique des dettes actives
 
 **Statut :** source de vérité documentaire pour les dettes non résolues  
-**Dernière mise à jour :** 2026-09-10  
+**Dernière mise à jour :** 2026-09-12  
 **Périmètre :** Core clonable et, lorsque précisé, applications dérivées
 
 ---
@@ -64,15 +64,15 @@ produit dérivé automatiquement production-ready
 |---|---|---|
 | D-020 | Invitation commerciale client et offres privées de découverte | EN COURS |
 | D-011 | Design System Core, préférences utilisateur et affichage métier | VALIDÉ |
-| D-021 | Gate sécurité Auth, invitations et tokens temporaires | PLANIFIÉ |
+| D-021 | Gate sécurité Auth, invitations et tokens temporaires | VALIDÉ |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
 | D-002 | Corbeille et restauration des fichiers | PLANIFIÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
-D-001, D-011, D-014, D-018 et D-019 sont clôturées.
+D-001, D-011, D-014, D-018, D-019 et D-021 sont clôturées.
 
-D-020 et D-021 doivent être clôturées ou explicitement reclassifiées avant D-015. D-002 doit être `VALIDÉ` avant D-017 et avant toute première dérivation métier.
+D-020 doit être clôturée ou explicitement reclassifiée avant D-015. D-002 doit être `VALIDÉ` avant D-017 et avant toute première dérivation métier.
 
 ### 4.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -451,7 +451,7 @@ Variables/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrati
 **Statut :** PLANIFIÉ  
 **Périmètre :** Core / distribution  
 **Blocage Core 1.0 :** oui  
-**Dépendances :** D-020 et D-021 doivent être clôturées ou explicitement reclassifiées avant ouverture de la release candidate
+**Dépendances :** D-020 doit être clôturée ou explicitement reclassifiée avant ouverture de la release candidate ; D-021 est validée depuis le 2026-09-12
 
 À finaliser avant `v1.0.0` : SemVer, tags/releases, changelog/release notes, changements de contrats/configuration, migrations et ordre pre/post-deploy, reprise/rollback, provenance machine-readable et gate de release reproductible.
 
@@ -492,17 +492,15 @@ Contrat : `docs/contracts/COMMERCIAL-INVITATIONS.md`.
 
 ## D-021 — Gate sécurité Auth, invitations et tokens temporaires
 
-**Statut :** PLANIFIÉ  
+**Statut :** VALIDÉ — 2026-09-12  
 **Périmètre :** Core Auth + WorkspaceInvitation + PlatformInvitation + CommercialInvitation et tout lien sensible temporaire  
-**Blocage Core 1.0 :** oui, avant D-015  
+**Blocage Core 1.0 :** levé  
 **Dépendances :** Auth/session et domaines d'invitation existants  
 **Déclencheur :** décision sécurité du 2026-09-08 — auditer et homogénéiser les secrets temporaires avant de figer le versionnement du Core
 
-Cette dette est d'abord une **gate d'audit de l'existant**. Elle ne doit pas recréer ce qui est déjà correctement implémenté et testé.
+D-021 a été traitée comme une gate d'audit puis de durcissement ciblé : les mécanismes déjà corrects ont été conservés et seuls les écarts réellement démontrés ont été corrigés.
 
-### Invitations
-
-Politique cible Core à confirmer par audit :
+### Invitations — état validé
 
 ```text
 WorkspaceInvitation
@@ -511,28 +509,45 @@ CommercialInvitation
 → expiration par défaut : 7 jours
 ```
 
-Exigences : token cryptographiquement aléatoire, secret brut jamais persisté lorsque le modèle permet un hash, expiration serveur, single-use atomique, révocation, resend avec rotation, protection replay/concurrence, absence de fuite logs/URLs persistantes, audit et tests.
+Les trois familles utilisent des secrets générés côté serveur à partir de 32 octets aléatoires, un hash SHA-256 en persistance, une expiration serveur, une acceptation single-use atomique, des protections replay/concurrence, la révocation et un resend avec rotation du secret et nouvelle expiration. Les opérations critiques sont auditées.
 
-### Forgot / reset password
+Les liens temporaires utilisent `#token=...` plutôt qu'une query string. Le frontend capture le secret dans un vault runtime en mémoire puis nettoie l'URL ; aucun secret temporaire n'est persisté dans Redux, `localStorage`, `sessionStorage` ou `history.state`.
+
+### Forgot / reset password — état validé
 
 ```text
 reset password token
+→ 32 octets cryptographiquement aléatoires
+→ hash SHA-256 persisté uniquement
 → durée : 15 minutes
-→ usage unique
+→ usage unique atomique
 → nouvelle demande requise après expiration
 ```
 
-À vérifier : token fort/hashé, expiration serveur, consommation atomique, anti-enumeration, rate limiting, notification après changement et politique explicite d'invalidation des sessions après reset.
+Une nouvelle demande révoque les tokens actifs précédents. `forgot-password` conserve une réponse générique et une compensation temporelle pour limiter l'énumération. En cas d'échec SMTP, le token non remis est révoqué sans modifier la réponse publique.
 
-### Rate limiting et anti-automation
+Un reset réussi consomme le token atomiquement dans la transaction, met à jour le credential local, révoque toutes les sessions existantes, écrit l'audit `PASSWORD_RESET_COMPLETED`, puis envoie la notification de changement de mot de passe sans rollback du changement si SMTP échoue.
 
-Auditer séparément `register`, `login`, `forgot-password`, preview/acceptation d'invitations et endpoints Auth sensibles. Le CAPTCHA/challenge anti-bot n'est pas imposé systématiquement au login ; il reste une défense complémentaire/adaptative. L'inscription publique doit être protégée contre création massive de comptes/trials et `forgot-password` contre le mail bombing.
+### Rate limiting et anti-automation — état validé
+
+L'audit a confirmé ou ajouté des protections ciblées pour `register`, `login`, `forgot-password`, `reset-password`, les acceptations Workspace/Platform et les previews/acceptations Commercial. Les protections sensibles sont positionnées avant validation lorsque cela évite le contournement par bodies invalides.
+
+Le CAPTCHA/challenge anti-bot n'est pas imposé systématiquement dans le Core : aucun besoin démontré ne justifie cette friction à ce stade. Il reste une défense adaptative possible si un produit dérivé ou un contexte réel d'abus l'exige.
 
 ### Google SSO hors D-021
 
 Google SSO reste dans D-010 et ne bloque pas Core 1.0.
 
-**Critère de clôture :** audit documenté des secrets temporaires, invitations 7 jours par défaut ou exceptions justifiées, reset 15 minutes, single-use/rotation/révocation/replay/concurrence sécurisés, anti-enumeration/rate limiting vérifiés, stratégie anti-bot décidée, tests verts et documentation synchronisée avant D-015.
+### Gates de clôture
+
+```text
+backend npm test          → VERT
+frontend npm run lint     → VERT
+frontend npm test         → VERT
+frontend npm run build    → VERT
+```
+
+**Critère de clôture atteint :** secrets temporaires audités, invitations 7 jours validées, reset 15 minutes, single-use/rotation/révocation/replay/concurrence sécurisés, anti-enumeration/rate limiting vérifiés, stratégie anti-bot décidée, tests globaux verts et documentation synchronisée avant D-015.
 
 ---
 
@@ -554,7 +569,7 @@ DOC-CODE-1 documentation source                             VALIDÉ
 D-011.A stabilisation Design System Core                    VALIDÉ
 D-011.B préférences de confort                              VALIDÉ
 D-011.C préférences d'affichage métier                      VALIDÉ
-→ D-021 gate sécurité Auth / invitations / tokens           PLANIFIÉ
+D-021 gate sécurité Auth / invitations / tokens             VALIDÉ — 2026-09-12
 → D-015 release/version/provenance/migrations               PLANIFIÉ
 → D-016 Playwright E2E Core                                 PLANIFIÉ
 → D-002 corbeille / restauration Files                      PLANIFIÉ — avant première dérivation
@@ -563,7 +578,7 @@ D-011.C préférences d'affichage métier                      VALIDÉ
 → taguer uniquement ensuite la release Core stable
 ```
 
-Aucune première dérivation métier avant D-002 `VALIDÉ`. Aucune release `v1.0.0` avant clôture/reclassification explicite des blockers Core applicables, notamment D-020 et D-021 avant D-015.
+Aucune première dérivation métier avant D-002 `VALIDÉ`. Aucune release `v1.0.0` avant clôture/reclassification explicite des blockers Core applicables ; D-020 reste le blocker immédiat avant D-015.
 
 ---
 

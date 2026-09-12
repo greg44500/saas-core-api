@@ -4,28 +4,37 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 const mocks = vi.hoisted(() => ({
   createOverride: vi.fn(),
+  createFeatureGroup: vi.fn(),
   revokeOverride: vi.fn(),
   updateOverride: vi.fn(),
+  updateFeatureGroup: vi.fn(),
   useCreatePlatformEntitlementOverrideMutation: vi.fn(),
+  useCreatePlatformFeatureOverrideGroupMutation: vi.fn(),
   useGetPlatformEntitlementContextQuery: vi.fn(),
   useGetPlatformEntitlementOverrideQuery: vi.fn(),
+  useGetPlatformFeatureOverrideGroupQuery: vi.fn(),
   useListPlatformEntitlementOverridesQuery: vi.fn(),
   useRevokePlatformEntitlementOverrideMutation: vi.fn(),
   useUpdatePlatformEntitlementOverrideMutation: vi.fn(),
+  useUpdatePlatformFeatureOverrideGroupMutation: vi.fn(),
   useListPlatformPlanCapabilitiesQuery: vi.fn(),
   useListPlatformWorkspacesQuery: vi.fn(),
 }));
 
 vi.mock('@/features/platform/api/platform-entitlement-overrides-api', () => ({
   useCreatePlatformEntitlementOverrideMutation: mocks.useCreatePlatformEntitlementOverrideMutation,
+  useCreatePlatformFeatureOverrideGroupMutation: mocks.useCreatePlatformFeatureOverrideGroupMutation,
   useGetPlatformEntitlementContextQuery: mocks.useGetPlatformEntitlementContextQuery,
   useGetPlatformEntitlementOverrideQuery: mocks.useGetPlatformEntitlementOverrideQuery,
+  useGetPlatformFeatureOverrideGroupQuery: mocks.useGetPlatformFeatureOverrideGroupQuery,
   useListPlatformEntitlementOverridesQuery: mocks.useListPlatformEntitlementOverridesQuery,
   useRevokePlatformEntitlementOverrideMutation: mocks.useRevokePlatformEntitlementOverrideMutation,
   useUpdatePlatformEntitlementOverrideMutation: mocks.useUpdatePlatformEntitlementOverrideMutation,
+  useUpdatePlatformFeatureOverrideGroupMutation: mocks.useUpdatePlatformFeatureOverrideGroupMutation,
 }));
 
 vi.mock('@/features/platform/api/platform-plans-api', () => ({
@@ -51,6 +60,17 @@ const override = {
   endsAt: null,
   lifecycle: 'active',
   reason: 'Accès support temporaire',
+  groupId: 'group-id',
+  groupName: 'Accès fichiers',
+  relatedOverrides: [
+    {
+      id: 'storage-limit-id',
+      targetType: 'limit',
+      metricKey: 'storage_bytes',
+      limitValue: 100 * 1024 * 1024,
+      lifecycle: 'active',
+    },
+  ],
   grantedBy: { id: 'admin-id', firstName: 'Super', lastName: 'Admin' },
   updatedBy: null,
   revokedAt: null,
@@ -63,10 +83,61 @@ const override = {
 const capabilities = {
   features: ['file_upload', 'team_management'],
   featureDefinitions: [
-    { key: 'file_upload', label: 'Téléversement de fichiers' },
-    { key: 'team_management', label: 'Gestion d’équipe' },
+    {
+      key: 'file_upload',
+      label: 'Téléversement de fichiers',
+      description: 'Permet de téléverser des fichiers.',
+      category: 'files',
+      categoryLabel: 'Fichiers',
+      metricKeys: ['storage_bytes'],
+      overridePolicy: {
+        requiredLimits: {
+          storage_bytes: {
+            minimumEffectiveValue: 100 * 1024 * 1024,
+            minimumHeadroom: 1,
+          },
+        },
+      },
+    },
+    {
+      key: 'team_management',
+      label: 'Gestion d’équipe',
+      description: 'Permet d’administrer les membres du workspace.',
+      category: 'workspace',
+      categoryLabel: 'Collaboration',
+      metricKeys: ['members'],
+      overridePolicy: {
+        requiredLimits: {
+          members: {
+            minimumEffectiveValue: 2,
+            minimumHeadroom: 1,
+          },
+        },
+      },
+    },
   ],
-  metrics: [{ key: 'storage_bytes', presentation: { label: 'Stockage', unit: 'bytes' } }],
+  metrics: [
+    {
+      key: 'storage_bytes',
+      presentation: { label: 'Stockage', unit: 'bytes' },
+      overridePolicy: {
+        control: 'preset_slider',
+        values: [0, 100 * 1024 * 1024, 500 * 1024 * 1024, 1024 * 1024 * 1024],
+        allowUnlimited: false,
+      },
+    },
+    {
+      key: 'members',
+      presentation: { label: 'Membres', unit: 'count' },
+      overridePolicy: {
+        control: 'linear_slider',
+        min: 0,
+        max: 50,
+        step: 1,
+        allowUnlimited: false,
+      },
+    },
+  ],
 };
 
 function mutationHook(mock) {
@@ -77,11 +148,20 @@ function mutationHook(mock) {
 function renderPage(initialEntry = '/platform/entitlement-overrides') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
-      <ToastProvider>
-        <PlatformEntitlementOverridesPage />
-      </ToastProvider>
+      <TooltipProvider>
+        <ToastProvider>
+          <PlatformEntitlementOverridesPage />
+        </ToastProvider>
+      </TooltipProvider>
     </MemoryRouter>,
   );
+}
+
+async function chooseSelectOption(user, label, optionName) {
+  const trigger = screen.getByRole('combobox', { name: label });
+  trigger.focus();
+  await user.keyboard('{ArrowDown}');
+  await user.click(await screen.findByRole('option', { name: optionName }));
 }
 
 describe('PlatformEntitlementOverridesPage', () => {
@@ -89,7 +169,7 @@ describe('PlatformEntitlementOverridesPage', () => {
     mocks.useListPlatformEntitlementOverridesQuery.mockReturnValue({
       data: {
         overrides: [override],
-        pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+        pagination: { page: 1, limit: 10, total: 11, totalPages: 2 },
       },
       error: undefined,
       isFetching: false,
@@ -103,18 +183,33 @@ describe('PlatformEntitlementOverridesPage', () => {
       isLoading: false,
       refetch: vi.fn(),
     });
-    mocks.useGetPlatformEntitlementContextQuery.mockImplementation((workspaceId) => ({
-      data: workspaceId
+    mocks.useGetPlatformFeatureOverrideGroupQuery.mockReturnValue({
+      data: {
+        groupId: 'group-id',
+        groupName: 'Accès fichiers',
+        featureKey: 'file_upload',
+        primaryOverride: override,
+        relatedOverrides: override.relatedOverrides,
+      },
+      error: undefined,
+      isFetching: false,
+      isLoading: false,
+    });
+    mocks.useGetPlatformEntitlementContextQuery.mockImplementation((currentWorkspaceId) => ({
+      data: currentWorkspaceId
         ? {
             workspace: { id: 'workspace-id', name: 'Workspace Démo' },
             plan: {
               id: 'plan-id',
-              key: 'free',
               name: 'Free',
               features: ['file_upload'],
-              limits: {},
+              limits: { members: 1, storage_bytes: 100 * 1024 * 1024 },
             },
-            effective: { features: ['file_upload'], limits: {} },
+            effective: {
+              features: ['file_upload'],
+              limits: { members: 1, storage_bytes: 100 * 1024 * 1024 },
+            },
+            usage: { members: 1, storage_bytes: 0 },
             appliedOverrides: [],
             nextEntitlementChangeAt: null,
           }
@@ -139,8 +234,14 @@ describe('PlatformEntitlementOverridesPage', () => {
     mocks.useCreatePlatformEntitlementOverrideMutation.mockReturnValue(
       mutationHook(mocks.createOverride),
     );
+    mocks.useCreatePlatformFeatureOverrideGroupMutation.mockReturnValue(
+      mutationHook(mocks.createFeatureGroup),
+    );
     mocks.useUpdatePlatformEntitlementOverrideMutation.mockReturnValue(
       mutationHook(mocks.updateOverride),
+    );
+    mocks.useUpdatePlatformFeatureOverrideGroupMutation.mockReturnValue(
+      mutationHook(mocks.updateFeatureGroup),
     );
     mocks.useRevokePlatformEntitlementOverrideMutation.mockReturnValue(
       mutationHook(mocks.revokeOverride),
@@ -152,49 +253,69 @@ describe('PlatformEntitlementOverridesPage', () => {
     vi.clearAllMocks();
   });
 
-  it('affiche les dérogations dans le DataTable partagé', () => {
+  it('affiche un tableau métier compact sans colonnes Type ni Valeur', () => {
     renderPage();
 
     const table = screen.getByRole('table');
     expect(within(table).getByText('Workspace Démo')).toBeInTheDocument();
     expect(within(table).getByText('Téléversement de fichiers')).toBeInTheDocument();
-    expect(within(table).getByText('Activée')).toBeInTheDocument();
     expect(within(table).getByText('Active')).toBeInTheDocument();
+    expect(within(table).getByText('Permanente')).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Fonctionnalité' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Statut' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Période' })).toBeInTheDocument();
+    expect(within(table).queryByRole('columnheader', { name: 'Type' })).not.toBeInTheDocument();
+    expect(within(table).queryByRole('columnheader', { name: 'Valeur' })).not.toBeInTheDocument();
   });
 
-  it('rejoue la liste avec les filtres conservés dans l’URL', async () => {
+  it('conserve les filtres utiles dans l’URL et utilise 10 lignes par défaut', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.selectOptions(screen.getByLabelText('Type'), 'feature');
+    await chooseSelectOption(user, 'Origine', 'Support');
+
+    await waitFor(() => {
+      expect(mocks.useListPlatformEntitlementOverridesQuery).toHaveBeenLastCalledWith({
+        page: 1,
+        limit: 10,
+        workspaceId: undefined,
+        source: 'support',
+        lifecycle: undefined,
+      });
+    });
+  });
+
+  it('applique le filtre de statut transmis par un drill-down', () => {
+    renderPage('/platform/entitlement-overrides?lifecycle=active');
+
+    expect(screen.getByRole('combobox', { name: 'Statut' })).toHaveTextContent('Active');
+    expect(mocks.useListPlatformEntitlementOverridesQuery).toHaveBeenCalledWith({
+      page: 1,
+      limit: 10,
+      workspaceId: undefined,
+      source: undefined,
+      lifecycle: 'active',
+    });
+  });
+
+  it('permet de choisir le nombre de lignes par page', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await chooseSelectOption(user, 'Nombre de lignes par page', '20');
 
     await waitFor(() => {
       expect(mocks.useListPlatformEntitlementOverridesQuery).toHaveBeenLastCalledWith({
         page: 1,
         limit: 20,
         workspaceId: undefined,
-        targetType: 'feature',
         source: undefined,
         lifecycle: undefined,
       });
     });
   });
 
-  it('applique le filtre lifecycle transmis par un drill-down du dashboard', () => {
-    renderPage('/platform/entitlement-overrides?lifecycle=active');
-
-    expect(screen.getByLabelText('État')).toHaveValue('active');
-    expect(mocks.useListPlatformEntitlementOverridesQuery).toHaveBeenCalledWith({
-      page: 1,
-      limit: 20,
-      workspaceId: undefined,
-      targetType: undefined,
-      source: undefined,
-      lifecycle: 'active',
-    });
-  });
-
-  it('affiche les réglages rapides lorsque le workspace est sélectionné', async () => {
+  it('affiche la synthèse des fonctionnalités actives lorsque le workspace est sélectionné', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -202,34 +323,48 @@ describe('PlatformEntitlementOverridesPage', () => {
       screen.getByRole('button', { name: 'Dérogation exceptionnelle' }),
     ).toBeDisabled();
 
-    await user.selectOptions(screen.getByLabelText('Espace de travail'), 'workspace-id');
+    await chooseSelectOption(user, 'Espace de travail', 'Workspace Démo');
 
     expect(
-      await screen.findByRole('heading', { name: 'Droits et limites du workspace' }),
+      await screen.findByRole('heading', { name: 'Fonctionnalités actives' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('switch', { name: 'Désactiver Téléversement de fichiers' }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Dérogation exceptionnelle' }),
     ).not.toBeDisabled();
   });
 
-  it('crée une dérogation exceptionnelle contextualisée depuis le Drawer', async () => {
+  it('expose les paramètres associés au survol de la fonctionnalité', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.selectOptions(screen.getByLabelText('Espace de travail'), 'workspace-id');
+    await user.hover(screen.getByRole('button', {
+      name: 'Informations sur Téléversement de fichiers',
+    }));
+
+    expect(await screen.findByText('Paramètres associés')).toBeInTheDocument();
+    expect(screen.getByText(/Stockage : 100 Mo/)).toBeInTheDocument();
+  });
+
+  it('crée une dérogation groupée avec la limite associée requise', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await chooseSelectOption(user, 'Espace de travail', 'Workspace Démo');
     await user.click(screen.getByRole('button', { name: 'Dérogation exceptionnelle' }));
     const drawer = screen.getByRole('dialog', { name: 'Dérogation exceptionnelle' });
 
-    expect(within(drawer).getByText('Workspace Démo')).toBeInTheDocument();
-    expect(within(drawer).getByRole('option', { name: 'Gestion d’équipe' })).toBeInTheDocument();
-    expect(
-      within(drawer).queryByRole('option', { name: 'Téléversement de fichiers' }),
-    ).not.toBeInTheDocument();
+    expect(within(drawer).getAllByText('Gestion d’équipe')).toHaveLength(2);
+    expect(within(drawer).queryByText('Téléversement de fichiers')).not.toBeInTheDocument();
+    expect(within(drawer).getByText('1 limite')).toBeInTheDocument();
+    expect(within(drawer).getByText('Ajustement requis')).toBeInTheDocument();
+    expect(within(drawer).getByRole('slider', { name: 'Limite Membres' })).toBeInTheDocument();
 
-    await user.type(within(drawer).getByLabelText('Motif'), 'Accès support validé');
+    await user.type(
+      within(drawer).getByLabelText('Nom de la dérogation'),
+      'Découverte équipe',
+    );
+    await user.type(within(drawer).getByLabelText('Motif'), 'Essai commercial validé');
     await user.click(
       within(drawer).getByRole('button', {
         name: 'Créer la dérogation exceptionnelle',
@@ -237,16 +372,15 @@ describe('PlatformEntitlementOverridesPage', () => {
     );
 
     await waitFor(() => {
-      expect(mocks.createOverride).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mocks.createFeatureGroup).toHaveBeenCalledWith(expect.objectContaining({
         workspaceId: 'workspace-id',
-        targetType: 'feature',
         featureKey: 'team_management',
         featureEnabled: true,
-        reason: 'Accès support validé',
+        groupName: 'Découverte équipe',
+        relatedLimits: [{ metricKey: 'members', limitValue: 2 }],
+        reason: 'Essai commercial validé',
       }));
     });
-    expect(
-      await screen.findByText('Dérogation exceptionnelle créée'),
-    ).toBeInTheDocument();
+    expect(mocks.createOverride).not.toHaveBeenCalled();
   });
 });

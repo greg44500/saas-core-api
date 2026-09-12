@@ -1,5 +1,8 @@
 import { Router } from 'express';
 
+import {
+    workspaceInvitationAcceptRateLimiter,
+} from '../../config/workspaceInvitationRateLimit.config.js';
 import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
@@ -18,12 +21,14 @@ import {
 } from '../plan/planCapability.registry.js';
 import {
     accept,
+    acceptNew,
     create,
     list,
     resend,
     revoke,
 } from './workspaceInvitation.controller.js';
 import {
+    acceptNewWorkspaceInvitationBodySchema,
     acceptWorkspaceInvitationBodySchema,
     createWorkspaceInvitationBodySchema,
     workspaceIdParamsSchema,
@@ -89,20 +94,32 @@ workspaceInvitationRouter.delete(
 );
 
 /**
- * L'acceptation ne passe pas par loadWorkspaceContext : l'utilisateur n'est
- * précisément pas encore membre du workspace au moment de la requête. Le
- * service d'acceptation répète donc le contrôle team_management dans sa
- * transaction avant toute création ou réactivation de membership.
+ * L'acceptation ne passe pas par loadWorkspaceContext : le destinataire n'est
+ * précisément pas encore membre du workspace. Le chemin existant exige une
+ * session ; le chemin new crée le compte et le membership atomiquement.
+ *
+ * Le limiter IP s'exécute avant authentification/validation pour que les
+ * requêtes invalides participent elles aussi à la protection anti-automation.
  */
 const invitationAcceptanceRouter = Router();
 
 invitationAcceptanceRouter.post(
     '/accept',
+    workspaceInvitationAcceptRateLimiter,
     authenticate,
     validateRequest({
         body: acceptWorkspaceInvitationBodySchema,
     }),
     accept,
+);
+
+invitationAcceptanceRouter.post(
+    '/accept-new',
+    workspaceInvitationAcceptRateLimiter,
+    validateRequest({
+        body: acceptNewWorkspaceInvitationBodySchema,
+    }),
+    acceptNew,
 );
 
 export {

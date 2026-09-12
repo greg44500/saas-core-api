@@ -1,184 +1,35 @@
 import { Info } from 'lucide-react';
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
-import { createPortal } from 'react-dom';
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
-const TOOLTIP_GAP = 8;
-const VIEWPORT_PADDING = 12;
-const TOOLTIP_MAX_WIDTH = 256;
-const TOOLTIP_CLOSE_DELAY_MS = 100;
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
-}
-
 /**
- * Affiche une explication courte au survol ou au focus clavier sans occuper
- * l'espace permanent de la carte.
- *
- * La bulle est rendue dans `document.body` afin de ne jamais être tronquée par
- * un Drawer, un tableau ou tout autre conteneur scrollable avec `overflow`.
- * Son positionnement reste recalculé au scroll et au redimensionnement.
+ * Tooltip d'information transverse. Le composant conserve une API métier très
+ * simple tout en déléguant focus, hover, portal et positionnement à la primitive
+ * shadcn/Base UI canonique.
  */
 function InfoTooltip({ content, label = 'Plus d’informations', className }) {
-  const tooltipId = useId();
-  const triggerRef = useRef(null);
-  const tooltipRef = useRef(null);
-  const closeTimeoutRef = useRef(null);
-  const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState(null);
-
-  const cancelScheduledClose = useCallback(() => {
-    if (closeTimeoutRef.current) {
-      window.clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-  }, []);
-
-  const scheduleClose = useCallback(() => {
-    cancelScheduledClose();
-    closeTimeoutRef.current = window.setTimeout(() => {
-      closeTimeoutRef.current = null;
-      setOpen(false);
-    }, TOOLTIP_CLOSE_DELAY_MS);
-  }, [cancelScheduledClose]);
-
-  const updatePosition = useCallback(() => {
-    const trigger = triggerRef.current;
-    const tooltip = tooltipRef.current;
-
-    if (!trigger || !tooltip) return;
-
-    const triggerRect = trigger.getBoundingClientRect();
-    const tooltipRect = tooltip.getBoundingClientRect();
-    const maxLeft = Math.max(
-      VIEWPORT_PADDING,
-      window.innerWidth - tooltipRect.width - VIEWPORT_PADDING,
-    );
-    const left = clamp(
-      triggerRect.right - tooltipRect.width,
-      VIEWPORT_PADDING,
-      maxLeft,
-    );
-
-    const spaceBelow = window.innerHeight - triggerRect.bottom - TOOLTIP_GAP;
-    const shouldOpenAbove = (
-      spaceBelow < tooltipRect.height
-      && triggerRect.top > spaceBelow
-    );
-    const rawTop = shouldOpenAbove
-      ? triggerRect.top - TOOLTIP_GAP - tooltipRect.height
-      : triggerRect.bottom + TOOLTIP_GAP;
-    const maxTop = Math.max(
-      VIEWPORT_PADDING,
-      window.innerHeight - tooltipRect.height - VIEWPORT_PADDING,
-    );
-
-    setPosition({
-      left,
-      top: clamp(rawTop, VIEWPORT_PADDING, maxTop),
-    });
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!open) {
-      setPosition(null);
-      return;
-    }
-
-    updatePosition();
-  }, [open, content, updatePosition]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-
-    const handleViewportChange = () => updatePosition();
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        cancelScheduledClose();
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    };
-
-    window.addEventListener('resize', handleViewportChange);
-    window.addEventListener('scroll', handleViewportChange, true);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('resize', handleViewportChange);
-      window.removeEventListener('scroll', handleViewportChange, true);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [cancelScheduledClose, open, updatePosition]);
-
-  useEffect(
-    () => () => cancelScheduledClose(),
-    [cancelScheduledClose],
-  );
-
   if (!content) return null;
 
-  const tooltip = open
-    ? createPortal(
-      <span
-        className="pointer-events-auto fixed z-[var(--layer-tooltip)] rounded-lg border border-border bg-popover px-3 py-2 text-left text-xs font-normal leading-relaxed text-popover-foreground shadow-lg"
-        id={tooltipId}
-        onPointerEnter={cancelScheduledClose}
-        onPointerLeave={scheduleClose}
-        ref={tooltipRef}
-        role="tooltip"
-        style={{
-          left: position?.left ?? VIEWPORT_PADDING,
-          maxWidth: `calc(100vw - ${VIEWPORT_PADDING * 2}px)`,
-          opacity: position ? 1 : 0,
-          top: position?.top ?? VIEWPORT_PADDING,
-          width: Math.min(
-            TOOLTIP_MAX_WIDTH,
-            Math.max(0, window.innerWidth - VIEWPORT_PADDING * 2),
-          ),
-        }}
-      >
-        {content}
-      </span>,
-      document.body,
-    )
-    : null;
-
   return (
-    <>
-      <span className={cn('inline-flex shrink-0', className)}>
-        <button
-          aria-describedby={open ? tooltipId : undefined}
-          aria-label={label}
-          className="inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onBlur={() => setOpen(false)}
-          onFocus={() => setOpen(true)}
-          onPointerEnter={() => {
-            cancelScheduledClose();
-            setOpen(true);
-          }}
-          onPointerLeave={scheduleClose}
-          ref={triggerRef}
-          type="button"
-        >
-          <Info aria-hidden="true" className="size-4" />
-        </button>
-      </span>
-      {tooltip}
-    </>
+    <Tooltip>
+      <TooltipTrigger
+        aria-label={label}
+        className={cn(
+          'inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors',
+          'hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          className,
+        )}
+      >
+        <Info aria-hidden="true" className="size-4" />
+      </TooltipTrigger>
+      <TooltipContent>{content}</TooltipContent>
+    </Tooltip>
   );
 }
 
-export {
-  InfoTooltip,
-  TOOLTIP_CLOSE_DELAY_MS,
-};
+export { InfoTooltip };

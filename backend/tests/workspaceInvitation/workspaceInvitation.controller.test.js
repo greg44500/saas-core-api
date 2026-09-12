@@ -7,6 +7,7 @@ import {
 } from 'vitest';
 
 import {
+    acceptNew,
     create,
     resend,
 } from '../../modules/workspaceInvitation/workspaceInvitation.controller.js';
@@ -19,6 +20,9 @@ import {
 import {
     deliverWorkspaceInvitation,
 } from '../../modules/workspaceInvitation/workspaceInvitationDelivery.service.js';
+import {
+    acceptNewWorkspaceInvitation,
+} from '../../modules/workspaceInvitation/acceptWorkspaceInvitation.service.js';
 
 vi.mock(
     '../../modules/workspaceInvitation/workspaceInvitation.service.js',
@@ -41,7 +45,10 @@ vi.mock(
 );
 vi.mock(
     '../../modules/workspaceInvitation/acceptWorkspaceInvitation.service.js',
-    () => ({ acceptWorkspaceInvitation: vi.fn() }),
+    () => ({
+        acceptNewWorkspaceInvitation: vi.fn(),
+        acceptWorkspaceInvitation: vi.fn(),
+    }),
 );
 
 const createResponse = () => ({
@@ -126,5 +133,50 @@ describe('workspace invitation controller', () => {
         expect(JSON.stringify(payload)).not.toContain(
             'rotated-secret-token',
         );
+    });
+
+    it('transmet le profil minimal et la preuve juridique au service new-user', async () => {
+        acceptNewWorkspaceInvitation.mockResolvedValue({
+            invitation: { workspace: 'workspace-id' },
+            membership: {
+                _id: 'membership-id',
+                role: 'role-id',
+                status: 'active',
+            },
+        });
+
+        const req = baseRequest();
+        req.validated.body = {
+            token: 'a'.repeat(64),
+            firstName: 'Marie',
+            lastName: 'Martin',
+            password: 'Phrase unique pour workspace 47!',
+            legalAccepted: true,
+        };
+        const res = createResponse();
+
+        await acceptNew(req, res);
+
+        expect(acceptNewWorkspaceInvitation).toHaveBeenCalledWith({
+            token: 'a'.repeat(64),
+            firstName: 'Marie',
+            lastName: 'Martin',
+            password: 'Phrase unique pour workspace 47!',
+            legalAccepted: true,
+            ipAddress: '127.0.0.1',
+            userAgent: 'vitest',
+        });
+        expect(res.status).toHaveBeenCalledWith(201);
+        expect(res.json).toHaveBeenCalledWith({
+            status: 'success',
+            data: {
+                membership: {
+                    id: 'membership-id',
+                    workspaceId: 'workspace-id',
+                    roleId: 'role-id',
+                    status: 'active',
+                },
+            },
+        });
     });
 });

@@ -1,15 +1,52 @@
 import { z } from 'zod';
 
-/**
- * Valide uniquement la structure HTTP d'un mot de passe.
- *
- * Cette primitive est partagée par les modules qui doivent confirmer ou
- * définir un mot de passe. Elle reste indépendante des modules Auth et User
- * afin d'éviter les dépendances circulaires entre leurs validations.
- *
- * Le mot de passe n'est volontairement pas trimé : les espaces peuvent faire
- * partie du secret choisi par l'utilisateur.
- */
-const passwordSchema = z.string().min(15).max(128);
+import {
+    PASSWORD_POLICY,
+    validateNewPasswordAgainstPolicy,
+} from '../security/passwordPolicy.js';
 
-export { passwordSchema };
+/**
+ * Valide un secret présenté pour authentification.
+ *
+ * Ce schéma ne doit pas appliquer la politique des nouveaux mots de passe :
+ * un compte existant doit pouvoir présenter son credential courant même si la
+ * politique a été renforcée depuis sa création.
+ */
+const passwordCredentialSchema = z
+    .string()
+    .min(1)
+    .max(PASSWORD_POLICY.maxLength);
+
+/**
+ * Valide tout nouveau mot de passe créé par register/change/reset.
+ *
+ * La politique appartient exclusivement au backend. Le frontend peut exposer
+ * une représentation publique de ces règles, mais la décision finale reste ici.
+ */
+const newPasswordSchema = z
+    .string()
+    .min(PASSWORD_POLICY.minLength)
+    .max(PASSWORD_POLICY.maxLength)
+    .superRefine((password, context) => {
+        const result = validateNewPasswordAgainstPolicy(password);
+
+        for (const reason of result.reasons) {
+            if (['too_short', 'too_long'].includes(reason)) {
+                continue;
+            }
+
+            context.addIssue({
+                code: 'custom',
+                message: 'Le mot de passe est trop prévisible. Choisissez une phrase de passe plus difficile à deviner.',
+            });
+        }
+    });
+
+// Alias conservé pour les modules qui définissent un nouveau mot de passe.
+const passwordSchema = newPasswordSchema;
+
+export {
+    newPasswordSchema,
+    passwordCredentialSchema,
+    passwordSchema,
+};

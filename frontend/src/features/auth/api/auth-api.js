@@ -10,6 +10,10 @@ function getAccessTokenFromResponse(response) {
 
 const authApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
+    getPasswordPolicy: build.query({
+      query: () => '/auth/password-policy',
+      transformResponse: (response) => response?.data?.passwordPolicy ?? null,
+    }),
     register: build.mutation({
       query: (credentials) => ({
         url: '/auth/register',
@@ -142,6 +146,7 @@ export const {
   useChangePasswordMutation,
   useForgotPasswordMutation,
   useGetCurrentUserQuery,
+  useGetPasswordPolicyQuery,
   useLazyGetCurrentUserQuery,
   useLoginMutation,
   useLogoutAllMutation,

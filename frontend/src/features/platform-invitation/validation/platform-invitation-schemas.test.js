@@ -16,13 +16,21 @@ describe('platformInvitationTokenSchema', () => {
 describe('platformInvitationNewAccountSchema', () => {
   it('exige un mot de passe conforme et une confirmation identique', () => {
     expect(platformInvitationNewAccountSchema.safeParse({
-      password: 'mot-de-passe-tres-securise',
-      confirmPassword: 'mot-de-passe-tres-securise',
+      password: 'Phrase unique pour invitation 47!',
+      confirmPassword: 'Phrase unique pour invitation 47!',
+      legalAccepted: true,
     }).success).toBe(true);
 
     expect(platformInvitationNewAccountSchema.safeParse({
-      password: 'mot-de-passe-tres-securise',
-      confirmPassword: 'autre-mot-de-passe-securise',
+      password: 'Phrase unique pour invitation 47!',
+      confirmPassword: 'Autre phrase vraiment différente 83!',
+      legalAccepted: true,
     }).success).toBe(false);
   });
+
+  expect(platformInvitationNewAccountSchema.safeParse({
+    password: 'Phrase unique pour invitation 47!',
+    confirmPassword: 'Phrase unique pour invitation 47!',
+    legalAccepted: false,
+  }).success).toBe(false);
 });

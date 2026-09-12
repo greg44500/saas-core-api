@@ -18,7 +18,7 @@ const createValidEnvironment = (overrides = {}) => ({
     JWT_ACCESS_ISSUER: 'saas-core-api',
     JWT_ACCESS_AUDIENCE: 'saas-core-api',
     REFRESH_TOKEN_EXPIRES_IN_DAYS: '7',
-    PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES: '30',
+    PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES: '15',
     SMTP_HOST: 'smtp.test.local',
     SMTP_PORT: '587',
     SMTP_SECURE: 'false',
@@ -49,6 +49,16 @@ describe('validateEnvironment', () => {
         );
 
         expect(result.success).toBe(true);
+    });
+
+    it('refuse une durée de reset supérieure au plafond de 15 minutes', () => {
+        const result = validateEnvironment(
+            createValidEnvironment({
+                PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES: '30',
+            }),
+        );
+
+        expect(result.success).toBe(false);
     });
 
     it.each([

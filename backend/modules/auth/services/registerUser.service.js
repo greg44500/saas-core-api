@@ -3,6 +3,9 @@ import mongoose from 'mongoose';
 import {
     AUTH_PROVIDER,
 } from '../../../constants/authProvider.constants.js';
+import {
+    LEGAL_ACCEPTANCE_SOURCE,
+} from '../../../constants/legalDocuments.constants.js';
 import { AppError } from '../../../utils/appError.js';
 import {
     canonicalizeEmail,
@@ -13,41 +16,47 @@ import {
 import {
     AuthIdentity,
 } from '../../authIdentities/authIdentity.model.js';
+import {
+    createRegistrationLegalAcceptance,
+} from '../../legalAcceptance/legalAcceptance.service.js';
 import { User } from '../../users/user.model.js';
 
 const EMAIL_ALREADY_USED_MESSAGE =
     'Un compte existe déjà avec cette adresse email';
 
+const LEGAL_ACCEPTANCE_REQUIRED_MESSAGE =
+    'L’acceptation des conditions est requise pour créer un compte';
+
 /**
- * Crée un compte utilisateur utilisant l'authentification locale.
+ * Crée transactionnellement le User et son identité locale.
  *
- * User et AuthIdentity sont créés dans une même transaction afin
- * d'éviter qu'un compte partiellement initialisé reste en base.
- *
- * Le hash du mot de passe est calculé avant l'ouverture de la
- * transaction afin de ne pas prolonger celle-ci avec un calcul
- * Argon2id volontairement coûteux.
- *
- * @param {object} input Données préalablement validées par registerSchema.
- * @param {string} input.firstName
- * @param {string} input.lastName
- * @param {string} input.email
- * @param {string} input.password
- * @returns {Promise<import('mongoose').Document>} User nouvellement créé.
+ * Les routes publiques register imposent `legalAccepted: true` par leur contrat
+ * Zod backend. Lorsque ce marqueur est fourni, la preuve versionnée est créée
+ * dans la même transaction. Son absence reste réservée aux appels internes de
+ * provisioning qui ne représentent pas une acceptation contractuelle publique.
  */
 const registerUser = async ({
     firstName,
     lastName,
     email,
     password,
+    legalAccepted,
+    legalAcceptanceSource = LEGAL_ACCEPTANCE_SOURCE.LOCAL_REGISTRATION,
+    ipAddress = null,
+    userAgent = null,
 }) => {
+    if (legalAccepted === false) {
+        throw new AppError(
+            LEGAL_ACCEPTANCE_REQUIRED_MESSAGE,
+            400,
+        );
+    }
+
+    const shouldRecordLegalAcceptance =
+        legalAccepted === true;
+
     const emailCanonical = canonicalizeEmail(email);
 
-    /*
-     * Cette vérification préalable produit une erreur métier claire.
-     * L'index unique MongoDB reste néanmoins le dernier garde-fou
-     * contre les inscriptions concurrentes.
-     */
     const existingUser = await User.exists({
         emailCanonical,
     });
@@ -59,10 +68,6 @@ const registerUser = async ({
         );
     }
 
-    /*
-     * Le calcul Argon2id est effectué avant la transaction afin
-     * de conserver celle-ci aussi courte que possible.
-     */
     const passwordHash = await hashPassword(
         password,
     );
@@ -81,33 +86,34 @@ const registerUser = async ({
                             emailCanonical,
                         },
                     ],
-                    {
-                        session,
-                    },
+                    { session },
                 );
 
                 await AuthIdentity.create(
                     [
                         {
                             user: user._id,
-                            provider:
-                                AUTH_PROVIDER.LOCAL,
+                            provider: AUTH_PROVIDER.LOCAL,
                             passwordHash,
                         },
                     ],
-                    {
-                        session,
-                    },
+                    { session },
                 );
+
+                if (shouldRecordLegalAcceptance) {
+                    await createRegistrationLegalAcceptance({
+                        userId: user._id,
+                        source: legalAcceptanceSource,
+                        ipAddress,
+                        userAgent,
+                        session,
+                    });
+                }
 
                 createdUser = user;
             },
         );
     } catch (error) {
-        /*
-         * Deux inscriptions simultanées peuvent réussir la vérification
-         * préalable. L'index unique protège ce cas au niveau de MongoDB.
-         */
         if (
             error?.code === 11000 &&
             (
@@ -128,5 +134,7 @@ const registerUser = async ({
 };
 
 export {
+    EMAIL_ALREADY_USED_MESSAGE,
+    LEGAL_ACCEPTANCE_REQUIRED_MESSAGE,
     registerUser,
 };

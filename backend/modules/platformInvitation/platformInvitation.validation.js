@@ -35,10 +35,14 @@ const acceptExistingPlatformInvitationBodySchema = z.strictObject({
  * L'identité et l'email du nouveau User proviennent exclusivement de
  * l'invitation déjà validée. Le client ne peut donc pas substituer une autre
  * personne au moment d'accepter le lien.
+ *
+ * Toute création de compte impose également l'acceptation contractuelle
+ * explicite, dont la preuve versionnée est enregistrée côté backend.
  */
 const acceptNewPlatformInvitationBodySchema = z.strictObject({
     token: invitationTokenSchema,
     password: passwordSchema,
+    legalAccepted: z.literal(true),
 });
 
 export {

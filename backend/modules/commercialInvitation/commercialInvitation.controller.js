@@ -61,11 +61,6 @@ const toSelectablePlanDto = (plan) => ({
     limits: serializeLimits(plan.limits),
 });
 
-/**
- * Le Plan peut être fourni explicitement après create/resend, car la mise à
- * jour du statut de livraison retourne un document dont la référence `plan`
- * n'est pas peuplée. Le DTO reste ainsi identique entre create, resend et list.
- */
 const toAdminInvitationDto = (
     invitation,
     resolvedPlan = invitation.plan,
@@ -193,11 +188,6 @@ const revoke = async (req, res) => {
     res.status(204).send();
 };
 
-/**
- * La preview ne renvoie volontairement ni l'adresse email destinataire ni le
- * motif administratif. Le bearer token suffit à présenter l'offre, mais une
- * fuite du lien ne doit pas exposer de donnée personnelle ou interne inutile.
- */
 const preview = async (req, res) => {
     const invitation = await previewCommercialInvitation({
         token: req.validated.body.token,
@@ -216,9 +206,11 @@ const preview = async (req, res) => {
 };
 
 const registerRecipient = async (req, res) => {
-    const user = await registerCommercialInvitationRecipient(
-        req.validated.body,
-    );
+    const user = await registerCommercialInvitationRecipient({
+        ...req.validated.body,
+        ipAddress: req.context.ipAddress,
+        userAgent: req.context.userAgent,
+    });
 
     res.status(201).json({
         status: 'success',

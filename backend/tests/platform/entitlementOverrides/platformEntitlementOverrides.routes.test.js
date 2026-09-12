@@ -32,6 +32,11 @@ import {
     revokePlatformEntitlementOverrideBodySchema,
     updatePlatformEntitlementOverrideBodySchema,
 } from '../../../modules/platform/entitlementOverrides/platformEntitlementOverrides.validation.js';
+import {
+    createPlatformFeatureOverrideGroupBodySchema,
+    platformFeatureOverrideGroupParamsSchema,
+    updatePlatformFeatureOverrideGroupBodySchema,
+} from '../../../modules/platform/entitlementOverrides/platformEntitlementOverrideGroups.validation.js';
 
 
 const {
@@ -55,10 +60,19 @@ const {
         getEntitlementOverrideById: vi.fn(
             (req, res) => res.status(200).json({ status: 'success' }),
         ),
+        getFeatureOverrideGroup: vi.fn(
+            (req, res) => res.status(200).json({ status: 'success' }),
+        ),
         createEntitlementOverride: vi.fn(
             (req, res) => res.status(201).json({ status: 'success' }),
         ),
+        createFeatureOverrideGroup: vi.fn(
+            (req, res) => res.status(201).json({ status: 'success' }),
+        ),
         updateEntitlementOverride: vi.fn(
+            (req, res) => res.status(200).json({ status: 'success' }),
+        ),
+        updateFeatureOverrideGroup: vi.fn(
             (req, res) => res.status(200).json({ status: 'success' }),
         ),
         revokeEntitlementOverride: vi.fn(
@@ -115,10 +129,8 @@ beforeEach(() => {
 
     /*
      * Les factories authorizePlatformPermission() et validateRequest() sont
-     * appelées lors de la construction du routeur, donc au chargement du
-     * module. Leur historique doit être conservé pour vérifier le contrat de
-     * sécurité déclaré par les routes ; seuls les middlewares effectivement
-     * exécutés à chaque requête sont remis à zéro ici.
+     * appelées lors de la construction du routeur. Seuls les middlewares et
+     * handlers exécutés à chaque requête sont donc remis à zéro ici.
      */
     permissionMiddleware.mockClear();
     validationMiddleware.mockClear();
@@ -155,6 +167,55 @@ describe('platformEntitlementOverrides.routes', () => {
             params: platformEntitlementContextWorkspaceParamsSchema,
         });
         expect(handlers.getEntitlementContext).toHaveBeenCalledOnce();
+    });
+
+    it('protège la lecture d’un groupe avec la permission de lecture', async () => {
+        const overrideId = '507f1f77bcf86cd799439011';
+
+        const response = await request(app)
+            .get(`/platform/entitlement-overrides/feature-groups/${overrideId}`);
+
+        expect(response.status).toBe(200);
+        expect(authorizePlatformPermission).toHaveBeenCalledWith(
+            PLATFORM_PERMISSION.ENTITLEMENT_OVERRIDES_READ,
+        );
+        expect(validateRequest).toHaveBeenCalledWith({
+            params: platformFeatureOverrideGroupParamsSchema,
+        });
+        expect(handlers.getFeatureOverrideGroup).toHaveBeenCalledOnce();
+    });
+
+    it('protège la création groupée avec la permission de création', async () => {
+        const response = await request(app)
+            .post('/platform/entitlement-overrides/feature-groups')
+            .send({});
+
+        expect(response.status).toBe(201);
+        expect(authorizePlatformPermission).toHaveBeenCalledWith(
+            PLATFORM_PERMISSION.ENTITLEMENT_OVERRIDES_CREATE,
+        );
+        expect(validateRequest).toHaveBeenCalledWith({
+            body: createPlatformFeatureOverrideGroupBodySchema,
+        });
+        expect(handlers.createFeatureOverrideGroup).toHaveBeenCalledOnce();
+    });
+
+    it('protège la modification groupée avec la permission update', async () => {
+        const overrideId = '507f1f77bcf86cd799439011';
+
+        const response = await request(app)
+            .patch(`/platform/entitlement-overrides/feature-groups/${overrideId}`)
+            .send({});
+
+        expect(response.status).toBe(200);
+        expect(authorizePlatformPermission).toHaveBeenCalledWith(
+            PLATFORM_PERMISSION.ENTITLEMENT_OVERRIDES_UPDATE,
+        );
+        expect(validateRequest).toHaveBeenCalledWith({
+            params: platformFeatureOverrideGroupParamsSchema,
+            body: updatePlatformFeatureOverrideGroupBodySchema,
+        });
+        expect(handlers.updateFeatureOverrideGroup).toHaveBeenCalledOnce();
     });
 
     it('protège le détail avec la permission de lecture', async () => {

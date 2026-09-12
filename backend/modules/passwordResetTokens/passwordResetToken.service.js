@@ -107,8 +107,42 @@ const createPasswordResetToken = async ({
         resetToken,
     };
 };
+/**
+ * Révoque un token de réinitialisation encore inutilisé.
+ *
+ * Cette opération sert notamment de compensation lorsqu'un token a été
+ * créé mais que son transport vers l'utilisateur échoue.
+ *
+ * @param {object} input
+ * @param {string|import('mongoose').Types.ObjectId} input.passwordResetTokenId
+ * @returns {Promise<object>}
+ */
+const revokePasswordResetToken = async ({
+    passwordResetTokenId,
+}) => {
+    if (!passwordResetTokenId) {
+        throw new TypeError(
+            'passwordResetTokenId is required to revoke a password reset token',
+        );
+    }
 
+    const revokedAt = new Date();
+
+    return PasswordResetToken.updateOne(
+        {
+            _id: passwordResetTokenId,
+            usedAt: null,
+            revokedAt: null,
+        },
+        {
+            $set: {
+                revokedAt,
+            },
+        },
+    );
+};
 
 export {
     createPasswordResetToken,
+    revokePasswordResetToken,
 };

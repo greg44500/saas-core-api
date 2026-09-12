@@ -46,6 +46,11 @@ vi.mock('@/features/preferences/api/user-preferences-api', () => ({
   ],
 }));
 
+async function chooseSelectOption(user, label, optionName) {
+  await user.click(screen.getByRole('combobox', { name: label }));
+  await user.click(await screen.findByRole('option', { name: optionName }));
+}
+
 describe('PreferencesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -73,13 +78,17 @@ describe('PreferencesPage', () => {
     });
   });
 
-  it('propose les polices contrôlées du Design System', () => {
+  it('propose les polices contrôlées du Design System', async () => {
+    const user = userEvent.setup();
     render(<PreferencesPage />);
 
-    const fontSelect = screen.getByLabelText('Police');
+    const fontSelect = screen.getByRole('combobox', { name: 'Police' });
 
-    expect(fontSelect).toHaveDisplayValue('Inter');
-    expect(screen.getByRole('option', { name: 'Geist' })).toBeInTheDocument();
+    expect(fontSelect).toHaveTextContent('Inter');
+
+    await user.click(fontSelect);
+
+    expect(await screen.findByRole('option', { name: 'Geist' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Manrope' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Police du système' }))
       .toBeInTheDocument();
@@ -89,7 +98,7 @@ describe('PreferencesPage', () => {
     const user = userEvent.setup();
     const { unmount } = render(<PreferencesPage />);
 
-    await user.selectOptions(screen.getByLabelText('Police'), 'manrope');
+    await chooseSelectOption(user, 'Police', 'Manrope');
 
     expect(applyComfortPreferences).toHaveBeenLastCalledWith({
       theme: 'dark',
@@ -135,8 +144,8 @@ describe('PreferencesPage', () => {
     const user = userEvent.setup();
     render(<PreferencesPage />);
 
-    await user.selectOptions(screen.getByLabelText('Thème'), 'dark');
-    await user.selectOptions(screen.getByLabelText('Police'), 'manrope');
+    await chooseSelectOption(user, 'Thème', 'Sombre');
+    await chooseSelectOption(user, 'Police', 'Manrope');
     await user.click(screen.getByRole('switch', {
       name: 'Activer le profil d’accessibilité renforcée',
     }));

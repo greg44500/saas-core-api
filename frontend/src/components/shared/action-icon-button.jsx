@@ -1,9 +1,14 @@
 import { Button } from '@/components/ui/button';
-import { Tooltip } from '@/components/shared/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 /**
  * Bouton d'action compact avec libellé accessible précis et tooltip visuel
- * éventuellement plus court.
+ * éventuellement plus court. La mécanique de tooltip reste entièrement
+ * déléguée à la primitive shadcn/Base UI canonique.
  */
 function ActionIconButton({
   Icon,
@@ -12,10 +17,20 @@ function ActionIconButton({
   ...buttonProps
 }) {
   return (
-    <Tooltip content={tooltipLabel}>
-      <Button aria-label={label} size="icon" type="button" {...buttonProps}>
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <Button
+            aria-label={label}
+            size="icon"
+            type="button"
+            {...buttonProps}
+          />
+        )}
+      >
         <Icon aria-hidden="true" className="size-4" />
-      </Button>
+      </TooltipTrigger>
+      <TooltipContent>{tooltipLabel}</TooltipContent>
     </Tooltip>
   );
 }

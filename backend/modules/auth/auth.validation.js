@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { passwordSchema } from '../../shared/validation/password.validation.js';
+import {
+    newPasswordSchema,
+    passwordCredentialSchema,
+    passwordSchema,
+} from '../../shared/validation/password.validation.js';
 import { userIdentityInputSchema } from '../users/user.validation.js';
 
 /**
@@ -17,9 +21,13 @@ export { passwordSchema };
  *
  * Le client ne peut fournir ici que les données explicitement
  * nécessaires à la création d'un compte local.
+ *
+ * Toute création d'un nouveau credential applique la politique canonique
+ * backend et exige l'acceptation contractuelle explicite.
  */
 export const registerSchema = userIdentityInputSchema.extend({
-    password: passwordSchema,
+    password: newPasswordSchema,
+    legalAccepted: z.literal(true),
 });
 
 /**
@@ -27,10 +35,14 @@ export const registerSchema = userIdentityInputSchema.extend({
  *
  * Aucun champ interne comme userId, provider ou passwordHash
  * ne doit pouvoir être fourni par le client.
+ *
+ * Le credential courant n'est volontairement pas réévalué avec la politique
+ * des nouveaux mots de passe : celle-ci peut avoir été renforcée depuis sa
+ * création sans devoir bloquer une connexion valide.
  */
 export const loginSchema = z.strictObject({
     email: z.email().max(254),
-    password: passwordSchema,
+    password: passwordCredentialSchema,
 });
 
 /**
@@ -39,10 +51,11 @@ export const loginSchema = z.strictObject({
  *
  * La vérification du mot de passe actuel et l'interdiction
  * de réutiliser le même mot de passe appartiennent au service.
+ * Seul le nouveau credential applique la politique canonique courante.
  */
 export const changePasswordSchema = z.strictObject({
-    currentPassword: passwordSchema,
-    newPassword: passwordSchema,
+    currentPassword: passwordCredentialSchema,
+    newPassword: newPasswordSchema,
 });
 
 /**
@@ -78,7 +91,7 @@ export const forgotPasswordSchema = z.strictObject({
  * Sa validité réelle (existence, expiration, révocation,
  * usage antérieur) appartient au service métier.
  *
- * Le nouveau mot de passe réutilise passwordSchema afin
+ * Le nouveau mot de passe réutilise la primitive canonique afin
  * de conserver une politique unique pour register,
  * change-password et reset-password.
  *
@@ -87,5 +100,5 @@ export const forgotPasswordSchema = z.strictObject({
  */
 export const resetPasswordSchema = z.strictObject({
     token: z.string().min(1).max(256),
-    newPassword: passwordSchema,
+    newPassword: newPasswordSchema,
 });

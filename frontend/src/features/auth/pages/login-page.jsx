@@ -43,6 +43,10 @@ function getLoginStatusMessage(location) {
     return 'Invitation acceptée. Votre compte est créé. Connectez-vous pour accéder à la Plateforme.';
   }
 
+  if (location.state?.workspaceInvitationAccepted) {
+    return 'Invitation acceptée. Votre compte est créé. Connectez-vous pour accéder au workspace.';
+  }
+
   return null;
 }
 

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
@@ -93,9 +93,12 @@ describe('WorkspaceRolesPage', () => {
 
     const ownerRow = screen.getByText('Owner').closest('tr');
     expect(ownerRow).not.toHaveTextContent('Protégé');
-    expect(ownerRow).not.toHaveTextContent('Modifier');
-    expect(ownerRow).not.toHaveTextContent('Supprimer');
-    expect(ownerRow).toHaveTextContent('Voir');
+    expect(within(ownerRow).queryByRole('button', { name: 'Modifier' }))
+      .not.toBeInTheDocument();
+    expect(within(ownerRow).queryByRole('button', { name: 'Supprimer' }))
+      .not.toBeInTheDocument();
+    expect(within(ownerRow).getByRole('button', { name: 'Voir' }))
+      .toBeInTheDocument();
   });
 
   it('réutilise le drawer de permissions pour consulter un rôle personnalisé', () => {
@@ -168,8 +171,11 @@ describe('WorkspaceRolesPage', () => {
 
     const row = screen.getByText('Avancé').closest('tr');
     expect(row).not.toHaveTextContent('Niveau supérieur');
-    expect(row).not.toHaveTextContent('Modifier');
-    expect(row).not.toHaveTextContent('Supprimer');
-    expect(row).toHaveTextContent('Voir');
+    expect(within(row).queryByRole('button', { name: 'Modifier' }))
+      .not.toBeInTheDocument();
+    expect(within(row).queryByRole('button', { name: 'Supprimer' }))
+      .not.toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: 'Voir' }))
+      .toBeInTheDocument();
   });
 });

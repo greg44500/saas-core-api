@@ -6,9 +6,13 @@ import { DataTable, DataTableActions } from '@/components/data-display/data-tabl
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { useToast } from '@/components/shared/toast-provider';
-import { Tooltip } from '@/components/shared/tooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useGetCurrentUserQuery } from '@/features/auth/api/auth-api';
 import {
   useCreateWorkspaceInvitationMutation,
@@ -195,10 +199,15 @@ function WorkspaceMembersPage() {
         const memberName = `${member.user.firstName} ${member.user.lastName}`;
 
         return isSelf ? (
-          <Tooltip content="Vous">
-            <span className="cursor-help font-medium underline decoration-dotted underline-offset-4">
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <span className="cursor-help font-medium underline decoration-dotted underline-offset-4" />
+              )}
+            >
               {memberName}
-            </span>
+            </TooltipTrigger>
+            <TooltipContent>Vous</TooltipContent>
           </Tooltip>
         ) : (
           <p className="font-medium">{memberName}</p>

@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   useRevokePlatformEntitlementOverrideMutation: vi.fn(),
   useUpdatePlatformEntitlementOverrideMutation: vi.fn(),
   useListPlatformPlanCapabilitiesQuery: vi.fn(),
+  useGetPlatformFeatureOverrideGroupQuery: vi.fn(),
 }));
 
 vi.mock('@/features/platform/api/platform-entitlement-overrides-api', () => ({
@@ -20,6 +21,7 @@ vi.mock('@/features/platform/api/platform-entitlement-overrides-api', () => ({
   useListPlatformEntitlementOverridesQuery: mocks.useListPlatformEntitlementOverridesQuery,
   useRevokePlatformEntitlementOverrideMutation: mocks.useRevokePlatformEntitlementOverrideMutation,
   useUpdatePlatformEntitlementOverrideMutation: mocks.useUpdatePlatformEntitlementOverrideMutation,
+  useGetPlatformFeatureOverrideGroupQuery: mocks.useGetPlatformFeatureOverrideGroupQuery,
 }));
 
 vi.mock('@/features/platform/api/platform-plans-api', () => ({
@@ -95,6 +97,12 @@ describe('PlatformEntitlementOverridesDrilldownDrawer', () => {
       return 1;
     });
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    mocks.useGetPlatformFeatureOverrideGroupQuery.mockReturnValue({
+      data: null,
+      error: undefined,
+      isFetching: false,
+      isLoading: false,
+    });
 
     mocks.useListPlatformEntitlementOverridesQuery.mockReturnValue({
       data: {

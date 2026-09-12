@@ -43,6 +43,9 @@ vi.mock('mongoose', () => ({
 vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
 }));
+vi.mock('../../modules/legalAcceptance/legalAcceptance.service.js', () => ({
+    createRegistrationLegalAcceptance: vi.fn(),
+}));
 vi.mock('../../modules/users/user.model.js', () => ({
     User: { findById: vi.fn() },
 }));
@@ -59,7 +62,10 @@ vi.mock('../../modules/platformTeam/platformTeamMember.model.js', () => ({
     },
 }));
 vi.mock('../../modules/platformInvitation/platformInvitation.model.js', () => ({
-    PlatformInvitation: { findOne: vi.fn() },
+    PlatformInvitation: {
+        findOne: vi.fn(),
+        findOneAndUpdate: vi.fn(),
+    },
 }));
 vi.mock('../../modules/platformInvitation/platformInvitation.service.js', () => ({
     hashPlatformInvitationToken: vi.fn(() => 'digest'),
@@ -100,13 +106,13 @@ const flushUntil = async (predicate, attempts = 10) => {
 
 const setup = ({ actorEmail = 'member@example.com', existingMember = null } = {}) => {
     const session = { id: 'session' };
+    const now = new Date('2026-09-10T18:00:00.000Z');
     const invitation = {
         _id: 'invitation-id',
         role: 'role-id',
         invitedBy: 'inviter-id',
         emailCanonical: 'member@example.com',
         status: PLATFORM_INVITATION_STATUS.PENDING,
-        save: vi.fn().mockResolvedValue(undefined),
     };
     const role = {
         _id: 'role-id',
@@ -118,6 +124,12 @@ const setup = ({ actorEmail = 'member@example.com', existingMember = null } = {}
     const membership = {
         _id: 'membership-id',
         status: PLATFORM_TEAM_MEMBER_STATUS.ACTIVE,
+    };
+    const acceptedInvitation = {
+        ...invitation,
+        status: PLATFORM_INVITATION_STATUS.ACCEPTED,
+        acceptedBy: 'actor-id',
+        acceptedAt: now,
     };
 
     mongoose.connection.transaction.mockImplementation(
@@ -146,6 +158,7 @@ const setup = ({ actorEmail = 'member@example.com', existingMember = null } = {}
     PlatformInvitation.findOne.mockReturnValue(
         sessionResult(invitation),
     );
+    PlatformInvitation.findOneAndUpdate.mockResolvedValue(acceptedInvitation);
     PlatformRole.findById.mockReturnValue(sessionResult(role));
     PlatformTeamMember.findOne.mockReturnValue(
         sessionResult(existingMember),
@@ -153,7 +166,14 @@ const setup = ({ actorEmail = 'member@example.com', existingMember = null } = {}
     PlatformTeamMember.create.mockResolvedValue([membership]);
     createAuditLog.mockResolvedValue(undefined);
 
-    return { invitation, membership, role, session };
+    return {
+        acceptedInvitation,
+        invitation,
+        membership,
+        now,
+        role,
+        session,
+    };
 };
 
 describe('acceptExistingPlatformInvitation', () => {
@@ -162,12 +182,20 @@ describe('acceptExistingPlatformInvitation', () => {
         hashPlatformInvitationToken.mockReturnValue('digest');
     });
 
-    it('crée une appartenance lorsque le compte authentifié correspond', async () => {
-        const { invitation, membership, role, session } = setup();
+    it('crée une appartenance puis consomme atomiquement l’invitation correspondante', async () => {
+        const {
+            acceptedInvitation,
+            invitation,
+            membership,
+            now,
+            role,
+            session,
+        } = setup();
 
         const result = await acceptExistingPlatformInvitation({
             token: 'a'.repeat(64),
             actorId: 'actor-id',
+            now,
         });
 
         expect(resolvePlatformAuthorization).toHaveBeenCalledOnce();
@@ -178,13 +206,43 @@ describe('acceptExistingPlatformInvitation', () => {
             role,
         });
         expect(PlatformTeamMember.create).toHaveBeenCalledOnce();
-        expect(invitation.status).toBe(
-            PLATFORM_INVITATION_STATUS.ACCEPTED,
+        expect(PlatformInvitation.findOneAndUpdate).toHaveBeenCalledWith(
+            {
+                _id: invitation._id,
+                tokenHash: 'digest',
+                status: PLATFORM_INVITATION_STATUS.PENDING,
+                expiresAt: { $gt: now },
+            },
+            {
+                $set: {
+                    status: PLATFORM_INVITATION_STATUS.ACCEPTED,
+                    acceptedBy: 'actor-id',
+                    acceptedAt: now,
+                },
+            },
+            {
+                returnDocument: 'after',
+                runValidators: true,
+                session,
+            },
         );
-        expect(invitation.acceptedBy).toBe('actor-id');
-        expect(invitation.save).toHaveBeenCalledWith({ session });
         expect(createAuditLog).toHaveBeenCalledOnce();
+        expect(result.invitation).toBe(acceptedInvitation);
         expect(result.membership).toBe(membership);
+    });
+
+    it('échoue fermé si la consommation conditionnelle perd une course', async () => {
+        setup();
+        PlatformInvitation.findOneAndUpdate.mockResolvedValue(null);
+
+        await expect(
+            acceptExistingPlatformInvitation({
+                token: 'a'.repeat(64),
+                actorId: 'actor-id',
+            }),
+        ).rejects.toMatchObject({ statusCode: 409 });
+
+        expect(createAuditLog).not.toHaveBeenCalled();
     });
 
     it('séquence le rôle puis l’invitant dans la même transaction', async () => {
@@ -226,14 +284,13 @@ describe('acceptExistingPlatformInvitation', () => {
         ).rejects.toMatchObject({ statusCode: 403 });
 
         expect(PlatformTeamMember.create).not.toHaveBeenCalled();
-        expect(createAuditLog).not.toHaveBeenCalled();
+        expect(PlatformInvitation.findOneAndUpdate).not.toHaveBeenCalled();
     });
 
-    it('refuse un second membership actif', async () => {
+    it('refuse lorsqu’une appartenance active existe déjà', async () => {
         setup({
             existingMember: {
-                _id: 'existing-member-id',
-                status: PLATFORM_TEAM_MEMBER_STATUS.ACTIVE,
+                _id: 'existing-membership-id',
             },
         });
 
@@ -245,5 +302,6 @@ describe('acceptExistingPlatformInvitation', () => {
         ).rejects.toMatchObject({ statusCode: 409 });
 
         expect(PlatformTeamMember.create).not.toHaveBeenCalled();
+        expect(PlatformInvitation.findOneAndUpdate).not.toHaveBeenCalled();
     });
 });

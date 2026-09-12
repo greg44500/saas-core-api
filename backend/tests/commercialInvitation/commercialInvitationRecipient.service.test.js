@@ -15,6 +15,9 @@ import {
 import {
     COMMERCIAL_INVITATION_STATUS,
 } from '../../constants/commercialInvitation.constants.js';
+import {
+    LEGAL_ACCEPTANCE_SOURCE,
+} from '../../constants/legalDocuments.constants.js';
 import { createAuditLog } from '../../modules/auditLog/auditLog.service.js';
 import { registerUser } from '../../modules/auth/auth.service.js';
 import { CommercialInvitation } from '../../modules/commercialInvitation/commercialInvitation.model.js';
@@ -110,7 +113,8 @@ describe('commercialInvitationRecipient.service', () => {
             firstName: 'Wrong',
             lastName: 'Account',
             email: 'other@example.com',
-            password: 'A-very-long-password-123!',
+            password: 'Velo bleu sous la pluie, dimanche 47!',
+            legalAccepted: true,
         })).rejects.toMatchObject({ statusCode: 403 });
 
         expect(registerUser).not.toHaveBeenCalled();
@@ -123,7 +127,10 @@ describe('commercialInvitationRecipient.service', () => {
             firstName: 'Invited',
             lastName: 'Person',
             email: 'Invitee@Example.com',
-            password: 'A-very-long-password-123!',
+            password: 'Velo bleu sous la pluie, dimanche 47!',
+            legalAccepted: true,
+            ipAddress: '127.0.0.1',
+            userAgent: 'vitest-agent',
         });
 
         expect(assertCommercialInvitationOfferIsCurrent).toHaveBeenCalledOnce();
@@ -131,7 +138,12 @@ describe('commercialInvitationRecipient.service', () => {
             firstName: 'Invited',
             lastName: 'Person',
             email: 'Invitee@Example.com',
-            password: 'A-very-long-password-123!',
+            password: 'Velo bleu sous la pluie, dimanche 47!',
+            legalAccepted: true,
+            legalAcceptanceSource:
+                LEGAL_ACCEPTANCE_SOURCE.COMMERCIAL_INVITATION_REGISTRATION,
+            ipAddress: '127.0.0.1',
+            userAgent: 'vitest-agent',
         });
     });
 

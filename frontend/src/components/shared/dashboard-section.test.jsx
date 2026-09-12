@@ -6,7 +6,7 @@ import { DashboardSection } from '@/components/shared/dashboard-section';
 describe('DashboardSection', () => {
   afterEach(() => cleanup());
 
-  it('associe correctement le titre, la description, l’action et le contenu', () => {
+  it('associe le titre au contenu et expose l’aide contextuelle sans texte visuel permanent', () => {
     render(
       <DashboardSection
         action={<button type="button">Changer la période</button>}
@@ -21,6 +21,9 @@ describe('DashboardSection', () => {
 
     expect(section).toHaveTextContent('Analyse de la croissance');
     expect(section).toHaveTextContent('Contenu du dashboard');
+    expect(
+      screen.getByRole('button', { name: 'À propos de Croissance' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Changer la période' }),
     ).toBeInTheDocument();

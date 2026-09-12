@@ -2,6 +2,7 @@ import {
     refreshCookieName,
     refreshCookieOptions,
 } from '../../config/cookie.config.js';
+import { getPublicPasswordPolicy } from '../../shared/security/passwordPolicy.js';
 
 import { revokeCurrentAuthSession, rotateAuthSession, revokeAllUserAuthSessions, } from '../authSessions/authSession.service.js';
 
@@ -18,14 +19,41 @@ import { signAccessToken } from '../../utils/jwt.js';
 
 
 /**
+ * Expose uniquement la représentation publique de la politique canonique.
+ * Aucun mot de passe n'est reçu ou évalué par cet endpoint.
+ */
+export const passwordPolicy = async (_req, res) => {
+    res.status(200).json({
+        status: 'success',
+        data: {
+            passwordPolicy: getPublicPasswordPolicy(),
+        },
+    });
+};
+
+
+/**
  * Inscrit un nouvel utilisateur avec une identité locale.
  *
  * La validation et la logique métier sont volontairement déléguées
  * aux couches dédiées. Le controller traduit uniquement le résultat
  * du service en réponse HTTP.
+ *
+ * Le contexte HTTP est transmis lorsqu'il est disponible afin de pouvoir
+ * conserver la preuve technique associée à l'acceptation contractuelle.
  */
 export const register = async (req, res) => {
-    const user = await registerUser(req.validated.body);
+    const registrationContext = req.context
+        ? {
+            ipAddress: req.context.ipAddress,
+            userAgent: req.context.userAgent,
+        }
+        : {};
+
+    const user = await registerUser({
+        ...req.validated.body,
+        ...registrationContext,
+    });
 
     res.status(201).json({
         status: 'success',

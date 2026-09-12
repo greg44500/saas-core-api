@@ -8,6 +8,9 @@ import {
 import {
     COMMERCIAL_INVITATION_STATUS,
 } from '../../constants/commercialInvitation.constants.js';
+import {
+    LEGAL_ACCEPTANCE_SOURCE,
+} from '../../constants/legalDocuments.constants.js';
 import { AppError } from '../../utils/appError.js';
 import { canonicalizeEmail } from '../../utils/canonicalizeEmail.js';
 import { createAuditLog } from '../auditLog/auditLog.service.js';
@@ -47,18 +50,15 @@ const assertRecipientEmailMatches = ({ invitation, email }) => {
     }
 };
 
-/**
- * L'inscription initiée depuis une invitation commerciale vérifie le secret et
- * l'adresse bénéficiaire avant de déléguer la création d'identité à Auth.
- * Le token ne crée aucun droit : l'acceptation transactionnelle reste le garde
- * final avant tout provisioning de workspace et de subscription.
- */
 const registerCommercialInvitationRecipient = async ({
     token,
     firstName,
     lastName,
     email,
     password,
+    legalAccepted,
+    ipAddress = null,
+    userAgent = null,
     now = new Date(),
 }) => {
     const invitation = await loadActiveInvitation({ token, now });
@@ -76,14 +76,14 @@ const registerCommercialInvitationRecipient = async ({
         lastName,
         email,
         password,
+        legalAccepted,
+        legalAcceptanceSource:
+            LEGAL_ACCEPTANCE_SOURCE.COMMERCIAL_INVITATION_REGISTRATION,
+        ipAddress,
+        userAgent,
     });
 };
 
-/**
- * Vérifie côté serveur que la session authentifiée correspond au destinataire.
- * Le frontend utilise uniquement ce résultat pour présenter le bon parcours ;
- * accept/decline répètent leur propre contrôle et restent autoritaires.
- */
 const verifyCommercialInvitationRecipient = async ({
     token,
     userId,
@@ -106,11 +106,6 @@ const verifyCommercialInvitationRecipient = async ({
     return invitation;
 };
 
-/**
- * Le refus est un état métier distinct de l'expiration temporelle et de la
- * révocation administrative. La transition conditionnelle rend le token
- * inutilisable immédiatement et protège les courses accept/decline.
- */
 const declineCommercialInvitation = async ({
     token,
     userId,

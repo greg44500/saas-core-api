@@ -11,9 +11,20 @@ const workspaceInvitationApi = baseApi.injectEndpoints({
       transformResponse: (response) => response?.data?.membership ?? null,
       invalidatesTags: ['WorkspaceList'],
     }),
+    acceptNewWorkspaceInvitation: build.mutation({
+      query: (payload) => ({
+        url: '/invitations/accept-new',
+        method: 'POST',
+        body: payload,
+      }),
+      transformResponse: (response) => response?.data?.membership ?? null,
+    }),
   }),
 });
 
-export const { useAcceptWorkspaceInvitationMutation } = workspaceInvitationApi;
+export const {
+  useAcceptNewWorkspaceInvitationMutation,
+  useAcceptWorkspaceInvitationMutation,
+} = workspaceInvitationApi;
 
 export { workspaceInvitationApi };

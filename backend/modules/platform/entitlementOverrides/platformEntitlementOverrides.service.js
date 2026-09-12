@@ -30,6 +30,8 @@ import {
 const OVERRIDE_READ_PROJECTION = [
     '_id',
     'workspace',
+    'groupId',
+    'groupName',
     'targetType',
     'featureKey',
     'metricKey',
@@ -202,10 +204,97 @@ const buildLifecycleFilter = ({ lifecycle, at }) => {
 };
 
 /**
+ * Les limites enfants d'un groupe sont des paramètres techniques de la décision
+ * commerciale portée par l'override FEATURE primaire. Elles ne doivent donc pas
+ * être paginées ni comptées comme des dérogations autonomes dans la liste
+ * Platform. Les overrides LIMIT historiques ou explicitement autonomes restent
+ * visibles car leur groupId est nul.
+ */
+const applyCommercialListScope = ({ filter, targetType }) => {
+    if (targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT) {
+        filter.targetType = targetType;
+        filter.groupId = null;
+        return;
+    }
+
+    if (targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE) {
+        filter.targetType = targetType;
+        return;
+    }
+
+    filter.$and = [
+        mongoose.trusted({
+            $or: [
+                { targetType: ENTITLEMENT_OVERRIDE_TARGET.FEATURE },
+                { groupId: null },
+            ],
+        }),
+    ];
+};
+
+/**
+ * Enrichit uniquement les FEATURE groupées présentes dans la page courante.
+ * La seconde lecture ne modifie pas le count ni la pagination : elle fournit
+ * simplement les paramètres de limite nécessaires à la vue commerciale.
+ */
+const attachGroupedLimitsToCommercialRows = async ({ documents, at }) => {
+    const groupIds = [
+        ...new Set(
+            documents
+                .filter((document) =>
+                    document.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
+                    && document.groupId)
+                .map((document) => document.groupId.toString()),
+        ),
+    ];
+
+    const serializedRows = documents.map((override) =>
+        serializePlatformEntitlementOverride({
+            override,
+            at,
+        }));
+
+    if (groupIds.length === 0) return serializedRows;
+
+    const relatedLimits = await EntitlementOverride.find({
+        groupId: mongoose.trusted({ $in: groupIds }),
+        targetType: ENTITLEMENT_OVERRIDE_TARGET.LIMIT,
+    })
+        .select(OVERRIDE_READ_PROJECTION)
+        .sort({ metricKey: 1, _id: 1 })
+        .lean();
+
+    const limitsByGroupId = new Map();
+
+    for (const limit of relatedLimits) {
+        const groupId = limit.groupId?.toString?.();
+        if (!groupId) continue;
+
+        const current = limitsByGroupId.get(groupId) ?? [];
+        current.push(serializePlatformEntitlementOverride({
+            override: limit,
+            at,
+        }));
+        limitsByGroupId.set(groupId, current);
+    }
+
+    return serializedRows.map((override) => (
+        override.groupId
+            ? {
+                ...override,
+                relatedOverrides: limitsByGroupId.get(override.groupId) ?? [],
+            }
+            : override
+    ));
+};
+
+/**
  * Liste paginée des overrides visibles depuis Platform.
  *
  * Les filtres sont construits côté serveur avant pagination. Le lifecycle reste
  * dérivé des bornes temporelles et de la révocation ; il n'est pas persisté.
+ * Les limites enfants d'un groupe sont exclues avant le count et la pagination :
+ * une décision commerciale groupée occupe donc toujours une seule ligne.
  *
  * @param {object} params
  * @param {number} [params.page]
@@ -260,9 +349,7 @@ const listPlatformEntitlementOverrides = async ({
         filter.workspace = workspaceId;
     }
 
-    if (targetType !== null) {
-        filter.targetType = targetType;
-    }
+    applyCommercialListScope({ filter, targetType });
 
     if (source !== null) {
         filter.source = source;
@@ -283,13 +370,13 @@ const listPlatformEntitlementOverrides = async ({
         query,
         EntitlementOverride.countDocuments(filter),
     ]);
+    const overrides = await attachGroupedLimitsToCommercialRows({
+        documents,
+        at,
+    });
 
     return {
-        overrides: documents.map((override) =>
-            serializePlatformEntitlementOverride({
-                override,
-                at,
-            })),
+        overrides,
         pagination: {
             page,
             limit,
@@ -651,6 +738,8 @@ const revokePlatformEntitlementOverride = async ({
 
 
 export {
+    applyCommercialListScope,
+    attachGroupedLimitsToCommercialRows,
     buildLifecycleFilter,
     createPlatformEntitlementOverride,
     getPlatformEntitlementOverrideById,

@@ -8,6 +8,30 @@ import {
   useLocation,
 } from 'react-router';
 
+const PASSWORD_POLICY = {
+  version: '2026-09-10',
+  minLength: 15,
+  maxLength: 128,
+  levels: [
+    { key: 'weak', label: 'Faible', minScore: 0 },
+    { key: 'good', label: 'Correct', minScore: 3 },
+    { key: 'strong', label: 'Robuste', minScore: 5 },
+  ],
+  scoring: {
+    lengthBands: [
+      { minLength: 15, points: 1 },
+      { minLength: 20, points: 1 },
+      { minLength: 28, points: 1 },
+    ],
+    characterClassBands: [
+      { minClasses: 2, points: 1 },
+      { minClasses: 4, points: 1 },
+    ],
+    uniqueRatio: { minRatio: 0.6, points: 1 },
+  },
+  guidance: ['Une phrase de passe longue est recommandée.'],
+};
+
 const mocks = vi.hoisted(() => ({
   registerAccount: vi.fn(),
   registerAccountState: { isLoading: false },
@@ -16,6 +40,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/features/auth/api/auth-api', () => ({
+  useGetPasswordPolicyQuery: () => ({ data: PASSWORD_POLICY }),
   useRegisterMutation: () => [
     mocks.registerAccount,
     mocks.registerAccountState,
@@ -63,6 +88,7 @@ async function fillRegistrationForm(user, email) {
   await user.type(screen.getByLabelText('Email'), email);
   await user.type(screen.getByLabelText('Mot de passe'), PASSWORD);
   await user.type(screen.getByLabelText('Confirmer le mot de passe'), PASSWORD);
+  await user.click(screen.getByRole('checkbox'));
 }
 
 describe('RegisterPage commercial invitation flow', () => {
@@ -75,6 +101,25 @@ describe('RegisterPage commercial invitation flow', () => {
     mocks.registerRecipient.mockReturnValue({
       unwrap: vi.fn().mockResolvedValue({}),
     });
+  });
+
+  it('bloque la soumission tant que les documents contractuels ne sont pas acceptés', () => {
+    renderRegister();
+
+    expect(screen.getByRole('checkbox')).not.toBeChecked();
+    expect(screen.getByRole('button', { name: 'Créer mon compte' })).toBeDisabled();
+    expect(screen.getByRole('link', { name: 'Conditions générales d’utilisation' })).toHaveAttribute('href', '/legal/terms');
+    expect(screen.getByRole('link', { name: 'Politique de confidentialité' })).toHaveAttribute('href', '/legal/privacy');
+  });
+
+  it('affiche la politique de mot de passe fournie par le backend', async () => {
+    const user = userEvent.setup();
+    renderRegister();
+
+    await user.type(screen.getByLabelText('Mot de passe'), PASSWORD);
+
+    expect(screen.getByText('15 à 128 caractères. Lettres, chiffres, espaces et caractères spéciaux sont autorisés.')).toBeInTheDocument();
+    expect(screen.getByText(/Robustesse :/)).toBeInTheDocument();
   });
 
   it('utilise le endpoint lié à l’invitation et affiche l’étape 1', async () => {
@@ -96,6 +141,7 @@ describe('RegisterPage commercial invitation flow', () => {
         lastName: 'User',
         email: 'invitee@example.com',
         password: PASSWORD,
+        legalAccepted: true,
         token: TOKEN,
       });
     });
@@ -141,6 +187,7 @@ describe('RegisterPage commercial invitation flow', () => {
         lastName: 'User',
         email: 'normal@example.com',
         password: PASSWORD,
+        legalAccepted: true,
       });
     });
     expect(mocks.registerRecipient).not.toHaveBeenCalled();

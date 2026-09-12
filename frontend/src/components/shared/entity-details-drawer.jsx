@@ -2,7 +2,13 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useDialogFocus } from '@/hooks/use-dialog-focus';
 
 const DRAWER_TRANSITION_MS = 300;
@@ -15,17 +21,9 @@ const DRAWER_TRANSITION_MS = 300;
  * features fournissent uniquement leur contenu métier et ne réimplémentent pas
  * la mécanique de dialog, de focus ou de transition.
  *
- * Le portal vers `document.body` évite qu'un header sticky, un backdrop-filter
- * ou tout autre ancêtre créant un containing block ne piège le positionnement
- * fixed du drawer. Une modale reste ainsi attachée au viewport, quel que soit
- * l'endroit où son bouton déclencheur est rendu.
- *
- * @param {object} props
- * @param {import('react').ReactNode} props.children
- * @param {string} [props.description]
- * @param {() => void} props.onClose
- * @param {boolean} props.open
- * @param {string} props.title
+ * Le texte explicatif reste disponible aux technologies d'assistance via
+ * `aria-describedby`, mais n'encombre plus visuellement tous les drawers :
+ * l'utilisateur le retrouve à la demande via le tooltip d'information commun.
  */
 function EntityDetailsDrawer({ children, description, onClose, open, title }) {
   const drawerRef = useRef(null);
@@ -103,27 +101,39 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
       >
         <header className="flex min-w-0 items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold" id={titleId}>
-              {title}
-            </h2>
+            <div className="flex items-start gap-2">
+              <h2 className="text-lg font-semibold" id={titleId}>
+                {title}
+              </h2>
+              <InfoTooltip
+                content={description}
+                label={`À propos de ${title}`}
+              />
+            </div>
             {description && (
-              <p className="mt-1 text-sm text-muted-foreground" id={descriptionId}>
+              <p className="sr-only" id={descriptionId}>
                 {description}
               </p>
             )}
           </div>
-          <Button
-            aria-label="Fermer"
-            className="shrink-0"
-            onClick={onClose}
-            ref={closeButtonRef}
-            size="icon"
-            title="Fermer"
-            type="button"
-            variant="ghost"
-          >
-            <X aria-hidden="true" className="size-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <Button
+                  aria-label="Fermer"
+                  className="shrink-0"
+                  onClick={onClose}
+                  ref={closeButtonRef}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                />
+              )}
+            >
+              <X aria-hidden="true" className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>Fermer</TooltipContent>
+          </Tooltip>
         </header>
 
         <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-5 [scrollbar-gutter:stable]">

@@ -13,10 +13,44 @@ import { canonicalizeEmail } from '../utils/canonicalizeEmail.js';
  *
  * Il constitue une première protection contre les abus globaux,
  * mais il n'est volontairement pas suffisant pour les endpoints
- * sensibles comme forgot-password.
+ * sensibles comme login ou forgot-password.
  */
 const API_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const API_RATE_LIMIT_MAX_REQUESTS = 300;
+
+
+/*
+ * L'inscription publique peut déclencher un hash de mot de passe puis des
+ * écritures transactionnelles. La limite IP doit compter les succès afin de
+ * freiner la création massive de comptes, pas seulement les erreurs.
+ */
+const REGISTER_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const REGISTER_IP_MAX_REQUESTS = 10;
+
+const REGISTER_RATE_LIMIT_MESSAGE = {
+    status: 'fail',
+    message:
+        'Trop de tentatives d’inscription. Veuillez réessayer plus tard.',
+};
+
+
+/*
+ * Le login doit résister aux tentatives répétées sans introduire de verrouillage
+ * de compte exploitable en déni de service. Deux barrières indépendantes sont
+ * utilisées : origine réseau et identité pseudonymisée.
+ *
+ * Les requêtes réussies ne sont pas conservées dans les compteurs afin de ne
+ * pas pénaliser l'usage normal.
+ */
+const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_IP_MAX_FAILED_REQUESTS = 50;
+const LOGIN_EMAIL_MAX_FAILED_REQUESTS = 10;
+
+const LOGIN_RATE_LIMIT_MESSAGE = {
+    status: 'fail',
+    message:
+        'Trop de tentatives de connexion. Veuillez réessayer plus tard.',
+};
 
 
 /*
@@ -38,6 +72,21 @@ const FORGOT_PASSWORD_RATE_LIMIT_MESSAGE = {
     status: 'fail',
     message:
         'Trop de demandes de réinitialisation. Veuillez réessayer plus tard.',
+};
+
+
+/*
+ * reset-password reste une route publique portant un secret temporaire.
+ * La forte entropie du token protège du brute force ; cette limite IP vise
+ * surtout l'abus volumétrique du endpoint et de ses accès MongoDB.
+ */
+const RESET_PASSWORD_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const RESET_PASSWORD_IP_MAX_REQUESTS = 10;
+
+const RESET_PASSWORD_RATE_LIMIT_MESSAGE = {
+    status: 'fail',
+    message:
+        'Trop de tentatives de réinitialisation. Veuillez réessayer plus tard.',
 };
 
 
@@ -69,6 +118,131 @@ const createApiRateLimiter = ({
             message:
                 'Trop de requêtes. Veuillez réessayer plus tard.',
         },
+    });
+
+
+/**
+ * Construit une clé non sensible pour limiter les requêtes visant une même
+ * adresse email, sans jamais consulter la base utilisateurs.
+ *
+ * L'email est canonisé puis transformé en SHA-256. L'existence du compte ne
+ * participe donc jamais au calcul de la clé et ne peut pas être révélée.
+ *
+ * @param {import('express').Request} req
+ * @returns {string}
+ */
+const buildEmailRateLimitKey = (req) => {
+    const email = req.body?.email;
+
+    if (
+        typeof email !== 'string'
+        || email.trim() === ''
+    ) {
+        return `ip:${ipKeyGenerator(req.ip)}`;
+    }
+
+    const emailCanonical =
+        canonicalizeEmail(email);
+
+    const emailHash = createHash('sha256')
+        .update(emailCanonical)
+        .digest('hex');
+
+    return `email:${emailHash}`;
+};
+
+
+/**
+ * Crée le rate limiter IP dédié à l'inscription publique.
+ *
+ * Toutes les requêtes sont comptées, y compris les succès, puisque l'objectif
+ * est d'empêcher une origine de créer un volume anormal de comptes valides.
+ *
+ * @param {object} options
+ * @param {number} [options.windowMs]
+ * @param {number} [options.limit]
+ * @returns {import('express').RequestHandler}
+ */
+const createRegisterIpRateLimiter = ({
+    windowMs = REGISTER_RATE_LIMIT_WINDOW_MS,
+    limit = REGISTER_IP_MAX_REQUESTS,
+} = {}) =>
+    rateLimit({
+        windowMs,
+        limit,
+
+        standardHeaders: 'draft-8',
+        legacyHeaders: false,
+
+        keyGenerator: (req) =>
+            ipKeyGenerator(req.ip),
+
+        message:
+            REGISTER_RATE_LIMIT_MESSAGE,
+    });
+
+
+/**
+ * Crée le rate limiter IP dédié au login.
+ *
+ * Cette barrière limite une origine réseau sans bloquer durablement un compte.
+ * Les succès sont ignorés par le compteur.
+ *
+ * @param {object} options
+ * @param {number} [options.windowMs]
+ * @param {number} [options.limit]
+ * @returns {import('express').RequestHandler}
+ */
+const createLoginIpRateLimiter = ({
+    windowMs = LOGIN_RATE_LIMIT_WINDOW_MS,
+    limit = LOGIN_IP_MAX_FAILED_REQUESTS,
+} = {}) =>
+    rateLimit({
+        windowMs,
+        limit,
+
+        standardHeaders: 'draft-8',
+        legacyHeaders: false,
+
+        keyGenerator: (req) =>
+            ipKeyGenerator(req.ip),
+
+        skipSuccessfulRequests: true,
+
+        message:
+            LOGIN_RATE_LIMIT_MESSAGE,
+    });
+
+
+/**
+ * Crée le rate limiter dédié à une même identité de login.
+ *
+ * La clé est pseudonymisée et calculée de façon identique que le compte existe
+ * ou non. Cette propriété évite toute fuite d'information utilisateur.
+ *
+ * @param {object} options
+ * @param {number} [options.windowMs]
+ * @param {number} [options.limit]
+ * @returns {import('express').RequestHandler}
+ */
+const createLoginEmailRateLimiter = ({
+    windowMs = LOGIN_RATE_LIMIT_WINDOW_MS,
+    limit = LOGIN_EMAIL_MAX_FAILED_REQUESTS,
+} = {}) =>
+    rateLimit({
+        windowMs,
+        limit,
+
+        standardHeaders: 'draft-8',
+        legacyHeaders: false,
+
+        keyGenerator:
+            buildEmailRateLimitKey,
+
+        skipSuccessfulRequests: true,
+
+        message:
+            LOGIN_RATE_LIMIT_MESSAGE,
     });
 
 
@@ -108,46 +282,6 @@ const createForgotPasswordIpRateLimiter = ({
 
 
 /**
- * Construit une clé non sensible pour limiter les demandes
- * visant une même adresse email.
- *
- * L'email est d'abord canonisé avec la même règle que celle
- * utilisée par Auth, puis transformé en SHA-256.
- *
- * L'adresse email brute n'est ainsi pas utilisée comme clé
- * interne du store du rate limiter.
- *
- * Si aucun email exploitable n'est présent dans le body,
- * on retombe sur une clé basée sur l'IP.
- *
- * La validation Zod reste responsable de décider ensuite
- * si le body représente une requête HTTP valide.
- *
- * @param {import('express').Request} req
- * @returns {string}
- */
-const buildForgotPasswordEmailRateLimitKey = (req) => {
-    const email = req.body?.email;
-
-    if (
-        typeof email !== 'string'
-        || email.trim() === ''
-    ) {
-        return `ip:${ipKeyGenerator(req.ip)}`;
-    }
-
-    const emailCanonical =
-        canonicalizeEmail(email);
-
-    const emailHash = createHash('sha256')
-        .update(emailCanonical)
-        .digest('hex');
-
-    return `email:${emailHash}`;
-};
-
-
-/**
  * Crée le rate limiter dédié à une même adresse email
  * sur le workflow forgot-password.
  *
@@ -175,15 +309,51 @@ const createForgotPasswordEmailRateLimiter = ({
         legacyHeaders: false,
 
         keyGenerator:
-            buildForgotPasswordEmailRateLimitKey,
+            buildEmailRateLimitKey,
 
         message:
             FORGOT_PASSWORD_RATE_LIMIT_MESSAGE,
     });
 
 
+/**
+ * Crée le rate limiter IP dédié à la consommation d'un token de reset.
+ *
+ * @param {object} options
+ * @param {number} [options.windowMs]
+ * @param {number} [options.limit]
+ * @returns {import('express').RequestHandler}
+ */
+const createResetPasswordIpRateLimiter = ({
+    windowMs = RESET_PASSWORD_RATE_LIMIT_WINDOW_MS,
+    limit = RESET_PASSWORD_IP_MAX_REQUESTS,
+} = {}) =>
+    rateLimit({
+        windowMs,
+        limit,
+
+        standardHeaders: 'draft-8',
+        legacyHeaders: false,
+
+        keyGenerator: (req) =>
+            ipKeyGenerator(req.ip),
+
+        message:
+            RESET_PASSWORD_RATE_LIMIT_MESSAGE,
+    });
+
+
 const apiRateLimiter =
     createApiRateLimiter();
+
+const registerIpRateLimiter =
+    createRegisterIpRateLimiter();
+
+const loginIpRateLimiter =
+    createLoginIpRateLimiter();
+
+const loginEmailRateLimiter =
+    createLoginEmailRateLimiter();
 
 const forgotPasswordIpRateLimiter =
     createForgotPasswordIpRateLimiter();
@@ -191,14 +361,26 @@ const forgotPasswordIpRateLimiter =
 const forgotPasswordEmailRateLimiter =
     createForgotPasswordEmailRateLimiter();
 
+const resetPasswordIpRateLimiter =
+    createResetPasswordIpRateLimiter();
+
 
 export {
     apiRateLimiter,
 
     forgotPasswordEmailRateLimiter,
     forgotPasswordIpRateLimiter,
+    loginEmailRateLimiter,
+    loginIpRateLimiter,
+    registerIpRateLimiter,
+    resetPasswordIpRateLimiter,
 
+    buildEmailRateLimitKey,
     createApiRateLimiter,
     createForgotPasswordEmailRateLimiter,
     createForgotPasswordIpRateLimiter,
+    createLoginEmailRateLimiter,
+    createLoginIpRateLimiter,
+    createRegisterIpRateLimiter,
+    createResetPasswordIpRateLimiter,
 };

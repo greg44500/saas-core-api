@@ -56,6 +56,12 @@ vi.mock('mongoose', () => ({
 vi.mock('../../modules/auditLog/auditLog.service.js', () => ({
     createAuditLog: vi.fn(),
 }));
+vi.mock('../../modules/authIdentities/authIdentity.model.js', () => ({
+    AuthIdentity: { create: vi.fn() },
+}));
+vi.mock('../../modules/legalAcceptance/legalAcceptance.service.js', () => ({
+    createRegistrationLegalAcceptance: vi.fn(),
+}));
 vi.mock('../../modules/plan/planFeature.service.js', () => ({
     assertEntitlementFeatureAvailable: vi.fn(),
 }));
@@ -78,7 +84,13 @@ vi.mock('../../modules/workspaceMember/workspaceMember.model.js', () => ({
     },
 }));
 vi.mock('../../modules/workspaceInvitation/workspaceInvitation.model.js', () => ({
-    WorkspaceInvitation: { findOne: vi.fn() },
+    WorkspaceInvitation: {
+        findOne: vi.fn(),
+        findOneAndUpdate: vi.fn(),
+    },
+}));
+vi.mock('../../utils/password.js', () => ({
+    hashPassword: vi.fn(),
 }));
 
 const chainedResult = (value) => ({
@@ -104,7 +116,12 @@ function prepareAcceptance({ existingMembership = null } = {}) {
         role: 'role-id',
         emailCanonical: 'member@example.com',
         status: WORKSPACE_INVITATION_STATUS.PENDING,
-        save: vi.fn().mockResolvedValue(undefined),
+    };
+    const acceptedInvitation = {
+        ...invitation,
+        status: WORKSPACE_INVITATION_STATUS.ACCEPTED,
+        acceptedBy: actor._id,
+        acceptedAt: now,
     };
     const entitlement = {
         effectiveCapabilities: {
@@ -119,6 +136,7 @@ function prepareAcceptance({ existingMembership = null } = {}) {
     );
     User.findById.mockReturnValue(chainedResult(actor));
     WorkspaceInvitation.findOne.mockReturnValue(chainedResult(invitation));
+    WorkspaceInvitation.findOneAndUpdate.mockResolvedValue(acceptedInvitation);
     getWorkspaceEffectiveEntitlement.mockResolvedValue(entitlement);
     assertEntitlementFeatureAvailable.mockReturnValue(true);
     Role.findOne.mockReturnValue(chainedResult(role));
@@ -130,7 +148,13 @@ function prepareAcceptance({ existingMembership = null } = {}) {
     });
     createAuditLog.mockResolvedValue(undefined);
 
-    return { session, now, invitation, entitlement };
+    return {
+        acceptedInvitation,
+        session,
+        now,
+        invitation,
+        entitlement,
+    };
 }
 
 describe('acceptWorkspaceInvitation', () => {
@@ -138,8 +162,14 @@ describe('acceptWorkspaceInvitation', () => {
         vi.clearAllMocks();
     });
 
-    it('vérifie team_management puis crée le membership dans la transaction', async () => {
-        const { session, now, invitation, entitlement } = prepareAcceptance();
+    it('vérifie team_management puis consomme atomiquement l’invitation dans la transaction', async () => {
+        const {
+            acceptedInvitation,
+            session,
+            now,
+            invitation,
+            entitlement,
+        } = prepareAcceptance();
         const membership = { _id: 'membership-id' };
         WorkspaceMember.create.mockResolvedValue([membership]);
 
@@ -167,12 +197,27 @@ describe('acceptWorkspaceInvitation', () => {
             session,
         });
         expect(WorkspaceMember.create).toHaveBeenCalledOnce();
-        expect(invitation.status).toBe(
-            WORKSPACE_INVITATION_STATUS.ACCEPTED,
+        expect(WorkspaceInvitation.findOneAndUpdate).toHaveBeenCalledWith(
+            {
+                _id: invitation._id,
+                tokenHash: expect.any(String),
+                status: WORKSPACE_INVITATION_STATUS.PENDING,
+                expiresAt: { $gt: now },
+            },
+            {
+                $set: {
+                    status: WORKSPACE_INVITATION_STATUS.ACCEPTED,
+                    acceptedBy: 'actor-id',
+                    acceptedAt: now,
+                },
+            },
+            {
+                returnDocument: 'after',
+                runValidators: true,
+                session,
+            },
         );
-        expect(invitation.acceptedBy).toBe('actor-id');
-        expect(invitation.acceptedAt).toBe(now);
-        expect(invitation.save).toHaveBeenCalledWith({ session });
+        expect(result.invitation).toBe(acceptedInvitation);
         expect(result.membership).toBe(membership);
         expect(createAuditLog).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -182,6 +227,23 @@ describe('acceptWorkspaceInvitation', () => {
             }),
             { session },
         );
+    });
+
+    it('échoue fermé si la consommation conditionnelle perd une course', async () => {
+        prepareAcceptance();
+        WorkspaceMember.create.mockResolvedValue([
+            { _id: 'membership-id' },
+        ]);
+        WorkspaceInvitation.findOneAndUpdate.mockResolvedValue(null);
+
+        await expect(
+            acceptWorkspaceInvitation({
+                token: 'raw-token',
+                actorId: 'actor-id',
+            }),
+        ).rejects.toMatchObject({ statusCode: 409 });
+
+        expect(createAuditLog).not.toHaveBeenCalled();
     });
 
     it('refuse une invitation devenue commercialement indisponible avant acceptation', async () => {
@@ -203,6 +265,7 @@ describe('acceptWorkspaceInvitation', () => {
 
         expect(enforcePlanLimit).not.toHaveBeenCalled();
         expect(WorkspaceMember.create).not.toHaveBeenCalled();
+        expect(WorkspaceInvitation.findOneAndUpdate).not.toHaveBeenCalled();
         expect(createAuditLog).not.toHaveBeenCalled();
     });
 
@@ -263,6 +326,7 @@ describe('acceptWorkspaceInvitation', () => {
         ).rejects.toBe(quotaError);
 
         expect(WorkspaceMember.create).not.toHaveBeenCalled();
+        expect(WorkspaceInvitation.findOneAndUpdate).not.toHaveBeenCalled();
         expect(createAuditLog).not.toHaveBeenCalled();
     });
 });

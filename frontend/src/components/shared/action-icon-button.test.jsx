@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ActionIconButton } from '@/components/shared/action-icon-button';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 function TestIcon(props) {
   return <svg data-testid="test-icon" {...props} />;
@@ -16,12 +17,14 @@ describe('ActionIconButton', () => {
     const onClick = vi.fn();
 
     render(
-      <ActionIconButton
-        Icon={TestIcon}
-        label="Voir les permissions de Support commercial"
-        onClick={onClick}
-        tooltipLabel="Voir"
-      />,
+      <TooltipProvider>
+        <ActionIconButton
+          Icon={TestIcon}
+          label="Voir les permissions de Support commercial"
+          onClick={onClick}
+          tooltipLabel="Voir"
+        />
+      </TooltipProvider>,
     );
 
     const button = screen.getByRole('button', {
@@ -29,14 +32,13 @@ describe('ActionIconButton', () => {
     });
 
     expect(button).toBeInTheDocument();
-    expect(screen.getByRole('tooltip', { hidden: true })).toHaveTextContent(
-      'Voir',
-    );
+    expect(button).toHaveAccessibleName('Voir les permissions de Support commercial');
+    expect(screen.queryByText('Voir', { exact: true })).not.toBeInTheDocument();
 
     await user.tab();
 
     expect(button).toHaveFocus();
-    expect(screen.getByRole('tooltip')).toHaveTextContent('Voir');
+    expect(await screen.findByText('Voir', { exact: true })).toBeInTheDocument();
 
     await user.click(button);
     expect(onClick).toHaveBeenCalledTimes(1);

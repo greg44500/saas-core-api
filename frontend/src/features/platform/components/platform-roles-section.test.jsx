@@ -135,11 +135,12 @@ describe('PlatformRolesSection', () => {
     const descriptionButton = screen.getByRole('button', {
       name: 'Description du rôle Support technique',
     });
+
     await user.hover(descriptionButton);
 
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'Rôle système protégé.',
-    );
+    expect(
+      await screen.findByText('Rôle système protégé.'),
+    ).toBeInTheDocument();
   });
 
   it('protège les rôles système et archivés mais permet les actions sur un rôle personnalisé actif', async () => {

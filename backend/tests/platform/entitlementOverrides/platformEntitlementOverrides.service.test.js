@@ -354,7 +354,7 @@ describe('platformEntitlementOverrides.service', () => {
         expect(result.lifecycle).toBe('revoked');
     });
 
-    it('liste avec pagination et filtre workspace', async () => {
+    it('liste une décision commerciale groupée une seule fois avant pagination', async () => {
         const workspaceId = createId();
         const override = createOverrideDocument({ workspaceId });
         const findSpy = vi.spyOn(EntitlementOverride, 'find')
@@ -371,9 +371,13 @@ describe('platformEntitlementOverrides.service', () => {
             at: NOW,
         });
 
-        expect(findSpy).toHaveBeenCalledWith({
-            workspace: workspaceId.toString(),
-        });
+        const usedFilter = findSpy.mock.calls[0][0];
+        expect(usedFilter.workspace).toBe(workspaceId.toString());
+        expect(usedFilter.$and).toHaveLength(1);
+        expect(usedFilter.$and[0].$or).toEqual([
+            { targetType: ENTITLEMENT_OVERRIDE_TARGET.FEATURE },
+            { groupId: null },
+        ]);
         expect(result.pagination).toEqual({
             page: 2,
             limit: 10,
@@ -382,5 +386,22 @@ describe('platformEntitlementOverrides.service', () => {
         });
         expect(result.overrides[0].workspace.id)
             .toBe(workspaceId.toString());
+    });
+
+    it('ne liste comme limites que les dérogations autonomes', async () => {
+        const findSpy = vi.spyOn(EntitlementOverride, 'find')
+            .mockReturnValue(buildListQuery([]));
+        vi.spyOn(EntitlementOverride, 'countDocuments')
+            .mockResolvedValue(0);
+
+        await listPlatformEntitlementOverrides({
+            targetType: ENTITLEMENT_OVERRIDE_TARGET.LIMIT,
+            at: NOW,
+        });
+
+        expect(findSpy).toHaveBeenCalledWith({
+            targetType: ENTITLEMENT_OVERRIDE_TARGET.LIMIT,
+            groupId: null,
+        });
     });
 });

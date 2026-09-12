@@ -268,8 +268,14 @@ function PlatformOverviewPage() {
       <header className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-sm font-medium text-primary">Plateforme</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Vue d’ensemble</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+          <div className="mt-1 flex items-start gap-2">
+            <h1 className="text-3xl font-semibold tracking-tight">Vue d’ensemble</h1>
+            <InfoTooltip
+              content="Synthèse des activités et signaux accessibles selon vos autorisations."
+              label="À propos de la vue d’ensemble"
+            />
+          </div>
+          <p className="sr-only">
             Synthèse des activités et signaux accessibles selon vos autorisations.
           </p>
           {overview?.generatedAt && (

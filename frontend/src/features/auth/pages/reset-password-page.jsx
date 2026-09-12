@@ -1,22 +1,56 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useLayoutEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { FormField } from '@/components/forms/form-field';
 import { PasswordField } from '@/components/forms/password-field';
+import { PasswordPolicyFeedback } from '@/components/forms/password-policy-feedback';
 import { Button } from '@/components/ui/button';
-import { useResetPasswordMutation } from '@/features/auth/api/auth-api';
+import { getPasswordResetTokenFromHash } from '@/features/auth/lib/password-reset-token';
+import {
+  useGetPasswordPolicyQuery,
+  useResetPasswordMutation,
+} from '@/features/auth/api/auth-api';
 import { resetPasswordFormSchema } from '@/features/auth/validation/auth-schemas';
 
 function ResetPasswordPage() {
+  const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') ?? '';
+
+  const [token] = useState(
+    () => getPasswordResetTokenFromHash(location.hash) ?? '',
+  );
+  useLayoutEffect(() => {
+    if (!location.hash) return;
+
+    // Le secret est déjà conservé dans l'état local du composant.
+    // On le retire immédiatement de l'URL et donc de l'historique visible.
+    navigate(
+      {
+        pathname: location.pathname,
+        search: location.search,
+        hash: '',
+      },
+      {
+        replace: true,
+        state: location.state,
+      },
+    );
+  }, [
+    location.hash,
+    location.pathname,
+    location.search,
+    location.state,
+    navigate,
+  ]);
+  const { data: passwordPolicy } = useGetPasswordPolicyQuery();
   const [resetPassword, { isLoading }] = useResetPasswordMutation();
   const {
     register,
     handleSubmit,
     setError,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(resetPasswordFormSchema),
@@ -28,11 +62,13 @@ function ResetPasswordPage() {
     },
   });
 
-  const onSubmit = async ({ newPassword }) => {
+  const newPassword = watch('newPassword');
+
+  const onSubmit = async ({ newPassword: submittedPassword }) => {
     if (!token) return;
 
     try {
-      await resetPassword({ token, newPassword }).unwrap();
+      await resetPassword({ token, newPassword: submittedPassword }).unwrap();
       navigate('/login', {
         replace: true,
         state: { resetPasswordSuccess: true },
@@ -72,13 +108,16 @@ function ResetPasswordPage() {
 
       <form className="space-y-4" noValidate onSubmit={handleSubmit(onSubmit)}>
         <FormField id="resetNewPassword" label="Nouveau mot de passe" error={errors.newPassword?.message}>
-          <PasswordField
-            id="resetNewPassword"
-            autoComplete="new-password"
-            invalid={Boolean(errors.newPassword)}
-            describedBy={errors.newPassword ? 'resetNewPassword-message' : undefined}
-            {...register('newPassword')}
-          />
+          <div className="space-y-2">
+            <PasswordField
+              id="resetNewPassword"
+              autoComplete="new-password"
+              invalid={Boolean(errors.newPassword)}
+              describedBy={errors.newPassword ? 'resetNewPassword-message' : undefined}
+              {...register('newPassword')}
+            />
+            <PasswordPolicyFeedback password={newPassword} policy={passwordPolicy} />
+          </div>
         </FormField>
 
         <FormField

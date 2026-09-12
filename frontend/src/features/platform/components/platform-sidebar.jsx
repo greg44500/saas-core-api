@@ -16,6 +16,11 @@ import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
 
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
 import {
   canDisplayPlatformNavigationItem,
@@ -58,27 +63,13 @@ function PlatformSidebarLabel({ collapsed, children }) {
   );
 }
 
-function PlatformSidebarTooltip({ collapsed, label }) {
-  if (!collapsed) return null;
-
-  return (
-    <span
-      className="pointer-events-none absolute left-full top-1/2 z-[60] ml-3 -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs font-medium text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
-      role="tooltip"
-    >
-      {label}
-    </span>
-  );
-}
-
 function isPlatformItemActive(item, pathname) {
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
 }
 
 function PlatformNavigationLink({ collapsed = false, item, nested = false, onNavigate }) {
   const Icon = PLATFORM_NAVIGATION_ICONS[item.id];
-
-  return (
+  const link = (
     <NavLink
       aria-label={collapsed ? item.label : undefined}
       className={({ isActive }) => cn(
@@ -93,8 +84,16 @@ function PlatformNavigationLink({ collapsed = false, item, nested = false, onNav
     >
       <Icon aria-hidden="true" className="size-4 shrink-0" />
       <PlatformSidebarLabel collapsed={collapsed}>{item.label}</PlatformSidebarLabel>
-      <PlatformSidebarTooltip collapsed={collapsed} label={item.label} />
     </NavLink>
+  );
+
+  if (!collapsed) return link;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={link} />
+      <TooltipContent side="right">{item.label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -120,34 +119,42 @@ function PlatformNavigationGroup({
     onGroupToggle(group.id);
   }
 
+  const trigger = (
+    <button
+      aria-expanded={collapsed ? flyoutOpen : expanded}
+      aria-label={collapsed ? group.label : undefined}
+      className={cn(
+        NAV_ITEM_CLASS,
+        'justify-start',
+        active
+          ? 'text-foreground'
+          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+      )}
+      onClick={toggleGroup}
+      type="button"
+    >
+      <Icon aria-hidden="true" className="size-4 shrink-0" />
+      <PlatformSidebarLabel collapsed={collapsed}>{group.label}</PlatformSidebarLabel>
+      {!collapsed && (
+        <ChevronDown
+          aria-hidden="true"
+          className={cn(
+            'ml-auto size-4 shrink-0 transition-transform duration-200',
+            expanded && 'rotate-180',
+          )}
+        />
+      )}
+    </button>
+  );
+
   return (
     <div className="relative">
-      <button
-        aria-expanded={collapsed ? flyoutOpen : expanded}
-        aria-label={collapsed ? group.label : undefined}
-        className={cn(
-          NAV_ITEM_CLASS,
-          'justify-start',
-          active
-            ? 'text-foreground'
-            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-        )}
-        onClick={toggleGroup}
-        type="button"
-      >
-        <Icon aria-hidden="true" className="size-4 shrink-0" />
-        <PlatformSidebarLabel collapsed={collapsed}>{group.label}</PlatformSidebarLabel>
-        {!collapsed && (
-          <ChevronDown
-            aria-hidden="true"
-            className={cn(
-              'ml-auto size-4 shrink-0 transition-transform duration-200',
-              expanded && 'rotate-180',
-            )}
-          />
-        )}
-        <PlatformSidebarTooltip collapsed={collapsed} label={group.label} />
-      </button>
+      {collapsed ? (
+        <Tooltip>
+          <TooltipTrigger render={trigger} />
+          <TooltipContent side="right">{group.label}</TooltipContent>
+        </Tooltip>
+      ) : trigger}
 
       {!collapsed && (
         <div
@@ -169,7 +176,7 @@ function PlatformNavigationGroup({
       )}
 
       {flyoutOpen && (
-        <div className="absolute left-full top-0 z-[70] ml-3 w-64 rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-lg">
+        <div className="absolute left-full top-0 z-[var(--layer-flyout)] ml-3 w-64 rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-lg">
           <p className="px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {group.label}
           </p>
@@ -284,7 +291,6 @@ export {
   PlatformNavigationLink,
   PlatformSidebar,
   PlatformSidebarLabel,
-  PlatformSidebarTooltip,
   canDisplayPlatformNavigationItem,
   getVisiblePlatformNavigationSections,
   platformNavigationItems,

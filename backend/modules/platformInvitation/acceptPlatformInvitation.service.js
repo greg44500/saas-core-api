@@ -7,6 +7,9 @@ import {
     AUDIT_STATUS,
 } from '../../constants/auditActions.constants.js';
 import {
+    LEGAL_ACCEPTANCE_SOURCE,
+} from '../../constants/legalDocuments.constants.js';
+import {
     PLATFORM_INVITATION_STATUS,
     PLATFORM_TEAM_MEMBER_STATUS,
 } from '../../constants/platformTeam.constants.js';
@@ -15,6 +18,9 @@ import { AppError } from '../../utils/appError.js';
 import { hashPassword } from '../../utils/password.js';
 import { createAuditLog } from '../auditLog/auditLog.service.js';
 import { AuthIdentity } from '../authIdentities/authIdentity.model.js';
+import {
+    createRegistrationLegalAcceptance,
+} from '../legalAcceptance/legalAcceptance.service.js';
 import { PlatformRole } from '../platformRole/platformRole.model.js';
 import {
     resolvePlatformAuthorization,
@@ -56,9 +62,6 @@ const loadAcceptableInvitation = async ({
         );
     }
 
-    // Les lectures partageant une session transactionnelle restent
-    // séquentielles : MongoDB/Mongoose ne garantit pas le parallélisme dans une
-    // transaction et peut invalider le numéro de transaction actif.
     const role = await PlatformRole.findById(invitation.role)
         .session(session);
     const inviter = await User.findById(invitation.invitedBy)
@@ -72,11 +75,6 @@ const loadAcceptableInvitation = async ({
         );
     }
 
-    /**
-     * L'autorité de l'invitant est recontrôlée depuis PlatformTeamMember au
-     * moment où les privilèges deviennent effectifs. Une ancienne invitation
-     * ne survit donc pas à la suspension ou à la révocation de son créateur.
-     */
     const inviterAuthorization = await resolvePlatformAuthorization({
         user: inviter,
         session,
@@ -152,6 +150,7 @@ const createPlatformMembership = async ({
 
 const finalizePlatformInvitationAcceptance = async ({
     invitation,
+    tokenHash,
     role,
     userId,
     membership,
@@ -160,11 +159,33 @@ const finalizePlatformInvitationAcceptance = async ({
     now,
     session,
 }) => {
-    invitation.status = PLATFORM_INVITATION_STATUS.ACCEPTED;
-    invitation.acceptedBy = userId;
-    invitation.acceptedAt = now;
+    const acceptedInvitation = await PlatformInvitation.findOneAndUpdate(
+        {
+            _id: invitation._id,
+            tokenHash,
+            status: PLATFORM_INVITATION_STATUS.PENDING,
+            expiresAt: mongoose.trusted({ $gt: now }),
+        },
+        {
+            $set: {
+                status: PLATFORM_INVITATION_STATUS.ACCEPTED,
+                acceptedBy: userId,
+                acceptedAt: now,
+            },
+        },
+        {
+            returnDocument: 'after',
+            runValidators: true,
+            session,
+        },
+    );
 
-    await invitation.save({ session });
+    if (!acceptedInvitation) {
+        throw new AppError(
+            'L’invitation Plateforme a été modifiée concurremment.',
+            409,
+        );
+    }
 
     await createAuditLog(
         {
@@ -172,7 +193,7 @@ const finalizePlatformInvitationAcceptance = async ({
             workspace: null,
             action: AUDIT_ACTION.PLATFORM_INVITATION_ACCEPTED,
             entityType: AUDIT_ENTITY_TYPE.PLATFORM_INVITATION,
-            entityId: invitation._id,
+            entityId: acceptedInvitation._id,
             status: AUDIT_STATUS.SUCCESS,
             ipAddress,
             userAgent,
@@ -184,6 +205,8 @@ const finalizePlatformInvitationAcceptance = async ({
         },
         { session },
     );
+
+    return acceptedInvitation;
 };
 
 
@@ -237,8 +260,9 @@ const acceptExistingPlatformInvitation = async ({
             session,
         });
 
-        await finalizePlatformInvitationAcceptance({
+        const acceptedInvitation = await finalizePlatformInvitationAcceptance({
             invitation,
+            tokenHash,
             role,
             userId: actor._id,
             membership,
@@ -249,7 +273,7 @@ const acceptExistingPlatformInvitation = async ({
         });
 
         return {
-            invitation,
+            invitation: acceptedInvitation,
             membership,
             role,
             user: actor,
@@ -261,13 +285,14 @@ const acceptExistingPlatformInvitation = async ({
 const acceptNewPlatformInvitation = async ({
     token,
     password,
+    legalAccepted,
     ipAddress = null,
     userAgent = null,
     now = new Date(),
 }) => {
-    if (!token || !password) {
+    if (!token || !password || legalAccepted !== true) {
         throw new TypeError(
-            'token and password are required to accept a new-user platform invitation',
+            'token, password and legalAccepted=true are required to accept a new-user platform invitation',
         );
     }
 
@@ -335,6 +360,15 @@ const acceptNewPlatformInvitation = async ({
                 { session },
             );
 
+            await createRegistrationLegalAcceptance({
+                userId: user._id,
+                source: LEGAL_ACCEPTANCE_SOURCE.PLATFORM_INVITATION_REGISTRATION,
+                ipAddress,
+                userAgent,
+                acceptedAt: now,
+                session,
+            });
+
             const membership = await createPlatformMembership({
                 userId: user._id,
                 roleId: role._id,
@@ -343,8 +377,9 @@ const acceptNewPlatformInvitation = async ({
                 session,
             });
 
-            await finalizePlatformInvitationAcceptance({
+            const acceptedInvitation = await finalizePlatformInvitationAcceptance({
                 invitation,
+                tokenHash,
                 role,
                 userId: user._id,
                 membership,
@@ -355,7 +390,7 @@ const acceptNewPlatformInvitation = async ({
             });
 
             return {
-                invitation,
+                invitation: acceptedInvitation,
                 membership,
                 role,
                 user,

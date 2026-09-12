@@ -4,9 +4,14 @@ import { Link, useNavigate } from 'react-router';
 
 import { FormField } from '@/components/forms/form-field';
 import { PasswordField } from '@/components/forms/password-field';
+import { PasswordPolicyFeedback } from '@/components/forms/password-policy-feedback';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { useRegisterMutation } from '@/features/auth/api/auth-api';
+import {
+  useGetPasswordPolicyQuery,
+  useRegisterMutation,
+} from '@/features/auth/api/auth-api';
 import { registerSchema } from '@/features/auth/validation/auth-schemas';
 import {
   useRegisterCommercialInvitationRecipientMutation,
@@ -27,6 +32,7 @@ function RegisterPage() {
   const commercialInvitationState = commercialInvitationToken
     ? buildCommercialInvitationAuthState()
     : undefined;
+  const { data: passwordPolicy } = useGetPasswordPolicyQuery();
   const [registerAccount, registerAccountState] = useRegisterMutation();
   const [registerCommercialRecipient, commercialRegisterState] =
     useRegisterCommercialInvitationRecipientMutation();
@@ -35,6 +41,7 @@ function RegisterPage() {
     handleSubmit,
     formState: { errors },
     setError,
+    watch,
   } = useForm({
     resolver: zodResolver(registerSchema),
     mode: 'onBlur',
@@ -45,9 +52,12 @@ function RegisterPage() {
       email: '',
       password: '',
       confirmPassword: '',
+      legalAccepted: false,
     },
   });
 
+  const password = watch('password');
+  const legalAccepted = watch('legalAccepted');
   const isLoading = registerAccountState.isLoading
     || commercialRegisterState.isLoading;
 
@@ -109,17 +119,45 @@ function RegisterPage() {
           <Input id="email" type="email" autoComplete="email" aria-invalid={Boolean(errors.email) || undefined} aria-describedby={errors.email ? 'email-message' : undefined} {...register('email')} />
         </FormField>
 
-        <FormField id="password" label="Mot de passe" error={errors.password?.message} hint="15 à 128 caractères.">
-          <PasswordField id="password" autoComplete="new-password" invalid={Boolean(errors.password)} describedBy="password-message" {...register('password')} />
+        <FormField id="password" label="Mot de passe" error={errors.password?.message}>
+          <div className="space-y-2">
+            <PasswordField id="password" autoComplete="new-password" invalid={Boolean(errors.password)} describedBy={errors.password ? 'password-message' : undefined} {...register('password')} />
+            <PasswordPolicyFeedback password={password} policy={passwordPolicy} />
+          </div>
         </FormField>
 
         <FormField id="confirmPassword" label="Confirmer le mot de passe" error={errors.confirmPassword?.message}>
           <PasswordField id="confirmPassword" autoComplete="new-password" invalid={Boolean(errors.confirmPassword)} describedBy={errors.confirmPassword ? 'confirmPassword-message' : undefined} {...register('confirmPassword')} />
         </FormField>
 
+        <div className="space-y-2">
+          <label className="flex items-start gap-3 text-sm" htmlFor="legalAccepted">
+            <Checkbox
+              aria-invalid={Boolean(errors.legalAccepted) || undefined}
+              id="legalAccepted"
+              {...register('legalAccepted')}
+            />
+            <span className="leading-5">
+              J’accepte les{' '}
+              <Link className="font-medium text-primary hover:underline" target="_blank" to="/legal/terms">
+                Conditions générales d’utilisation
+              </Link>{' '}
+              et reconnais avoir pris connaissance de la{' '}
+              <Link className="font-medium text-primary hover:underline" target="_blank" to="/legal/privacy">
+                Politique de confidentialité
+              </Link>.
+            </span>
+          </label>
+          {errors.legalAccepted && (
+            <p className="text-sm text-destructive" id="legalAccepted-message" role="alert">
+              {errors.legalAccepted.message}
+            </p>
+          )}
+        </div>
+
         {errors.root?.server && <p className="text-sm text-destructive" role="alert">{errors.root.server.message}</p>}
 
-        <Button className="w-full" type="submit" disabled={isLoading}>
+        <Button className="w-full" type="submit" disabled={isLoading || !legalAccepted}>
           {isLoading ? 'Création…' : 'Créer mon compte'}
         </Button>
       </form>

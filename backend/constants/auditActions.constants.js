@@ -125,6 +125,11 @@ const AUDIT_ACTION_REGISTRY = freezeRegistry({
         label: 'Mot de passe réinitialisé',
     },
 
+    FORGOT_PASSWORD_REQUESTED: {
+        value: 'FORGOT_PASSWORD_REQUESTED',
+        label: 'Demande de réinitialisation reçue',
+    },
+
     USER_CREATED: {
         value: 'USER_CREATED',
         label: 'Utilisateur créé',

@@ -3,14 +3,18 @@ import { EntityDetailsSkeleton } from '@/components/shared/entity-details-skelet
 import { InlineIconLink } from '@/components/shared/inline-icon-link';
 import { Button } from '@/components/ui/button';
 import {
+  PlatformEntitlementEffectBadge,
+  PlatformEntitlementLifecycleBadge,
+} from '@/features/platform/components/platform-entitlement-status-badge';
+import {
   ENTITLEMENT_OVERRIDE_TARGET,
   formatPlatformEntitlementOverrideCapability,
   formatPlatformEntitlementOverrideDate,
-  formatPlatformEntitlementOverrideLifecycle,
   formatPlatformEntitlementOverrideSource,
   formatPlatformEntitlementOverrideValue,
   isEditablePlatformEntitlementOverride,
 } from '@/features/platform/lib/platform-entitlement-override-formatters';
+import { formatPlatformPlanMetric } from '@/features/platform/lib/platform-plan-formatters';
 
 function DetailRow({ label, value }) {
   return (
@@ -29,18 +33,35 @@ function formatActor(actor) {
 
 function getTargetLabel(targetType) {
   if (targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE) return 'Fonctionnalité';
-  if (targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT) return 'Limite';
+  if (targetType === ENTITLEMENT_OVERRIDE_TARGET.LIMIT) return 'Paramètre';
   return 'Cible';
 }
 
 function getValueLabel(targetType) {
   return targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
-    ? 'Action appliquée'
+    ? 'Effet'
     : 'Valeur appliquée';
+}
+
+function renderOverrideValue(override) {
+  const value = formatPlatformEntitlementOverrideValue(override);
+
+  if (override.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE) {
+    return (
+      <PlatformEntitlementEffectBadge override={override}>
+        {value}
+      </PlatformEntitlementEffectBadge>
+    );
+  }
+
+  return value;
 }
 
 function PlatformEntitlementOverrideDetails({
   error,
+  featureGroup,
+  featureGroupError = null,
+  featureGroupLoading = false,
   isLoading,
   onEdit,
   onRetry,
@@ -73,8 +94,29 @@ function PlatformEntitlementOverrideDetails({
 
   if (!override) return null;
 
+  const featureRequiresGroup = override.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE;
+  const groupStillLoading = featureRequiresGroup
+    && featureGroup === undefined
+    && !featureGroupError;
+  const groupUnavailable = featureRequiresGroup
+    && (groupStillLoading || featureGroupLoading || Boolean(featureGroupError));
+
   return (
     <div className="space-y-6">
+      {featureGroup?.groupName && (
+        <section className="rounded-xl border border-primary/30 bg-primary/10 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+            Dérogation sélectionnée
+          </p>
+          <p className="mt-1 text-lg font-semibold text-foreground">
+            {featureGroup.groupName}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {formatPlatformEntitlementOverrideCapability(override)}
+          </p>
+        </section>
+      )}
+
       <section>
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Dérogation
@@ -102,11 +144,11 @@ function PlatformEntitlementOverrideDetails({
           />
           <DetailRow
             label={getValueLabel(override.targetType)}
-            value={formatPlatformEntitlementOverrideValue(override)}
+            value={renderOverrideValue(override)}
           />
           <DetailRow
-            label="Statut de la dérogation"
-            value={formatPlatformEntitlementOverrideLifecycle(override.lifecycle)}
+            label="Statut"
+            value={<PlatformEntitlementLifecycleBadge lifecycle={override.lifecycle} />}
           />
           <DetailRow label="Origine" value={formatPlatformEntitlementOverrideSource(override.source)} />
           <DetailRow label="Début" value={formatPlatformEntitlementOverrideDate(override.startsAt)} />
@@ -114,6 +156,23 @@ function PlatformEntitlementOverrideDetails({
           <DetailRow label="Motif" value={override.reason} />
         </dl>
       </section>
+
+      {featureGroup?.relatedOverrides?.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Paramètres associés
+          </h3>
+          <dl className="mt-2">
+            {featureGroup.relatedOverrides.map((relatedOverride) => (
+              <DetailRow
+                key={relatedOverride.id}
+                label={formatPlatformPlanMetric(relatedOverride.metricKey)}
+                value={formatPlatformEntitlementOverrideValue(relatedOverride)}
+              />
+            ))}
+          </dl>
+        </section>
+      )}
 
       <section>
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -142,10 +201,21 @@ function PlatformEntitlementOverrideDetails({
           </p>
         </div>
 
+        {featureGroupError && (
+          <p className="text-sm text-destructive" role="alert">
+            Les paramètres associés n’ont pas pu être chargés. La modification est désactivée pour éviter une édition partielle.
+          </p>
+        )}
+
         {isEditablePlatformEntitlementOverride(override) ? (
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => onEdit(override)} type="button" variant="secondary">
-              Modifier
+            <Button
+              disabled={groupUnavailable}
+              onClick={() => onEdit(override)}
+              type="button"
+              variant="secondary"
+            >
+              {groupStillLoading || featureGroupLoading ? 'Chargement…' : 'Modifier'}
             </Button>
             <Button onClick={() => onRevoke(override)} type="button" variant="destructive">
               Révoquer
@@ -163,6 +233,9 @@ function PlatformEntitlementOverrideDetails({
 
 function PlatformEntitlementOverrideDetailsDrawer({
   error,
+  featureGroup,
+  featureGroupError = null,
+  featureGroupLoading = false,
   isLoading,
   onClose,
   onEdit,
@@ -172,15 +245,22 @@ function PlatformEntitlementOverrideDetailsDrawer({
   open,
   override,
 }) {
+  const title = featureGroup?.groupName
+    ?? (override ? formatPlatformEntitlementOverrideCapability(override) : null)
+    ?? 'Détails de la dérogation';
+
   return (
     <EntityDetailsDrawer
-      description="Dérogation commerciale appliquée au calcul d’entitlement du workspace. Les informations internes restent réservées à Platform."
+      description="Dérogation commerciale appliquée au calcul des droits du workspace. Les informations internes restent réservées à Platform."
       onClose={onClose}
       open={open}
-      title={override?.workspace?.name ?? 'Détails de la dérogation'}
+      title={title}
     >
       <PlatformEntitlementOverrideDetails
         error={error}
+        featureGroup={featureGroup}
+        featureGroupError={featureGroupError}
+        featureGroupLoading={featureGroupLoading}
         isLoading={isLoading}
         onEdit={onEdit}
         onRetry={onRetry}

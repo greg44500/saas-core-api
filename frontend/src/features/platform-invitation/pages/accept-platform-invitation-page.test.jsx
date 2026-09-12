@@ -1,12 +1,12 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createMemoryRouter, useLocation } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+
 import {
-  MemoryRouter,
-  Route,
-  Routes,
-  useLocation,
-} from 'react-router';
+  clearPlatformInvitationTokenInMemory,
+} from '@/features/platform-invitation/lib/platform-invitation-token';
 
 const mocks = vi.hoisted(() => ({
   acceptExisting: vi.fn(),
@@ -17,6 +17,35 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('react-redux', () => ({
   useSelector: () => mocks.authStatus,
+}));
+
+vi.mock('@/features/auth/api/auth-api', () => ({
+  useGetPasswordPolicyQuery: () => ({
+    data: {
+      minLength: 15,
+      maxLength: 128,
+      levels: [
+        { key: 'weak', label: 'Faible', minScore: 0 },
+        { key: 'good', label: 'Correct', minScore: 3 },
+        { key: 'strong', label: 'Robuste', minScore: 5 },
+      ],
+      scoring: {
+        lengthBands: [
+          { minLength: 15, points: 1 },
+          { minLength: 20, points: 1 },
+          { minLength: 28, points: 1 },
+        ],
+        characterClassBands: [
+          { minClasses: 2, points: 1 },
+          { minClasses: 4, points: 1 },
+        ],
+        uniqueRatio: {
+          minimum: 0.6,
+          points: 1,
+        },
+      },
+    },
+  }),
 }));
 
 vi.mock('@/features/platform-invitation/api/platform-invitation-acceptance-api', () => ({
@@ -57,25 +86,28 @@ function LoginTarget() {
   );
 }
 
-function renderPage(path = `/platform-invitations/accept?token=${TOKEN}`) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route
-          path="/platform-invitations/accept"
-          element={<AcceptPlatformInvitationPage />}
-        />
-        <Route path="/login" element={<LoginTarget />} />
-        <Route path="/platform/users" element={<h1>Utilisateurs</h1>} />
-        <Route path="/account/profile" element={<h1>Profil</h1>} />
-      </Routes>
-    </MemoryRouter>,
+function renderPage(path = `/platform-invitations/accept#token=${TOKEN}`) {
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/platform-invitations/accept',
+        Component: AcceptPlatformInvitationPage,
+      },
+      { path: '/login', Component: LoginTarget },
+      { path: '/platform/users', Component: () => <h1>Utilisateurs</h1> },
+      { path: '/account/profile', Component: () => <h1>Profil</h1> },
+    ],
+    { initialEntries: [path] },
   );
+
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
 describe('AcceptPlatformInvitationPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearPlatformInvitationTokenInMemory();
     mocks.authStatus = 'unauthenticated';
     mocks.acceptNew.mockImplementation(() => ({
       unwrap: vi.fn().mockResolvedValue({
@@ -96,8 +128,20 @@ describe('AcceptPlatformInvitationPage', () => {
 
   afterEach(() => cleanup());
 
+  it('capture le secret depuis le fragment puis nettoie immédiatement l’URL', async () => {
+    const router = renderPage();
+
+    await waitFor(() => {
+      expect(router.state.location.hash).toBe('');
+    });
+
+    expect(router.state.location.search).toBe('');
+    expect(router.state.location.state).toBeNull();
+    expect(screen.getByLabelText('Mot de passe')).toBeInTheDocument();
+  });
+
   it('refuse localement un token mal formé sans appeler le backend', () => {
-    renderPage('/platform-invitations/accept?token=invalide');
+    renderPage('/platform-invitations/accept#token=invalide');
 
     expect(
       screen.getByRole('heading', { name: 'Ce lien n’est pas utilisable' }),
@@ -116,26 +160,34 @@ describe('AcceptPlatformInvitationPage', () => {
 
     await user.type(
       screen.getByLabelText('Mot de passe'),
-      'mot-de-passe-tres-securise',
+      'Phrase unique pour invitation 47!',
     );
     await user.type(
       screen.getByLabelText('Confirmer le mot de passe'),
-      'mot-de-passe-tres-securise',
+      'Phrase unique pour invitation 47!'
+    );
+    await user.click(
+      screen.getByLabelText(/J’accepte les Conditions générales/i),
     );
     await user.click(screen.getByRole('button', { name: 'Créer mon accès' }));
 
     await waitFor(() => {
       expect(mocks.acceptNew).toHaveBeenCalledWith({
         token: TOKEN,
-        password: 'mot-de-passe-tres-securise',
+        password: 'Phrase unique pour invitation 47!',
+        legalAccepted: true,
       });
     });
     expect(await screen.findByText('Invitation acceptée')).toBeInTheDocument();
   });
 
-  it('préserve le lien complet lorsqu’un destinataire existant doit se connecter', async () => {
+  it('conserve le retour vers l’invitation sans placer le secret dans history.state', async () => {
     const user = userEvent.setup();
-    renderPage();
+    const router = renderPage();
+
+    await waitFor(() => {
+      expect(router.state.location.hash).toBe('');
+    });
 
     await user.click(
       screen.getByRole('link', { name: 'Se connecter pour accepter' }),
@@ -143,8 +195,9 @@ describe('AcceptPlatformInvitationPage', () => {
 
     expect(screen.getByText('Login cible')).toBeInTheDocument();
     expect(screen.getByTestId('login-return-to')).toHaveTextContent(
-      `/platform-invitations/accept?token=${TOKEN}`,
+      '/platform-invitations/accept',
     );
+    expect(screen.getByTestId('login-return-to')).not.toHaveTextContent(TOKEN);
   });
 
   it('accepte avec le compte connecté puis ouvre la première destination autorisée', async () => {

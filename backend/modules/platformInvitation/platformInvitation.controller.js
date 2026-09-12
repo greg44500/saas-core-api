@@ -159,14 +159,11 @@ const acceptNew = async (req, res) => {
     const { membership, role, user } = await acceptNewPlatformInvitation({
         token: req.validated.body.token,
         password: req.validated.body.password,
+        legalAccepted: req.validated.body.legalAccepted,
         ipAddress: req.context.ipAddress,
         userAgent: req.context.userAgent,
     });
 
-    /**
-     * Aucun token de session n'est créé implicitement : le nouveau
-     * collaborateur doit ensuite passer par le login normal du Core.
-     */
     res.status(201).json({
         status: 'success',
         data: {

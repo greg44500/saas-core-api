@@ -5,12 +5,14 @@ import { Link, useLocation, useNavigate } from 'react-router';
 
 import { FormField } from '@/components/forms/form-field';
 import { PasswordField } from '@/components/forms/password-field';
+import { PasswordPolicyFeedback } from '@/components/forms/password-policy-feedback';
 import { Button } from '@/components/ui/button';
 import { AccountClosureSection } from '@/features/account/components/account-closure-section';
 import { changePasswordFormSchema } from '@/features/account/validation/account-schemas';
 import {
   useChangePasswordMutation,
   useGetCurrentUserQuery,
+  useGetPasswordPolicyQuery,
   useLogoutAllMutation,
 } from '@/features/auth/api/auth-api';
 
@@ -19,12 +21,14 @@ function SecurityPage() {
   const location = useLocation();
   const [confirmLogoutAll, setConfirmLogoutAll] = useState(false);
   const { data: currentUser } = useGetCurrentUserQuery();
+  const { data: passwordPolicy } = useGetPasswordPolicyQuery();
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
   const [logoutAll, { isLoading: isLoggingOutAll }] = useLogoutAllMutation();
   const {
     register,
     handleSubmit,
     setError,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(changePasswordFormSchema),
@@ -37,9 +41,11 @@ function SecurityPage() {
     },
   });
 
-  const onChangePassword = async ({ currentPassword, newPassword }) => {
+  const newPassword = watch('newPassword');
+
+  const onChangePassword = async ({ currentPassword, newPassword: submittedPassword }) => {
     try {
-      await changePassword({ currentPassword, newPassword }).unwrap();
+      await changePassword({ currentPassword, newPassword: submittedPassword }).unwrap();
       navigate('/login', {
         replace: true,
         state: { passwordChanged: true },
@@ -115,13 +121,16 @@ function SecurityPage() {
           </div>
 
           <FormField id="newPassword" label="Nouveau mot de passe" error={errors.newPassword?.message}>
-            <PasswordField
-              id="newPassword"
-              autoComplete="new-password"
-              invalid={Boolean(errors.newPassword)}
-              describedBy={errors.newPassword ? 'newPassword-message' : undefined}
-              {...register('newPassword')}
-            />
+            <div className="space-y-2">
+              <PasswordField
+                id="newPassword"
+                autoComplete="new-password"
+                invalid={Boolean(errors.newPassword)}
+                describedBy={errors.newPassword ? 'newPassword-message' : undefined}
+                {...register('newPassword')}
+              />
+              <PasswordPolicyFeedback password={newPassword} policy={passwordPolicy} />
+            </div>
           </FormField>
 
           <FormField

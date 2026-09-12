@@ -8,7 +8,13 @@ import {
 import {
     refreshCookieName,
 } from '../../config/cookie.config.js';
-import { registerUser, changeUserPassword, forgotUserPassword, resetUserPassword } from '../../modules/auth/auth.service.js';
+import {
+    changeUserPassword,
+    forgotUserPassword,
+    loginUser,
+    registerUser,
+    resetUserPassword,
+} from '../../modules/auth/auth.service.js';
 import {
     revokeCurrentAuthSession,
     rotateAuthSession,
@@ -19,6 +25,7 @@ import { signAccessToken } from '../../utils/jwt.js';
 vi.mock('../../modules/auth/auth.service.js', () => ({
     changeUserPassword: vi.fn(),
     forgotUserPassword: vi.fn(),
+    loginUser: vi.fn(),
     registerUser: vi.fn(),
     resetUserPassword: vi.fn(),
 }));
@@ -43,12 +50,34 @@ vi.mock('../../utils/jwt.js', () => ({
 }));
 
 
+describe('GET /api/auth/password-policy', () => {
+    it('expose la représentation publique de la politique canonique', async () => {
+        const response = await request(app)
+            .get('/api/auth/password-policy');
+
+        expect(response.status).toBe(200);
+        expect(response.body.status).toBe('success');
+        expect(response.body.data.passwordPolicy).toEqual(
+            expect.objectContaining({
+                minLength: 15,
+                maxLength: 128,
+                levels: expect.arrayContaining([
+                    expect.objectContaining({ key: 'weak', label: 'Faible' }),
+                    expect.objectContaining({ key: 'good', label: 'Correct' }),
+                    expect.objectContaining({ key: 'strong', label: 'Robuste' }),
+                ]),
+            }),
+        );
+    });
+});
+
+
 describe('POST /api/auth/register', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    it('retourne 201 pour une inscription valide', async () => {
+    it('retourne 201 pour une inscription valide et transmet le contexte de preuve', async () => {
         registerUser.mockResolvedValue({
             _id: 'user-id',
             firstName: 'Greg',
@@ -59,11 +88,13 @@ describe('POST /api/auth/register', () => {
 
         const response = await request(app)
             .post('/api/auth/register')
+            .set('User-Agent', 'Vitest Registration Client')
             .send({
                 firstName: 'Greg',
                 lastName: 'Ballat',
                 email: 'greg@example.com',
                 password: 'une phrase de passe suffisamment longue',
+                legalAccepted: true,
             });
 
         expect(response.status).toBe(201);
@@ -86,10 +117,27 @@ describe('POST /api/auth/register', () => {
             lastName: 'Ballat',
             email: 'greg@example.com',
             password: 'une phrase de passe suffisamment longue',
+            legalAccepted: true,
+            ipAddress: expect.any(String),
+            userAgent: 'Vitest Registration Client',
         });
     });
 
-    it('retourne 400 si le body est invalide', async () => {
+    it('retourne 400 si l’acceptation contractuelle manque', async () => {
+        const response = await request(app)
+            .post('/api/auth/register')
+            .send({
+                firstName: 'Greg',
+                lastName: 'Ballat',
+                email: 'greg@example.com',
+                password: 'une phrase de passe suffisamment longue',
+            });
+
+        expect(response.status).toBe(400);
+        expect(registerUser).not.toHaveBeenCalled();
+    });
+
+    it('retourne 400 si le nouveau mot de passe est invalide', async () => {
         const response = await request(app)
             .post('/api/auth/register')
             .send({
@@ -97,13 +145,52 @@ describe('POST /api/auth/register', () => {
                 lastName: 'Ballat',
                 email: 'greg@example.com',
                 password: 'trop-court',
+                legalAccepted: true,
             });
 
         expect(response.status).toBe(400);
-
         expect(registerUser).not.toHaveBeenCalled();
     });
 });
+
+
+describe('POST /api/auth/login', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('continue d’accepter un credential existant plus court que la nouvelle politique', async () => {
+        loginUser.mockResolvedValue({
+            user: {
+                _id: 'user-id',
+                firstName: 'Greg',
+                lastName: 'Ballat',
+                email: 'greg@example.com',
+                emailVerifiedAt: null,
+                passwordChangedAt: null,
+            },
+            refreshToken: 'refresh-token-test',
+        });
+        signAccessToken.mockReturnValue('access-token-test');
+
+        const response = await request(app)
+            .post('/api/auth/login')
+            .send({
+                email: 'legacy-login@example.com',
+                password: 'Old!123',
+            });
+
+        expect(response.status).toBe(200);
+        expect(loginUser).toHaveBeenCalledWith(
+            expect.objectContaining({
+                email: 'legacy-login@example.com',
+                password: 'Old!123',
+            }),
+        );
+    });
+});
+
+
 describe('POST /api/auth/forgot-password', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -121,7 +208,7 @@ describe('POST /api/auth/forgot-password', () => {
          * de l'email sont couverts par les tests du service.
          */
         forgotUserPassword.mockResolvedValue(
-            { message: genericMessage, }
+            { message: genericMessage, },
         );
 
         const response = await request(app)
@@ -195,6 +282,7 @@ describe('POST /api/auth/forgot-password', () => {
             forgotUserPassword,
         ).not.toHaveBeenCalled();
     });
+
     it('retourne 429 après trop de demandes visant la même adresse email', async () => {
         const genericMessage =
             'Si un compte correspond à cette adresse email, un lien de réinitialisation a été envoyé.';
@@ -234,11 +322,6 @@ describe('POST /api/auth/forgot-password', () => {
         expect(firstResponse.status).toBe(200);
         expect(secondResponse.status).toBe(200);
         expect(thirdResponse.status).toBe(200);
-
-        /*
-         * Le quatrième appel dépasse la limite email de
-         * trois demandes sur la fenêtre configurée.
-         */
         expect(fourthResponse.status).toBe(429);
 
         expect(fourthResponse.body).toEqual({
@@ -247,17 +330,12 @@ describe('POST /api/auth/forgot-password', () => {
                 'Trop de demandes de réinitialisation. Veuillez réessayer plus tard.',
         });
 
-        /*
-         * Le quatrième appel doit être arrêté par le middleware.
-         *
-         * Le controller et donc forgotUserPassword()
-         * ne doivent jamais être exécutés pour cette requête.
-         */
         expect(
             forgotUserPassword,
         ).toHaveBeenCalledTimes(3);
     });
 });
+
 
 describe('POST /api/auth/refresh', () => {
     beforeEach(() => {
@@ -325,6 +403,8 @@ describe('POST /api/auth/logout', () => {
         });
     });
 });
+
+
 describe('POST /api/auth/change-password', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -346,7 +426,7 @@ describe('POST /api/auth/change-password', () => {
                 currentPassword:
                     'mot de passe actuel suffisamment long',
                 newPassword:
-                    'nouveau mot de passe suffisamment long',
+                    'Phrase nouvelle, longue et unique 47!',
             });
 
         expect(response.status).toBe(204);
@@ -360,12 +440,13 @@ describe('POST /api/auth/change-password', () => {
             currentPassword:
                 'mot de passe actuel suffisamment long',
             newPassword:
-                'nouveau mot de passe suffisamment long',
+                'Phrase nouvelle, longue et unique 47!',
             ipAddress: expect.any(String),
             userAgent: 'Mozilla/5.0 Test Browser',
         });
     });
 });
+
 
 describe('POST /api/auth/reset-password', () => {
     beforeEach(() => {
@@ -387,7 +468,7 @@ describe('POST /api/auth/reset-password', () => {
             .send({
                 token: 'opaque-reset-token',
                 newPassword:
-                    'nouveau mot de passe suffisamment long',
+                    'Phrase réinitialisée, longue et unique 83!',
             });
 
         expect(response.status).toBe(200);
@@ -398,16 +479,12 @@ describe('POST /api/auth/reset-password', () => {
                 'Mot de passe réinitialisé avec succès.',
         });
 
-        /*
-         * La route doit transmettre au service uniquement
-         * les données validées du workflow reset-password.
-         */
         expect(
             resetUserPassword,
         ).toHaveBeenCalledWith({
             token: 'opaque-reset-token',
             newPassword:
-                'nouveau mot de passe suffisamment long',
+                'Phrase réinitialisée, longue et unique 83!',
             ipAddress: expect.any(String),
             userAgent: 'Vitest Test Client',
         });
@@ -422,11 +499,6 @@ describe('POST /api/auth/reset-password', () => {
             });
 
         expect(response.status).toBe(400);
-
-        /*
-         * validateRequest doit bloquer la requête
-         * avant l'appel du controller puis du service.
-         */
         expect(
             resetUserPassword,
         ).not.toHaveBeenCalled();
@@ -438,17 +510,11 @@ describe('POST /api/auth/reset-password', () => {
             .send({
                 token: 'opaque-reset-token',
                 newPassword:
-                    'nouveau mot de passe suffisamment long',
+                    'Phrase réinitialisée, longue et unique 83!',
                 userId: 'user-id-interdit',
             });
 
         expect(response.status).toBe(400);
-
-        /*
-         * resetPasswordSchema utilise strictObject().
-         * Un champ supplémentaire ne doit donc jamais
-         * atteindre la couche métier.
-         */
         expect(
             resetUserPassword,
         ).not.toHaveBeenCalled();

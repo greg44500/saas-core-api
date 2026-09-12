@@ -2,9 +2,9 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état validé de `main` au 2026-09-10 après D-011, l’intégration D-020, les KPI économiques Platform et les dernières conventions UI transversales. Le code, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
+> Cette synthèse décrit l’état réel du Core au 2026-09-12 après clôture technique de D-021. Le code, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
-> **Dernière mise à jour : 2026-09-10**
+> **Dernière mise à jour : 2026-09-12**
 
 ---
 
@@ -24,128 +24,158 @@ Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présent
 
 ---
 
-## 2. État courant de `main`
+## 2. État Git de référence
 
-Checkpoint code avant synchronisation documentaire :
-
-```text
-981eabf4cca49df98a58d6dfdf0cb7261ae984b0
-```
-
-Les commits suivants de `main` sont documentaires et ne modifient pas le comportement applicatif.
-
-Gates locales les plus récentes communiquées par l’utilisateur :
+Branche de clôture fonctionnelle D-021 :
 
 ```text
-tests ciblés              OK
-tests globaux             OK
-lint                      OK
-build frontend            OK
-validation UI courante    OK
+feature/d-021-auth-hardening-registration-security
 ```
 
-Aucun compteur de tests n’est enregistré ici lorsque seul le statut final a été communiqué.
+HEAD fonctionnel validé avant la mise à jour documentaire :
+
+```text
+a755fca39bf78adb313419df1117d2849323c03d
+test(frontend): stabilize Base UI pagination select
+```
+
+À ce point, la branche était :
+
+```text
+267 commits devant main
+0 commit derrière main
+merge-base = main
+```
+
+La mise à jour documentaire de clôture est volontairement portée par une sous-branche dédiée avant fusion. Le SHA final de `main` doit donc être relu après fusion ; le SHA ci-dessus désigne le dernier état fonctionnel effectivement testé.
 
 ---
 
-## 3. Blocs validés avant versionnement
+## 3. Gates réellement validées
 
-### 3.1 D-011 — Design System et préférences
-
-D-011 est entièrement clôturée :
+La clôture D-021 repose sur les gates locales effectivement exécutées et confirmées :
 
 ```text
-D-011.A Design System Core                    VALIDÉ — 2026-09-09
-D-011.B Préférences de confort                VALIDÉ — 2026-09-09
-D-011.C Préférences d'affichage métier        VALIDÉ — 2026-09-10
+backend npm test          → VERT
+frontend npm run lint     → VERT
+frontend npm test         → VERT
+frontend npm run build    → VERT
 ```
 
-Contrats essentiels :
-
-```text
-Plan / entitlement effectif
-+
-permissions utilisateur
-→ ensemble réellement accessible
-
-ensemble réellement accessible
-+
-préférences utilisateur
-→ ensemble visible
-```
-
-Une préférence ne crée jamais une permission ou une feature.
-
-Le Dashboard Workspace reste extensible par registres explicites. Les widgets Core servent de contenu générique avant dérivation ; les KPI métier seront ajoutés par les modules dérivés via les points d’extension prévus.
-
-### 3.2 Convention d’équilibrage des KPI
-
-Les Dashboards Workspace et Platform utilisent maintenant la même logique partagée :
-
-```text
-frontend/src/components/shared/balanced-six-column-grid.js
-```
-
-Convention large écran :
-
-```text
-1 → 1
-2 → 2
-3 → 3
-4 → 2 + 2
-5 → 3 + 2
-6 → 3 + 3
-7 → 3 + 2 + 2
-8 → 3 + 3 + 2
-```
-
-La composition dépend du nombre réellement rendu après permissions, entitlement et préférences.
+Les correctifs de gate intermédiaires ont été diagnostiqués puis intégrés avant ces validations globales. Aucun résultat vert n’est déduit d’une CI inexistante ou d’une exécution non confirmée.
 
 ---
 
-## 4. Dashboard Platform — KPI économiques
+## 4. D-021 — Gate sécurité Auth, invitations et tokens temporaires
 
-Le cockpit Platform distingue désormais les réalités économiques au lieu d’utiliser un compteur ambigu d’« abonnements actifs ».
+**État : techniquement validée le 2026-09-12 ; `docs/DEBT.md` porte le statut canonique.**
 
-KPI principaux lorsque les permissions correspondantes sont disponibles :
-
-```text
-Utilisateurs
-Espaces de travail
-Abonnements payants actifs
-Accès gratuits actifs
-Valeur mensuelle contractuelle estimée
-```
-
-Le backend résout une seule Subscription effective par workspace avec la priorité :
+Périmètre audité et durci :
 
 ```text
-commercial active valide
-> trialing valide
-> baseline active
+Auth
+WorkspaceInvitation
+PlatformInvitation
+CommercialInvitation
+liens sensibles temporaires
 ```
 
-Conséquences :
+### 4.1 Password recovery
 
-- un workspace payant n’est pas compté également comme Free à cause de sa baseline ;
-- une offre commerciale privée gratuite `open_ended` est comptée dans les accès gratuits actifs ;
-- les trials sont distincts des accès gratuits ;
-- `freeActiveAccesses.viaCommercialInvitation` indique la provenance d’une invitation commerciale acceptée sans faire de l’invitation l’autorité des droits ;
-- la Subscription effective reste l’autorité runtime.
-
-Référence canonique :
+Contrat validé :
 
 ```text
-docs/platform-overview-dashboard-contract.md
+reset token
+→ 32 octets cryptographiquement aléatoires
+→ token brut jamais persisté
+→ SHA-256 persisté
+→ expiration serveur 15 minutes
+→ usage unique atomique
+→ replay/concurrence refusés
 ```
+
+Une nouvelle demande révoque les tokens de reset actifs précédents. En cas d’échec SMTP lors de `forgot-password`, le token non remis est révoqué en compensation sans casser l’anti-enumeration.
+
+Le reset réussi :
+
+- met à jour le credential local dans une transaction ;
+- consomme le token atomiquement ;
+- révoque toutes les sessions utilisateur existantes ;
+- audite `PASSWORD_RESET_COMPLETED` ;
+- envoie ensuite une notification de changement de mot de passe ;
+- ne rollbacke pas le changement si cette notification SMTP échoue.
+
+`forgot-password` conserve une réponse publique générique pour compte inconnu, provider non local, compte en fermeture et panne SMTP. Une compensation temporelle réduit les différences observables entre branches.
+
+### 4.2 Invitations
+
+Les trois familles utilisent une expiration par défaut de 7 jours :
+
+```text
+WorkspaceInvitation
+PlatformInvitation
+CommercialInvitation
+```
+
+Invariants validés :
+
+- secret généré côté serveur à partir de 32 octets aléatoires ;
+- SHA-256 uniquement en persistance ;
+- expiration vérifiée côté serveur ;
+- acceptation atomique et single-use ;
+- protection replay/concurrence ;
+- révocation explicite ;
+- resend avec rotation du secret et nouvelle expiration ;
+- audit des opérations critiques ;
+- ancien lien invalidé après rotation.
+
+Les liens Workspace, Platform et Commercial transportent le secret dans le fragment `#token=...`, jamais en query string.
+
+Le frontend capture ce fragment dans un vault runtime en mémoire puis nettoie immédiatement l’URL. Le secret n’est pas stocké dans Redux, `localStorage`, `sessionStorage` ou `history.state`.
+
+### 4.3 Anti-automation / rate limiting
+
+Protections ciblées validées :
+
+```text
+register
+→ limite IP dédiée avant validation
+
+login
+→ limite IP sur échecs
+→ limite identité email pseudonymisée sur échecs
+
+forgot-password
+→ limite IP
+→ limite email pseudonymisée
+→ protections avant validation
+
+reset-password
+→ limite IP dédiée avant validation
+
+WorkspaceInvitation accept / accept-new
+→ limite IP dédiée avant auth/validation
+
+PlatformInvitation accept
+→ limite dédiée existante
+
+CommercialInvitation preview / accept
+→ limite dédiée existante
+```
+
+Le CAPTCHA/challenge anti-bot n’est pas imposé systématiquement : l’audit n’a pas démontré de besoin justifiant cette friction dans le Core. Il reste une défense adaptative possible pour un produit dérivé ou un contexte d’abus réel.
+
+Google SSO reste volontairement hors D-021 dans D-010 et ne bloque pas la stabilisation actuelle du Core.
+
+### 4.4 Point mineur non bloquant
+
+`WorkspaceInvitation.tokenHash` impose une longueur de 64 caractères dans Mongoose mais ne duplique pas la regex hexadécimale déjà garantie par la génération serveur et la validation d’entrée. Ce point d’uniformité interne n’a pas été retenu comme blocker D-021.
 
 ---
 
 ## 5. D-020 — Invitation commerciale
 
-### 5.1 État
-
-D-020 est **intégré dans `main`** et ses gates automatisées applicables sont vertes.
+D-020 est intégrée dans `main` et ses gates automatisées applicables sont vertes.
 
 Le parcours nominal a été validé manuellement jusqu’à :
 
@@ -159,48 +189,12 @@ lien d’invitation
 → Plan privé effectif
 ```
 
-D-020 reste cependant `EN COURS` dans `docs/DEBT.md` tant que les contrôles manuels négatifs/restants n’ont pas été explicitement clôturés après les derniers correctifs.
+D-020 reste cependant `EN COURS` dans `docs/DEBT.md` tant que les contrôles manuels négatifs restants n’ont pas été explicitement clôturés.
 
-### 5.2 Évolutions intégrées
-
-D-020 comprend maintenant :
-
-- garde d’identité avant création du compte via le register commercial dédié ;
-- vérification recipient authentifiée ;
-- impossibilité d’accepter/refuser depuis un mauvais compte ;
-- changement de compte sans persistance du secret ;
-- refus explicite `pending → declined` ;
-- audit `COMMERCIAL_INVITATION_DECLINED` ;
-- logout de la session courante après refus, pas de logout-all ;
-- stepper `Création du compte → Connexion → Acceptation de l’offre` ;
-- statuts sémantiques colorés ;
-- invalidation RTK Query après mutations pertinentes ;
-- Dashboard Platform capable de compter les accès gratuits D-020 via la Subscription effective.
-
-### 5.3 Secret
-
-Le secret D-020 reste :
+Contrôles à confirmer avant de passer D-020 à `VALIDÉ` :
 
 ```text
-32 octets cryptographiquement aléatoires
-→ 64 caractères hexadécimaux
-→ hash SHA-256 persisté uniquement
-```
-
-Le lien utilise `#token=<secret>`. Le frontend place le secret uniquement dans un vault runtime en mémoire et nettoie immédiatement le fragment. Aucun secret dans Redux, `localStorage`, `sessionStorage`, `history.state`, query string ou logs.
-
-Référence canonique :
-
-```text
-docs/contracts/COMMERCIAL-INVITATIONS.md
-```
-
-### 5.4 Contrôles manuels restant à clôturer explicitement
-
-Avant de passer D-020 à `VALIDÉ`, confirmer manuellement au minimum :
-
-```text
-mauvaise identité après correctif
+mauvaise identité
 → aucune création/acceptation indue
 
 refus bénéficiaire
@@ -210,172 +204,98 @@ refus bénéficiaire
 → session courante fermée comme prévu
 ```
 
-Ne pas déclarer D-020 validée sur la seule base des tests automatisés.
+D-020 reste donc le blocker immédiat à traiter ou reclasser avant d’ouvrir D-015.
 
 ---
 
-## 6. Conventions UI transversales ajoutées
-
-Référence :
-
-```text
-docs/frontend/UI-SEMANTICS.md
-```
-
-### 6.1 Statuts
-
-Composant partagé :
-
-```text
-frontend/src/components/shared/status-badge.jsx
-```
-
-Convention sémantique :
-
-```text
-success      → vert    → normal / validé / opérationnel
-warning      → orange  → attente / attention / blocage réversible
-destructive  → rouge   → échec / révocation critique / état terminal
-neutral      → gris    → archivé / inactif sans anomalie
-```
-
-Chaque domaine définit explicitement son mapping métier. Le composant générique ne devine jamais la couleur depuis la chaîne du statut.
-
-Workspace actuel :
-
-```text
-active     → success
-suspended  → warning
-archived   → neutral
-closed     → destructive
-```
-
-Cette convention doit être réutilisée par les futurs modules métier au lieu de recopier des classes Tailwind.
-
-### 6.2 Langue des saisies
-
-Le document HTML est maintenant déclaré :
-
-```text
-lang="fr-FR"
-```
-
-Le `Textarea` partagé utilise par défaut :
-
-```text
-lang="fr-FR"
-spellCheck=true
-```
-
-Le navigateur reste responsable du dictionnaire réellement installé/activé. Le frontend ne peut pas installer un dictionnaire français côté utilisateur.
-
----
-
-## 7. Roadmap canonique avant Core 1.0
-
-État actuel :
+## 6. Blocs déjà validés à conserver
 
 ```text
 D-001 fermeture Account / Workspace                         VALIDÉ
-D-014 points d'extension métier                             VALIDÉ
+D-011 Design System + préférences                           VALIDÉ
+D-014 points d’extension métier                             VALIDÉ
 D-018 Équipe Platform / RBAC / invitations                  VALIDÉ
 D-019 moteur sécurisé de rétention / purge Core             VALIDÉ
 DOC-CODE-1 documentation source                             VALIDÉ
-D-011 Design System + préférences                           VALIDÉ
-D-020 invitation commerciale / offre privée découverte      EN COURS — code intégré, clôture manuelle finale restante
-→ D-021 gate sécurité Auth / invitations / tokens           PLANIFIÉ
-→ D-015 release/version/provenance/migrations               PLANIFIÉ
-→ D-016 Playwright E2E Core                                 PLANIFIÉ
-→ D-002 corbeille / restauration Files                      PLANIFIÉ — avant première dérivation
-→ audit final architecture / sécurité / qualité
-→ D-017 dérivation + upgrade pilote                         PLANIFIÉ
-→ taguer ensuite seulement la release Core stable
+D-021 sécurité Auth / invitations / tokens temporaires      VALIDÉ
 ```
 
-D-015 ne doit pas être ouvert tant que D-020 et D-021 ne sont pas clôturées ou explicitement reclassifiées.
+Le Design System reste basé sur Tailwind CSS v4, shadcn/ui et les primitives Base UI du dépôt. Les composants génériques doivent être réutilisés avant toute création locale ; les tests doivent protéger l’invariant utilisateur/métier plutôt qu’un détail interne de primitive.
 
-D-002 doit être `VALIDÉ` avant D-017 et avant la première dérivation métier réelle.
-
-Google SSO reste dans D-010 et ne bloque pas Core 1.0 selon le cadrage canonique courant.
+Pour les `Select` Base UI sous JSDOM, une géométrie d’ancre `0 × 0` peut masquer le popup. Le test de pagination validé simule localement une géométrie réelle du trigger sans modifier le harness global.
 
 ---
 
-## 8. Nettoyage de la base de développement
+## 7. Points techniques hors D-021 à ne pas perdre
 
-Un nettoyage des données de test est souhaité avant de poursuivre trop loin, en conservant explicitement le compte fondateur et ses données nécessaires.
+Le sous-système Platform Entitlement Overrides a reçu des évolutions récentes mais certains risques de lifecycle restent explicitement **hors clôture D-021**.
 
-Ce nettoyage n’est pas une suppression aveugle et ne doit jamais commencer par un `deleteMany({})` global.
-
-Avant toute exécution :
-
-1. inspecter les modèles et dépendances actuelles ;
-2. définir l’identité fondateur à préserver sans l’exposer dans les scripts/logs ;
-3. établir un dry-run listant ce qui serait supprimé ;
-4. traiter les dépendances dans un ordre cohérent : invitations, sessions/tokens, memberships, workspaces, subscriptions, metrics, fichiers, trial eligibility et autres collections réellement liées ;
-5. décider explicitement le traitement des AuditLogs de développement ;
-6. exécuter seulement après validation du dry-run.
-
-Cette opération de maintenance ne remplace aucune dette fonctionnelle.
-
----
-
-## 9. Prochain bloc structurant : D-021
-
-D-021 est la dernière gate de sécurité structurante avant D-015, mais elle doit commencer par un **audit sans modification**.
-
-Périmètre :
+Direction produit à conserver :
 
 ```text
-Auth
-WorkspaceInvitation
-PlatformInvitation
-CommercialInvitation
-forgot/reset password
-rate limiting / anti-automation
+Décision commerciale
+├── feature
+├── limites associées
+├── période
+├── origine
+└── lifecycle
 ```
 
-Cibles canoniques à vérifier, pas à supposer :
+Les enfants LIMIT d’un groupe restent des données techniques de résolution/audit et ne doivent pas être présentés comme plusieurs décisions commerciales indépendantes dans la vue principale.
+
+Points encore à vérifier avant de considérer ce sous-système comme totalement finalisé :
 
 ```text
-invitations temporaires par défaut → 7 jours
-reset password                     → 15 minutes
-single-use / rotation / révocation / replay / concurrence
-anti-enumeration
-rate limiting adapté aux endpoints sensibles
-stratégie anti-bot explicite
+révocation atomique d’un groupe
+protection contre update/revoke direct d’un enfant groupé
+couverture dédiée du service de groupe
+cohérence lifecycle complète
+validation resolver / precedence
 ```
 
-D-021 ne doit pas recréer les protections déjà correctes et testées.
+Ces points ne doivent pas être déclarés résolus sur la seule base de la clôture D-021. S’ils doivent devenir un travail planifié, leur statut doit être cadré dans `docs/DEBT.md` avant implémentation.
 
 ---
 
-## 10. Méthode de reprise obligatoire
+## 8. Roadmap immédiate avant Core 1.0
 
-Au début de la prochaine conversation :
+État à la clôture D-021 :
 
-1. partir de `main` synchronisé ;
-2. lire `docs/REPRISE-CURRENT.md` ;
-3. lire D-020 et D-021 dans `docs/DEBT.md` ;
-4. lire `docs/contracts/COMMERCIAL-INVITATIONS.md` ;
-5. inspecter le code et les tests réels concernés ;
-6. ne modifier aucun fichier pendant l’audit initial ;
-7. confirmer d’abord les scénarios manuels D-020 restant à clôturer ;
-8. proposer ensuite le périmètre exact de D-021 avant création d’une branche ;
-9. ne jamais mélanger plusieurs dettes dans un même lot sans décision explicite.
+```text
+D-020 invitation commerciale / offre privée découverte      EN COURS — clôture manuelle finale restante
+D-021 gate sécurité Auth / invitations / tokens             VALIDÉ — 2026-09-12
+D-015 release/version/provenance/migrations                 PLANIFIÉ
+D-016 Playwright E2E Core                                   PLANIFIÉ
+D-002 corbeille / restauration Files                        PLANIFIÉ — avant première dérivation
+D-017 dérivation + upgrade pilote                           PLANIFIÉ
+```
 
-Les petits correctifs isolés et à faible risque peuvent rester sur `main`. Les fonctionnalités, refactors structurés, lots multi-fichiers significatifs, changements d’architecture ou travaux à risque utilisent une branche dédiée.
+Ordre recommandé avant toute nouvelle implémentation importante :
+
+```text
+1. fusionner la clôture D-021 dans main ;
+2. vérifier main après fusion ;
+3. clôturer ou reclassifier explicitement D-020 ;
+4. décider ensuite l’ouverture de D-015 ;
+5. ne pas lancer une nouvelle dette sans relire DEBT.md et cette reprise.
+```
 
 ---
 
-## 11. Références principales
+## 9. Reprise dans une nouvelle conversation
+
+Une nouvelle conversation est recommandée après la fusion D-021 dans `main`.
+
+Première étape obligatoire de la nouvelle conversation :
 
 ```text
-docs/DEBT.md
-docs/contracts/COMMERCIAL-INVITATIONS.md
-docs/platform-overview-dashboard-contract.md
-docs/frontend/UI-SEMANTICS.md
-docs/frontend/FRONTEND-GUIDELINES.md
-docs/derived-saas/EXTENSION-POINTS.md
-docs/derived-saas/DERIVED-SAAS.md
-docs/contracts/CAPABILITIES.md
+1. se connecter au dépôt greg44500/saas-core-api ;
+2. travailler depuis main ;
+3. lire docs/REPRISE-CURRENT.md ;
+4. lire docs/DEBT.md ;
+5. vérifier le HEAD réel de main ;
+6. inspecter D-020 avant toute ouverture de D-015 ;
+7. ne modifier aucun fichier avant ce contrôle.
 ```
+
+Le présent document est une synthèse de reprise et non une source supérieure au code, aux tests ou aux contrats canoniques.

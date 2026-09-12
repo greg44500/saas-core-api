@@ -27,10 +27,11 @@ describe('MetricCard', () => {
     expect(screen.getByText(/sur 30 jours/)).toBeInTheDocument();
 
     const infoButton = screen.getByRole('button', { name: 'À propos de Utilisateurs' });
+
     await user.hover(infoButton);
 
-    const tooltip = screen.getByRole('tooltip');
-    expect(tooltip).toHaveTextContent('Comptes inscrits');
-    expect(infoButton).toHaveAttribute('aria-describedby', tooltip.id);
+    expect(
+      await screen.findByText('Comptes inscrits'),
+    ).toBeInTheDocument();
   });
 });

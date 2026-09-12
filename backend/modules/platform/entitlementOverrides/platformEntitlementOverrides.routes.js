@@ -11,11 +11,14 @@ import {
 } from '../../../middlewares/validateRequest.js';
 import {
     createEntitlementOverride,
+    createFeatureOverrideGroup,
     getEntitlementContext,
     getEntitlementOverrideById,
+    getFeatureOverrideGroup,
     listEntitlementOverrides,
     revokeEntitlementOverride,
     updateEntitlementOverride,
+    updateFeatureOverrideGroup,
 } from './platformEntitlementOverrides.controller.js';
 import {
     createPlatformEntitlementOverrideBodySchema,
@@ -25,6 +28,11 @@ import {
     revokePlatformEntitlementOverrideBodySchema,
     updatePlatformEntitlementOverrideBodySchema,
 } from './platformEntitlementOverrides.validation.js';
+import {
+    createPlatformFeatureOverrideGroupBodySchema,
+    platformFeatureOverrideGroupParamsSchema,
+    updatePlatformFeatureOverrideGroupBodySchema,
+} from './platformEntitlementOverrideGroups.validation.js';
 
 
 const platformEntitlementOverridesRouter = Router();
@@ -54,6 +62,44 @@ platformEntitlementOverridesRouter.get(
         params: platformEntitlementContextWorkspaceParamsSchema,
     }),
     getEntitlementContext,
+);
+
+/**
+ * Les groupes sont déclarés avant `/:overrideId` pour qu'Express ne traite
+ * jamais `feature-groups` comme un identifiant de dérogation.
+ */
+platformEntitlementOverridesRouter.get(
+    '/feature-groups/:overrideId',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.ENTITLEMENT_OVERRIDES_READ,
+    ),
+    validateRequest({
+        params: platformFeatureOverrideGroupParamsSchema,
+    }),
+    getFeatureOverrideGroup,
+);
+
+platformEntitlementOverridesRouter.post(
+    '/feature-groups',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.ENTITLEMENT_OVERRIDES_CREATE,
+    ),
+    validateRequest({
+        body: createPlatformFeatureOverrideGroupBodySchema,
+    }),
+    createFeatureOverrideGroup,
+);
+
+platformEntitlementOverridesRouter.patch(
+    '/feature-groups/:overrideId',
+    authorizePlatformPermission(
+        PLATFORM_PERMISSION.ENTITLEMENT_OVERRIDES_UPDATE,
+    ),
+    validateRequest({
+        params: platformFeatureOverrideGroupParamsSchema,
+        body: updatePlatformFeatureOverrideGroupBodySchema,
+    }),
+    updateFeatureOverrideGroup,
 );
 
 platformEntitlementOverridesRouter.get(

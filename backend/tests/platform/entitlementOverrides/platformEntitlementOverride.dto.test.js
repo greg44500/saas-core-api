@@ -19,6 +19,8 @@ const createOverride = (overrides = {}) => ({
         _id: new mongoose.Types.ObjectId(),
         name: 'Workspace test',
     },
+    groupId: null,
+    groupName: null,
     targetType: 'feature',
     featureKey: 'file_upload',
     metricKey: null,
@@ -69,7 +71,11 @@ describe('platformEntitlementOverride.dto', () => {
     });
 
     it('sérialise explicitement les données Platform utiles', () => {
-        const override = createOverride();
+        const groupId = new mongoose.Types.ObjectId();
+        const override = createOverride({
+            groupId,
+            groupName: 'Découverte Téléversement',
+        });
         const result = serializePlatformEntitlementOverride({
             override,
             at: AT,
@@ -81,6 +87,8 @@ describe('platformEntitlementOverride.dto', () => {
                 id: override.workspace._id.toString(),
                 name: 'Workspace test',
             },
+            groupId: groupId.toString(),
+            groupName: 'Découverte Téléversement',
             featureKey: 'file_upload',
             featureEnabled: true,
             lifecycle: 'active',

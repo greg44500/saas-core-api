@@ -2,6 +2,10 @@ import {
     ACTIVE_PLAN_CAPABILITY_REGISTRY,
     getPlanFeatureMetricKeys,
 } from '../../../config/applicationCapability.registry.js';
+import {
+    getPlanFeatureOverridePolicy,
+    getPlanMetricOverridePolicy,
+} from '../../../config/entitlementOverridePolicy.registry.js';
 
 
 /**
@@ -11,6 +15,9 @@ import {
  * `features` et `metrics` conservent le contrat historique. Les catalogues
  * enrichis apportent les métadonnées de présentation nécessaires au tri par
  * section sans transformer l'administration en éditeur de capabilities.
+ *
+ * Les politiques de dérogation sont également exposées en lecture seule :
+ * l'UI peut ainsi construire ses garde-fous sans recopier les bornes métier.
  */
 const listPlanCapabilities = async (req, res) => {
     const features = Array.from(
@@ -25,6 +32,8 @@ const listPlanCapabilities = async (req, res) => {
                 metricKeys: [
                     ...getPlanFeatureMetricKeys(definition.key),
                 ],
+                overridePolicy:
+                    getPlanFeatureOverridePolicy(definition.key),
             }));
 
     const metrics = Array.from(
@@ -39,6 +48,7 @@ const listPlanCapabilities = async (req, res) => {
             presentation:
                 ACTIVE_PLAN_CAPABILITY_REGISTRY
                     .getMetricPresentation(key),
+            overridePolicy: getPlanMetricOverridePolicy(key),
         }));
 
     return res.status(200).json({

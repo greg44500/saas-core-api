@@ -9,6 +9,7 @@ import {
     commercialInvitationIdParamsSchema,
     createCommercialInvitationBodySchema,
     previewCommercialInvitationBodySchema,
+    registerCommercialInvitationRecipientBodySchema,
     revokeCommercialInvitationBodySchema,
 } from '../../modules/commercialInvitation/commercialInvitation.validation.js';
 
@@ -73,6 +74,26 @@ describe('commercialInvitation.validation', () => {
         expect(() => acceptCommercialInvitationBodySchema.parse({
             token: 'bad-token',
         })).toThrow();
+    });
+
+    it('exige aussi l’acceptation contractuelle lors de la création du compte invité', () => {
+        const payload = {
+            firstName: 'Beta',
+            lastName: 'User',
+            email: 'beta@example.com',
+            password: 'une phrase de passe suffisamment longue',
+            token: VALID_TOKEN,
+        };
+
+        expect(() => registerCommercialInvitationRecipientBodySchema.parse({
+            ...payload,
+            legalAccepted: false,
+        })).toThrow();
+
+        expect(registerCommercialInvitationRecipientBodySchema.parse({
+            ...payload,
+            legalAccepted: true,
+        }).legalAccepted).toBe(true);
     });
 
     it('exige un motif explicite de révocation', () => {

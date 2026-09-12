@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
 
 const useGetCurrentPlatformContextQueryMock = vi.hoisted(() => vi.fn());
@@ -22,7 +23,9 @@ function renderSidebar({
 } = {}) {
   render(
     <MemoryRouter initialEntries={[path]}>
-      <PlatformSidebar collapsed={collapsed} onToggle={onToggle} />
+      <TooltipProvider delay={0}>
+        <PlatformSidebar collapsed={collapsed} onToggle={onToggle} />
+      </TooltipProvider>
     </MemoryRouter>,
   );
 }
@@ -109,7 +112,7 @@ describe('PlatformSidebar', () => {
     expect(screen.queryByRole('button', { name: 'Sécurité & données' })).not.toBeInTheDocument();
   });
 
-  it('ouvre un flyout en sidebar réduite puis le ferme après navigation', async () => {
+  it('utilise le tooltip shadcn/Base UI en sidebar réduite et ferme le flyout après navigation', async () => {
     const user = userEvent.setup();
     renderSidebar({ collapsed: true });
 
@@ -117,16 +120,44 @@ describe('PlatformSidebar', () => {
       name: 'Sécurité & données',
     });
 
-    expect(screen.getByRole('tooltip', { name: 'Sécurité & données' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Rétention & purge' })).not.toBeInTheDocument();
+    const hiddenLabel = screen.getByText('Sécurité & données', {
+      exact: true,
+    });
+
+    expect(hiddenLabel).toHaveClass('max-w-0', 'opacity-0');
+
+    await user.hover(securityGroup);
+
+    expect(
+      (await screen.findAllByText('Sécurité & données', { exact: true })).length,
+    ).toBeGreaterThan(1);
+
+    await user.unhover(securityGroup);
+
+    expect(
+      screen.getAllByText('Sécurité & données', { exact: true }),
+    ).toHaveLength(1);
+
+    expect(hiddenLabel).toHaveClass('max-w-0', 'opacity-0');
+
+    expect(
+      screen.queryByRole('link', { name: 'Rétention & purge' }),
+    ).not.toBeInTheDocument();
 
     await user.click(securityGroup);
-    expect(screen.getByRole('link', { name: 'Rétention & purge' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: 'Rétention & purge' }));
-    expect(screen.queryByRole('link', { name: 'Rétention & purge' })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Rétention & purge' }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('link', { name: 'Rétention & purge' }),
+    );
+
+    expect(
+      screen.queryByRole('link', { name: 'Rétention & purge' }),
+    ).not.toBeInTheDocument();
   });
-
   it('déclenche le changement d’état de la sidebar', async () => {
     const user = userEvent.setup();
     const onToggle = vi.fn();
@@ -134,7 +165,9 @@ describe('PlatformSidebar', () => {
     renderSidebar({ onToggle });
 
     await user.click(
-      screen.getByRole('button', { name: 'Réduire la navigation d’administration' }),
+      screen.getByRole('button', {
+        name: 'Réduire la navigation d’administration',
+      }),
     );
 
     expect(onToggle).toHaveBeenCalledOnce();

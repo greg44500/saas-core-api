@@ -2,6 +2,10 @@ import { Router } from 'express';
 import {
     forgotPasswordEmailRateLimiter,
     forgotPasswordIpRateLimiter,
+    loginEmailRateLimiter,
+    loginIpRateLimiter,
+    registerIpRateLimiter,
+    resetPasswordIpRateLimiter,
 } from '../../config/rateLimit.config.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
@@ -12,6 +16,7 @@ import {
     logout,
     logoutAll,
     me,
+    passwordPolicy,
     refresh,
     register,
     resetPassword,
@@ -27,22 +32,39 @@ import {
 const router = Router();
 
 /**
+ * Expose la représentation publique de la politique de mot de passe.
+ * Aucun secret utilisateur ne transite par cet endpoint.
+ */
+router.get(
+    '/password-policy',
+    passwordPolicy,
+);
+
+/**
  * Inscription locale.
  *
- * La validation intervient avant le controller afin que celui-ci
- * ne reçoive que des données conformes au contrat HTTP.
+ * Le rate limiter IP précède volontairement la validation : un bot envoyant
+ * des bodies invalides ne doit pas pouvoir contourner la protection contre la
+ * création massive de comptes ou l'épuisement des ressources du endpoint.
  */
 router.post(
     '/register',
+    registerIpRateLimiter,
     validateRequest({ body: registerSchema }),
     register,
 );
 
 /**
  * Authentification locale.
+ *
+ * Les deux barrières précédant la validation limitent respectivement les
+ * échecs provenant d'une même origine réseau et ceux visant une même identité.
+ * Elles ne consultent pas la base utilisateurs.
  */
 router.post(
     '/login',
+    loginIpRateLimiter,
+    loginEmailRateLimiter,
     validateRequest({ body: loginSchema }),
     login,
 );
@@ -80,15 +102,13 @@ router.post(
  * Réinitialise le mot de passe à partir d'un token
  * reçu via le workflow forgot-password.
  *
- * Route publique :
- * le token de réinitialisation constitue ici la preuve
- * temporaire autorisant le changement du credential.
- *
- * validateRequest protège le contrat HTTP avant que
- * le controller puis le service ne soient exécutés.
+ * Route publique : le token possède une forte entropie et reste la preuve
+ * temporaire autorisant le changement du credential. Le rate limiter IP vise
+ * l'abus volumétrique et s'exécute avant la validation du body.
  */
 router.post(
     '/reset-password',
+    resetPasswordIpRateLimiter,
     validateRequest({
         body: resetPasswordSchema,
     }),
@@ -122,21 +142,23 @@ router.post(
  */
 router.post(
     '/logout',
-    logout)
+    logout,
+);
 
 /**
-* Déconnecte l'utilisateur de toutes ses sessions actives.
-*
-* Cette route nécessite un access token valide afin d'identifier
-* de manière fiable l'utilisateur concerné.
-*
-* Le controller révoque ensuite toutes ses AuthSession encore
-* actives et supprime le refresh token du navigateur courant.
-*/
+ * Déconnecte l'utilisateur de toutes ses sessions actives.
+ *
+ * Cette route nécessite un access token valide afin d'identifier
+ * de manière fiable l'utilisateur concerné.
+ *
+ * Le controller révoque ensuite toutes ses AuthSession encore
+ * actives et supprime le refresh token du navigateur courant.
+ */
 router.post(
     '/logout-all',
     authenticate,
-    logoutAll)
+    logoutAll,
+);
 
 /**
  * Modifie le mot de passe de l'utilisateur authentifié.

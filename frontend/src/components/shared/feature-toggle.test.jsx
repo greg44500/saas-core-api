@@ -44,11 +44,14 @@ describe('FeatureToggle', () => {
     const infoButton = screen.getByRole('button', {
       name: 'Informations sur Gestion d’équipe',
     });
-    await user.tab();
-    expect(infoButton).toBeInTheDocument();
+
+    await user.hover(infoButton);
+
     expect(
-      screen.getByRole('tooltip'),
-    ).toHaveTextContent('Permet d’administrer les membres du workspace.');
+      await screen.findByText(
+        'Permet d’administrer les membres du workspace.',
+      ),
+    ).toBeInTheDocument();
 
     expect(
       screen.getByRole('switch', { name: 'Désactiver Gestion d’équipe' }),
