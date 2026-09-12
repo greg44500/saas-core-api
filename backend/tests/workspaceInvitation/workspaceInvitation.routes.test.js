@@ -8,6 +8,9 @@ import {
     vi,
 } from 'vitest';
 
+import {
+    workspaceInvitationAcceptRateLimiter,
+} from '../../config/workspaceInvitationRateLimit.config.js';
 import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorizePermission } from '../../middlewares/authorizePermission.js';
@@ -38,6 +41,7 @@ const {
     featureMiddleware,
     accessModeMiddleware,
     delegationMiddleware,
+    limiterMiddleware,
 } = vi.hoisted(() => ({
     validationMiddleware: vi.fn((req, res, next) => {
         req.validated = {
@@ -56,7 +60,15 @@ const {
     featureMiddleware: vi.fn((req, res, next) => next()),
     accessModeMiddleware: vi.fn((req, res, next) => next()),
     delegationMiddleware: vi.fn((req, res, next) => next()),
+    limiterMiddleware: vi.fn((req, res, next) => next()),
 }));
+
+vi.mock(
+    '../../config/workspaceInvitationRateLimit.config.js',
+    () => ({
+        workspaceInvitationAcceptRateLimiter: limiterMiddleware,
+    }),
+);
 
 vi.mock('../../middlewares/authenticate.js', () => ({
     authenticate: vi.fn((req, res, next) => {
@@ -120,12 +132,14 @@ const createApp = () => {
 
 beforeEach(() => {
     authenticate.mockClear();
+    workspaceInvitationAcceptRateLimiter.mockClear();
     validationMiddleware.mockClear();
     workspaceContextMiddleware.mockClear();
     permissionMiddleware.mockClear();
     featureMiddleware.mockClear();
     accessModeMiddleware.mockClear();
     delegationMiddleware.mockClear();
+    limiterMiddleware.mockClear();
     create.mockClear();
     revoke.mockClear();
     accept.mockClear();
@@ -173,21 +187,27 @@ describe('workspaceInvitation.routes', () => {
         expect(revoke).toHaveBeenCalledOnce();
     });
 
-    it('accepte hors contexte workspace mais exige une authentification', async () => {
+    it('rate-limit puis exige une authentification pour accepter avec un compte existant', async () => {
         const response = await request(createApp())
             .post('/invitations/accept')
             .send({ token: 'a'.repeat(64) });
 
         expect(response.status).toBe(200);
+        expect(workspaceInvitationAcceptRateLimiter).toHaveBeenCalledOnce();
         expect(authenticate).toHaveBeenCalledOnce();
         expect(workspaceContextMiddleware).not.toHaveBeenCalled();
         expect(permissionMiddleware).not.toHaveBeenCalled();
         expect(featureMiddleware).not.toHaveBeenCalled();
         expect(delegationMiddleware).not.toHaveBeenCalled();
         expect(accept).toHaveBeenCalledOnce();
+        expect(
+            workspaceInvitationAcceptRateLimiter.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            authenticate.mock.invocationCallOrder[0],
+        );
     });
 
-    it('permet la création de compte depuis une invitation sans authentification préalable', async () => {
+    it('rate-limit la création de compte depuis une invitation avant validation', async () => {
         const response = await request(createApp())
             .post('/invitations/accept-new')
             .send({
@@ -199,11 +219,17 @@ describe('workspaceInvitation.routes', () => {
             });
 
         expect(response.status).toBe(200);
+        expect(workspaceInvitationAcceptRateLimiter).toHaveBeenCalledOnce();
         expect(authenticate).not.toHaveBeenCalled();
         expect(workspaceContextMiddleware).not.toHaveBeenCalled();
         expect(permissionMiddleware).not.toHaveBeenCalled();
         expect(featureMiddleware).not.toHaveBeenCalled();
         expect(delegationMiddleware).not.toHaveBeenCalled();
         expect(acceptNew).toHaveBeenCalledOnce();
+        expect(
+            workspaceInvitationAcceptRateLimiter.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            validationMiddleware.mock.invocationCallOrder[0],
+        );
     });
 });

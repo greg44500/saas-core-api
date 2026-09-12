@@ -4,6 +4,8 @@ import {
     forgotPasswordIpRateLimiter,
     loginEmailRateLimiter,
     loginIpRateLimiter,
+    registerIpRateLimiter,
+    resetPasswordIpRateLimiter,
 } from '../../config/rateLimit.config.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
@@ -41,11 +43,13 @@ router.get(
 /**
  * Inscription locale.
  *
- * La validation intervient avant le controller afin que celui-ci
- * ne reçoive que des données conformes au contrat HTTP.
+ * Le rate limiter IP précède volontairement la validation : un bot envoyant
+ * des bodies invalides ne doit pas pouvoir contourner la protection contre la
+ * création massive de comptes ou l'épuisement des ressources du endpoint.
  */
 router.post(
     '/register',
+    registerIpRateLimiter,
     validateRequest({ body: registerSchema }),
     register,
 );
@@ -98,15 +102,13 @@ router.post(
  * Réinitialise le mot de passe à partir d'un token
  * reçu via le workflow forgot-password.
  *
- * Route publique :
- * le token de réinitialisation constitue ici la preuve
- * temporaire autorisant le changement du credential.
- *
- * validateRequest protège le contrat HTTP avant que
- * le controller puis le service ne soient exécutés.
+ * Route publique : le token possède une forte entropie et reste la preuve
+ * temporaire autorisant le changement du credential. Le rate limiter IP vise
+ * l'abus volumétrique et s'exécute avant la validation du body.
  */
 router.post(
     '/reset-password',
+    resetPasswordIpRateLimiter,
     validateRequest({
         body: resetPasswordSchema,
     }),
