@@ -205,7 +205,7 @@ const CORE_RETENTION_TARGET_DEFINITIONS = Object.freeze([
         key: RETENTION_TARGET.AUDIT_LOG,
         label: 'Journaux d’audit',
         description:
-            'Applique une policy explicite aux journaux d’audit arrivés à échéance.',
+            'Applique une politique de rétention explicite aux journaux d’audit arrivés à échéance.',
         action: RETENTION_ACTION.DELETE,
         capabilities: [
             RETENTION_CAPABILITY.PREVIEW,
