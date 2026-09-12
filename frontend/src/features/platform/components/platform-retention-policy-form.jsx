@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { FormField } from '@/components/forms/form-field';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -11,10 +12,10 @@ import {
 
 function ToggleSetting({ checked, description, disabled, label, onChange }) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
-      <div className="space-y-1">
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-4">
+      <div className="flex items-center gap-2">
         <p className="text-sm font-medium text-foreground">{label}</p>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <InfoTooltip content={description} label={`Informations sur ${label}`} />
       </div>
       <Switch
         aria-label={label}
@@ -27,25 +28,25 @@ function ToggleSetting({ checked, description, disabled, label, onChange }) {
 }
 
 /**
- * Édite une nouvelle version de policy de rétention pour une target Platform.
+ * Édite une nouvelle version de politique de rétention pour une cible Platform.
  *
  * Le composant possède uniquement l'état de formulaire. Les bornes autorisées,
- * les capabilities de la target et la version courante proviennent du backend ;
+ * les capacités de la cible et la version courante proviennent du backend ;
  * `buildRetentionPolicyPayload` transforme ensuite l'état UI en payload explicite.
- * Le backend reste l'autorité finale sur la validité de la policy et sur les
+ * Le backend reste l'autorité finale sur la validité de la politique et sur les
  * permissions d'administration.
  *
  * La resynchronisation locale est volontairement liée à `currentPolicy.version` :
  * un refetch qui ne change pas de version ne doit pas écraser une saisie en cours.
- * Cette policy explique le warning `react-hooks/exhaustive-deps` conservé et
+ * Cette règle explique le warning `react-hooks/exhaustive-deps` conservé et
  * analysé dans le lint frontend.
  *
  * @param {object} props
- * @param {object|null} props.currentPolicy Policy actuellement persistée.
+ * @param {object|null} props.currentPolicy Politique actuellement persistée.
  * @param {boolean} [props.disabled] Force un affichage en lecture seule.
  * @param {(payload: object) => Promise<void>} props.onSubmit Persiste la nouvelle version.
  * @param {boolean} [props.pending] Indique qu'une mutation est en cours.
- * @param {object} props.target Définition serveur de la target et de ses bornes.
+ * @param {object} props.target Définition serveur de la cible et de ses bornes.
  */
 function PlatformRetentionPolicyForm({
   currentPolicy,
@@ -91,9 +92,9 @@ function PlatformRetentionPolicyForm({
     <form className="space-y-5" onSubmit={handleSubmit}>
       <ToggleSetting
         checked={form.enabled}
-        description="Une policy désactivée reste historisée mais ne peut pas être exécutée automatiquement ou manuellement."
+        description="Une politique désactivée reste historisée, mais aucune purge automatique ou manuelle ne peut l’utiliser."
         disabled={disabled || pending}
-        label="Policy active"
+        label="Politique active"
         onChange={(checked) => updateField('enabled', checked)}
       />
 
@@ -155,7 +156,7 @@ function PlatformRetentionPolicyForm({
 
       <ToggleSetting
         checked={form.scheduleEnabled}
-        description="Le job technique externe respecte cette cadence, sans usurper l’identité d’un administrateur."
+        description="Le traitement technique externe respecte cette cadence sans utiliser l’identité d’un administrateur."
         disabled={disabled || pending}
         label="Exécution planifiée"
         onChange={(checked) => updateField('scheduleEnabled', checked)}
@@ -183,7 +184,7 @@ function PlatformRetentionPolicyForm({
 
       <ToggleSetting
         checked={form.manualExecutionEnabled}
-        description="Autorise les autorités disposant de la permission réservée à déclencher une purge après preview et confirmation."
+        description="Autorise les utilisateurs disposant du droit d’exécution à lancer une purge après prévisualisation et confirmation explicite."
         disabled={disabled || pending}
         label="Exécution manuelle autorisée"
         onChange={(checked) => updateField('manualExecutionEnabled', checked)}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SelectField } from '@/components/forms/select-field';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +22,7 @@ import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-perm
 import {
   buildManualRetentionExecutionPayload,
   formatRetentionDate,
+  getRetentionManualExecutionAvailability,
   hasPlatformPermission,
 } from '@/features/platform/lib/platform-retention';
 
@@ -32,13 +34,16 @@ function getErrorMessage(error, fallback) {
     ?? fallback;
 }
 
-function Section({ children, description, title }) {
+function Section({ children, help, title }) {
   return (
     <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-      <div className="mb-5">
+      <div className="mb-5 flex items-center gap-2">
         <h2 className="text-lg font-semibold text-card-foreground">{title}</h2>
-        {description && (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        {help && (
+          <InfoTooltip
+            content={help}
+            label={`Informations sur ${title}`}
+          />
         )}
       </div>
       {children}
@@ -141,7 +146,7 @@ function PlatformRetentionPage() {
       const policy = await createPolicyVersion({ targetKey, body }).unwrap();
       setPreview(null);
       toast({
-        title: 'Policy enregistrée',
+        title: 'Politique enregistrée',
         description: `La version ${policy?.version ?? ''} est désormais la version courante.`.trim(),
       });
     } catch (error) {
@@ -225,16 +230,25 @@ function PlatformRetentionPage() {
 
   const target = state?.target ?? selectedTarget.target;
   const currentPolicy = state?.currentPolicy ?? selectedTarget.currentPolicy ?? null;
+  const executionAvailability = getRetentionManualExecutionAvailability({
+    canExecute,
+    policy: currentPolicy,
+    preview,
+    runtime: state?.runtime,
+  });
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-primary">Sécurité & données</p>
-          <h1 className="text-2xl font-semibold text-foreground">Rétention & purge</h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Configurez les politiques autorisées par le registre Core, prévisualisez leur impact et consultez la trace durable des exécutions.
-          </p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-foreground">Rétention & purge</h1>
+            <InfoTooltip
+              content="Définissez combien de temps les données sont conservées, prévisualisez les éléments concernés avant suppression et consultez l’historique durable des exécutions."
+              label="Informations sur la rétention et la purge"
+            />
+          </div>
         </div>
         <Button disabled={stateFetching || executionsFetching} onClick={refreshAll} type="button" variant="outline">
           Actualiser
@@ -257,8 +271,8 @@ function PlatformRetentionPage() {
       )}
 
       <Section
-        description={target.description}
-        title={`${target.label} — policy courante`}
+        help={target.description}
+        title={`${target.label} — politique courante`}
       >
         {currentPolicy ? (
           <div className="mb-5 grid gap-3 text-sm sm:grid-cols-3">
@@ -268,7 +282,7 @@ function PlatformRetentionPage() {
           </div>
         ) : (
           <p className="mb-5 text-sm text-muted-foreground">
-            Aucune règle de conservation n’est encore définie pour cette catégorie de données..
+            Aucune règle de conservation n’est encore définie pour cette catégorie de données.
           </p>
         )}
 
@@ -284,7 +298,17 @@ function PlatformRetentionPage() {
       </Section>
 
       <Section
-        description="Avant toute suppression, l’application vous montre les données concernées et vous demande de confirmer l’opération."
+        help={(
+          <div className="space-y-2">
+            <p>
+              Pour lancer une purge manuelle, la politique doit être active,
+              l’exécution manuelle autorisée, une prévisualisation réalisée et
+              aucune autre purge en cours.
+            </p>
+            <p className="font-medium">État actuel : {executionAvailability.reason}</p>
+          </div>
+        )}
+        title="Prévisualisation et purge"
       >
         <PlatformRetentionPreview
           canExecute={canExecute}
@@ -300,7 +324,7 @@ function PlatformRetentionPage() {
       </Section>
 
       <Section
-        description="Cette trace technique reste indépendante des AuditLogs susceptibles d’être purgés."
+        help="Cet historique technique des purges est conservé séparément des journaux d’audit susceptibles d’être supprimés."
         title="Historique des exécutions"
       >
         <PlatformRetentionExecutionsTable
