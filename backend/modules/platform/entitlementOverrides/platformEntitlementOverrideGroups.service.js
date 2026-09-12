@@ -167,6 +167,34 @@ const auditUpdatedOverride = async ({
     { session },
 );
 
+const auditRevokedOverride = async ({
+    override,
+    actorId,
+    ipAddress,
+    userAgent,
+    session,
+}) => createAuditLog(
+    {
+        actor: actorId,
+        workspace: override.workspace,
+        action: AUDIT_ACTION.ENTITLEMENT_OVERRIDE_REVOKED,
+        entityType: AUDIT_ENTITY_TYPE.ENTITLEMENT_OVERRIDE,
+        entityId: override._id,
+        status: AUDIT_STATUS.SUCCESS,
+        ipAddress,
+        userAgent,
+        metadata: {
+            groupId: override.groupId?.toString?.() ?? null,
+            targetType: override.targetType,
+            featureKey: override.featureKey ?? null,
+            metricKey: override.metricKey ?? null,
+            revokedAt: override.revokedAt,
+            reason: override.revokeReason,
+        },
+    },
+    { session },
+);
+
 const serializeGroup = ({ primary, relatedOverrides, at }) => ({
     groupId: primary.groupId?.toString?.() ?? null,
     groupName: primary.groupName ?? null,
@@ -334,6 +362,10 @@ const getPlatformFeatureOverrideGroup = async ({
  * Modifie la décision groupée comme une unité UX tout en conservant des
  * overrides atomiques. Chaque override existant est sauvegardé et audité une
  * seule fois, même si plusieurs propriétés changent dans la même opération.
+ *
+ * `relatedLimits` est volontairement un patch partiel : les métriques fournies
+ * sont mises à jour ou créées et les métriques omises restent inchangées. Une
+ * omission ne doit jamais supprimer ou révoquer implicitement un droit existant.
  */
 const updatePlatformFeatureOverrideGroup = async ({
     overrideId,
@@ -490,9 +522,96 @@ const updatePlatformFeatureOverrideGroup = async ({
     });
 };
 
+/**
+ * Révoque une décision commerciale groupée comme une seule unité métier.
+ * La feature primaire, toutes ses limites enfants et leurs AuditLogs sont
+ * persistés dans la même transaction : aucun enfant ne peut rester actif après
+ * une révocation groupée réussie.
+ */
+const revokePlatformFeatureOverrideGroup = async ({
+    overrideId,
+    reason,
+    actorId,
+    now = new Date(),
+    ipAddress = null,
+    userAgent = null,
+}) => {
+    assertObjectId(overrideId, 'overrideId');
+    assertObjectId(actorId, 'actorId');
+    assertValidDate(now, 'now');
+
+    if (typeof reason !== 'string' || reason.trim().length < 3) {
+        throw new TypeError('reason is required to revoke an entitlement override group');
+    }
+
+    let primaryOverride;
+    let relatedOverrides = [];
+
+    await mongoose.connection.transaction(async (session) => {
+        const primary = await EntitlementOverride.findById(
+            overrideId,
+        ).session(session);
+
+        if (!primary) {
+            throw new AppError('Dérogation introuvable.', 404);
+        }
+
+        if (primary.targetType !== ENTITLEMENT_OVERRIDE_TARGET.FEATURE) {
+            throw new AppError(
+                'Cette dérogation ne cible pas une fonctionnalité.',
+                409,
+            );
+        }
+
+        if (!primary.groupId) {
+            throw new AppError(
+                'Cette dérogation n’appartient pas à un groupe révocable.',
+                409,
+            );
+        }
+
+        const related = await EntitlementOverride.find({
+            groupId: primary.groupId,
+            targetType: ENTITLEMENT_OVERRIDE_TARGET.LIMIT,
+        }).session(session);
+        const groupOverrides = [primary, ...related];
+
+        for (const override of groupOverrides) {
+            assertMutableOverride({ override, now });
+        }
+
+        const revokeReason = reason.trim();
+
+        for (const override of groupOverrides) {
+            override.revokedAt = now;
+            override.revokedBy = actorId;
+            override.revokeReason = revokeReason;
+            override.updatedBy = actorId;
+            await override.save({ session });
+            await auditRevokedOverride({
+                override,
+                actorId,
+                ipAddress,
+                userAgent,
+                session,
+            });
+        }
+
+        primaryOverride = primary;
+        relatedOverrides = related;
+    });
+
+    return serializeGroup({
+        primary: primaryOverride,
+        relatedOverrides,
+        at: now,
+    });
+};
+
 
 export {
     createPlatformFeatureOverrideGroup,
     getPlatformFeatureOverrideGroup,
+    revokePlatformFeatureOverrideGroup,
     updatePlatformFeatureOverrideGroup,
 };
