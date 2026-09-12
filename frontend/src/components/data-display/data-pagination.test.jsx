@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DataPagination } from '@/components/data-display/data-pagination';
@@ -38,7 +37,6 @@ describe('DataPagination', () => {
   });
 
   it('permet à une liste serveur d’exposer un choix réutilisable de taille de page', async () => {
-    const user = userEvent.setup();
     const onPageSizeChange = vi.fn();
 
     render(
@@ -51,8 +49,8 @@ describe('DataPagination', () => {
       />,
     );
 
-    await user.click(screen.getByRole('combobox', { name: 'Nombre de lignes par page' }));
-    await user.click(screen.getByRole('option', { name: '20' }));
+    fireEvent.click(screen.getByRole('combobox', { name: 'Nombre de lignes par page' }));
+    fireEvent.click(await screen.findByRole('option', { name: '20' }));
 
     expect(onPageSizeChange).toHaveBeenCalledWith(20);
   });
