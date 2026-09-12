@@ -1,4 +1,11 @@
+import {
+    PLATFORM_TEAM_MEMBER_STATUS,
+} from '../../../../constants/platformTeam.constants.js';
+import { USER_STATUS } from '../../../../constants/userStatus.constants.js';
 import { WORKSPACE_MEMBER_STATUS } from '../../../../constants/workspaceMember.constants.js';
+import {
+    PlatformTeamMember,
+} from '../../../platformTeam/platformTeamMember.model.js';
 import { User } from '../../../users/user.model.js';
 import { WorkspaceMember } from '../../../workspaceMember/workspaceMember.model.js';
 
@@ -8,18 +15,29 @@ const CURRENT_CLIENT_MEMBERSHIP_STATUSES = Object.freeze([
     WORKSPACE_MEMBER_STATUS.SUSPENDED,
 ]);
 
+const CURRENT_PLATFORM_TEAM_MEMBER_STATUSES = Object.freeze([
+    PLATFORM_TEAM_MEMBER_STATUS.ACTIVE,
+    PLATFORM_TEAM_MEMBER_STATUS.SUSPENDED,
+]);
+
+const CURRENT_CLIENT_USER_STATUSES = Object.freeze([
+    USER_STATUS.ACTIVE,
+    USER_STATUS.DISABLED,
+    USER_STATUS.DELETION_REQUESTED,
+]);
+
 
 /**
- * Retourne les utilisateurs possédant une relation client Workspace courante.
+ * Retourne les utilisateurs appartenant à la population cliente courante.
  *
- * L'identité User reste globale, mais la liste "Clients > Utilisateurs" ne doit
- * pas mélanger les collaborateurs internes de Platform Team avec les clients du
- * SaaS. Un utilisateur présent dans les deux populations reste naturellement
- * visible ici s'il possède aussi un WorkspaceMember actif ou suspendu.
+ * La liste "Clients > Utilisateurs" représente exclusivement les comptes
+ * rattachés à au moins un Workspace actif/suspendu qui ne sont pas des membres
+ * actuels de la Platform Team. Un collaborateur interne conserve son identité
+ * User et ses éventuels accès Workspace, mais n'entre pas dans les KPI ni les
+ * listes clients tant que son appartenance Platform reste active ou suspendue.
  *
- * La sélection est effectuée en base avant la pagination afin que le total et
- * les pages restent cohérents lorsqu'un même utilisateur appartient à plusieurs
- * workspaces.
+ * Les comptes clôturés et les memberships retirés sont historiques et sont
+ * donc exclus de cette population opérationnelle.
  */
 const listPlatformUsers = async ({
     page = 1,
@@ -44,6 +62,13 @@ const listPlatformUsers = async ({
     const skip = (page - 1) * limit;
 
     const [aggregation = { users: [], total: [] }] = await User.aggregate([
+        {
+            $match: {
+                status: {
+                    $in: CURRENT_CLIENT_USER_STATUSES,
+                },
+            },
+        },
         {
             $lookup: {
                 from: WorkspaceMember.collection.name,
@@ -73,6 +98,38 @@ const listPlatformUsers = async ({
             $match: {
                 'currentWorkspaceMemberships.0': {
                     $exists: true,
+                },
+            },
+        },
+        {
+            $lookup: {
+                from: PlatformTeamMember.collection.name,
+                localField: '_id',
+                foreignField: 'user',
+                pipeline: [
+                    {
+                        $match: {
+                            status: {
+                                $in: CURRENT_PLATFORM_TEAM_MEMBER_STATUSES,
+                            },
+                        },
+                    },
+                    {
+                        $limit: 1,
+                    },
+                    {
+                        $project: {
+                            _id: 1,
+                        },
+                    },
+                ],
+                as: 'currentPlatformMemberships',
+            },
+        },
+        {
+            $match: {
+                'currentPlatformMemberships.0': {
+                    $exists: false,
                 },
             },
         },
@@ -142,5 +199,7 @@ const listPlatformUsers = async ({
 
 export {
     CURRENT_CLIENT_MEMBERSHIP_STATUSES,
+    CURRENT_CLIENT_USER_STATUSES,
+    CURRENT_PLATFORM_TEAM_MEMBER_STATUSES,
     listPlatformUsers,
 };
