@@ -75,33 +75,18 @@ function PlatformRetentionPreview({
         )}
 
         {canExecute && (
-          <div className="flex items-center gap-2">
-            <Button
-              disabled={!executionAvailability.allowed}
-              onClick={() => {
-                setConfirmationError(null);
-                setConfirmationValue('');
-                setConfirmationOpen(true);
-              }}
-              type="button"
-              variant="destructive"
-            >
-              Purger les éléments prévisualisés
-            </Button>
-            <InfoTooltip
-              content={(
-                <div className="space-y-2">
-                  <p>
-                    Pour lancer une purge manuelle, la politique doit être active,
-                    l’exécution manuelle autorisée, une prévisualisation réalisée et
-                    aucune autre purge en cours.
-                  </p>
-                  <p className="font-medium">État actuel : {executionAvailability.reason}</p>
-                </div>
-              )}
-              label="Pourquoi la purge est-elle disponible ou indisponible ?"
-            />
-          </div>
+          <Button
+            disabled={!executionAvailability.allowed}
+            onClick={() => {
+              setConfirmationError(null);
+              setConfirmationValue('');
+              setConfirmationOpen(true);
+            }}
+            type="button"
+            variant="destructive"
+          >
+            Purger les éléments prévisualisés
+          </Button>
         )}
       </div>
 
