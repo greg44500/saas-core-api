@@ -2,7 +2,13 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état réel du Core au 2026-09-12 après la fusion du chantier tokens + Sidebar shadcn + Topbar Platform, et avant la poursuite de l’audit transversal des autres primitives UI.
+> Cette synthèse décrit l’état réel du Core au 2026-09-12 après :
+> - la fusion du chantier Design Tokens + Sidebar shadcn ;
+> - l’alignement des Topbars Platform et Workspace ;
+> - l’alignement ciblé des `Select` sur la primitive shadcn/Base UI ;
+> - la mise en place de la gate de transfert de propriété exceptionnelle ;
+> - le nettoyage UX de plusieurs textes pédagogiques vers `InfoTooltip` ;
+> - le cadrage différé D-023 du workflow gouverné de demande de transfert pour Core 1.1.
 >
 > Le code actuel, les contraintes de base de données, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
@@ -36,30 +42,40 @@ Branche de référence :
 main
 ```
 
-HEAD fonctionnel après fusion du chantier UI :
+Dernier HEAD connu avant la présente mise à jour documentaire :
 
 ```text
-9f6e45f42d2b02cc18bb822b924573abaaf2a06c
-Merge shadcn sidebar and topbar alignment
+bc169c129d38353b48901984514f2e1f22d0ea26
+docs: refine governed ownership transfer workflow
 ```
 
-PR correspondante :
+Dernier lot fonctionnel significatif avant les ajustements UI/documentaires :
 
 ```text
-PR #11 — feat(frontend): align Core navigation with shadcn sidebar
+1904c42115e2ebc6ad1c63689223e1dedce350a7
+feat(core): gate ownership transfer and align workspace controls
 ```
 
-Cette PR intègre également le lot tokens préparatoire, car la branche Sidebar descendait de `feature/ui-design-tokens`.
+Commits récents importants :
 
-Toute nouvelle conversation doit relire le HEAD réel de `main` avant modification, car un commit documentaire peut avoir été ajouté après ce SHA.
+```text
+7efcb4c2  fix(frontend): align workspace topbar actions
+1904c421  feat(core): gate ownership transfer and align workspace controls
+6d7f21a7  test(frontend): cover select display labels
+90875a0d  fix(frontend): render select labels from declared items
+8049384d  fix(frontend): move files page guidance to info tooltip
+392a41d7  test(frontend): align files page guidance and select interaction
+276edef3  docs: defer governed ownership transfer requests to Core 1.1
+bc169c12  docs: refine governed ownership transfer workflow
+```
+
+Toute nouvelle conversation doit vérifier le HEAD réel de `main` avant modification.
 
 ---
 
-## 3. Gates et validation du chantier UI fusionné
+## 3. Validation réellement constatée — ne pas surinterpréter
 
-Le chantier a été développé sur branche isolée puis fusionné après validation locale.
-
-Éléments réellement observés :
+État antérieur validé du chantier Sidebar/Topbar Platform :
 
 ```text
 frontend suite globale avant dernière correction : 717 / 718 tests verts
@@ -70,40 +86,63 @@ unique échec : platform-layout.test.jsx
 autres tests ciblés Sidebar / Router / Topbar : VERT
 frontend lint : VERT
 frontend build : VERT
-validation visuelle manuelle : effectuée pendant le chantier
+validation visuelle : effectuée
 ```
 
-Ne pas transformer cette information en affirmation « 718/718 globaux réexécutés après la dernière correction » : la suite globale n’a pas été relancée inutilement après la correction ciblée.
+Puis, lors du lot ownership/select/UX, une exécution frontend ciblée a réellement produit :
 
-Méthode à conserver pour les prochains lots :
+```text
+7 fichiers ciblés
+39 tests
+→ 5 fichiers verts
+→ 2 fichiers en échec
+→ 37 tests verts / 2 échecs
+```
 
-- pendant les corrections, exécuter d’abord les tests strictement concernés ;
+Les deux échecs avaient une même cause : `SelectValue` affichait la valeur technique (`__all__`, `standard`) au lieu du libellé utilisateur. La primitive partagée `components/ui/select.jsx` a ensuite été corrigée pour dériver les libellés depuis les `SelectItem`, et un test de primitive a été ajouté.
+
+Après cette correction, la page Fichiers a encore été modifiée pour déplacer son sous-titre pédagogique vers `InfoTooltip`, avec adaptation du test de page.
+
+**Important :** dans cette conversation, les résultats des relances ciblées postérieures à ces deux derniers correctifs n’ont pas encore été communiqués. Ne pas affirmer qu’ils sont verts tant qu’ils ne sont pas réellement exécutés localement.
+
+Relances ciblées recommandées avant tout nouveau chantier si elles n’ont pas déjà été faites localement :
+
+```text
+frontend/src/components/ui/select.test.jsx
+frontend/src/features/files/components/file-list-filters.test.jsx
+frontend/src/features/subscription/components/commercial-lifecycle-section.test.jsx
+frontend/src/features/files/pages/workspace-files-page.test.jsx
+```
+
+Les tests backend ciblés du lot ownership ont été demandés mais leur résultat n’a pas été communiqué dans cette conversation. Ne pas les marquer implicitement verts sans preuve locale.
+
+Méthode à conserver :
+
+- pendant les corrections, utiliser `npx vitest run <fichiers ciblés>` ;
+- ne pas utiliser `npm test -- ...` si cela déclenche la suite complète dans ce dépôt ;
 - regrouper les corrections par cause racine ;
-- éviter les micro-corrections test par test ;
-- n’exécuter une gate globale que lorsqu’elle apporte une vraie valeur de validation de fin de lot / release.
+- réserver les suites globales aux gates finales réellement utiles.
 
 ---
 
-## 4. D-011 — Design System Core
+## 4. Design System / navigation — acquis à préserver
 
-`D-011` reste **VALIDÉ** dans `docs/DEBT.md` et ne doit pas être rouvert automatiquement.
+`D-011` reste **VALIDÉ**. Le chantier postérieur est un alignement transversal, pas une réouverture de D-011.
 
-Le chantier récent est un audit / alignement transversal post-D-011, pas une nouvelle sous-phase de D-011.
-
-Architecture de référence :
+Architecture frontend de référence :
 
 ```text
 Design tokens
-→ components/ui : primitives du Design System
-→ components/shared : compositions réutilisables transversales
-→ components/data-display : composants génériques de restitution
-→ features/*/components : composants propres aux fonctionnalités
-→ pages : assemblage uniquement
+→ components/ui
+→ components/shared
+→ components/data-display
+→ features/*/components
+→ pages = assemblage
 ```
 
-Le frontend reste Tailwind CSS v4 CSS-first, shadcn/ui + Base UI lorsque pertinent.
+Le frontend reste Tailwind CSS v4 CSS-first avec shadcn/ui + Base UI lorsque pertinent.
 
-Principe : ne pas migrer « vers shadcn » par réflexe. Pour chaque famille de composants, classer :
+Pour chaque famille de composants :
 
 ```text
 A. CONFORME
@@ -112,48 +151,11 @@ C. À MIGRER
 D. À CONSERVER SPÉCIFIQUE
 ```
 
-Critères : accessibilité, sécurité, réutilisabilité, maintenance, stabilité API, cohérence visuelle, coût et risque de migration.
+Ne jamais migrer vers shadcn par réflexe si le wrapper actuel apporte une responsabilité réelle.
 
----
+### Sidebar / navigation
 
-## 5. Chantier tokens — terminé et fusionné
-
-Le lot tokens n’a pas recréé un système parallèle. Il a industrialisé uniquement les écarts réellement utiles.
-
-`frontend/src/index.css` fournit maintenant notamment :
-
-```text
---radius
---radius-sm / md / lg / xl dérivés
-
---sidebar
---sidebar-foreground
---sidebar-primary
---sidebar-primary-foreground
---sidebar-accent
---sidebar-accent-foreground
---sidebar-border
---sidebar-ring
-```
-
-Les tokens Sidebar aliasent actuellement les tokens sémantiques existants afin de conserver l’identité visuelle du Core, tout en permettant une évolution future indépendante de la navigation.
-
-Décisions à conserver :
-
-- ne pas créer de `tailwind.config.js` pour contourner Tailwind v4 CSS-first ;
-- ne pas tokeniser artificiellement chaque `p-5`, `gap-2`, `h-10`, etc. ;
-- ne pas créer de nouveaux tokens de padding / spacing sans besoin réellement transverse ;
-- ne pas ajouter `chart-1..5` tant qu’un besoin concret n’est pas démontré.
-
----
-
-## 6. Sidebar / navigation — terminé et fusionné
-
-### 6.1 Contrat de navigation conservé
-
-Le registre n’a pas été reconstruit.
-
-Architecture conservée :
+Le contrat suivant est conservé :
 
 ```text
 coreWorkspaceNavigation
@@ -162,122 +164,223 @@ APPLICATION_WORKSPACE_NAVIGATION_MODULES
 ↓
 composeWorkspaceNavigation()
 ↓
-navigation filtrée permissions/features
+filtrage features + permissions
 ↓
 AppSidebar
 ```
 
-Le Core reste métier-neutre. Les futurs modules métier déclareront leur navigation au niveau application sans importer leur logique dans le Core.
+Le Core reste métier-neutre.
 
-### 6.2 Renderer partagé
+Le renderer partagé repose sur les primitives Sidebar / Collapsible / Popover / Sheet et couvre desktop, mode icône, mobile, groupes, tooltips, route active et navigation accessible.
 
-Nouvelle structure :
-
-```text
-components/ui/sidebar.jsx
-components/ui/collapsible.jsx
-components/ui/popover.jsx
-components/ui/sheet.jsx
-components/shared/app-sidebar.jsx
-↓
-WorkspaceSidebar
-PlatformSidebar
-```
-
-Les sidebars Workspace et Platform ne dupliquent plus la mécanique de rendu.
-
-Comportements couverts :
-
-- desktop ouvert ;
-- mode réduit en icônes ;
-- mobile via Sheet ;
-- groupes repliables ;
-- route active ;
-- tooltips ;
-- popovers pour les groupes en mode icône ;
-- filtrage permissions / features ;
-- fermeture après navigation mobile/flyout ;
-- navigation accessible via landmark `<nav>` ;
-- comportement clavier et `Escape` selon les primitives utilisées.
-
-Les groupes réduits utilisent le même Tooltip que les liens simples. Le `title` natif du navigateur a été supprimé afin d’éviter un rendu divergent.
-
-Les icônes Platform ont été différenciées pour éviter les doublons sémantiques visibles en mode icône.
-
-Le bug de première lettre de tooltip masquée a été corrigé dans `components/ui/tooltip.jsx` en positionnant correctement la flèche Base UI hors du contenu selon le côté d’affichage.
-
-Ne pas recréer une seconde Sidebar maison lors des prochaines features.
+Ne pas recréer une seconde Sidebar maison.
 
 ---
 
-## 7. Topbar Platform — état fusionné
+## 5. Topbars Platform et Workspace — état actuel
 
-L’ancien bouton texte `Personnaliser le tableau de bord` n’occupe plus la zone centrale de la topbar.
-
-Comportement actuel :
+Les deux côtés utilisent désormais le même principe d’actions :
 
 ```text
-[ Recherche globale extensible ] [ Identité utilisateur ] [ Préférences d’affichage ] [ Déconnexion ]
+[ Recherche extensible ] [ Identité ] [ Préférences d’affichage si contexte Dashboard ] [ Déconnexion ]
 ```
 
-### 7.1 Préférences d’affichage
-
-Le contrôle Dashboard reste le composant partagé `DashboardDisplayPreferences`.
-
-Il accepte désormais une variante icône utilisée dans la topbar Platform :
-
-```text
-icône SlidersHorizontal
-Tooltip : « Préférences d’affichage »
-```
-
-La logique de persistance, de preview et de filtrage des widgets n’a pas été dupliquée.
-
-`AuthenticatedUserIdentity` possède un slot `actions` permettant d’insérer proprement les actions contextuelles juste avant `LogoutShortcut`.
-
-### 7.2 Recherche globale extensible
-
-Nouveau composant partagé :
+Le composant partagé est :
 
 ```text
 frontend/src/components/shared/expandable-search.jsx
 ```
 
-Responsabilité actuelle : UI uniquement.
+Responsabilité actuelle : UI seulement. Aucun moteur métier de recherche n’est inventé dans le Core.
 
-- loupe visible au repos ;
-- clic → champ qui s’élargit avec transition fluide ;
-- focus automatique ;
-- `Escape` peut replier le champ lorsque son état le permet ;
-- contrat `onSearch` optionnel pour permettre plus tard le branchement de moteurs métier.
+`AuthenticatedUserIdentity` expose un slot `actions`, utilisé par Platform et Workspace pour placer les préférences avant la déconnexion.
 
-Le Core **ne doit pas inventer aujourd’hui de recherche métier**. Quand les modules métier existeront, ils pourront fournir leurs sources / providers de recherche sans rendre la topbar dépendante d’un domaine précis.
-
-État local : `useState`, car l’ouverture du champ n’est ni une donnée serveur ni un état global applicatif.
+Les préférences d’affichage restent contextuelles au Dashboard ; la recherche reste disponible plus largement dans la Topbar.
 
 ---
 
-## 8. D-020 — Invitation commerciale
+## 6. Select shadcn/Base UI — correction transversale récente
 
-D-020 reste **EN COURS** dans `docs/DEBT.md`.
+Les `select` natifs ciblés dans le lot récent ont été remplacés par la primitive partagée `components/ui/select.jsx` dans les surfaces concernées, notamment :
 
-Le parcours nominal est déjà intégré et validé jusqu’à :
+- filtre de catégorie des Fichiers ;
+- périodicité de l’essai ;
+- cible de downgrade ;
+- sélection du nouveau propriétaire / rôle de remplacement ;
+- motif de suspension Platform.
+
+Un écart Base UI a été identifié : sans collection déclarée, `SelectValue` affichait la valeur technique au lieu du libellé.
+
+La correction a été faite **dans la primitive partagée**, pas dupliquée dans chaque feature. Elle dérive la collection depuis les `SelectItem` déclarés afin que les triggers affichent les libellés utilisateurs.
+
+Ne pas réintroduire des mappings locaux `value → label` dans chaque feature sauf cas réellement spécifique.
+
+---
+
+## 7. UX des textes pédagogiques
+
+Règle validée :
 
 ```text
-invitation
-→ preview
-→ inscription / connexion
-→ acceptation
-→ premier workspace
-→ Owner
-→ Plan privé effectif
+information secondaire / pédagogique
+→ InfoTooltip `(i)`
+
+conséquence importante d’une action
+→ reste visible
+
+opération sensible / destructive
+→ explication visible obligatoire
 ```
 
-Contrôles manuels négatifs restant à confirmer avant passage à `VALIDÉ` :
+Applications récentes :
+
+- page Abonnement : plusieurs explications secondaires déplacées vers `InfoTooltip` ;
+- Paramètres Workspace : information technique secondaire déplacée vers `InfoTooltip` ;
+- page Fichiers : le sous-titre `Consultez et téléchargez...` a été déplacé dans un `(i)` à côté du titre ;
+- les conséquences de fin d’essai, résiliation, transfert et autres opérations sensibles restent visibles.
+
+Cette règle doit guider le reste de l’audit UI sans transformer toutes les descriptions en tooltips.
+
+---
+
+## 8. Transfert de propriété — gate exceptionnelle implémentée
+
+Le transfert de propriété ne doit plus être considéré comme une fonction normale toujours disponible à l’owner.
+
+Le mécanisme bas niveau actuel est une **capacité opérationnelle exceptionnelle**.
+
+Contrat :
+
+```text
+Super administrateur Platform
+→ permission réservée dédiée
+→ autorise temporairement UN workspace
+→ TTL serveur
+→ autorisation révocable
+
+owner courant
+→ voit le workflow uniquement si l’autorisation est active
+→ choisit la cible
+→ choisit son rôle après transfert
+→ confirme les conséquences
+→ confirme son mot de passe courant
+→ backend revalide
+→ transfert transactionnel
+→ autorisation consommée single-use
+→ audit
+```
+
+### TTL
+
+Variable backend :
+
+```text
+WORKSPACE_OWNERSHIP_TRANSFER_AUTHORIZATION_TTL_HOURS
+```
+
+Règles :
+
+- valeur serveur ;
+- défaut 24 h ;
+- validation stricte ;
+- minimum > 0 ;
+- maximum absolu 24 h ;
+- le frontend ne décide jamais de la durée ;
+- le backend calcule `expiresAt`.
+
+### Sécurité
+
+La permission Platform dédiée est `RESERVED`, donc non attribuable à un rôle Platform ordinaire. Le frontend ne doit pas disperser des tests `role === super_admin` : il consomme la permission effective.
+
+Le transfert reste exécuté par l’owner lui-même, pas par le Super administrateur à sa place.
+
+Le backend vérifie notamment autorisation active, expiration, révocation, consommation, owner courant, invariants d’unicité owner et mot de passe.
+
+L’état courant de l’autorisation est porté par le Workspace ; AuditLog conserve l’historique.
+
+---
+
+## 9. D-023 — workflow gouverné différé à Core 1.1
+
+`docs/DEBT.md` contient désormais D-023 :
+
+```text
+D-023 — Demande gouvernée de capacité exceptionnelle de transfert de propriété
+Statut : DIFFÉRÉ — cible Core 1.1
+Blocage Core 1.0 : non
+```
+
+### Décision v1.0
+
+Avant D-023 :
+
+- aucun bouton owner `Demander capacité de transfert` ;
+- aucune cloche de demandes de transfert dans la Topbar Platform ;
+- aucun workflow commercialisé comme un droit normal ;
+- gate bas niveau existante conservée fermée par défaut.
+
+Cette décision permet de versionner Core 1.0 sans implémenter prématurément le workflow complet.
+
+### Cible Core 1.1
+
+Le workflow prévu :
+
+```text
+Paramètres > Sécurité
+→ owner crée une demande
+→ WorkspaceOwnershipTransferRequest persistée
+→ données workspace/identités référencées par IDs serveur
+→ audit
+→ compteur Platform
+→ cloche Topbar Platform pour la permission réservée
+→ /platform/ownership-transfer-requests
+→ Super Admin examine
+→ backend revalide l’éligibilité
+→ Autoriser / Refuser sans ressaisie manuelle
+→ autorisation temporaire existante
+→ owner transfère avec réauthentification
+→ single-use
+→ clôture et audit
+```
+
+### Cloche Platform prévue
+
+La cloche est un signal **spécifique D-023**, pas le prétexte à construire un centre de notifications générique.
+
+Règles prévues :
+
+- visible uniquement lorsque la permission réservée de traitement des transferts est présente ;
+- en pratique réservée au Super administrateur ;
+- cloche disponible même à zéro pour rester le point d’entrée de la file ;
+- aucune pastille à zéro ;
+- compteur des seules demandes `requested` réellement à traiter ;
+- badge `1..9`, puis `9+` ;
+- accessible name avec nombre en attente ;
+- clic vers `/platform/ownership-transfer-requests`.
+
+### Refus et nouvelle demande
+
+Les blocages objectifs doivent venir du backend sous forme de codes structurés : workspace suspendu/inactif, owner invalide, `past_due`, cible inéligible, demande concurrente, autorisation concurrente, etc.
+
+Le frontend traduit ces codes en explications actionnables.
+
+Une demande refusée reste immutable dans l’historique. Après correction de la cause, l’owner crée une **nouvelle demande avec un nouveau `requestId`**.
+
+Une simple remédiation de quota n’est pas automatiquement bloquante : toute règle de refus doit être justifiée par un risque réel de sécurité, gouvernance ou paiement.
+
+D-023 ne doit pas être implémentée pendant l’audit UI actuel sauf décision explicite de changement de roadmap.
+
+---
+
+## 10. D-020 et roadmap Core 1.0
+
+D-020 reste **EN COURS**.
+
+Contrôles manuels négatifs restant à confirmer :
 
 ```text
 mauvaise identité
-→ aucune création/acceptation indue
+→ aucune acceptation/création indue
 
 refus bénéficiaire
 → invitation declined
@@ -286,34 +389,30 @@ refus bénéficiaire
 → session courante fermée comme prévu
 ```
 
-D-020 doit être clôturée ou explicitement reclassifiée avant D-015.
-
----
-
-## 9. Blocs validés à ne pas rouvrir sans écart démontré
+Roadmap canonique actuelle :
 
 ```text
-D-001 fermeture Account / Workspace                    VALIDÉ
-D-011 Design System + préférences                      VALIDÉ
-D-014 points d’extension métier                        VALIDÉ
-D-018 Équipe Platform / RBAC / invitations             VALIDÉ
-D-019 moteur sécurisé de rétention / purge Core        VALIDÉ
-DOC-CODE-1 documentation source                        VALIDÉ
-D-021 sécurité Auth / invitations / tokens temporaires VALIDÉ
-D-022 intégrité Entitlement Override Groups            VALIDÉ
+D-020 → clôturer ou reclassifier
+D-015 → versionnement / provenance / releases / migrations
+D-016 → Playwright E2E Core
+D-002 → corbeille / restauration Files
+→ audit final architecture / sécurité / qualité
+D-017 → dérivation + upgrade pilote
+→ tag Core stable ensuite
+
+post-v1.0 :
+D-023 → workflow gouverné de transfert — cible Core 1.1
 ```
 
-Google SSO reste volontairement dans D-010 et ne bloque pas Core 1.0.
+D-002 doit être VALIDÉ avant D-017 et avant la première dérivation métier.
 
 ---
 
-## 10. Audit transversal shadcn/ui / Base UI — reste à faire
+## 11. Audit transversal shadcn/ui / Base UI — travail à reprendre
 
-Le chantier n’est **pas terminé globalement** : seule la partie tokens + Sidebar/navigation + ajustements de shell/topbar a été traitée.
+Le chantier global n’est pas terminé. Tokens, Sidebar/navigation, Topbars et quelques `Select` ont été traités, mais le reste doit encore être audité.
 
 Ne pas réauditer immédiatement Sidebar/tokens sauf régression concrète.
-
-La prochaine conversation doit poursuivre l’audit **sans modification dans un premier temps** sur les familles restantes.
 
 Priorité recommandée :
 
@@ -323,102 +422,95 @@ Priorité recommandée :
 3. Dialog / modal / confirmations
 4. Drawer / Sheet / panneaux latéraux
 5. formulaires partagés
-6. Input / Textarea / Select / Checkbox / Switch
-7. Dropdown menus
-8. Tooltip / Popover / Accordion / Tabs restants
-9. Badge / StatusBadge
-10. inventaire des primitives HTML/React directes dans pages/features
+6. Input / Textarea / Checkbox / Switch
+7. Select restant hors lot récent
+8. Dropdown menus
+9. Tooltip / Popover / Accordion / Tabs restants
+10. Badge / StatusBadge
+11. primitives HTML/React directes dans pages/features
 ```
 
 Pour chaque famille :
 
 - identifier le composant réel ;
-- repérer les duplications ;
-- vérifier si une primitive shadcn/Base UI existe déjà ;
+- inventorier les usages ;
+- détecter les duplications ;
 - vérifier accessibilité clavier/ARIA/focus ;
-- vérifier Design Tokens ;
+- vérifier cohérence Design Tokens ;
+- vérifier API et testabilité ;
 - classer `CONFORME / WRAPPER LÉGITIME / À MIGRER / À CONSERVER SPÉCIFIQUE` ;
-- justifier objectivement ;
-- attendre validation utilisateur avant d’écrire du code.
+- distinguer problème réel et préférence stylistique ;
+- proposer les migrations par valeur / risque ;
+- ne rien coder avant validation utilisateur.
 
-Point particulièrement important : le `DataTable` partagé est obligatoire pour les tableaux applicatifs. L’audit doit chercher à consolider sa primitive et sa maintenance, pas créer plusieurs tables concurrentes.
-
----
-
-## 11. Autres chantiers à garder séparés
-
-Ne pas mélanger ces sujets à l’audit UI restant :
-
-```text
-A. gouvernance de conservation des données / suppression contrôlée d’historiques
-B. reset reproductible de la base de développement
-C. clôture manuelle négative D-020
-D. D-015 versionnement / provenance / releases / migrations
-E. D-016 Playwright E2E Core
-F. D-002 corbeille / restauration Files
-G. D-017 dérivation + upgrade pilote
-```
-
-Roadmap canonique active selon `docs/DEBT.md` :
-
-```text
-D-020 → à clôturer/reclassifier
-D-015 → PLANIFIÉ
-D-016 → PLANIFIÉ
-D-002 → PLANIFIÉ
-D-017 → PLANIFIÉ
-```
-
-D-002 doit être VALIDÉ avant D-017 et avant la première dérivation métier.
+Le `DataTable` partagé reste obligatoire pour les tableaux applicatifs. L’objectif est de consolider cette abstraction, pas de créer plusieurs tables concurrentes.
 
 ---
 
-## 12. Règles de travail pour la prochaine conversation
+## 12. Chantiers à garder séparés
+
+Ne pas mélanger à l’audit UI :
+
+```text
+A. D-023 workflow de demande ownership Core 1.1
+B. gouvernance de conservation des données
+C. reset reproductible de la base de développement
+D. validation négative finale D-020
+E. D-015 versionnement / provenance / releases
+F. D-016 Playwright E2E Core
+G. D-002 corbeille / restauration Files
+H. D-017 dérivation + upgrade pilote
+```
+
+---
+
+## 13. Règles de travail pour la prochaine conversation
 
 Conserver impérativement :
 
 - travailler à partir de `main` ;
-- vérifier HEAD avant toute conclusion ;
-- code + DB + tests réellement exécutés priment sur les synthèses ;
-- ne pas générer de snippets sauvages ;
-- réutilisabilité frontend obligatoire ;
-- shadcn/ui est la base du Design System lorsqu’une primitive générique adaptée existe ;
-- un wrapper custom est acceptable s’il apporte une vraie valeur ;
-- ne pas modifier hors périmètre ;
-- ne pas transformer un audit en migration massive automatique ;
+- vérifier branche et HEAD avant toute conclusion ;
+- code + DB + tests réellement exécutés priment sur la synthèse ;
+- JavaScript uniquement ;
+- validation stricte des données ;
+- séparation routes/controllers/services/models/validation côté backend ;
+- pages frontend = assemblage, pas logique métier lourde ;
+- `useState` pour état local ;
+- Redux Toolkit pour état global client ;
+- RTK Query pour état serveur ;
+- composants réutilisables obligatoires ;
+- DataTable partagé obligatoire pour les tableaux applicatifs ;
+- shadcn/ui comme base des primitives génériques lorsqu’adapté ;
+- wrappers custom conservés lorsqu’ils apportent une vraie responsabilité ;
+- aucun snippet sauvage ;
+- aucun changement hors périmètre ;
 - expliquer avant d’implémenter ;
-- regrouper les corrections par cause racine ;
-- éviter les mini-lots intempestifs ;
-- pendant une correction, exécuter les tests ciblés concernés plutôt que toute la suite ;
-- gate globale uniquement au moment utile de validation finale du lot.
-
-Gestion d’état :
-
-```text
-useState        → état UI local
-Redux Toolkit   → état client global
-RTK Query       → état serveur
-```
+- ne pas coder pendant une phase d’audit avant validation explicite ;
+- corrections par cause racine et lots cohérents ;
+- tests ciblés avec `npx vitest run <fichiers>` pendant le développement ;
+- ne pas relancer inutilement 700+ tests ;
+- gate globale uniquement au moment utile de validation finale.
 
 ---
 
-## 13. Amorçage recommandé du prochain chantier
+## 14. Amorçage recommandé du prochain chantier
 
-La prochaine conversation doit reprendre **le reste de l’audit transversal UI**, pas recommencer Sidebar/tokens.
+La prochaine conversation doit reprendre **le reste de l’audit transversal UI**, après vérification rapide des validations ciblées encore non confirmées.
 
-Premières actions :
+Ordre recommandé :
 
 ```text
-1. se connecter au dépôt greg44500/saas-core-api ;
+1. se connecter à greg44500/saas-core-api ;
 2. travailler à partir de main ;
-3. vérifier le HEAD réel de main ;
-4. lire docs/REPRISE-CURRENT.md ;
-5. lire docs/DEBT.md, en particulier D-011 et l’ordre D-020 → D-015 → D-016 → D-002 → D-017 ;
-6. constater que PR #11 a déjà traité tokens + Sidebar + Topbar ;
-7. auditer sans modification les primitives restantes ;
-8. commencer par DataTable/DataPagination car leur réutilisabilité est structurante ;
-9. produire une matrice de conformité complète et priorisée ;
-10. attendre validation utilisateur avant toute nouvelle branche d’implémentation.
+3. vérifier le HEAD réel ;
+4. lire intégralement docs/REPRISE-CURRENT.md ;
+5. lire docs/DEBT.md, notamment D-011, D-020, D-023 et l’ordre de roadmap ;
+6. ne modifier aucun fichier immédiatement ;
+7. vérifier si les relances ciblées Select/Fichiers ont déjà été exécutées localement ;
+8. si nécessaire, demander uniquement les tests ciblés manquants ;
+9. auditer DataTable puis DataPagination ;
+10. produire une matrice de conformité complète ;
+11. attendre validation utilisateur avant toute implémentation.
 ```
 
 Le présent document est une synthèse de reprise et non une source supérieure au code, aux tests ou aux contrats canoniques.
