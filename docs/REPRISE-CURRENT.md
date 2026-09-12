@@ -226,7 +226,38 @@ Pour les `Select` Base UI sous JSDOM, une géométrie d’ancre `0 × 0` peut ma
 
 ---
 
-## 7. Roadmap immédiate avant Core 1.0
+## 7. Points techniques hors D-021 à ne pas perdre
+
+Le sous-système Platform Entitlement Overrides a reçu des évolutions récentes mais certains risques de lifecycle restent explicitement **hors clôture D-021**.
+
+Direction produit à conserver :
+
+```text
+Décision commerciale
+├── feature
+├── limites associées
+├── période
+├── origine
+└── lifecycle
+```
+
+Les enfants LIMIT d’un groupe restent des données techniques de résolution/audit et ne doivent pas être présentés comme plusieurs décisions commerciales indépendantes dans la vue principale.
+
+Points encore à vérifier avant de considérer ce sous-système comme totalement finalisé :
+
+```text
+révocation atomique d’un groupe
+protection contre update/revoke direct d’un enfant groupé
+couverture dédiée du service de groupe
+cohérence lifecycle complète
+validation resolver / precedence
+```
+
+Ces points ne doivent pas être déclarés résolus sur la seule base de la clôture D-021. S’ils doivent devenir un travail planifié, leur statut doit être cadré dans `docs/DEBT.md` avant implémentation.
+
+---
+
+## 8. Roadmap immédiate avant Core 1.0
 
 État à la clôture D-021 :
 
@@ -251,7 +282,7 @@ Ordre recommandé avant toute nouvelle implémentation importante :
 
 ---
 
-## 8. Reprise dans une nouvelle conversation
+## 9. Reprise dans une nouvelle conversation
 
 Une nouvelle conversation est recommandée après la fusion D-021 dans `main`.
 
