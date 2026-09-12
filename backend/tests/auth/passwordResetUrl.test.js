@@ -13,17 +13,17 @@ describe('buildPasswordResetUrl', () => {
         // L'origine doit obligatoirement provenir de CLIENT_URL.
         // Le workflow ne doit jamais dépendre du Host d'une requête HTTP.
         expect(url.origin).toBe('http://localhost:5173');
-
         expect(url.pathname).toBe('/reset-password');
 
-        // On vérifie le token via searchParams plutôt qu'en comparant toute
-        // l'URL afin de tester le contrat fonctionnel et non son formatage.
-        expect(url.searchParams.get('token')).toBe(
-            'opaque-reset-token',
-        );
+        // Le secret ne doit jamais être transporté dans la query string.
+        expect(url.search).toBe('');
+
+        const fragmentParams = new URLSearchParams(url.hash.slice(1));
+
+        expect(fragmentParams.get('token')).toBe('opaque-reset-token');
     });
 
-    it('encode correctement le token dans la query string', () => {
+    it('encode correctement le token dans le fragment', () => {
         const token = 'token+avec/caracteres=sensibles';
 
         const result = buildPasswordResetUrl({
@@ -31,9 +31,10 @@ describe('buildPasswordResetUrl', () => {
         });
 
         const url = new URL(result);
+        const fragmentParams = new URLSearchParams(url.hash.slice(1));
 
-        // Le consommateur de l'URL doit récupérer exactement le token initial,
-        // même lorsque celui-ci contient des caractères nécessitant un encodage.
-        expect(url.searchParams.get('token')).toBe(token);
+        // Le consommateur doit récupérer exactement le token initial,
+        // même lorsque celui-ci nécessite un encodage.
+        expect(fragmentParams.get('token')).toBe(token);
     });
 });

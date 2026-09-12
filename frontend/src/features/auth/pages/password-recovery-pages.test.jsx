@@ -110,8 +110,13 @@ describe('password recovery pages', () => {
 
   it('transmet uniquement le token du lien et le nouveau mot de passe au reset', async () => {
     const user = userEvent.setup();
-    const router = renderRecoveryRoute('/reset-password?token=opaque-token');
+    const router = renderRecoveryRoute('/reset-password#token=opaque-token');
+    await waitFor(() => {
+      expect(router.state.location.hash).toBe('');
+    });
 
+    expect(router.state.location.search).toBe('');
+    expect(router.state.location.state).toBeNull();
     await user.type(screen.getByLabelText('Nouveau mot de passe'), 'nouveau-mot-de-passe-long');
     await user.type(screen.getByLabelText('Confirmer le nouveau mot de passe'), 'nouveau-mot-de-passe-long');
     await user.click(screen.getByRole('button', { name: 'Réinitialiser le mot de passe' }));

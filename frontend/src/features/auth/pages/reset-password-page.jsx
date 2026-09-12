@@ -1,11 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useLayoutEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { FormField } from '@/components/forms/form-field';
 import { PasswordField } from '@/components/forms/password-field';
 import { PasswordPolicyFeedback } from '@/components/forms/password-policy-feedback';
 import { Button } from '@/components/ui/button';
+import { getPasswordResetTokenFromHash } from '@/features/auth/lib/password-reset-token';
 import {
   useGetPasswordPolicyQuery,
   useResetPasswordMutation,
@@ -13,9 +15,35 @@ import {
 import { resetPasswordFormSchema } from '@/features/auth/validation/auth-schemas';
 
 function ResetPasswordPage() {
+  const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') ?? '';
+
+  const [token] = useState(
+    () => getPasswordResetTokenFromHash(location.hash) ?? '',
+  );
+  useLayoutEffect(() => {
+    if (!location.hash) return;
+
+    // Le secret est déjà conservé dans l'état local du composant.
+    // On le retire immédiatement de l'URL et donc de l'historique visible.
+    navigate(
+      {
+        pathname: location.pathname,
+        search: location.search,
+        hash: '',
+      },
+      {
+        replace: true,
+        state: location.state,
+      },
+    );
+  }, [
+    location.hash,
+    location.pathname,
+    location.search,
+    location.state,
+    navigate,
+  ]);
   const { data: passwordPolicy } = useGetPasswordPolicyQuery();
   const [resetPassword, { isLoading }] = useResetPasswordMutation();
   const {
