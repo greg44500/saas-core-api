@@ -247,7 +247,6 @@ const attachGroupedLimitsToCommercialRows = async ({ documents, at }) => {
                 .map((document) => document.groupId.toString()),
         ),
     ];
-
     const serializedRows = documents.map((override) =>
         serializePlatformEntitlementOverride({
             override,
@@ -539,6 +538,20 @@ const assertMutableOverride = ({ override, now }) => {
     }
 };
 
+/**
+ * Un document portant un groupId n'est plus une décision autonome. Toutes ses
+ * mutations doivent passer par le service de groupe afin de préserver feature,
+ * limites enfants et audit dans la même transaction.
+ */
+const assertStandaloneOverride = (override) => {
+    if (override.groupId) {
+        throw new AppError(
+            'Une dérogation groupée doit être modifiée ou révoquée via son groupe.',
+            409,
+        );
+    }
+};
+
 const assertUpdateMatchesTarget = ({ override, overrideData }) => {
     if (
         override.targetType === ENTITLEMENT_OVERRIDE_TARGET.FEATURE
@@ -606,6 +619,7 @@ const updatePlatformEntitlementOverride = async ({
             throw new AppError('Dérogation introuvable.', 404);
         }
 
+        assertStandaloneOverride(override);
         assertMutableOverride({ override, now });
         assertUpdateMatchesTarget({ override, overrideData });
 
@@ -699,6 +713,7 @@ const revokePlatformEntitlementOverride = async ({
             throw new AppError('Dérogation introuvable.', 404);
         }
 
+        assertStandaloneOverride(override);
         assertMutableOverride({ override, now });
 
         override.revokedAt = now;
