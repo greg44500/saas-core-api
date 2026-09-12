@@ -150,6 +150,7 @@ const createPlatformMembership = async ({
 
 const finalizePlatformInvitationAcceptance = async ({
     invitation,
+    tokenHash,
     role,
     userId,
     membership,
@@ -158,11 +159,33 @@ const finalizePlatformInvitationAcceptance = async ({
     now,
     session,
 }) => {
-    invitation.status = PLATFORM_INVITATION_STATUS.ACCEPTED;
-    invitation.acceptedBy = userId;
-    invitation.acceptedAt = now;
+    const acceptedInvitation = await PlatformInvitation.findOneAndUpdate(
+        {
+            _id: invitation._id,
+            tokenHash,
+            status: PLATFORM_INVITATION_STATUS.PENDING,
+            expiresAt: mongoose.trusted({ $gt: now }),
+        },
+        {
+            $set: {
+                status: PLATFORM_INVITATION_STATUS.ACCEPTED,
+                acceptedBy: userId,
+                acceptedAt: now,
+            },
+        },
+        {
+            returnDocument: 'after',
+            runValidators: true,
+            session,
+        },
+    );
 
-    await invitation.save({ session });
+    if (!acceptedInvitation) {
+        throw new AppError(
+            'L’invitation Plateforme a été modifiée concurremment.',
+            409,
+        );
+    }
 
     await createAuditLog(
         {
@@ -170,7 +193,7 @@ const finalizePlatformInvitationAcceptance = async ({
             workspace: null,
             action: AUDIT_ACTION.PLATFORM_INVITATION_ACCEPTED,
             entityType: AUDIT_ENTITY_TYPE.PLATFORM_INVITATION,
-            entityId: invitation._id,
+            entityId: acceptedInvitation._id,
             status: AUDIT_STATUS.SUCCESS,
             ipAddress,
             userAgent,
@@ -182,6 +205,8 @@ const finalizePlatformInvitationAcceptance = async ({
         },
         { session },
     );
+
+    return acceptedInvitation;
 };
 
 
@@ -235,8 +260,9 @@ const acceptExistingPlatformInvitation = async ({
             session,
         });
 
-        await finalizePlatformInvitationAcceptance({
+        const acceptedInvitation = await finalizePlatformInvitationAcceptance({
             invitation,
+            tokenHash,
             role,
             userId: actor._id,
             membership,
@@ -247,7 +273,7 @@ const acceptExistingPlatformInvitation = async ({
         });
 
         return {
-            invitation,
+            invitation: acceptedInvitation,
             membership,
             role,
             user: actor,
@@ -351,8 +377,9 @@ const acceptNewPlatformInvitation = async ({
                 session,
             });
 
-            await finalizePlatformInvitationAcceptance({
+            const acceptedInvitation = await finalizePlatformInvitationAcceptance({
                 invitation,
+                tokenHash,
                 role,
                 userId: user._id,
                 membership,
@@ -363,7 +390,7 @@ const acceptNewPlatformInvitation = async ({
             });
 
             return {
-                invitation,
+                invitation: acceptedInvitation,
                 membership,
                 role,
                 user,

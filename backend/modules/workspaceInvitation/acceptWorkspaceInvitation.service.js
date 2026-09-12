@@ -174,6 +174,7 @@ const activateWorkspaceMembership = async ({
 
 const finalizeInvitationAcceptance = async ({
     invitation,
+    tokenHash,
     membership,
     role,
     userId,
@@ -182,10 +183,33 @@ const finalizeInvitationAcceptance = async ({
     now,
     session,
 }) => {
-    invitation.status = WORKSPACE_INVITATION_STATUS.ACCEPTED;
-    invitation.acceptedBy = userId;
-    invitation.acceptedAt = now;
-    await invitation.save({ session });
+    const acceptedInvitation = await WorkspaceInvitation.findOneAndUpdate(
+        {
+            _id: invitation._id,
+            tokenHash,
+            status: WORKSPACE_INVITATION_STATUS.PENDING,
+            expiresAt: mongoose.trusted({ $gt: now }),
+        },
+        {
+            $set: {
+                status: WORKSPACE_INVITATION_STATUS.ACCEPTED,
+                acceptedBy: userId,
+                acceptedAt: now,
+            },
+        },
+        {
+            returnDocument: 'after',
+            runValidators: true,
+            session,
+        },
+    );
+
+    if (!acceptedInvitation) {
+        throw new AppError(
+            'L’invitation a été modifiée concurremment.',
+            409,
+        );
+    }
 
     await createAuditLog(
         {
@@ -193,7 +217,7 @@ const finalizeInvitationAcceptance = async ({
             workspace: invitation.workspace,
             action: AUDIT_ACTION.MEMBER_INVITATION_ACCEPTED,
             entityType: AUDIT_ENTITY_TYPE.WORKSPACE_INVITATION,
-            entityId: invitation._id,
+            entityId: acceptedInvitation._id,
             status: AUDIT_STATUS.SUCCESS,
             ipAddress,
             userAgent,
@@ -204,6 +228,8 @@ const finalizeInvitationAcceptance = async ({
         },
         { session },
     );
+
+    return acceptedInvitation;
 };
 
 /**
@@ -255,8 +281,9 @@ const acceptWorkspaceInvitation = async ({
             session,
         });
 
-        await finalizeInvitationAcceptance({
+        const acceptedInvitation = await finalizeInvitationAcceptance({
             invitation,
+            tokenHash,
             membership,
             role,
             userId: actor._id,
@@ -267,7 +294,7 @@ const acceptWorkspaceInvitation = async ({
         });
 
         return {
-            invitation,
+            invitation: acceptedInvitation,
             membership,
             user: actor,
         };
@@ -384,8 +411,9 @@ const acceptNewWorkspaceInvitation = async ({
                 session,
             });
 
-            await finalizeInvitationAcceptance({
+            const acceptedInvitation = await finalizeInvitationAcceptance({
                 invitation,
+                tokenHash,
                 membership,
                 role,
                 userId: user._id,
@@ -396,7 +424,7 @@ const acceptNewWorkspaceInvitation = async ({
             });
 
             return {
-                invitation,
+                invitation: acceptedInvitation,
                 membership,
                 user,
             };

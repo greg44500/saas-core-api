@@ -11,6 +11,9 @@ import {
     LEGAL_ACCEPTANCE_SOURCE,
 } from '../../constants/legalDocuments.constants.js';
 import {
+    WORKSPACE_INVITATION_STATUS,
+} from '../../constants/workspaceInvitation.constants.js';
+import {
     CORE_PLAN_FEATURE,
     CORE_PLAN_METRIC,
 } from '../../modules/plan/planCapability.registry.js';
@@ -86,6 +89,7 @@ vi.mock('../../modules/workspaceInvitation/workspaceInvitation.model.js', () => 
     WorkspaceInvitation: {
         exists: vi.fn(),
         findOne: vi.fn(),
+        findOneAndUpdate: vi.fn(),
     },
 }));
 vi.mock('../../utils/password.js', () => ({
@@ -109,7 +113,7 @@ const setup = ({ existingUser = null } = {}) => {
         role: 'role-id',
         invitedBy: 'inviter-id',
         emailCanonical: 'new.member@example.com',
-        save: vi.fn().mockResolvedValue(undefined),
+        status: WORKSPACE_INVITATION_STATUS.PENDING,
     };
     const role = {
         _id: 'role-id',
@@ -134,12 +138,18 @@ const setup = ({ existingUser = null } = {}) => {
         role: role._id,
         status: 'active',
     };
+    const acceptedInvitation = {
+        ...invitation,
+        status: WORKSPACE_INVITATION_STATUS.ACCEPTED,
+        acceptedBy: user._id,
+    };
 
     WorkspaceInvitation.exists.mockResolvedValue({ _id: invitation._id });
     mongoose.connection.transaction.mockImplementation(
         async (callback) => callback(session),
     );
     WorkspaceInvitation.findOne.mockReturnValue(sessionResult(invitation));
+    WorkspaceInvitation.findOneAndUpdate.mockResolvedValue(acceptedInvitation);
     User.findOne.mockReturnValue(chainedResult(existingUser));
     User.create.mockResolvedValue([user]);
     AuthIdentity.create.mockResolvedValue([{}]);
@@ -154,6 +164,7 @@ const setup = ({ existingUser = null } = {}) => {
     hashPassword.mockResolvedValue('password-hash');
 
     return {
+        acceptedInvitation,
         entitlement,
         invitation,
         membership,
@@ -185,10 +196,12 @@ describe('acceptNewWorkspaceInvitation', () => {
         expect(AuthIdentity.create).not.toHaveBeenCalled();
         expect(WorkspaceMember.create).not.toHaveBeenCalled();
         expect(createRegistrationLegalAcceptance).not.toHaveBeenCalled();
+        expect(WorkspaceInvitation.findOneAndUpdate).not.toHaveBeenCalled();
     });
 
-    it('crée le compte, la preuve légale et le membership dans la même transaction', async () => {
+    it('crée le compte, la preuve légale, le membership et consomme l’invitation dans la même transaction', async () => {
         const {
+            acceptedInvitation,
             entitlement,
             invitation,
             membership,
@@ -257,9 +270,46 @@ describe('acceptNewWorkspaceInvitation', () => {
             session,
         });
         expect(WorkspaceMember.create).toHaveBeenCalledOnce();
-        expect(invitation.save).toHaveBeenCalledWith({ session });
+        expect(WorkspaceInvitation.findOneAndUpdate).toHaveBeenCalledWith(
+            {
+                _id: invitation._id,
+                tokenHash: expect.any(String),
+                status: WORKSPACE_INVITATION_STATUS.PENDING,
+                expiresAt: { $gt: now },
+            },
+            {
+                $set: {
+                    status: WORKSPACE_INVITATION_STATUS.ACCEPTED,
+                    acceptedBy: user._id,
+                    acceptedAt: now,
+                },
+            },
+            {
+                returnDocument: 'after',
+                runValidators: true,
+                session,
+            },
+        );
         expect(createAuditLog).toHaveBeenCalledOnce();
+        expect(result.invitation).toBe(acceptedInvitation);
         expect(result.user).toBe(user);
         expect(result.membership).toBe(membership);
+    });
+
+    it('échoue fermé si une acceptation concurrente consomme le lien avant la mutation finale', async () => {
+        setup();
+        WorkspaceInvitation.findOneAndUpdate.mockResolvedValue(null);
+
+        await expect(
+            acceptNewWorkspaceInvitation({
+                token: 'a'.repeat(64),
+                firstName: 'Marie',
+                lastName: 'Martin',
+                password: 'Phrase unique pour workspace 47!',
+                legalAccepted: true,
+            }),
+        ).rejects.toMatchObject({ statusCode: 409 });
+
+        expect(createAuditLog).not.toHaveBeenCalled();
     });
 });
