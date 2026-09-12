@@ -41,7 +41,15 @@ function TooltipContent({
           {...props}
         >
           {children}
-          <BaseTooltip.Arrow className="size-2 rotate-45 bg-foreground" />
+          <BaseTooltip.Arrow
+            className={cn(
+              'absolute size-2 rotate-45 bg-foreground',
+              'data-[side=top]:-bottom-1 data-[side=top]:left-1/2! data-[side=top]:-translate-x-1/2',
+              'data-[side=bottom]:-top-1 data-[side=bottom]:left-1/2! data-[side=bottom]:-translate-x-1/2',
+              'data-[side=left]:-right-1 data-[side=left]:top-1/2! data-[side=left]:-translate-y-1/2',
+              'data-[side=right]:-left-1 data-[side=right]:top-1/2! data-[side=right]:-translate-y-1/2',
+            )}
+          />
         </BaseTooltip.Popup>
       </BaseTooltip.Positioner>
     </BaseTooltip.Portal>
