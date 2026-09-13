@@ -92,7 +92,9 @@ function PlatformRetentionExecutionsTable({
   executions,
   loading,
   onPageChange,
+  onPageSizeChange,
   page,
+  pageSize,
   pagination,
 }) {
   const hasExecutions = Array.isArray(executions) && executions.length > 0;
@@ -109,15 +111,19 @@ function PlatformRetentionExecutionsTable({
         </div>
       ) : (
         <DataTable
+          caption="Historique des exécutions de rétention"
           columns={columns}
           data={executions}
           getRowKey={(execution) => execution.id}
         />
       )}
       <DataPagination
+        ariaLabel="Pagination de l’historique des exécutions de rétention"
         disabled={loading}
         onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
         page={page}
+        pageSize={pageSize}
         pagination={pagination}
       />
     </div>
