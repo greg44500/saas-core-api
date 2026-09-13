@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { DEFAULT_DATA_PAGE_SIZE } from '@/components/data-display/data-pagination-config';
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,17 +14,19 @@ import { dateInputToIsoBoundary } from '@/features/audit-log/lib/audit-log-prese
 import {
   isValidDateInput,
   parsePage,
+  parsePageSize,
   readFilters,
   writeSearchParams,
 } from '@/features/audit-log/lib/audit-log-query-state';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = DEFAULT_DATA_PAGE_SIZE;
 
 function WorkspaceAuditLogPage() {
   const { workspace } = useWorkspaceContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const page = parsePage(searchParams.get('page'));
+  const pageSize = parsePageSize(searchParams.get('limit'));
   const metadataQuery = useGetWorkspaceAuditMetadataQuery(workspace.id);
   const auditMetadata = metadataQuery.data;
   const filters = useMemo(
@@ -35,7 +38,7 @@ function WorkspaceAuditLogPage() {
     {
       workspaceId: workspace.id,
       page,
-      limit: PAGE_SIZE,
+      limit: pageSize,
       action: filters.action || undefined,
       entityType: filters.entityType || undefined,
       status: filters.status || undefined,
@@ -54,20 +57,27 @@ function WorkspaceAuditLogPage() {
 
   useEffect(() => {
     if (pagination?.totalPages > 0 && page > pagination.totalPages) {
-      setSearchParams(writeSearchParams(filters, pagination.totalPages), { replace: true });
+      setSearchParams(
+        writeSearchParams(filters, pagination.totalPages, pageSize),
+        { replace: true },
+      );
     }
-  }, [filters, page, pagination?.totalPages, setSearchParams]);
+  }, [filters, page, pageSize, pagination?.totalPages, setSearchParams]);
 
   function applyFilters(nextFilters) {
-    setSearchParams(writeSearchParams(nextFilters, 1));
+    setSearchParams(writeSearchParams(nextFilters, 1, pageSize));
   }
 
   function resetFilters() {
-    setSearchParams(writeSearchParams(EMPTY_FILTERS, 1));
+    setSearchParams(writeSearchParams(EMPTY_FILTERS, 1, pageSize));
   }
 
   function changePage(nextPage) {
-    setSearchParams(writeSearchParams(filters, nextPage));
+    setSearchParams(writeSearchParams(filters, nextPage, pageSize));
+  }
+
+  function changePageSize(nextPageSize) {
+    setSearchParams(writeSearchParams(filters, 1, nextPageSize));
   }
 
   function refetchAuditData() {
@@ -142,17 +152,14 @@ function WorkspaceAuditLogPage() {
 
         <div className="px-5 pb-5">
           <DataPagination
+            ariaLabel="Pagination de l’historique d’activité du workspace"
             className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between"
             disabled={isFetching}
             onPageChange={changePage}
+            onPageSizeChange={changePageSize}
             page={page}
+            pageSize={pageSize}
             pagination={pagination}
-            summary={pagination ? (
-              <>
-                Page {pagination.page} sur {pagination.totalPages} · {pagination.total} événement
-                {pagination.total === 1 ? '' : 's'}
-              </>
-            ) : undefined}
           />
         </div>
       </section>
