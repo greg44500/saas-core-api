@@ -39,7 +39,7 @@ function ConfirmationDialog({
     <DialogRoot
       disablePointerDismissal
       onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
+        if (!nextOpen && !pending) {
           onCancel();
         }
       }}
