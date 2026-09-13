@@ -78,9 +78,10 @@ describe('WorkspaceFilesPage', () => {
     mocks.useListWorkspaceFilesQuery.mockReturnValue({
       data: {
         files: [file],
-        pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+        pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
       },
       error: undefined,
+      isFetching: false,
       isLoading: false,
       refetch: vi.fn(),
     });
@@ -109,7 +110,7 @@ describe('WorkspaceFilesPage', () => {
     expect(mocks.useListWorkspaceFilesQuery).toHaveBeenCalledWith({
       workspaceId: 'workspace-1',
       page: 1,
-      limit: 20,
+      limit: 10,
     });
     expect(screen.getByRole('heading', { name: 'Fichiers' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'À propos des fichiers' })).toBeInTheDocument();
@@ -129,12 +130,16 @@ describe('WorkspaceFilesPage', () => {
     expect(
       screen.getByRole('button', { name: 'Télécharger contrat.pdf' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: 'Pagination des fichiers du workspace' }),
+    ).toBeInTheDocument();
   });
 
   it('conserve le shell et affiche un skeleton de tableau pendant le chargement', () => {
     mocks.useListWorkspaceFilesQuery.mockReturnValue({
       data: undefined,
       error: undefined,
+      isFetching: true,
       isLoading: true,
       refetch: vi.fn(),
     });
@@ -157,7 +162,7 @@ describe('WorkspaceFilesPage', () => {
     expect(mocks.useListWorkspaceFilesQuery).toHaveBeenLastCalledWith({
       workspaceId: 'workspace-1',
       page: 1,
-      limit: 20,
+      limit: 10,
       category: 'document',
     });
   });
@@ -175,7 +180,7 @@ describe('WorkspaceFilesPage', () => {
       expect(mocks.useListWorkspaceFilesQuery).toHaveBeenLastCalledWith({
         workspaceId: 'workspace-1',
         page: 1,
-        limit: 20,
+        limit: 10,
         search: 'contrat',
       });
     });
@@ -271,9 +276,10 @@ describe('WorkspaceFilesPage', () => {
     mocks.useListWorkspaceFilesQuery.mockReturnValue({
       data: {
         files: [file],
-        pagination: { page: 1, limit: 20, total: 25, totalPages: 2 },
+        pagination: { page: 1, limit: 10, total: 25, totalPages: 3 },
       },
       error: undefined,
+      isFetching: false,
       isLoading: false,
       refetch: vi.fn(),
     });
@@ -284,6 +290,25 @@ describe('WorkspaceFilesPage', () => {
     expect(mocks.useListWorkspaceFilesQuery).toHaveBeenLastCalledWith({
       workspaceId: 'workspace-1',
       page: 2,
+      limit: 10,
+    });
+  });
+
+  it('change la taille de page côté serveur et revient à la première page', async () => {
+    const user = userEvent.setup();
+
+    renderPage();
+    const trigger = screen.getByRole('combobox', { name: 'Nombre de lignes par page' });
+    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(
+      DOMRect.fromRect({ x: 24, y: 24, width: 160, height: 36 }),
+    );
+
+    await user.click(trigger);
+    await user.click(await screen.findByRole('option', { name: '20' }));
+
+    expect(mocks.useListWorkspaceFilesQuery).toHaveBeenLastCalledWith({
+      workspaceId: 'workspace-1',
+      page: 1,
       limit: 20,
     });
   });
@@ -325,9 +350,10 @@ describe('WorkspaceFilesPage', () => {
     mocks.useListWorkspaceFilesQuery.mockReturnValue({
       data: {
         files: [],
-        pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
       },
       error: undefined,
+      isFetching: false,
       isLoading: false,
       refetch: vi.fn(),
     });
@@ -345,6 +371,7 @@ describe('WorkspaceFilesPage', () => {
     mocks.useListWorkspaceFilesQuery.mockReturnValue({
       data: undefined,
       error: { status: 500 },
+      isFetching: false,
       isLoading: false,
       refetch,
     });
