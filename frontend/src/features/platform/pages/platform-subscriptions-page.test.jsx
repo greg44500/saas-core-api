@@ -67,6 +67,11 @@ function resolvedMutation(mock) {
   return [mock, { isLoading: false }];
 }
 
+async function chooseSelectOption(user, scope, label, optionName) {
+  await user.click(scope.getByRole('combobox', { name: label }));
+  await user.click(screen.getByRole('option', { name: optionName }));
+}
+
 function renderPage() {
   return render(
     <ToastProvider>
@@ -142,8 +147,9 @@ describe('PlatformSubscriptionsPage', () => {
     renderPage();
 
     await user.click(screen.getByRole('button', { name: 'Accorder un trial' }));
-    await user.selectOptions(screen.getByLabelText('Périodicité'), 'yearly');
-    await user.click(screen.getByRole('button', { name: 'Accorder le trial' }));
+    const trialDrawer = screen.getByRole('dialog', { name: 'Accorder un trial' });
+    await chooseSelectOption(user, within(trialDrawer), 'Périodicité', 'Annuelle');
+    await user.click(within(trialDrawer).getByRole('button', { name: 'Accorder le trial' }));
 
     expect(mocks.grantTrial).toHaveBeenCalledWith({
       workspaceId: subscription.workspace.id,
@@ -162,7 +168,7 @@ describe('PlatformSubscriptionsPage', () => {
     await user.click(within(detailsDrawer).getByRole('button', { name: 'Modifier' }));
 
     const editDrawer = screen.getByRole('dialog', { name: 'Modifier la souscription' });
-    await user.selectOptions(within(editDrawer).getByLabelText('Type de remise'), 'percentage');
+    await chooseSelectOption(user, within(editDrawer), 'Type de remise', 'Pourcentage');
     await user.clear(within(editDrawer).getByLabelText('Valeur de la remise'));
     await user.type(within(editDrawer).getByLabelText('Valeur de la remise'), '15');
     await user.type(within(editDrawer).getByLabelText('Motif de la remise'), 'Offre lancement');
@@ -194,7 +200,7 @@ describe('PlatformSubscriptionsPage', () => {
     await user.click(within(detailsDrawer).getByRole('button', { name: 'Annuler' }));
 
     const confirmation = screen.getByRole('dialog', { name: 'Annuler la souscription' });
-    await user.selectOptions(within(confirmation).getByLabelText('Prise d’effet'), 'immediate');
+    await chooseSelectOption(user, within(confirmation), 'Prise d’effet', 'Immédiate');
     await user.type(within(confirmation).getByLabelText('Motif'), 'Demande commerciale');
     await user.click(within(confirmation).getByRole('button', { name: 'Confirmer' }));
 
