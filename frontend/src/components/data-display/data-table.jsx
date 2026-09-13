@@ -19,6 +19,10 @@ function resolveClassName(className, row, rowIndex) {
  * `aria-labelledby`. Le caption reste visuellement masqué par défaut afin de
  * ne pas imposer un doublon de titre dans les layouts existants.
  *
+ * `emptyContent` ne porte aucune règle métier : il fournit seulement une ligne
+ * unique couvrant les colonnes pour éviter les tableaux visuellement vides.
+ * La feature conserve la responsabilité du message affiché.
+ *
  * @param {object} props
  * @param {Array<object>} props.columns
  * @param {Array<object>} props.data
@@ -27,6 +31,8 @@ function resolveClassName(className, row, rowIndex) {
  * @param {boolean} [props.scrollable]
  * @param {string} [props.caption]
  * @param {string} [props.captionClassName]
+ * @param {import('react').ReactNode} [props.emptyContent]
+ * @param {string} [props.emptyCellClassName]
  * @param {string} [props.tableClassName]
  * @param {string} [props.headerClassName]
  * @param {string | ((row: object, rowIndex: number) => string)} [props.rowClassName]
@@ -41,6 +47,8 @@ function DataTable({
   scrollable = true,
   caption,
   captionClassName = 'sr-only',
+  emptyContent = null,
+  emptyCellClassName = 'text-muted-foreground',
   tableClassName = '',
   headerClassName = 'bg-muted/50 text-muted-foreground',
   rowClassName = '',
@@ -53,6 +61,7 @@ function DataTable({
   const bodyCellClassName = density === 'compact'
     ? DATA_TABLE_STYLES.compactBodyCell
     : DATA_TABLE_STYLES.bodyCell;
+  const hasData = data.length > 0;
 
   return (
     <div className={scrollable ? 'overflow-x-auto' : 'overflow-x-hidden'}>
@@ -76,6 +85,16 @@ function DataTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
+          {!hasData && emptyContent !== null && (
+            <tr>
+              <td
+                className={`${bodyCellClassName} ${emptyCellClassName}`.trim()}
+                colSpan={columns.length}
+              >
+                {emptyContent}
+              </td>
+            </tr>
+          )}
           {data.map((row, rowIndex) => (
             <tr
               className={resolveClassName(rowClassName, row, rowIndex)}
