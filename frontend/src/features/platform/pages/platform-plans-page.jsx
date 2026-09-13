@@ -22,8 +22,7 @@ import {
   formatPlatformPlanPrice,
   formatPlatformPlanStatus,
 } from '@/features/platform/lib/platform-plan-formatters';
-
-const PAGE_SIZE = 20;
+import { useDataPagination } from '@/hooks/use-data-pagination';
 
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
@@ -31,14 +30,19 @@ function getApiMessage(error, fallback) {
 
 function PlatformPlansPage() {
   const { toast } = useToast();
-  const [page, setPage] = useState(1);
+  const {
+    page,
+    pageSize,
+    setPage,
+    setPageSize,
+  } = useDataPagination();
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [formState, setFormState] = useState(null);
   const [formError, setFormError] = useState(null);
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [archiveError, setArchiveError] = useState(null);
 
-  const plansQuery = useListPlatformPlansQuery({ page, limit: PAGE_SIZE });
+  const plansQuery = useListPlatformPlansQuery({ page, limit: pageSize });
   const capabilitiesQuery = useListPlatformPlanCapabilitiesQuery();
   const [createPlan, createState] = useCreatePlatformPlanMutation();
   const [updatePlan, updateState] = useUpdatePlatformPlanMutation();
@@ -232,14 +236,22 @@ function PlatformPlansPage() {
         {plans.length === 0 ? (
           <p className="p-5 text-sm text-muted-foreground">Aucun plan.</p>
         ) : (
-          <DataTable columns={columns} data={plans} getRowKey={(plan) => plan.id} />
+          <DataTable
+            caption="Catalogue administratif des plans"
+            columns={columns}
+            data={plans}
+            getRowKey={(plan) => plan.id}
+          />
         )}
 
         <div className="px-5 pb-5">
           <DataPagination
+            ariaLabel="Pagination des plans"
             disabled={plansQuery.isFetching}
             onPageChange={setPage}
+            onPageSizeChange={setPageSize}
             page={page}
+            pageSize={pageSize}
             pagination={plansQuery.data?.pagination}
           />
         </div>
