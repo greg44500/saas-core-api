@@ -5,9 +5,9 @@ import { z } from 'zod';
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { DataTableSkeleton } from '@/components/data-display/data-table-skeleton';
-import { SelectField } from '@/components/forms/select-field';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
+import { SelectField } from '@/components/shared/select-field';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { useGetCurrentUserQuery } from '@/features/auth/api/auth-api';
@@ -382,12 +382,12 @@ function PlatformTeamMembersSection() {
             <div className="mt-4">
               <SelectField
                 id="platform-team-member-role"
-                label="Nouveau rôle"
-                onChange={(event) => setSelectedRoleId(event.target.value)}
-                options={pendingAssignableRoles.map((role) => ({
+                items={pendingAssignableRoles.map((role) => ({
                   label: role.name,
                   value: role.id,
                 }))}
+                label="Nouveau rôle"
+                onValueChange={setSelectedRoleId}
                 placeholder="Choisissez un rôle"
                 value={selectedRoleId}
               />

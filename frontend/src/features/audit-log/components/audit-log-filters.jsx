@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 
 import { DatePicker } from '@/components/forms/date-picker';
+import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
 
-const controlClassName =
-  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+const ALL_FILTER_VALUE = '__all__';
 
 const EMPTY_FILTERS = Object.freeze({
   action: '',
@@ -13,6 +13,17 @@ const EMPTY_FILTERS = Object.freeze({
   from: '',
   to: '',
 });
+
+function toFilterItems(items, allLabel) {
+  return [
+    { value: ALL_FILTER_VALUE, label: allLabel },
+    ...items,
+  ];
+}
+
+function fromSelectValue(value) {
+  return value === ALL_FILTER_VALUE ? '' : value;
+}
 
 function AuditLogFilters({
   filters,
@@ -57,50 +68,32 @@ function AuditLogFilters({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <label className="space-y-1.5 text-sm">
-          <span className="font-medium">Action</span>
-          <select
-            className={controlClassName}
-            disabled={pending}
-            onChange={(event) => updateField('action', event.target.value)}
-            value={draft.action}
-          >
-            <option value="">Toutes</option>
-            {actions.map(({ value, label }) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          disabled={pending}
+          id="audit-action"
+          items={toFilterItems(actions, 'Toutes')}
+          label="Action"
+          onValueChange={(value) => updateField('action', fromSelectValue(value))}
+          value={draft.action || ALL_FILTER_VALUE}
+        />
 
-        <label className="space-y-1.5 text-sm">
-          <span className="font-medium">Ressource</span>
-          <select
-            className={controlClassName}
-            disabled={pending}
-            onChange={(event) => updateField('entityType', event.target.value)}
-            value={draft.entityType}
-          >
-            <option value="">Toutes</option>
-            {entityTypes.map(({ value, label }) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          disabled={pending}
+          id="audit-entity-type"
+          items={toFilterItems(entityTypes, 'Toutes')}
+          label="Ressource"
+          onValueChange={(value) => updateField('entityType', fromSelectValue(value))}
+          value={draft.entityType || ALL_FILTER_VALUE}
+        />
 
-        <label className="space-y-1.5 text-sm">
-          <span className="font-medium">Statut</span>
-          <select
-            className={controlClassName}
-            disabled={pending}
-            onChange={(event) => updateField('status', event.target.value)}
-            value={draft.status}
-          >
-            <option value="">Tous</option>
-            {statuses.map(({ value, label }) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          disabled={pending}
+          id="audit-status"
+          items={toFilterItems(statuses, 'Tous')}
+          label="Statut"
+          onValueChange={(value) => updateField('status', fromSelectValue(value))}
+          value={draft.status || ALL_FILTER_VALUE}
+        />
 
         <div className="space-y-1.5 text-sm">
           <label className="font-medium" htmlFor="audit-from">Du</label>
@@ -139,4 +132,4 @@ function AuditLogFilters({
   );
 }
 
-export { AuditLogFilters, EMPTY_FILTERS };
+export { ALL_FILTER_VALUE, AuditLogFilters, EMPTY_FILTERS };

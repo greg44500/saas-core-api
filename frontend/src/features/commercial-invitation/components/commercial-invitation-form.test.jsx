@@ -39,9 +39,7 @@ describe('CommercialInvitationForm', () => {
       />,
     );
 
-    expect(
-      screen.queryByRole('option', { name: /Premium public/ }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Premium public/)).not.toBeInTheDocument();
 
     await user.type(
       screen.getByLabelText('Email du bénéficiaire'),
@@ -51,10 +49,8 @@ describe('CommercialInvitationForm', () => {
       screen.getByLabelText('Nom du premier workspace'),
       'Beta Workspace',
     );
-    await user.selectOptions(
-      screen.getByLabelText('Offre privée'),
-      privateFreePlan.id,
-    );
+    await user.click(screen.getByRole('combobox', { name: 'Offre privée' }));
+    await user.click(screen.getByRole('option', { name: /Découverte privée/ }));
     await user.type(
       screen.getByLabelText('Motif administratif'),
       'Programme bêta',

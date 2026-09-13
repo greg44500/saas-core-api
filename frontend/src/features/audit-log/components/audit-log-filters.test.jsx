@@ -18,6 +18,11 @@ const metadata = {
   ],
 };
 
+async function chooseOption(user, label, optionName) {
+  await user.click(screen.getByRole('combobox', { name: label }));
+  await user.click(screen.getByRole('option', { name: optionName }));
+}
+
 describe('AuditLogFilters', () => {
   afterEach(() => {
     cleanup();
@@ -36,8 +41,8 @@ describe('AuditLogFilters', () => {
       />,
     );
 
-    await user.selectOptions(screen.getByLabelText('Action'), 'FILE_DELETED');
-    await user.selectOptions(screen.getByLabelText('Statut'), 'failed');
+    await chooseOption(user, 'Action', 'Fichier supprimé');
+    await chooseOption(user, 'Statut', 'Échouée');
     await user.click(screen.getByRole('button', { name: 'Appliquer les filtres' }));
 
     expect(onApply).toHaveBeenCalledWith(
@@ -61,14 +66,32 @@ describe('AuditLogFilters', () => {
       />,
     );
 
-    const entitlementOption = screen.getByRole('option', { name: 'Dérogation' });
-    expect(entitlementOption).toHaveValue('EntitlementOverride');
-
-    await user.selectOptions(screen.getByLabelText('Ressource'), 'EntitlementOverride');
+    await chooseOption(user, 'Ressource', 'Dérogation');
     await user.click(screen.getByRole('button', { name: 'Appliquer les filtres' }));
 
     expect(onApply).toHaveBeenCalledWith(
       expect.objectContaining({ entityType: 'EntitlementOverride' }),
+    );
+  });
+
+  it('retraduit la valeur Toutes vers un filtre vide pour le contrat de requête', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    render(
+      <AuditLogFilters
+        filters={{ ...EMPTY_FILTERS, status: 'failed' }}
+        metadata={metadata}
+        onApply={onApply}
+        onReset={vi.fn()}
+      />,
+    );
+
+    await chooseOption(user, 'Statut', 'Tous');
+    await user.click(screen.getByRole('button', { name: 'Appliquer les filtres' }));
+
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({ status: '' }),
     );
   });
 

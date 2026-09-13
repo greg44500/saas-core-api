@@ -1,6 +1,13 @@
 import { FeatureToggle } from '@/components/shared/feature-toggle';
+import { SelectField } from '@/components/shared/select-field';
 import { SmoothCollapse } from '@/components/shared/smooth-collapse';
 import { isByteMetric } from '@/features/platform/lib/platform-plan-limit-utils';
+
+const LIMIT_MODE_ITEMS = Object.freeze([
+  { value: 'none', label: 'Aucune' },
+  { value: 'limited', label: 'Plafond' },
+  { value: 'unlimited', label: 'Illimité' },
+]);
 
 function PlatformPlanLimitControl({
   disabled = false,
@@ -24,27 +31,16 @@ function PlatformPlanLimitControl({
         )}
       </div>
 
-      <div className="space-y-1">
-        <label
-          className="text-xs text-muted-foreground"
-          htmlFor={`platform-plan-limit-mode-${metricKey}`}
-        >
-          Mode
-        </label>
-        <select
-          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={disabled}
-          id={`platform-plan-limit-mode-${metricKey}`}
-          onChange={(event) => onLimitChange(metricKey, {
-            mode: event.target.value,
-          })}
-          value={limit.mode}
-        >
-          <option value="none">Aucune</option>
-          <option value="limited">Plafond</option>
-          <option value="unlimited">Illimité</option>
-        </select>
-      </div>
+      <SelectField
+        className="space-y-1"
+        disabled={disabled}
+        id={`platform-plan-limit-mode-${metricKey}`}
+        items={LIMIT_MODE_ITEMS}
+        label="Mode"
+        labelClassName="text-xs font-normal text-muted-foreground"
+        onValueChange={(mode) => onLimitChange(metricKey, { mode })}
+        value={limit.mode}
+      />
 
       {limit.mode === 'limited' && (
         <div className="space-y-1">

@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 
 import { FormField } from '@/components/forms/form-field';
-import { SelectField } from '@/components/forms/select-field';
+import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,6 +25,7 @@ function CommercialInvitationForm({
 }) {
   const eligiblePlans = plans.filter(isEligibleCommercialInvitationPlan);
   const {
+    control,
     formState: { errors },
     handleSubmit,
     register,
@@ -95,16 +96,27 @@ function CommercialInvitationForm({
         />
       </FormField>
 
-      <SelectField
-        error={errors.planId?.message}
-        hint="Seuls les Plans privés compatibles avec D-020 sont proposés."
-        id="commercial-invitation-plan"
-        label="Offre privée"
-        options={eligiblePlans.map((plan) => ({
-          value: plan.id,
-          label: getCommercialInvitationPlanLabel(plan),
-        }))}
-        {...register('planId')}
+      <Controller
+        control={control}
+        name="planId"
+        render={({ field }) => (
+          <SelectField
+            error={errors.planId?.message}
+            hint="Seuls les Plans privés compatibles avec D-020 sont proposés."
+            id="commercial-invitation-plan"
+            items={eligiblePlans.map((plan) => ({
+              value: plan.id,
+              label: getCommercialInvitationPlanLabel(plan),
+            }))}
+            label="Offre privée"
+            name={field.name}
+            onBlur={field.onBlur}
+            onValueChange={field.onChange}
+            placeholder="Sélectionner une offre privée"
+            triggerRef={field.ref}
+            value={field.value}
+          />
+        )}
       />
 
       {selectedPlan && (
@@ -121,13 +133,23 @@ function CommercialInvitationForm({
         </div>
       )}
 
-      <SelectField
-        disabled={!selectedPlan}
-        error={errors.billingInterval?.message}
-        id="commercial-invitation-billing-interval"
-        label="Périodicité de référence"
-        options={billingOptions}
-        {...register('billingInterval')}
+      <Controller
+        control={control}
+        name="billingInterval"
+        render={({ field }) => (
+          <SelectField
+            disabled={!selectedPlan}
+            error={errors.billingInterval?.message}
+            id="commercial-invitation-billing-interval"
+            items={billingOptions}
+            label="Périodicité de référence"
+            name={field.name}
+            onBlur={field.onBlur}
+            onValueChange={field.onChange}
+            triggerRef={field.ref}
+            value={field.value}
+          />
+        )}
       />
 
       <FormField

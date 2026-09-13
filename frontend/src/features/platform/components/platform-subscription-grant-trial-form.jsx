@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react';
 
+import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
+
+const BILLING_INTERVAL_ITEMS = Object.freeze([
+  { value: 'monthly', label: 'Mensuelle' },
+  { value: 'yearly', label: 'Annuelle' },
+]);
 
 function PlatformSubscriptionGrantTrialForm({
   onCancel,
@@ -27,48 +33,40 @@ function PlatformSubscriptionGrantTrialForm({
 
   return (
     <form className="space-y-5" onSubmit={submit}>
-      <div className="space-y-2">
-        <label className="text-sm font-medium" htmlFor="trial-workspace">Workspace</label>
-        <select
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          id="trial-workspace"
-          onChange={(event) => setWorkspaceId(event.target.value)}
-          required
-          value={workspaceId}
-        >
-          {workspaces.map((workspace) => (
-            <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
-          ))}
-        </select>
-      </div>
+      <SelectField
+        disabled={pending || workspaces.length === 0}
+        id="trial-workspace"
+        items={workspaces.map((workspace) => ({
+          value: workspace.id,
+          label: workspace.name,
+        }))}
+        label="Workspace"
+        onValueChange={setWorkspaceId}
+        placeholder="Sélectionner un workspace"
+        value={workspaceId}
+      />
 
-      <div className="space-y-2">
-        <label className="text-sm font-medium" htmlFor="trial-plan">Plan</label>
-        <select
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          id="trial-plan"
-          onChange={(event) => setPlanId(event.target.value)}
-          required
-          value={planId}
-        >
-          {eligiblePlans.map((plan) => (
-            <option key={plan.id} value={plan.id}>{plan.name}</option>
-          ))}
-        </select>
-      </div>
+      <SelectField
+        disabled={pending || eligiblePlans.length === 0}
+        id="trial-plan"
+        items={eligiblePlans.map((plan) => ({
+          value: plan.id,
+          label: plan.name,
+        }))}
+        label="Plan"
+        onValueChange={setPlanId}
+        placeholder="Sélectionner un plan"
+        value={planId}
+      />
 
-      <div className="space-y-2">
-        <label className="text-sm font-medium" htmlFor="trial-billing">Périodicité</label>
-        <select
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          id="trial-billing"
-          onChange={(event) => setBillingInterval(event.target.value)}
-          value={billingInterval}
-        >
-          <option value="monthly">Mensuelle</option>
-          <option value="yearly">Annuelle</option>
-        </select>
-      </div>
+      <SelectField
+        disabled={pending}
+        id="trial-billing"
+        items={BILLING_INTERVAL_ITEMS}
+        label="Périodicité"
+        onValueChange={setBillingInterval}
+        value={billingInterval}
+      />
 
       {submitError && <p className="text-sm text-destructive" role="alert">{submitError}</p>}
       {eligiblePlans.length === 0 && (

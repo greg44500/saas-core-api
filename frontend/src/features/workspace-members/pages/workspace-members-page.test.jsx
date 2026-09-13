@@ -74,6 +74,11 @@ function renderPage(permissions) {
   );
 }
 
+async function chooseOption(user, label, optionName) {
+  await user.click(screen.getByRole('combobox', { name: label }));
+  await user.click(screen.getByRole('option', { name: optionName }));
+}
+
 describe('WorkspaceMembersPage', () => {
   beforeEach(() => {
     mocks.useGetCurrentUserQuery.mockReturnValue({
@@ -204,8 +209,7 @@ describe('WorkspaceMembersPage', () => {
     expect(screen.getByRole('heading', { name: 'Inviter un membre' })).toBeInTheDocument();
     expect(screen.getByLabelText('Email du membre')).toBeInTheDocument();
     expect(screen.getByLabelText('Email du membre')).toHaveAttribute('placeholder', 'membre@entreprise.fr');
-    expect(screen.getByLabelText('Rôle du membre')).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: 'Propriétaire' })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Rôle du membre' })).toBeInTheDocument();
   });
 
   it('confirme une invitation envoyée par toast', async () => {
@@ -217,7 +221,7 @@ describe('WorkspaceMembersPage', () => {
     ]);
 
     await user.type(screen.getByLabelText('Email du membre'), 'jane@example.com');
-    await user.selectOptions(screen.getByLabelText('Rôle du membre'), 'role-member');
+    await chooseOption(user, 'Rôle du membre', 'Membre');
     await user.click(screen.getByRole('button', { name: 'Inviter' }));
 
     expect(mocks.createInvitation).toHaveBeenCalledWith({
@@ -275,7 +279,7 @@ describe('WorkspaceMembersPage', () => {
       WORKSPACE_PERMISSION.ROLE_READ,
     ]);
 
-    await user.selectOptions(screen.getByLabelText('Rôle du membre'), 'role-admin');
+    await chooseOption(user, 'Rôle du membre', 'Administrateur');
     await user.click(screen.getByRole('button', { name: 'Voir les permissions détaillées' }));
 
     expect(screen.getByRole('heading', { name: 'Administrateur' })).toBeInTheDocument();
@@ -283,7 +287,8 @@ describe('WorkspaceMembersPage', () => {
     expect(screen.getByText('member:invite')).toBeInTheDocument();
   });
 
-  it('masque un rôle qui déléguerait une permission absente chez l’acteur', () => {
+  it('masque un rôle qui déléguerait une permission absente chez l’acteur', async () => {
+    const user = userEvent.setup();
     mocks.useListWorkspaceRolesQuery.mockReturnValue({
       data: [
         {
@@ -306,6 +311,8 @@ describe('WorkspaceMembersPage', () => {
       WORKSPACE_PERMISSION.ROLE_READ,
     ]);
 
+    const roleSelect = screen.getByRole('combobox', { name: 'Rôle du membre' });
+    await user.click(roleSelect);
     expect(screen.queryByRole('option', { name: 'Rôle trop puissant' })).not.toBeInTheDocument();
   });
 });

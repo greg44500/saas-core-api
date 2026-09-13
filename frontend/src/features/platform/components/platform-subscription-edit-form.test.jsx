@@ -38,6 +38,11 @@ function renderForm(overrides = {}) {
   return { onSubmit };
 }
 
+async function chooseOption(user, label, optionName) {
+  await user.click(screen.getByRole('combobox', { name: label }));
+  await user.click(screen.getByRole('option', { name: optionName }));
+}
+
 describe('PlatformSubscriptionEditForm', () => {
   it('soumet une remise temporaire avec une date technique ISO', async () => {
     const user = userEvent.setup();
@@ -67,7 +72,7 @@ describe('PlatformSubscriptionEditForm', () => {
     const user = userEvent.setup();
     const { onSubmit } = renderForm();
 
-    await user.selectOptions(screen.getByLabelText('Type de remise'), 'none');
+    await chooseOption(user, 'Type de remise', 'Aucune');
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
 
     expect(onSubmit).toHaveBeenCalledWith({
