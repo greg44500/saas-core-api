@@ -7,13 +7,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+const DEFAULT_DATA_PAGE_SIZE = 10;
+const DATA_PAGE_SIZE_OPTIONS = Object.freeze([10, 20, 50, 100]);
+
 /**
  * Pagination partagée pour les listes serveur paginées.
  *
- * La feature reste responsable de persister la taille de page choisie. Le
- * composant ne fait qu'exposer une interaction homogène pour toutes les listes.
+ * La feature reste responsable de persister la page et la taille choisies puis
+ * de les transmettre à RTK Query. Le composant ne gère que l'interaction et la
+ * présentation afin que toutes les listes conservent le même contrat UX.
  */
 function DataPagination({
+  ariaLabel = 'Pagination',
   buttonSize,
   className = 'flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between',
   disabled = false,
@@ -22,13 +27,13 @@ function DataPagination({
   onPageSizeChange = null,
   page,
   pageSize = null,
-  pageSizeOptions = [10, 20, 50, 100],
+  pageSizeOptions = DATA_PAGE_SIZE_OPTIONS,
   pagination,
   previousLabel = 'Précédent',
   summary,
 }) {
   const totalPages = pagination?.totalPages ?? 1;
-  const displayedPage = pagination?.page ?? page;
+  const currentPage = pagination?.page ?? page ?? 1;
   const total = pagination?.total ?? 0;
   const resolvedPageSize = pageSize ?? pagination?.limit ?? null;
   const showNavigation = totalPages > 1;
@@ -41,7 +46,7 @@ function DataPagination({
   if (!showNavigation && !showPageSize) return null;
 
   return (
-    <div className={className}>
+    <nav aria-label={ariaLabel} className={className}>
       <div className="flex flex-wrap items-center gap-3">
         {showPageSize && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -73,7 +78,7 @@ function DataPagination({
         <div className="text-sm text-muted-foreground">
           {summary ?? (
             showNavigation
-              ? `Page ${displayedPage} sur ${totalPages} · ${total} résultat${total > 1 ? 's' : ''}`
+              ? `Page ${currentPage} sur ${totalPages} · ${total} résultat${total > 1 ? 's' : ''}`
               : `${total} résultat${total > 1 ? 's' : ''}`
           )}
         </div>
@@ -82,8 +87,8 @@ function DataPagination({
       {showNavigation && (
         <div className="flex gap-2">
           <Button
-            disabled={disabled || page <= 1}
-            onClick={() => onPageChange(Math.max(1, page - 1))}
+            disabled={disabled || currentPage <= 1}
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             size={buttonSize}
             type="button"
             variant="outline"
@@ -91,8 +96,8 @@ function DataPagination({
             {previousLabel}
           </Button>
           <Button
-            disabled={disabled || page >= totalPages}
-            onClick={() => onPageChange(page + 1)}
+            disabled={disabled || currentPage >= totalPages}
+            onClick={() => onPageChange(currentPage + 1)}
             size={buttonSize}
             type="button"
             variant="outline"
@@ -101,8 +106,12 @@ function DataPagination({
           </Button>
         </div>
       )}
-    </div>
+    </nav>
   );
 }
 
-export { DataPagination };
+export {
+  DATA_PAGE_SIZE_OPTIONS,
+  DEFAULT_DATA_PAGE_SIZE,
+  DataPagination,
+};
