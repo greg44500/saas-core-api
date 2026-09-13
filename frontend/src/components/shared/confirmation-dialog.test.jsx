@@ -77,6 +77,27 @@ describe('ConfirmationDialog', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
+  it('verrouille toutes les actions de fermeture métier pendant pending', () => {
+    const onCancel = vi.fn();
+
+    render(
+      <ConfirmationDialog
+        onCancel={onCancel}
+        onConfirm={vi.fn()}
+        pending
+        pendingLabel="Traitement…"
+        title="Confirmer"
+      />,
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Confirmer' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Annuler' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Traitement…' })).toBeDisabled();
+  });
+
   it('affiche le contenu métier, l’erreur et l’état pending sans les interpréter', () => {
     render(
       <ConfirmationDialog
