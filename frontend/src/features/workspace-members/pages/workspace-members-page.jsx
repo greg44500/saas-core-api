@@ -34,8 +34,7 @@ import {
 import { useListWorkspaceRolesQuery } from '@/features/workspace-roles/api/workspace-roles-api';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
-
-const PAGE_SIZE = 20;
+import { useDataPagination } from '@/hooks/use-data-pagination';
 
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
@@ -45,8 +44,18 @@ function WorkspaceMembersPage() {
   const { workspace, permissions, can } = useWorkspaceContext();
   const { toast } = useToast();
   const { data: currentUser } = useGetCurrentUserQuery();
-  const [memberPage, setMemberPage] = useState(1);
-  const [invitationPage, setInvitationPage] = useState(1);
+  const {
+    page: memberPage,
+    pageSize: memberPageSize,
+    setPage: setMemberPage,
+    setPageSize: setMemberPageSize,
+  } = useDataPagination();
+  const {
+    page: invitationPage,
+    pageSize: invitationPageSize,
+    setPage: setInvitationPage,
+    setPageSize: setInvitationPageSize,
+  } = useDataPagination();
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRoleId, setInviteRoleId] = useState('');
   const [pendingAction, setPendingAction] = useState(null);
@@ -57,7 +66,7 @@ function WorkspaceMembersPage() {
   const membersQuery = useListWorkspaceMembersQuery({
     workspaceId: workspace.id,
     page: memberPage,
-    limit: PAGE_SIZE,
+    limit: memberPageSize,
   });
   const rolesQuery = useListWorkspaceRolesQuery(workspace.id, {
     skip: !can(WORKSPACE_PERMISSION.ROLE_READ),
@@ -66,7 +75,7 @@ function WorkspaceMembersPage() {
     {
       workspaceId: workspace.id,
       page: invitationPage,
-      limit: PAGE_SIZE,
+      limit: invitationPageSize,
     },
     { skip: !can(WORKSPACE_PERMISSION.MEMBER_INVITE) },
   );
@@ -354,15 +363,20 @@ function WorkspaceMembersPage() {
           <h2 className="text-lg font-semibold">Membres actuels</h2>
         </div>
         <DataTable
+          caption="Membres actuels du workspace"
           columns={memberColumns}
           data={membersQuery.data?.members ?? []}
           getRowKey={(member) => member.id}
         />
         <div className="px-5 pb-5">
           <DataPagination
-            page={memberPage}
-            pagination={membersQuery.data?.pagination}
+            ariaLabel="Pagination des membres du workspace"
+            disabled={membersQuery.isFetching}
             onPageChange={setMemberPage}
+            onPageSizeChange={setMemberPageSize}
+            page={memberPage}
+            pageSize={memberPageSize}
+            pagination={membersQuery.data?.pagination}
           />
         </div>
       </section>
@@ -427,9 +441,13 @@ function WorkspaceMembersPage() {
           </div>
           <div className="px-5 pb-5">
             <DataPagination
-              page={invitationPage}
-              pagination={invitationsQuery.data?.pagination}
+              ariaLabel="Pagination des invitations du workspace"
+              disabled={invitationsQuery.isFetching}
               onPageChange={setInvitationPage}
+              onPageSizeChange={setInvitationPageSize}
+              page={invitationPage}
+              pageSize={invitationPageSize}
+              pagination={invitationsQuery.data?.pagination}
             />
           </div>
         </section>
