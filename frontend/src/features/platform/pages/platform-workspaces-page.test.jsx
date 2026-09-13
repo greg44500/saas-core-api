@@ -96,7 +96,7 @@ describe('PlatformWorkspacesPage', () => {
     mocks.useListPlatformWorkspacesQuery.mockReturnValue({
       data: {
         workspaces: [listedWorkspace],
-        pagination: { page: 1, limit: 20, total: 21, totalPages: 2 },
+        pagination: { page: 1, limit: 10, total: 21, totalPages: 3 },
       },
       error: undefined,
       isFetching: false,
@@ -159,12 +159,12 @@ describe('PlatformWorkspacesPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    const table = screen.getByRole('table');
+    const table = screen.getByRole('table', { name: 'Workspaces de la plateforme' });
     expect(within(table).getByText('Workspace Démo')).toBeInTheDocument();
     expect(within(table).getByText('Actif')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Suivant' }));
-    expect(mocks.useListPlatformWorkspacesQuery).toHaveBeenLastCalledWith({ page: 2, limit: 20 });
+    expect(mocks.useListPlatformWorkspacesQuery).toHaveBeenLastCalledWith({ page: 2, limit: 10 });
   });
 
   it('ouvre directement la fiche workspace indiquée dans l’URL', () => {
@@ -179,7 +179,7 @@ describe('PlatformWorkspacesPage', () => {
 
   it('affiche un état vide explicite', () => {
     mocks.useListPlatformWorkspacesQuery.mockReturnValue({
-      data: { workspaces: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } },
+      data: { workspaces: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } },
       error: undefined,
       isFetching: false,
       isLoading: false,
