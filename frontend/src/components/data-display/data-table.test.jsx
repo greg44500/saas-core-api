@@ -37,6 +37,27 @@ describe('DataTable', () => {
     expect(screen.getByText('Actif')).toBeInTheDocument();
   });
 
+  it('centralise une ligne vide sans inventer le message métier', () => {
+    const columns = [
+      { id: 'name', header: 'Nom', cell: (row) => row.name },
+      { id: 'status', header: 'Statut', cell: (row) => row.status },
+    ];
+
+    render(
+      <DataTable
+        caption="Liste vide"
+        columns={columns}
+        data={[]}
+        emptyContent="Aucune entité disponible."
+        getRowKey={(row) => row.id}
+      />,
+    );
+
+    const emptyCell = screen.getByRole('cell', { name: 'Aucune entité disponible.' });
+    expect(emptyCell).toHaveAttribute('colspan', '2');
+    expect(emptyCell).toHaveClass('text-muted-foreground');
+  });
+
   it('propose un mode compact sans scroll horizontal pour les conteneurs étroits', () => {
     const columns = [
       {
