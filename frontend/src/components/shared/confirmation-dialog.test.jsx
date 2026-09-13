@@ -1,15 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 
-afterEach(() => {
-  document.body.style.overflow = '';
-});
-
 describe('ConfirmationDialog', () => {
-  it('ne rend rien lorsque la confirmation est fermée', () => {
-    const { container } = render(
+  it('ne rend pas de modale lorsque la confirmation est fermée', () => {
+    render(
       <ConfirmationDialog
         onCancel={vi.fn()}
         onConfirm={vi.fn()}
@@ -18,10 +14,10 @@ describe('ConfirmationDialog', () => {
       />,
     );
 
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('centralise le focus, Escape, le verrouillage du scroll et le backdrop', () => {
+  it('délègue à Base UI la structure accessible, le focus initial et Escape', () => {
     const onCancel = vi.fn();
 
     render(
@@ -35,15 +31,49 @@ describe('ConfirmationDialog', () => {
     );
 
     const dialog = screen.getByRole('dialog', { name: 'Supprimer ?' });
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]');
 
     expect(dialog).toBeInTheDocument();
-    expect(dialog.parentElement).toHaveClass('backdrop-blur-sm');
+    expect(dialog).toHaveAccessibleDescription('Action irréversible');
+    expect(overlay).toHaveClass('backdrop-blur-sm');
     expect(screen.getByRole('button', { name: 'Annuler' })).toHaveFocus();
-    expect(document.body.style.overflow).toBe('hidden');
 
     fireEvent.keyDown(document, { key: 'Escape' });
 
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('ferme via l’action Annuler sans dupliquer le callback métier', () => {
+    const onCancel = vi.fn();
+
+    render(
+      <ConfirmationDialog
+        onCancel={onCancel}
+        onConfirm={vi.fn()}
+        title="Confirmer"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Annuler' }));
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('transmet la confirmation au callback métier', () => {
+    const onConfirm = vi.fn();
+
+    render(
+      <ConfirmationDialog
+        confirmLabel="Valider"
+        onCancel={vi.fn()}
+        onConfirm={onConfirm}
+        title="Confirmer"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Valider' }));
+
+    expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
   it('affiche le contenu métier, l’erreur et l’état pending sans les interpréter', () => {
@@ -63,6 +93,7 @@ describe('ConfirmationDialog', () => {
 
     expect(screen.getByText('Contexte métier')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Le serveur refuse cette action.');
+    expect(screen.getByRole('button', { name: 'Annuler' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Validation…' })).toBeDisabled();
   });
 });
