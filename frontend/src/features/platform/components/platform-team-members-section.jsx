@@ -33,8 +33,9 @@ import {
   canActorTargetPlatformMember,
   getAssignablePlatformRoles,
 } from '@/features/platform/lib/platform-team-authorization';
+import { useDataPagination } from '@/hooks/use-data-pagination';
 
-const PLATFORM_TEAM_MEMBERS_PAGE_SIZE = 20;
+const PLATFORM_TEAM_MEMBERS_PAGE_SIZE = 10;
 
 const updateMemberRoleSchema = z.strictObject({
   roleId: z
@@ -80,7 +81,12 @@ function getMemberActionTitle(type) {
 
 function PlatformTeamMembersSection() {
   const { toast } = useToast();
-  const [page, setPage] = useState(1);
+  const {
+    page,
+    pageSize,
+    setPage,
+    setPageSize,
+  } = useDataPagination({ initialPageSize: PLATFORM_TEAM_MEMBERS_PAGE_SIZE });
   const [selectedMemberId, setSelectedMemberId] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
   const [pendingActionError, setPendingActionError] = useState(null);
@@ -96,7 +102,7 @@ function PlatformTeamMembersSection() {
 
   const membersQuery = useListPlatformTeamMembersQuery({
     page,
-    limit: PLATFORM_TEAM_MEMBERS_PAGE_SIZE,
+    limit: pageSize,
   });
   const rolesQuery = useListPlatformRolesQuery(
     { page: 1, limit: 100, status: 'active' },
@@ -227,7 +233,7 @@ function PlatformTeamMembersSection() {
   const members = membersQuery.data?.members ?? [];
   const pagination = membersQuery.data?.pagination ?? {
     page,
-    limit: PLATFORM_TEAM_MEMBERS_PAGE_SIZE,
+    limit: pageSize,
     total: members.length,
     totalPages: members.length > 0 ? 1 : 0,
   };
@@ -327,6 +333,7 @@ function PlatformTeamMembersSection() {
     <div className="mt-5">
       <div className="overflow-hidden rounded-lg border border-border">
         <DataTable
+          caption="Membres de l’équipe de la Plateforme"
           columns={columns}
           data={members}
           getRowKey={(member) => member.id}
@@ -334,11 +341,13 @@ function PlatformTeamMembersSection() {
       </div>
 
       <DataPagination
+        ariaLabel="Pagination des membres de l’équipe de la Plateforme"
         disabled={membersQuery.isFetching}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         page={page}
+        pageSize={pageSize}
         pagination={pagination}
-        summary={`${pagination.total} membre${pagination.total > 1 ? 's' : ''}`}
       />
 
       <PlatformTeamMemberDetailsDrawer
