@@ -23,8 +23,7 @@ import {
   formatPlatformUserName,
   formatPlatformUserStatus,
 } from '@/features/platform/lib/platform-user-formatters';
-
-const PAGE_SIZE = 20;
+import { useDataPagination } from '@/hooks/use-data-pagination';
 
 const disableUserSchema = z.strictObject({
   disabledReason: z
@@ -68,13 +67,18 @@ function formatClientUserCount(total) {
 function PlatformUsersPage() {
   const { toast } = useToast();
   const { data: currentUser } = useGetCurrentUserQuery();
-  const [page, setPage] = useState(1);
+  const {
+    page,
+    pageSize,
+    setPage,
+    setPageSize,
+  } = useDataPagination();
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
   const [pendingActionError, setPendingActionError] = useState(null);
   const [disabledReason, setDisabledReason] = useState('');
 
-  const usersQuery = useListPlatformUsersQuery({ page, limit: PAGE_SIZE });
+  const usersQuery = useListPlatformUsersQuery({ page, limit: pageSize });
   const userDetailsQuery = useGetPlatformUserQuery(selectedUserId, {
     skip: !selectedUserId,
   });
@@ -238,6 +242,7 @@ function PlatformUsersPage() {
           <p className="p-5 text-sm text-muted-foreground">Aucun utilisateur client.</p>
         ) : (
           <DataTable
+            caption="Utilisateurs clients"
             columns={userColumns}
             data={users}
             getRowKey={(user) => user.id}
@@ -246,9 +251,12 @@ function PlatformUsersPage() {
 
         <div className="px-5 pb-5">
           <DataPagination
+            ariaLabel="Pagination des utilisateurs clients"
             disabled={usersQuery.isFetching}
             onPageChange={setPage}
+            onPageSizeChange={setPageSize}
             page={page}
+            pageSize={pageSize}
             pagination={usersQuery.data?.pagination}
           />
         </div>
