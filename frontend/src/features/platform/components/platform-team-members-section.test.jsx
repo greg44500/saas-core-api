@@ -160,7 +160,7 @@ function listMembersResult(nextMembers = members) {
       members: nextMembers,
       pagination: {
         page: 1,
-        limit: 20,
+        limit: 10,
         total: nextMembers.length,
         totalPages: nextMembers.length > 0 ? 1 : 0,
       },
@@ -217,9 +217,10 @@ describe('PlatformTeamMembersSection', () => {
 
     expect(mocks.useListPlatformTeamMembersQuery).toHaveBeenCalledWith({
       page: 1,
-      limit: 20,
+      limit: 10,
     });
 
+    expect(screen.getByRole('table', { name: 'Membres de l’équipe de la Plateforme' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Membre' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Qualité' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Rôle' })).toBeInTheDocument();
@@ -235,7 +236,7 @@ describe('PlatformTeamMembersSection', () => {
     expect(screen.getByText('Support technique')).toBeInTheDocument();
     expect(screen.getByText('Suspendu')).toBeInTheDocument();
 
-    const table = screen.getByRole('table');
+    const table = screen.getByRole('table', { name: 'Membres de l’équipe de la Plateforme' });
     expect(
       within(table).getByRole('button', { name: 'Voir Gregory BALLAT' }),
     ).toBeInTheDocument();
