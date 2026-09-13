@@ -5,8 +5,8 @@ import {
   DEFAULT_DATA_PAGE_SIZE,
   parseDataPageSize,
 } from '@/components/data-display/data-pagination-config';
-import { SelectField } from '@/components/forms/select-field';
 import { InfoTooltip } from '@/components/shared/info-tooltip';
+import { SelectField } from '@/components/shared/select-field';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -132,9 +132,9 @@ function PlatformRetentionPage() {
     }
   }, [preview, state?.currentPolicy?.version]);
 
-  function changeTarget(event) {
+  function changeTarget(nextTargetKey) {
     const next = new URLSearchParams(searchParams);
-    next.set('target', event.target.value);
+    next.set('target', nextTargetKey);
     next.set('page', '1');
     setPreview(null);
     setSearchParams(next);
@@ -271,12 +271,12 @@ function PlatformRetentionPage() {
         <div className="max-w-md">
           <SelectField
             id="retention-target"
-            label="Cible de rétention"
-            onChange={changeTarget}
-            options={targets.map(({ target: item }) => ({
+            items={targets.map(({ target: item }) => ({
               label: item.label,
               value: item.key,
             }))}
+            label="Cible de rétention"
+            onValueChange={changeTarget}
             value={targetKey}
           />
         </div>
