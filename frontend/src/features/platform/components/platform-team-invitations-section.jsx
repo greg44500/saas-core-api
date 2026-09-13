@@ -23,8 +23,9 @@ import {
   getInvitationDeliveryTimeLabel,
   getInvitationExpirationPresentation,
 } from '@/features/platform/lib/platform-invitation-time';
+import { useDataPagination } from '@/hooks/use-data-pagination';
 
-const PLATFORM_TEAM_INVITATIONS_PAGE_SIZE = 20;
+const PLATFORM_TEAM_INVITATIONS_PAGE_SIZE = 10;
 
 function formatInvitationRecipient(invitation) {
   return [invitation?.firstName, invitation?.lastName]
@@ -39,7 +40,12 @@ function getApiMessage(error, fallback) {
 
 function PlatformTeamInvitationsSection({ now = new Date() }) {
   const { toast } = useToast();
-  const [page, setPage] = useState(1);
+  const {
+    page,
+    pageSize,
+    setPage,
+    setPageSize,
+  } = useDataPagination({ initialPageSize: PLATFORM_TEAM_INVITATIONS_PAGE_SIZE });
   const [createOpen, setCreateOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [actionError, setActionError] = useState(null);
@@ -57,7 +63,7 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
 
   const invitationsQuery = useListPlatformTeamInvitationsQuery({
     page,
-    limit: PLATFORM_TEAM_INVITATIONS_PAGE_SIZE,
+    limit: pageSize,
   });
   const [resendInvitation, resendState] =
     useResendPlatformTeamInvitationMutation();
@@ -67,7 +73,7 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
   const invitations = invitationsQuery.data?.invitations ?? [];
   const pagination = invitationsQuery.data?.pagination ?? {
     page,
-    limit: PLATFORM_TEAM_INVITATIONS_PAGE_SIZE,
+    limit: pageSize,
     total: invitations.length,
     totalPages: invitations.length > 0 ? 1 : 0,
   };
@@ -276,6 +282,7 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
           <>
             <div className="overflow-hidden rounded-lg border border-border">
               <DataTable
+                caption="Invitations de l’équipe de la Plateforme"
                 columns={columns}
                 data={invitations}
                 density="compact"
@@ -286,11 +293,13 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
             </div>
 
             <DataPagination
+              ariaLabel="Pagination des invitations de l’équipe de la Plateforme"
               disabled={invitationsQuery.isFetching}
               onPageChange={setPage}
+              onPageSizeChange={setPageSize}
               page={page}
+              pageSize={pageSize}
               pagination={pagination}
-              summary={`${pagination.total} invitation${pagination.total > 1 ? 's' : ''}`}
             />
           </>
         )}
