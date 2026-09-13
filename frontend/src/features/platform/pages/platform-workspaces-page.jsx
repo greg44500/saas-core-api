@@ -37,8 +37,8 @@ import {
   formatPlatformWorkspaceDate,
   formatPlatformWorkspaceStatusReason,
 } from '@/features/platform/lib/platform-workspace-formatters';
+import { useDataPagination } from '@/hooks/use-data-pagination';
 
-const PAGE_SIZE = 20;
 const EMPTY_STATUS_REASON = '__none__';
 
 const suspendWorkspaceSchema = z
@@ -66,7 +66,12 @@ function getApiMessage(error, fallback) {
 function PlatformWorkspacesPage() {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [page, setPage] = useState(1);
+  const {
+    page,
+    pageSize,
+    setPage,
+    setPageSize,
+  } = useDataPagination();
   const [pendingAction, setPendingAction] = useState(null);
   const [pendingActionError, setPendingActionError] = useState(null);
   const [statusReason, setStatusReason] = useState('');
@@ -79,7 +84,7 @@ function PlatformWorkspacesPage() {
       PLATFORM_PERMISSION.WORKSPACES_OWNERSHIP_TRANSFER_AUTHORIZE,
     ),
   );
-  const workspacesQuery = useListPlatformWorkspacesQuery({ page, limit: PAGE_SIZE });
+  const workspacesQuery = useListPlatformWorkspacesQuery({ page, limit: pageSize });
   const workspaceDetailsQuery = useGetPlatformWorkspaceQuery(selectedWorkspaceId, {
     skip: !selectedWorkspaceId,
   });
@@ -293,14 +298,22 @@ function PlatformWorkspacesPage() {
         {workspaces.length === 0 ? (
           <p className="p-5 text-sm text-muted-foreground">Aucun workspace.</p>
         ) : (
-          <DataTable columns={columns} data={workspaces} getRowKey={(workspace) => workspace.id} />
+          <DataTable
+            caption="Workspaces de la plateforme"
+            columns={columns}
+            data={workspaces}
+            getRowKey={(workspace) => workspace.id}
+          />
         )}
 
         <div className="px-5 pb-5">
           <DataPagination
+            ariaLabel="Pagination des workspaces de la plateforme"
             disabled={workspacesQuery.isFetching}
             onPageChange={setPage}
+            onPageSizeChange={setPageSize}
             page={page}
+            pageSize={pageSize}
             pagination={workspacesQuery.data?.pagination}
           />
         </div>
