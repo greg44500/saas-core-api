@@ -34,8 +34,7 @@ import {
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
 import { PlatformTablePageSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
-
-const PAGE_SIZE = 20;
+import { useDataPagination } from '@/hooks/use-data-pagination';
 
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
@@ -43,7 +42,12 @@ function getApiMessage(error, fallback) {
 
 function PlatformCommercialInvitationsPage() {
   const { toast } = useToast();
-  const [page, setPage] = useState(1);
+  const {
+    page,
+    pageSize,
+    setPage,
+    setPageSize,
+  } = useDataPagination();
   const [selectedInvitation, setSelectedInvitation] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createError, setCreateError] = useState(null);
@@ -66,7 +70,7 @@ function PlatformCommercialInvitationsPage() {
 
   const invitationsQuery = useListCommercialInvitationsQuery({
     page,
-    limit: PAGE_SIZE,
+    limit: pageSize,
   });
   const offersQuery = useListCommercialInvitationOffersQuery(undefined, {
     skip: !canCreate,
@@ -308,6 +312,7 @@ function PlatformCommercialInvitationsPage() {
           </p>
         ) : (
           <DataTable
+            caption="Historique des propositions commerciales"
             columns={columns}
             data={invitations}
             getRowKey={(invitation) => invitation.id}
@@ -316,9 +321,12 @@ function PlatformCommercialInvitationsPage() {
 
         <div className="px-5 pb-5">
           <DataPagination
+            ariaLabel="Pagination des invitations commerciales"
             disabled={invitationsQuery.isFetching}
             onPageChange={setPage}
+            onPageSizeChange={setPageSize}
             page={page}
+            pageSize={pageSize}
             pagination={invitationsQuery.data?.pagination}
           />
         </div>
