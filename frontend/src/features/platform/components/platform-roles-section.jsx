@@ -26,8 +26,9 @@ import {
   canActorManageTargetRole,
   canGovernCustomPlatformRoles,
 } from '@/features/platform/lib/platform-team-authorization';
+import { useDataPagination } from '@/hooks/use-data-pagination';
 
-const PLATFORM_ROLES_PAGE_SIZE = 20;
+const PLATFORM_ROLES_PAGE_SIZE = 10;
 
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
@@ -35,7 +36,12 @@ function getApiMessage(error, fallback) {
 
 function PlatformRolesSection() {
   const { toast } = useToast();
-  const [page, setPage] = useState(1);
+  const {
+    page,
+    pageSize,
+    setPage,
+    setPageSize,
+  } = useDataPagination({ initialPageSize: PLATFORM_ROLES_PAGE_SIZE });
   const [detailsRoleId, setDetailsRoleId] = useState(null);
   const [formState, setFormState] = useState(null);
   const [archiveRole, setArchiveRole] = useState(null);
@@ -53,7 +59,7 @@ function PlatformRolesSection() {
 
   const rolesQuery = useListPlatformRolesQuery({
     page,
-    limit: PLATFORM_ROLES_PAGE_SIZE,
+    limit: pageSize,
     status: 'all',
   });
   const [archivePlatformRole, archiveState] =
@@ -62,7 +68,7 @@ function PlatformRolesSection() {
   const roles = rolesQuery.data?.roles ?? [];
   const pagination = rolesQuery.data?.pagination ?? {
     page,
-    limit: PLATFORM_ROLES_PAGE_SIZE,
+    limit: pageSize,
     total: roles.length,
     totalPages: roles.length > 0 ? 1 : 0,
   };
@@ -234,6 +240,7 @@ function PlatformRolesSection() {
         <>
           <div className="overflow-hidden rounded-lg border border-border">
             <DataTable
+              caption="Rôles de la Plateforme"
               columns={columns}
               data={roles}
               getRowKey={(role) => role.id}
@@ -243,11 +250,13 @@ function PlatformRolesSection() {
           </div>
 
           <DataPagination
+            ariaLabel="Pagination des rôles de la Plateforme"
             disabled={rolesQuery.isFetching}
             onPageChange={setPage}
+            onPageSizeChange={setPageSize}
             page={page}
+            pageSize={pageSize}
             pagination={pagination}
-            summary={`${pagination.total} rôle${pagination.total > 1 ? 's' : ''}`}
           />
         </>
       )}
