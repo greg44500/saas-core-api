@@ -110,6 +110,9 @@ function AuditLogTable({ auditLogs, metadata, showWorkspace = false }) {
 
   return (
     <DataTable
+      caption={showWorkspace
+        ? 'Journaux d’audit de la Plateforme'
+        : 'Historique d’activité du workspace'}
       columns={columns}
       data={auditLogs}
       getRowKey={(auditLog) => auditLog.id}
