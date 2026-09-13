@@ -82,9 +82,9 @@ describe('PlatformUsersPage', () => {
         users: [listedUser],
         pagination: {
           page: 1,
-          limit: 20,
+          limit: 10,
           total: 21,
-          totalPages: 2,
+          totalPages: 3,
         },
       },
       error: undefined,
@@ -160,15 +160,36 @@ describe('PlatformUsersPage', () => {
       screen.queryByRole('columnheader', { name: 'Rôle plateforme' }),
     ).not.toBeInTheDocument();
 
-    const table = screen.getByRole('table');
+    const table = screen.getByRole('table', { name: 'Utilisateurs clients' });
     expect(
       within(table).getByRole('columnheader', { name: 'Utilisateur' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: 'Pagination des utilisateurs clients' }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Suivant' }));
 
     expect(mocks.useListPlatformUsersQuery).toHaveBeenLastCalledWith({
       page: 2,
+      limit: 10,
+    });
+  });
+
+  it('transmet une nouvelle taille de page au backend et revient à la première page', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const trigger = screen.getByRole('combobox', { name: 'Nombre de lignes par page' });
+    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(
+      DOMRect.fromRect({ x: 24, y: 24, width: 160, height: 36 }),
+    );
+
+    await user.click(trigger);
+    await user.click(await screen.findByRole('option', { name: '20' }));
+
+    expect(mocks.useListPlatformUsersQuery).toHaveBeenLastCalledWith({
+      page: 1,
       limit: 20,
     });
   });
@@ -177,7 +198,7 @@ describe('PlatformUsersPage', () => {
     mocks.useListPlatformUsersQuery.mockReturnValue({
       data: {
         users: [],
-        pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
       },
       error: undefined,
       isFetching: false,
