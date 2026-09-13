@@ -72,7 +72,7 @@ describe('PlatformAuditLogsPage', () => {
         ],
         pagination: {
           page: 1,
-          limit: 20,
+          limit: 10,
           total: 1,
           totalPages: 1,
         },
@@ -89,6 +89,7 @@ describe('PlatformAuditLogsPage', () => {
     renderPage();
 
     expect(screen.getByRole('heading', { name: 'Journaux d’audit' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Journaux d’audit de la Plateforme' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Espace de travail' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'Espace Démo' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'Dérogation révoquée' })).toBeInTheDocument();
@@ -106,13 +107,13 @@ describe('PlatformAuditLogsPage', () => {
 
   it('transmet pagination et filtres URL validés par metadata au endpoint Platform', () => {
     renderPage(
-      '/platform/audit-logs?page=3&action=FILE_DELETED&status=failed&entityType=File&from=2026-09-01&to=2026-09-03',
+      '/platform/audit-logs?page=3&limit=50&action=FILE_DELETED&status=failed&entityType=File&from=2026-09-01&to=2026-09-03',
     );
 
     expect(useListPlatformAuditLogsQueryMock).toHaveBeenCalledWith(
       expect.objectContaining({
         page: 3,
-        limit: 20,
+        limit: 50,
         action: 'FILE_DELETED',
         status: 'failed',
         entityType: 'File',
@@ -127,6 +128,18 @@ describe('PlatformAuditLogsPage', () => {
     expect(Date.parse(query.from)).not.toBeNaN();
     expect(Date.parse(query.to)).not.toBeNaN();
     expect(Date.parse(query.from)).toBeLessThan(Date.parse(query.to));
+  });
+
+  it('utilise la taille de page partagée par défaut sans paramètre URL', () => {
+    renderPage();
+
+    expect(useListPlatformAuditLogsQueryMock).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, limit: 10 }),
+      expect.any(Object),
+    );
+    expect(
+      screen.getByRole('navigation', { name: 'Pagination des journaux d’audit de la Plateforme' }),
+    ).toBeInTheDocument();
   });
 
   it('n’expose aucune valeur technique absente du DTO frontend', () => {
