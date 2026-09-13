@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { DEFAULT_DATA_PAGE_SIZE } from '@/components/data-display/data-pagination-config';
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { Button } from '@/components/ui/button';
 import { AuditLogFilters, EMPTY_FILTERS } from '@/features/audit-log/components/audit-log-filters';
@@ -8,6 +9,7 @@ import { AuditLogTable } from '@/features/audit-log/components/audit-log-table';
 import { dateInputToIsoBoundary } from '@/features/audit-log/lib/audit-log-presentation';
 import {
   parsePage,
+  parsePageSize,
   readFilters,
   writeSearchParams,
 } from '@/features/audit-log/lib/audit-log-query-state';
@@ -17,11 +19,12 @@ import {
 } from '@/features/platform/api/platform-audit-logs-api';
 import { PlatformTablePageSkeleton } from '@/features/platform/components/platform-loading-skeletons';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = DEFAULT_DATA_PAGE_SIZE;
 
 function PlatformAuditLogsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = parsePage(searchParams.get('page'));
+  const pageSize = parsePageSize(searchParams.get('limit'));
   const metadataQuery = useGetPlatformAuditMetadataQuery();
   const auditMetadata = metadataQuery.data;
   const filters = useMemo(
@@ -32,7 +35,7 @@ function PlatformAuditLogsPage() {
   const auditQuery = useListPlatformAuditLogsQuery(
     {
       page,
-      limit: PAGE_SIZE,
+      limit: pageSize,
       action: filters.action || undefined,
       entityType: filters.entityType || undefined,
       status: filters.status || undefined,
@@ -51,20 +54,27 @@ function PlatformAuditLogsPage() {
 
   useEffect(() => {
     if (pagination?.totalPages > 0 && page > pagination.totalPages) {
-      setSearchParams(writeSearchParams(filters, pagination.totalPages), { replace: true });
+      setSearchParams(
+        writeSearchParams(filters, pagination.totalPages, pageSize),
+        { replace: true },
+      );
     }
-  }, [filters, page, pagination?.totalPages, setSearchParams]);
+  }, [filters, page, pageSize, pagination?.totalPages, setSearchParams]);
 
   function applyFilters(nextFilters) {
-    setSearchParams(writeSearchParams(nextFilters, 1));
+    setSearchParams(writeSearchParams(nextFilters, 1, pageSize));
   }
 
   function resetFilters() {
-    setSearchParams(writeSearchParams(EMPTY_FILTERS, 1));
+    setSearchParams(writeSearchParams(EMPTY_FILTERS, 1, pageSize));
   }
 
   function changePage(nextPage) {
-    setSearchParams(writeSearchParams(filters, nextPage));
+    setSearchParams(writeSearchParams(filters, nextPage, pageSize));
+  }
+
+  function changePageSize(nextPageSize) {
+    setSearchParams(writeSearchParams(filters, 1, nextPageSize));
   }
 
   function refetchAuditData() {
@@ -155,17 +165,14 @@ function PlatformAuditLogsPage() {
 
         <div className="px-5 pb-5">
           <DataPagination
+            ariaLabel="Pagination des journaux d’audit de la Plateforme"
             className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between"
             disabled={isFetching}
             onPageChange={changePage}
+            onPageSizeChange={changePageSize}
             page={page}
+            pageSize={pageSize}
             pagination={pagination}
-            summary={pagination ? (
-              <>
-                Page {pagination.page} sur {pagination.totalPages} · {pagination.total} événement
-                {pagination.total === 1 ? '' : 's'}
-              </>
-            ) : undefined}
           />
         </div>
       </section>
