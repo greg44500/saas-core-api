@@ -78,7 +78,7 @@ describe('WorkspaceAuditLogPage', () => {
         ],
         pagination: {
           page: 1,
-          limit: 20,
+          limit: 10,
           total: 1,
           totalPages: 1,
         },
@@ -100,6 +100,7 @@ describe('WorkspaceAuditLogPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Historique d’activité' })).toBeInTheDocument();
     expect(screen.getByText('Acme')).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Historique d’activité du workspace' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'Espace de travail modifié' })).toBeInTheDocument();
     expect(screen.getByText('Jean Dupont')).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'Réussie' })).toBeInTheDocument();
@@ -107,14 +108,14 @@ describe('WorkspaceAuditLogPage', () => {
 
   it('transmet pagination et filtres URL validés par metadata au contrat RTK Query', () => {
     renderPage(
-      '/workspaces/workspace-1/activity?page=2&action=FILE_DELETED&status=failed&entityType=File&from=2026-09-01&to=2026-09-02',
+      '/workspaces/workspace-1/activity?page=2&limit=50&action=FILE_DELETED&status=failed&entityType=File&from=2026-09-01&to=2026-09-02',
     );
 
     expect(useListWorkspaceAuditLogsQueryMock).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId: 'workspace-1',
         page: 2,
-        limit: 20,
+        limit: 50,
         action: 'FILE_DELETED',
         status: 'failed',
         entityType: 'File',
@@ -168,7 +169,7 @@ describe('WorkspaceAuditLogPage', () => {
     useListWorkspaceAuditLogsQueryMock.mockReturnValue({
       data: {
         auditLogs: [],
-        pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
       },
       isError: false,
       isFetching: false,
