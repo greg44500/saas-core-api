@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Upload } from 'lucide-react';
 
+import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
 import { useUploadWorkspaceFileMutation } from '@/features/files/api/files-api';
 import {
@@ -128,24 +129,14 @@ function FileUploadDialog({ onClose, onUploaded, open }) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="workspace-file-category">
-              Catégorie
-            </label>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              disabled={uploadState.isLoading}
-              id="workspace-file-category"
-              onChange={(event) => setCategory(event.target.value)}
-              value={category}
-            >
-              {FILE_UPLOAD_CATEGORY_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <SelectField
+            disabled={uploadState.isLoading}
+            id="workspace-file-category"
+            items={FILE_UPLOAD_CATEGORY_OPTIONS}
+            label="Catégorie"
+            onValueChange={setCategory}
+            value={category}
+          />
 
           {(validationMessage || serverMessage) && (
             <p
