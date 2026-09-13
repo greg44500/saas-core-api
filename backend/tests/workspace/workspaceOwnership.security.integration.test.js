@@ -72,6 +72,10 @@ vi.mock('../../middlewares/enforceWorkspaceAccessMode.js', () => ({
 vi.mock(
     '../../modules/workspace/workspaceOwnership.controller.js',
     () => ({
+        getOwnershipAuthorization: vi.fn((req, res) =>
+            res.status(200).json({
+                status: 'success',
+            })),
         transferOwnership: vi.fn((req, res) =>
             res.status(200).json({
                 status: 'success',
