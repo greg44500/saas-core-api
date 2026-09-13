@@ -1,3 +1,7 @@
+import {
+  DATA_PAGE_SIZE_OPTIONS,
+  DEFAULT_DATA_PAGE_SIZE,
+} from '@/components/data-display/data-pagination-config';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -6,9 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const DEFAULT_DATA_PAGE_SIZE = 10;
-const DATA_PAGE_SIZE_OPTIONS = Object.freeze([10, 20, 50, 100]);
 
 /**
  * Pagination partagée pour les listes serveur paginées.
