@@ -28,8 +28,7 @@ import {
   formatPlatformSubscriptionPrice,
   formatPlatformSubscriptionStatus,
 } from '@/features/platform/lib/platform-subscription-formatters';
-
-const PAGE_SIZE = 20;
+import { useDataPagination } from '@/hooks/use-data-pagination';
 
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
@@ -37,7 +36,12 @@ function getApiMessage(error, fallback) {
 
 function PlatformSubscriptionsPage() {
   const { toast } = useToast();
-  const [page, setPage] = useState(1);
+  const {
+    page,
+    pageSize,
+    setPage,
+    setPageSize,
+  } = useDataPagination();
   const [selectedId, setSelectedId] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editError, setEditError] = useState(null);
@@ -50,7 +54,7 @@ function PlatformSubscriptionsPage() {
   const [resumeTarget, setResumeTarget] = useState(null);
   const [resumeError, setResumeError] = useState(null);
 
-  const listQuery = useListPlatformSubscriptionsQuery({ page, limit: PAGE_SIZE });
+  const listQuery = useListPlatformSubscriptionsQuery({ page, limit: pageSize });
   const detailQuery = useGetPlatformSubscriptionQuery(selectedId, { skip: !selectedId });
   const plansQuery = useListPlatformPlansQuery({ page: 1, limit: 100 });
   const workspacesQuery = useListPlatformWorkspacesQuery({ page: 1, limit: 100 });
@@ -215,14 +219,22 @@ function PlatformSubscriptionsPage() {
         {subscriptions.length === 0 ? (
           <p className="p-5 text-sm text-muted-foreground">Aucune souscription.</p>
         ) : (
-          <DataTable columns={columns} data={subscriptions} getRowKey={(subscription) => subscription.id} />
+          <DataTable
+            caption="Souscriptions Platform"
+            columns={columns}
+            data={subscriptions}
+            getRowKey={(subscription) => subscription.id}
+          />
         )}
 
         <div className="px-5 pb-5">
           <DataPagination
+            ariaLabel="Pagination des souscriptions Platform"
             disabled={listQuery.isFetching}
             onPageChange={setPage}
+            onPageSizeChange={setPageSize}
             page={page}
+            pageSize={pageSize}
             pagination={listQuery.data?.pagination}
           />
         </div>
