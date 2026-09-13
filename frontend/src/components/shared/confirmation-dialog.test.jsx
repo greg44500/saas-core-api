@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
@@ -17,7 +17,7 @@ describe('ConfirmationDialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('délègue à Base UI la structure accessible, le focus initial et Escape', () => {
+  it('délègue à Base UI la structure accessible, le focus initial et Escape', async () => {
     const onCancel = vi.fn();
 
     render(
@@ -32,11 +32,12 @@ describe('ConfirmationDialog', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Supprimer ?' });
     const overlay = document.querySelector('[data-slot="dialog-overlay"]');
+    const cancelButton = screen.getByRole('button', { name: 'Annuler' });
 
     expect(dialog).toBeInTheDocument();
     expect(dialog).toHaveAccessibleDescription('Action irréversible');
     expect(overlay).toHaveClass('backdrop-blur-sm');
-    expect(screen.getByRole('button', { name: 'Annuler' })).toHaveFocus();
+    await waitFor(() => expect(cancelButton).toHaveFocus());
 
     fireEvent.keyDown(document, { key: 'Escape' });
 
