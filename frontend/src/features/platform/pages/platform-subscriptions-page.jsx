@@ -6,6 +6,7 @@ import { DataTable, DataTableActions } from '@/components/data-display/data-tabl
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import { SelectField } from '@/components/shared/select-field';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { useListPlatformPlansQuery } from '@/features/platform/api/platform-plans-api';
@@ -29,6 +30,11 @@ import {
   formatPlatformSubscriptionStatus,
 } from '@/features/platform/lib/platform-subscription-formatters';
 import { useDataPagination } from '@/hooks/use-data-pagination';
+
+const CANCELLATION_MODE_OPTIONS = [
+  { value: 'period_end', label: 'Fin de période' },
+  { value: 'immediate', label: 'Immédiate' },
+];
 
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
@@ -315,13 +321,13 @@ function PlatformSubscriptionsPage() {
         title="Annuler la souscription"
       >
         <div className="mt-4 space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="cancel-mode">Prise d’effet</label>
-            <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" id="cancel-mode" onChange={(event) => setCancelMode(event.target.value)} value={cancelMode}>
-              <option value="period_end">Fin de période</option>
-              <option value="immediate">Immédiate</option>
-            </select>
-          </div>
+          <SelectField
+            id="cancel-mode"
+            items={CANCELLATION_MODE_OPTIONS}
+            label="Prise d’effet"
+            onValueChange={setCancelMode}
+            value={cancelMode}
+          />
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="cancel-reason">Motif</label>
             <textarea className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" id="cancel-reason" maxLength={500} onChange={(event) => setCancelReason(event.target.value)} value={cancelReason} />
