@@ -1,8 +1,17 @@
+import {
+  DEFAULT_DATA_PAGE_SIZE,
+  parseDataPageSize,
+} from '@/components/data-display/data-pagination-config';
+
 function parsePage(value) {
   if (!/^\d+$/.test(value ?? '')) return 1;
 
   const page = Number(value);
   return Number.isSafeInteger(page) && page >= 1 ? page : 1;
+}
+
+function parsePageSize(value) {
+  return parseDataPageSize(value);
 }
 
 function metadataValues(items) {
@@ -53,7 +62,11 @@ function readFilters(searchParams, metadata) {
   };
 }
 
-function writeSearchParams(filters, page = 1) {
+function writeSearchParams(
+  filters,
+  page = 1,
+  pageSize = DEFAULT_DATA_PAGE_SIZE,
+) {
   const next = new URLSearchParams();
 
   Object.entries(filters).forEach(([key, value]) => {
@@ -61,6 +74,10 @@ function writeSearchParams(filters, page = 1) {
   });
 
   if (page > 1) next.set('page', String(page));
+  if (pageSize !== DEFAULT_DATA_PAGE_SIZE) {
+    next.set('limit', String(pageSize));
+  }
+
   return next;
 }
 
@@ -68,6 +85,7 @@ export {
   isValidDateInput,
   metadataValues,
   parsePage,
+  parsePageSize,
   readFilters,
   writeSearchParams,
 };
