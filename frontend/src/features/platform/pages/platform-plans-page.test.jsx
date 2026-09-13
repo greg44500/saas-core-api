@@ -75,7 +75,7 @@ describe('PlatformPlansPage', () => {
     mocks.useListPlatformPlansQuery.mockReturnValue({
       data: {
         plans: [plan],
-        pagination: { page: 1, limit: 20, total: 21, totalPages: 2 },
+        pagination: { page: 1, limit: 10, total: 21, totalPages: 3 },
       },
       error: undefined,
       isFetching: false,
@@ -115,7 +115,7 @@ describe('PlatformPlansPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    const table = screen.getByRole('table');
+    const table = screen.getByRole('table', { name: 'Catalogue administratif des plans' });
     expect(within(table).getByText('Premium')).toBeInTheDocument();
     expect(within(table).getByText('Actif')).toBeInTheDocument();
     expect(within(table).getByText(/79,00\s*€/)).toBeInTheDocument();
@@ -123,12 +123,12 @@ describe('PlatformPlansPage', () => {
     expect(within(table).queryByText('premium')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Suivant' }));
-    expect(mocks.useListPlatformPlansQuery).toHaveBeenLastCalledWith({ page: 2, limit: 20 });
+    expect(mocks.useListPlatformPlansQuery).toHaveBeenLastCalledWith({ page: 2, limit: 10 });
   });
 
   it('affiche un état vide explicite', () => {
     mocks.useListPlatformPlansQuery.mockReturnValue({
-      data: { plans: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } },
+      data: { plans: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } },
       error: undefined,
       isFetching: false,
       isLoading: false,
@@ -224,7 +224,7 @@ describe('PlatformPlansPage', () => {
     mocks.useListPlatformPlansQuery.mockReturnValue({
       data: {
         plans: [{ ...plan, id: 'baseline-id', isBaseline: true, name: 'Découverte' }],
-        pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+        pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
       },
       error: undefined,
       isFetching: false,
