@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 
+import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { useToast } from '@/components/shared/toast-provider';
@@ -15,6 +16,7 @@ import {
 } from '@/features/workspace-roles/api/workspace-roles-api';
 import { RoleFormDrawer } from '@/features/workspace-roles/components/role-form-drawer';
 import { RolePermissionsDrawer } from '@/features/workspace-roles/components/role-permissions-drawer';
+import { useDataPagination } from '@/hooks/use-data-pagination';
 
 function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
@@ -31,6 +33,12 @@ function RoleTypeBadge({ role }) {
 function WorkspaceRolesPage() {
   const { can, permissions, workspace } = useWorkspaceContext();
   const { toast } = useToast();
+  const {
+    page,
+    pageSize,
+    setPage,
+    setPageSize,
+  } = useDataPagination();
   const rolesQuery = useListWorkspaceRolesQuery(workspace.id);
   const [createRole, createState] = useCreateWorkspaceRoleMutation();
   const [updateRole, updateState] = useUpdateWorkspaceRoleMutation();
@@ -44,6 +52,26 @@ function WorkspaceRolesPage() {
 
   const roles = rolesQuery.data ?? [];
   const actorPermissionSet = useMemo(() => new Set(permissions), [permissions]);
+  const totalPages = roles.length > 0 ? Math.ceil(roles.length / pageSize) : 0;
+  const paginatedRoles = roles.slice((page - 1) * pageSize, page * pageSize);
+  const pagination = {
+    page,
+    limit: pageSize,
+    total: roles.length,
+    totalPages,
+  };
+
+  /*
+   * L'API des rôles Workspace expose volontairement le catalogue complet car
+   * il alimente aussi les sélecteurs d'attribution et d'invitation. La page de
+   * gestion applique donc uniquement la fenêtre d'affichage côté client sans
+   * modifier ce contrat partagé.
+   */
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, setPage, totalPages]);
 
   function openCreate() {
     setEditingRole(null);
@@ -266,7 +294,24 @@ function WorkspaceRolesPage() {
         {roles.length === 0 ? (
           <p className="p-5 text-sm text-muted-foreground">Aucun rôle disponible.</p>
         ) : (
-          <DataTable columns={columns} data={roles} getRowKey={(role) => role.id} />
+          <>
+            <DataTable
+              caption="Rôles et permissions du workspace"
+              columns={columns}
+              data={paginatedRoles}
+              getRowKey={(role) => role.id}
+            />
+            <div className="px-5 pb-5">
+              <DataPagination
+                ariaLabel="Pagination des rôles du workspace"
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                page={page}
+                pageSize={pageSize}
+                pagination={pagination}
+              />
+            </div>
+          </>
         )}
       </section>
 
