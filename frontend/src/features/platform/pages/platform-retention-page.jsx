@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import {
+  DEFAULT_DATA_PAGE_SIZE,
+  parseDataPageSize,
+} from '@/components/data-display/data-pagination-config';
 import { SelectField } from '@/components/forms/select-field';
 import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { useToast } from '@/components/shared/toast-provider';
@@ -26,7 +30,7 @@ import {
   hasPlatformPermission,
 } from '@/features/platform/lib/platform-retention';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = DEFAULT_DATA_PAGE_SIZE;
 
 function getErrorMessage(error, fallback) {
   return error?.data?.message
@@ -57,6 +61,7 @@ function PlatformRetentionPage() {
   const requestedTargetKey = searchParams.get('target');
   const parsedPage = Number(searchParams.get('page'));
   const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+  const pageSize = parseDataPageSize(searchParams.get('limit'));
   const [preview, setPreview] = useState(null);
 
   const { data: platformAccess } = useGetCurrentPlatformContextQuery();
@@ -94,7 +99,7 @@ function PlatformRetentionPage() {
     isFetching: executionsFetching,
     refetch: refetchExecutions,
   } = useGetPlatformRetentionExecutionsQuery(
-    { targetKey, page, limit: PAGE_SIZE },
+    { targetKey, page, limit: pageSize },
     { skip: !targetKey },
   );
 
@@ -138,6 +143,13 @@ function PlatformRetentionPage() {
   function changePage(nextPage) {
     const next = new URLSearchParams(searchParams);
     next.set('page', String(nextPage));
+    setSearchParams(next);
+  }
+
+  function changePageSize(nextPageSize) {
+    const next = new URLSearchParams(searchParams);
+    next.set('page', '1');
+    next.set('limit', String(nextPageSize));
     setSearchParams(next);
   }
 
@@ -331,7 +343,9 @@ function PlatformRetentionPage() {
           executions={executionData?.executions ?? []}
           loading={executionsFetching}
           onPageChange={changePage}
+          onPageSizeChange={changePageSize}
           page={page}
+          pageSize={pageSize}
           pagination={executionData?.pagination}
         />
       </Section>
@@ -339,4 +353,4 @@ function PlatformRetentionPage() {
   );
 }
 
-export { PlatformRetentionPage };
+export { PAGE_SIZE, PlatformRetentionPage };
