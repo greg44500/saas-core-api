@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { DEFAULT_DATA_PAGE_SIZE } from '@/components/data-display/data-pagination';
+import { DEFAULT_DATA_PAGE_SIZE } from '@/components/data-display/data-pagination-config';
 
 /**
  * Centralise l'état local des listes paginées sans déplacer la donnée serveur
