@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Upload } from 'lucide-react';
 
+import { DEFAULT_DATA_PAGE_SIZE } from '@/components/data-display/data-pagination-config';
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTableSkeleton } from '@/components/data-display/data-table-skeleton';
 import { EmptyState } from '@/components/shared/empty-state';
@@ -21,8 +22,9 @@ import { downloadBlob } from '@/features/files/lib/download-blob';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 import { WORKSPACE_FEATURE } from '@/features/workspace/constants/workspace-features';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
+import { useDataPagination } from '@/hooks/use-data-pagination';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = DEFAULT_DATA_PAGE_SIZE;
 const SEARCH_DEBOUNCE_MS = 300;
 
 function getApiMessage(error, fallback) {
@@ -32,7 +34,12 @@ function getApiMessage(error, fallback) {
 function WorkspaceFilesPage() {
   const { workspace, can, hasFeature } = useWorkspaceContext();
   const { toast } = useToast();
-  const [page, setPage] = useState(1);
+  const {
+    page,
+    pageSize,
+    setPage,
+    setPageSize,
+  } = useDataPagination({ initialPageSize: PAGE_SIZE });
   const [category, setCategory] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -48,12 +55,12 @@ function WorkspaceFilesPage() {
     }, SEARCH_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [searchInput]);
+  }, [searchInput, setPage]);
 
   const filesQuery = useListWorkspaceFilesQuery({
     workspaceId: workspace.id,
     page,
-    limit: PAGE_SIZE,
+    limit: pageSize,
     ...(category ? { category } : {}),
     ...(search ? { search } : {}),
   });
@@ -220,9 +227,13 @@ function WorkspaceFilesPage() {
 
             <div className="px-5 pb-5">
               <DataPagination
-                page={page}
-                pagination={pagination}
+                ariaLabel="Pagination des fichiers du workspace"
+                disabled={filesQuery.isFetching}
                 onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                page={page}
+                pageSize={pageSize}
+                pagination={pagination}
               />
             </div>
           </>
