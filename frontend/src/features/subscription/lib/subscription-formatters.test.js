@@ -4,6 +4,7 @@ import {
   formatAccessMode,
   formatAccessReason,
   formatBillingInterval,
+  formatFeatureAvailability,
   formatLimitLabel,
   formatPlanLimitValue,
   formatSubscriptionKind,
@@ -22,6 +23,24 @@ describe('subscription formatters', () => {
     );
     expect(formatLimitLabel({ key: 'storage_bytes', usage: 1200, limit: 1000 })).toBe('Stockage');
     expect(formatLimitLabel('future_metric')).toBe('future_metric');
+  });
+
+  it('formate la disponibilité effective sans inventer une échéance', () => {
+    const now = new Date('2026-09-14T00:00:00.000Z');
+
+    expect(formatFeatureAvailability({
+      mode: 'open_ended',
+      endsAt: null,
+    }, { now })).toBe('Sans échéance');
+
+    expect(formatFeatureAvailability({
+      mode: 'bounded',
+      endsAt: '2026-09-20T00:00:00.000Z',
+    }, { now })).toContain('6 jours restants');
+
+    expect(formatFeatureAvailability(null, { now })).toBe(
+      'Disponibilité à vérifier',
+    );
   });
 
   it('formate les limites du plan sans reconstruire de règle métier', () => {

@@ -2,6 +2,7 @@ import {
   getBalancedSixColumnGridClass,
   getBalancedSixColumnItemClass,
 } from '@/components/shared/balanced-six-column-grid';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DashboardSummaryCard } from '@/features/workspace/components/dashboard-summary-card';
 import { useWorkspaceDashboardWidgets } from '@/features/workspace/hooks/use-workspace-dashboard-widgets';
@@ -10,10 +11,6 @@ function getSummaryGridClass() {
   return getBalancedSixColumnGridClass();
 }
 
-/**
- * Conserve l'API locale historique du Dashboard Workspace tout en déléguant la
- * règle de répartition au moteur partagé utilisé aussi par la Platform.
- */
 function getSummaryItemClass(index, itemCount) {
   return getBalancedSixColumnItemClass(index, itemCount);
 }
@@ -33,15 +30,17 @@ function WorkspaceDashboardPage() {
   const hasPendingContent = isPreferencesLoading
     && accessibleWidgets.some((widget) => widget.configurable && widget.slot === 'content');
   const renderedSummaryCount = summaryWidgets.length + pendingSummaryWidgets.length;
+  const dashboardHelp = 'Vue synthétique du workspace courant. Les indicateurs affichés respectent les fonctionnalités réellement disponibles, les permissions de votre rôle et vos préférences personnelles d’affichage.';
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <header className="space-y-2">
+      <header>
         <p className="text-sm font-medium text-primary">{workspace.name}</p>
-        <h1 className="text-3xl font-semibold tracking-tight">Tableau de bord</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Vue synthétique du workspace courant. Les indicateurs affichés respectent les fonctionnalités réellement disponibles, les permissions de votre rôle et vos préférences personnelles d’affichage.
-        </p>
+        <div className="mt-1 flex items-start gap-2">
+          <h1 className="text-3xl font-semibold tracking-tight">Tableau de bord</h1>
+          <InfoTooltip content={dashboardHelp} label="À propos du tableau de bord" />
+        </div>
+        <p className="sr-only">{dashboardHelp}</p>
       </header>
 
       <section

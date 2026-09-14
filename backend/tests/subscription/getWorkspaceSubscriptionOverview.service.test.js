@@ -10,6 +10,7 @@ import {
 } from '../../constants/plan.constants.js';
 
 import {
+    buildFeatureAvailability,
     serializePlan,
     serializeSubscription,
     serializeWorkspaceEffectiveEntitlement,
@@ -126,12 +127,13 @@ describe('workspace subscription overview projection', () => {
         expect(result.scheduledChange).not.toHaveProperty('requestedBy');
     });
 
-    it('expose les capabilities effectives sans révéler les overrides Platform', () => {
+    it('expose la durée des capabilities sans révéler les overrides Platform', () => {
         const access = {
             subscription: {
                 kind: 'commercial',
                 termType: 'fixed',
                 status: 'active',
+                cancelAtPeriodEnd: false,
             },
             plan: buildPlan(),
             effectiveCapabilities: {
@@ -146,6 +148,10 @@ describe('workspace subscription overview projection', () => {
                 appliedOverrides: [
                     {
                         id: new ObjectId().toString(),
+                        targetType: 'feature',
+                        featureKey: 'team_management',
+                        featureEnabled: true,
+                        endsAt: new Date('2026-10-01T00:00:00.000Z'),
                         source: 'commercial_gesture',
                         reason: 'Geste commercial interne',
                         grantedBy: new ObjectId(),
@@ -171,6 +177,16 @@ describe('workspace subscription overview projection', () => {
                 'file_upload',
                 'team_management',
             ],
+            featureAvailability: {
+                file_upload: {
+                    mode: 'open_ended',
+                    endsAt: null,
+                },
+                team_management: {
+                    mode: 'bounded',
+                    endsAt: new Date('2026-10-01T00:00:00.000Z'),
+                },
+            },
             limits: {
                 members: 25,
                 storage_bytes: null,
@@ -194,6 +210,68 @@ describe('workspace subscription overview projection', () => {
         );
     });
 
+    it('conserve sans échéance une feature de trial qui existe aussi dans la baseline', () => {
+        const trialPlan = buildPlan({
+            features: ['file_upload'],
+        });
+        const baselinePlan = buildPlan({
+            systemRole: PLAN_SYSTEM_ROLE.BASELINE,
+            features: ['file_upload'],
+        });
+        const access = {
+            subscription: {
+                kind: 'commercial',
+                termType: 'fixed',
+                status: 'trialing',
+                trialEndsAt: new Date('2026-09-30T00:00:00.000Z'),
+            },
+            plan: trialPlan,
+            effectiveCapabilities: {
+                features: ['file_upload'],
+                limits: {},
+                appliedOverrides: [],
+            },
+        };
+
+        expect(buildFeatureAvailability({ access, baselinePlan })).toEqual({
+            file_upload: {
+                mode: 'open_ended',
+                endsAt: null,
+            },
+        });
+    });
+
+    it('borne une feature de trial absente de la baseline à la fin du trial', () => {
+        const trialEndsAt = new Date('2026-09-30T00:00:00.000Z');
+        const access = {
+            subscription: {
+                kind: 'commercial',
+                termType: 'fixed',
+                status: 'trialing',
+                trialEndsAt,
+            },
+            plan: buildPlan({ features: ['export_pdf'] }),
+            effectiveCapabilities: {
+                features: ['export_pdf'],
+                limits: {},
+                appliedOverrides: [],
+            },
+        };
+
+        expect(buildFeatureAvailability({
+            access,
+            baselinePlan: buildPlan({
+                systemRole: PLAN_SYSTEM_ROLE.BASELINE,
+                features: [],
+            }),
+        })).toEqual({
+            export_pdf: {
+                mode: 'bounded',
+                endsAt: trialEndsAt,
+            },
+        });
+    });
+
     it('refuse un entitlement effectif incomplet au lieu de fabriquer des droits', () => {
         expect(() => {
             serializeWorkspaceEffectiveEntitlement({
@@ -206,6 +284,7 @@ describe('workspace subscription overview projection', () => {
                 effectiveCapabilities: {
                     features: null,
                     limits: {},
+                    appliedOverrides: [],
                 },
                 accessMode: 'normal',
                 reason: null,

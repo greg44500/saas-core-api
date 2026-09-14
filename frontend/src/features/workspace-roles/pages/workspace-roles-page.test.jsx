@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { WorkspaceRolesPage } from '@/features/workspace-roles/pages/workspace-roles-page';
 
 const mocks = vi.hoisted(() => ({
@@ -51,9 +52,11 @@ vi.mock('@/features/workspace-roles/api/workspace-roles-api', () => ({
 
 function renderPage() {
   return render(
-    <ToastProvider>
-      <WorkspaceRolesPage />
-    </ToastProvider>,
+    <TooltipProvider>
+      <ToastProvider>
+        <WorkspaceRolesPage />
+      </ToastProvider>
+    </TooltipProvider>,
   );
 }
 
@@ -90,6 +93,18 @@ describe('WorkspaceRolesPage', () => {
     expect(screen.getByText('Support')).toBeInTheDocument();
     expect(screen.getByText('Système')).toBeInTheDocument();
     expect(screen.getByText('Personnalisé')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'À propos des rôles et permissions' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Consultez les rôles de Acme/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'À propos des rôles du workspace' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Les rôles système sont consultables mais protégés contre les modifications génériques.'),
+    ).not.toBeInTheDocument();
 
     const ownerRow = screen.getByText('Owner').closest('tr');
     expect(ownerRow).not.toHaveTextContent('Protégé');

@@ -1,5 +1,6 @@
 import {
   formatEffectiveLimitValue,
+  formatFeatureAvailability,
   formatFeatureLabel,
   formatLimitLabel,
 } from '@/features/subscription/lib/subscription-formatters';
@@ -12,8 +13,9 @@ import {
  * capability sans changer le Plan. Cette vue reste informative ; les contrôles
  * de sécurité réels restent exclusivement côté backend.
  */
-function EffectivePlanCapabilities({ entitlement }) {
+function EffectivePlanCapabilities({ entitlement, now = new Date() }) {
   const features = entitlement?.features ?? [];
+  const featureAvailability = entitlement?.featureAvailability ?? {};
   const limitEntries = Object.entries(entitlement?.limits ?? {});
 
   return (
@@ -33,8 +35,14 @@ function EffectivePlanCapabilities({ entitlement }) {
           ) : (
             <ul className="mt-3 space-y-2 text-sm">
               {features.map((featureKey) => (
-                <li className="rounded-md bg-muted/50 px-3 py-2" key={featureKey}>
-                  {formatFeatureLabel(featureKey)}
+                <li
+                  className="flex flex-col gap-1 rounded-md bg-muted/50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                  key={featureKey}
+                >
+                  <span className="font-medium">{formatFeatureLabel(featureKey)}</span>
+                  <span className="text-xs text-muted-foreground sm:text-right">
+                    {formatFeatureAvailability(featureAvailability[featureKey], { now })}
+                  </span>
                 </li>
               ))}
             </ul>

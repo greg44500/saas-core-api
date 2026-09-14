@@ -2,6 +2,8 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
+
 const useGetWorkspaceAuditMetadataQueryMock = vi.hoisted(() => vi.fn());
 const useListWorkspaceAuditLogsQueryMock = vi.hoisted(() => vi.fn());
 
@@ -37,13 +39,15 @@ const auditMetadata = {
 function renderPage(initialEntry = '/workspaces/workspace-1/activity') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
-      <WorkspaceProvider
-        membership={membership}
-        permissions={['workspace:read', 'audit:read']}
-        workspace={workspace}
-      >
-        <WorkspaceAuditLogPage />
-      </WorkspaceProvider>
+      <TooltipProvider>
+        <WorkspaceProvider
+          membership={membership}
+          permissions={['workspace:read', 'audit:read']}
+          workspace={workspace}
+        >
+          <WorkspaceAuditLogPage />
+        </WorkspaceProvider>
+      </TooltipProvider>
     </MemoryRouter>,
   );
 }
@@ -95,11 +99,16 @@ describe('WorkspaceAuditLogPage', () => {
     cleanup();
   });
 
-  it('affiche les données d’audit avec les libellés fournis par le backend', () => {
+  it('affiche les données d’audit et déporte l’aide pédagogique dans une infobulle', () => {
     renderPage();
 
     expect(screen.getByRole('heading', { name: 'Historique d’activité' })).toBeInTheDocument();
-    expect(screen.getByText('Acme')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'À propos de l’historique d’activité' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Consultez les événements audités de Acme/),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('table', { name: 'Historique d’activité du workspace' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'Espace de travail modifié' })).toBeInTheDocument();
     expect(screen.getByText('Jean Dupont')).toBeInTheDocument();

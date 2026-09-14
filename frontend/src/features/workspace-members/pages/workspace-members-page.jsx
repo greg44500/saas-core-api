@@ -5,6 +5,7 @@ import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -330,13 +331,13 @@ function WorkspaceMembersPage() {
     },
   ];
 
+  const membersHelp = `Gérez les accès à ${workspace.name} selon les permissions de votre rôle.`;
+
   return (
     <div className="space-y-8">
-      <div>
+      <div className="flex items-start gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">Membres</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Gérez les accès à {workspace.name} selon les permissions de votre rôle.
-        </p>
+        <InfoTooltip content={membersHelp} label="À propos des membres" />
       </div>
 
       {can(WORKSPACE_PERMISSION.MEMBER_INVITE) && can(WORKSPACE_PERMISSION.ROLE_READ) && (

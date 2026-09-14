@@ -3,13 +3,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { EffectivePlanCapabilities } from '@/features/subscription/components/effective-plan-capabilities';
 
+const NOW = new Date('2026-09-14T00:00:00.000Z');
 
 describe('EffectivePlanCapabilities', () => {
   afterEach(() => {
     cleanup();
   });
 
-  it('affiche uniquement les capabilities effectives fournies par le backend', () => {
+  it('affiche uniquement les capabilities effectives et leur horizon fourni par le backend', () => {
     render(
       <EffectivePlanCapabilities
         entitlement={{
@@ -17,11 +18,22 @@ describe('EffectivePlanCapabilities', () => {
             'file_upload',
             'team_management',
           ],
+          featureAvailability: {
+            file_upload: {
+              mode: 'open_ended',
+              endsAt: null,
+            },
+            team_management: {
+              mode: 'bounded',
+              endsAt: '2026-09-20T00:00:00.000Z',
+            },
+          },
           limits: {
             members: 12,
             storage_bytes: null,
           },
         }}
+        now={NOW}
       />,
     );
 
@@ -29,8 +41,24 @@ describe('EffectivePlanCapabilities', () => {
     expect(screen.getByText('Téléversement de fichiers')).toBeInTheDocument();
     expect(screen.getByText('Gestion d’équipe')).toBeInTheDocument();
     expect(screen.queryByText('Journal d’activité')).not.toBeInTheDocument();
+    expect(screen.getByText('Sans échéance')).toBeInTheDocument();
+    expect(screen.getByText(/6 jours restants/)).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
     expect(screen.getByText('Illimité')).toBeInTheDocument();
+  });
+
+  it('n’invente pas de durée lorsque le backend ne fournit pas la projection', () => {
+    render(
+      <EffectivePlanCapabilities
+        entitlement={{
+          features: ['file_upload'],
+          limits: {},
+        }}
+        now={NOW}
+      />,
+    );
+
+    expect(screen.getByText('Disponibilité à vérifier')).toBeInTheDocument();
   });
 
   it('présente les limites fichiers comme non applicables sans file_upload', () => {
@@ -38,12 +66,16 @@ describe('EffectivePlanCapabilities', () => {
       <EffectivePlanCapabilities
         entitlement={{
           features: ['team_management'],
+          featureAvailability: {
+            team_management: { mode: 'open_ended', endsAt: null },
+          },
           limits: {
             members: 5,
             storage_bytes: 104857600,
             file_uploads_monthly: 10,
           },
         }}
+        now={NOW}
       />,
     );
 
@@ -58,8 +90,10 @@ describe('EffectivePlanCapabilities', () => {
       <EffectivePlanCapabilities
         entitlement={{
           features: [],
+          featureAvailability: {},
           limits: {},
         }}
+        now={NOW}
       />,
     );
 

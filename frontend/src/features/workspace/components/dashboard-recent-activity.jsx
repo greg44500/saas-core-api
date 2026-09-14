@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 
 import { EmptyState } from '@/components/shared/empty-state';
 import { ErrorState } from '@/components/shared/error-state';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import {
   Card,
   CardContent,
@@ -30,16 +31,18 @@ function DashboardRecentActivity({
     () => createAuditMetadataLabelMaps(metadata),
     [metadata],
   );
+  const help = 'Les cinq derniers événements audités du workspace.';
 
   return (
     <Card>
       <CardHeader className="border-b border-border pb-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Activité récente</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Les cinq derniers événements audités du workspace.
-            </p>
+            <div className="flex items-start gap-2">
+              <h2 className="text-lg font-semibold">Activité récente</h2>
+              <InfoTooltip content={help} label="À propos de l’activité récente" />
+            </div>
+            <p className="sr-only">{help}</p>
           </div>
           {!isLoading && !isError && (
             <Link
