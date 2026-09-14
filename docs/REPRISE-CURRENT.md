@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état réel du Core au **2026-09-14** après la validation du lot transversal Select, l’harmonisation UX des informations pédagogiques Platform/Workspace, l’ajout de la projection temporelle des fonctionnalités effectives et l’alignement visuel des statuts de souscription Platform.
+> Cette synthèse décrit l’état réel du Core au **2026-09-14** après la fusion du lot Select/UX dans `main` et la validation complète du lot DLG-2 d’harmonisation des shells modaux.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
@@ -41,8 +41,8 @@ main
 HEAD distant vérifié avant la présente mise à jour :
 
 ```text
-b7a89d088738d087874ec2e1f9496f9ed80bfd7d
-test(frontend): cover pending dialog closure lock
+a477a150fcbbcfcb56c35ed7c93fd7e9c2a2dfd0
+Merge pull request #12 from greg44500/feature/select-base-ui-harmonization
 ```
 
 Ce HEAD contient notamment :
@@ -53,33 +53,39 @@ Ce HEAD contient notamment :
 - DataPagination partagé ;
 - DLG-1 : primitive `components/ui/dialog.jsx` Base UI ;
 - migration de `ConfirmationDialog` ;
-- verrouillage de fermeture du Dialog pendant `pending`.
+- verrouillage de fermeture du Dialog pendant `pending` ;
+- Select Base UI harmonisé ;
+- UX pédagogique Platform/Workspace harmonisée via `InfoTooltip` ;
+- projection `featureAvailability` des fonctionnalités Workspace ;
+- statuts de souscription Platform alignés sur les tons sémantiques.
+
+Le lot Select/UX a été fusionné via la PR #12.
 
 ### Branche de travail courante
 
 ```text
-feature/select-base-ui-harmonization
+feature/dialog-dlg2-harmonization
 ```
 
-HEAD fonctionnel validé juste avant cette mise à jour documentaire :
+HEAD fonctionnel validé avant la présente mise à jour documentaire :
 
 ```text
-de7429ddca2a4d9e0562170ab05135f6114de7b8
-fix(platform): style subscription statuses semantically
+4f5589638aed9f7b6ef87fce5e60ccf8ac96326c
+test(platform): await portalled select options
 ```
 
-La branche part de `main` à `b7a89d...`.
+La branche part de `main` à `a477a150...`.
 
-Revue finale du diff effectuée :
+Avant le commit documentaire courant, la comparaison était :
 
 ```text
-feature/select-base-ui-harmonization
-→ 17 commits devant main
+feature/dialog-dlg2-harmonization
+→ 3 commits devant main
 → 0 commit derrière main
-→ merge-base = b7a89d088738d087874ec2e1f9496f9ed80bfd7d
+→ merge-base = a477a150fcbbcfcb56c35ed7c93fd7e9c2a2dfd0
 ```
 
-Aucune divergence n’est à résoudre avant intégration.
+Aucune divergence Git n’était à résoudre.
 
 Toute nouvelle conversation doit vérifier le HEAD réel de `main` et celui de la branche de travail avant toute conclusion.
 
@@ -93,9 +99,9 @@ Le lot Dialog DLG-1 a été validé localement par l’utilisateur puis fusionn�
 
 Ne pas rouvrir DLG-1 sans régression concrète.
 
-### 3.2 Lot Select — VALIDÉ localement, prêt à fusionner
+### 3.2 Lot Select / UX — VALIDÉ et fusionné
 
-Le lot Select a connu une première phase de correction où les derniers `<select>` natifs et usages de l’ancien wrapper ont été supprimés.
+Le lot Select a supprimé les derniers `<select>` natifs concernés et les usages de l’ancien wrapper.
 
 La primitive canonique est désormais :
 
@@ -124,7 +130,7 @@ ESLint interdit maintenant :
 import depuis @/components/forms/select-field
 ```
 
-Les tests Base UI ont été adaptés à une interaction accessible de type :
+Les tests Base UI utilisent une interaction accessible de type :
 
 ```text
 combobox
@@ -133,7 +139,7 @@ combobox
 → assertion métier
 ```
 
-et non à `user.selectOptions()`, réservé aux `<select>` natifs.
+et non `user.selectOptions()`, réservé aux `<select>` natifs.
 
 Surfaces migrées notamment :
 
@@ -151,9 +157,7 @@ Retention target
 WorkspaceSwitcher
 ```
 
-### 3.3 Gates globales finales — VALIDÉES par l’utilisateur
-
-Après récupération du HEAD `de7429dd...`, l’utilisateur a réellement exécuté et communiqué comme vertes les cinq gates suivantes :
+Avant fusion, l’utilisateur a réellement exécuté et communiqué comme vertes les cinq gates suivantes :
 
 ```text
 frontend npm run lint   → VERT
@@ -163,9 +167,77 @@ backend npm run lint    → VERT
 backend npm test        → VERT
 ```
 
-La validation manuelle/visuelle a également été effectuée par l’utilisateur et déclarée conforme.
+La validation manuelle/visuelle a également été déclarée conforme.
 
-Le lot est donc techniquement et visuellement validé sur ce HEAD.
+Le lot a ensuite été fusionné dans `main` via la PR #12.
+
+### 3.3 DLG-2 — VALIDÉ localement, prêt à fusionner
+
+Audit effectué :
+
+- les confirmations métier existantes passent déjà par `ConfirmationDialog` ;
+- aucun wrapper métier déjà conforme n’a été réécrit inutilement ;
+- le seul shell modal autonome comparable identifié dans ce lot était `FileUploadDialog`.
+
+Migration réalisée :
+
+```text
+FileUploadDialog
+→ components/ui/dialog.jsx
+→ @base-ui/react/dialog
+```
+
+Base UI porte désormais pour cette modale :
+
+```text
+modalité
+focus initial
+boucle Tab / Shift+Tab
+Escape
+restauration du focus
+verrouillage du scroll
+portal / overlay
+```
+
+Le sélecteur de fichier a également été corrigé sur le plan sémantique : le contrôle visible `Choisir un fichier` est désormais un vrai bouton clavier déclenchant l’input fichier caché, et non un `<label>` simplement stylé comme un bouton.
+
+Tests ajoutés/renforcés notamment :
+
+```text
+dialog accessible nommé "Ajouter un fichier"
+focus initial sur "Choisir un fichier"
+fermeture par Escape lorsque idle
+fermeture bloquée pendant le téléversement
+sélection du fichier et de la catégorie
+validation client des types
+messages backend
+```
+
+Une régression de test indépendante de DLG-2 a été révélée par la gate globale sur `PlatformSubscriptionsPage` : le helper cherchait une option Base UI portallée de façon synchrone. La correction a uniquement remplacé la recherche immédiate par une attente `findByRole('option')`, sans modifier le comportement applicatif.
+
+L’utilisateur a ensuite réellement exécuté et communiqué comme vertes les gates DLG-2 suivantes :
+
+```text
+frontend npm run lint   → VERT
+frontend npm test       → VERT
+frontend npm run build  → VERT
+```
+
+Le backend n’a pas été relancé pour DLG-2 car aucun fichier backend n’a été modifié dans ce lot.
+
+La validation manuelle/clavier a également été effectuée et déclarée conforme, notamment :
+
+```text
+ouverture et centrage
+focus initial
+Tab / Shift+Tab
+Escape
+blocage de fermeture pendant upload
+Select Catégorie au-dessus de la modale
+restauration du focus à la fermeture
+```
+
+DLG-2 est donc techniquement et visuellement validé sur le HEAD fonctionnel `4f558963...`.
 
 ### 3.4 Warnings React Hooks connus — hors périmètre
 
@@ -205,6 +277,8 @@ FAIL 3 → correction → test individuel
 
 Ne jamais annoncer une gate verte sans résultat réellement exécuté.
 
+Pour les composants Base UI portallés, ne pas supposer que le contenu du popup est forcément disponible de façon synchrone juste après le clic : les tests doivent attendre l’élément accessible lorsque le montage peut être différé.
+
 ---
 
 ## 5. Architecture frontend à préserver
@@ -238,23 +312,27 @@ Le `DataTable` partagé reste l’abstraction unique pour les tableaux applicati
 
 ---
 
-## 6. Dialog — DLG-1 terminé, DLG-2 à faire après fusion
+## 6. Dialog — DLG-1 et DLG-2 terminés côté branche
 
 Architecture validée :
 
 ```text
 features
 → wrappers métier
-→ ConfirmationDialog
+→ ConfirmationDialog / dialog métier
 → components/ui/dialog.jsx
 → @base-ui/react/dialog
 ```
 
 Base UI porte notamment : focus initial, boucle Tab, restauration du focus, Escape, modalité et verrouillage du scroll.
 
-`use-dialog-focus.js` doit rester tant que `EntityDetailsDrawer` l’utilise.
+DLG-1 a migré `ConfirmationDialog`.
 
-DLG-2 devra inventorier les shells modaux custom restants. `FileUploadDialog` reste un exemple connu : le lot Select n’a migré que son champ Catégorie.
+DLG-2 a audité les shells modaux custom restants et migré le seul cas autonome identifié dans ce périmètre : `FileUploadDialog`.
+
+Les wrappers métier utilisant déjà `ConfirmationDialog` restent légitimes et ne doivent pas être aplatis simplement pour réduire le nombre de composants.
+
+`use-dialog-focus.js` doit rester tant que `EntityDetailsDrawer` l’utilise. Les drawers/sheets constituent un chantier séparé et ne doivent pas être absorbés rétroactivement dans DLG-2.
 
 ---
 
@@ -307,7 +385,7 @@ opération sensible / destructive
 → explication visible obligatoire
 ```
 
-Cette règle a été appliquée durant le lot sur les zones Platform concernées, notamment :
+Cette règle a été appliquée sur les zones Platform concernées, notamment :
 
 ```text
 Plans
@@ -332,7 +410,7 @@ Rôles et permissions
 
 Les vues déjà conformes n’ont pas été retouchées inutilement.
 
-`FormField` et `SelectField` savent désormais porter une aide `info` via `InfoTooltip`, tandis que `hint` reste réservé aux consignes qui doivent rester visibles.
+`FormField` et `SelectField` savent porter une aide `info` via `InfoTooltip`, tandis que `hint` reste réservé aux consignes qui doivent rester visibles.
 
 ---
 
@@ -393,7 +471,7 @@ Le contrat canonique `docs/contracts/COMMERCIAL.md` a été aligné avec cette p
 
 ## 10. Statuts de souscription Platform — contrat visuel
 
-Le tableau Platform des souscriptions utilise désormais le composant métier :
+Le tableau Platform des souscriptions utilise le composant métier :
 
 ```text
 PlatformSubscriptionStatusBadge
@@ -487,9 +565,9 @@ D-002 doit être `VALIDÉ` avant D-017 et la première dérivation métier.
 
 ---
 
-## 13. Audit transversal UI — ordre après intégration du lot courant
+## 13. Audit transversal UI — ordre après DLG-2
 
-Lots déjà consolidés :
+Lots déjà consolidés dans `main` :
 
 ```text
 Design Tokens / D-011
@@ -501,20 +579,23 @@ Dialog DLG-1 / ConfirmationDialog
 Select Base UI
 ```
 
-Le lot courant est validé localement et en attente d’intégration explicite dans `main`.
-
-Ordre recommandé après fusion :
+Lot validé sur la branche courante et prêt pour intégration :
 
 ```text
-1. DLG-2 : shells modaux custom restants
-2. Toast Base UI/shadcn en conservant useToast()
-3. Drawer / Sheet / panneaux latéraux
-4. formulaires partagés
-5. Input / Textarea / Checkbox / Switch
-6. Dropdown menus
-7. Tooltip / Popover / Accordion / Tabs
-8. Badge / StatusBadge
-9. primitives HTML/React directes restantes
+DLG-2 / FileUploadDialog Base UI
+```
+
+Ordre recommandé après fusion de DLG-2 :
+
+```text
+1. Toast Base UI/shadcn en conservant useToast()
+2. Drawer / Sheet / panneaux latéraux
+3. formulaires partagés
+4. Input / Textarea / Checkbox / Switch
+5. Dropdown menus
+6. Tooltip / Popover / Accordion / Tabs
+7. Badge / StatusBadge
+8. primitives HTML/React directes restantes
 ```
 
 Pour chaque famille : inventorier, détecter les duplications, vérifier clavier/focus/ARIA, vérifier tokens, API et testabilité, puis classer avant toute migration.
@@ -561,26 +642,26 @@ nettoyage des warnings React Hooks connus
 
 ## 16. Prochaine action exacte
 
-Le lot courant a franchi :
+DLG-2 a franchi :
 
 ```text
-gates frontend → VERT
-backend lint/tests → VERT
-validation visuelle/manuelle → VALIDÉE
-revue finale main..feature → PROPRE
+frontend lint → VERT
+frontend tests → VERT
+frontend build → VERT
+validation visuelle/manuelle/clavier → VALIDÉE
 ```
 
-La prochaine action n’est plus une correction Select.
+La prochaine action n’est plus une correction DLG-2.
 
 Séquence :
 
 ```text
-1. vérifier une dernière fois les HEAD distants ;
-2. fusionner feature/select-base-ui-harmonization dans main uniquement sur décision explicite ;
-3. vérifier le nouveau HEAD de main ;
-4. mettre à jour la reprise si la fusion change le contexte ;
-5. seulement ensuite démarrer DLG-2 ;
-6. Toast vient après DLG-2 sauf décision explicite contraire.
+1. vérifier le diff final main..feature/dialog-dlg2-harmonization ;
+2. vérifier les HEAD distants ;
+3. fusionner la branche dans main uniquement sur décision explicite ;
+4. vérifier le nouveau HEAD de main ;
+5. mettre à jour la reprise si la fusion change le contexte ;
+6. seulement ensuite démarrer le lot Toast Base UI/shadcn.
 ```
 
 Ne pas fusionner implicitement.
