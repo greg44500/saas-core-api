@@ -1,8 +1,19 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
 
 import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
+import {
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogRoot,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useUploadWorkspaceFileMutation } from '@/features/files/api/files-api';
 import {
   FILE_INPUT_ACCEPT,
@@ -17,6 +28,8 @@ function getUploadErrorMessage(error) {
 
 function FileUploadDialog({ onClose, onUploaded, open }) {
   const { workspace } = useWorkspaceContext();
+  const fileInputRef = useRef(null);
+  const chooseFileButtonRef = useRef(null);
   const [category, setCategory] = useState('other');
   const [file, setFile] = useState(null);
   const [validationMessage, setValidationMessage] = useState(null);
@@ -28,6 +41,10 @@ function FileUploadDialog({ onClose, onUploaded, open }) {
     setFile(null);
     setValidationMessage(null);
     setServerMessage(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   }
 
   function handleClose() {
@@ -63,107 +80,107 @@ function FileUploadDialog({ onClose, onUploaded, open }) {
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-[80] grid place-items-center bg-black/50 px-4"
-      role="presentation"
+    <DialogRoot
+      disablePointerDismissal
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          handleClose();
+        }
+      }}
+      open={open}
     >
-      <section
-        aria-labelledby="file-upload-title"
-        aria-modal="true"
-        className="w-full max-w-lg rounded-xl border border-border bg-popover p-5 text-popover-foreground shadow-xl"
-        role="dialog"
-      >
-        <div className="space-y-2">
-          <h2 id="file-upload-title" className="text-lg font-semibold">
-            Ajouter un fichier
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            PDF, JPG et PNG sont acceptés. Le serveur vérifie ensuite le type réel,
-            la taille, l’antivirus et les quotas du workspace.
-          </p>
-        </div>
+      <DialogPortal>
+        <DialogOverlay />
+        <DialogContent initialFocus={chooseFileButtonRef}>
+          <DialogHeader>
+            <DialogTitle>Ajouter un fichier</DialogTitle>
+            <DialogDescription>
+              PDF, JPG et PNG sont acceptés. Le serveur vérifie ensuite le type réel,
+              la taille, l’antivirus et les quotas du workspace.
+            </DialogDescription>
+          </DialogHeader>
 
-        <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Fichier</p>
+          <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Fichier</p>
 
-            {/*
-             * Le libellé natif d'un input file dépend du navigateur et du système
-             * d'exploitation. Le contrôle reste accessible mais est masqué afin de
-             * garantir une interface française quel que soit l'environnement client.
-             */}
-            <input
-              accept={FILE_INPUT_ACCEPT}
-              aria-label="Fichier"
-              className="sr-only"
-              disabled={uploadState.isLoading}
-              id="workspace-file-upload"
-              name="file"
-              onChange={(event) => {
-                setFile(event.target.files?.[0] ?? null);
-                setValidationMessage(null);
-                setServerMessage(null);
-              }}
-              type="file"
-            />
+              {/*
+               * Le libellé natif d'un input file dépend du navigateur et du système
+               * d'exploitation. Le contrôle reste accessible aux technologies
+               * d'assistance mais la sélection visible passe par un vrai bouton afin
+               * de garantir une interaction clavier cohérente.
+               */}
+              <input
+                accept={FILE_INPUT_ACCEPT}
+                aria-label="Fichier"
+                className="sr-only"
+                disabled={uploadState.isLoading}
+                id="workspace-file-upload"
+                name="file"
+                onChange={(event) => {
+                  setFile(event.target.files?.[0] ?? null);
+                  setValidationMessage(null);
+                  setServerMessage(null);
+                }}
+                ref={fileInputRef}
+                tabIndex={-1}
+                type="file"
+              />
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <Button asChild type="button" variant="outline">
-                <label
-                  aria-disabled={uploadState.isLoading || undefined}
-                  className={uploadState.isLoading ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                  htmlFor="workspace-file-upload"
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button
+                  disabled={uploadState.isLoading}
+                  onClick={() => fileInputRef.current?.click()}
+                  ref={chooseFileButtonRef}
+                  type="button"
+                  variant="outline"
                 >
                   Choisir un fichier
-                </label>
-              </Button>
-              <p
-                className="min-w-0 truncate text-sm text-muted-foreground"
-                title={file?.name ?? undefined}
-              >
-                {file?.name ?? 'Aucun fichier sélectionné.'}
-              </p>
+                </Button>
+                <p
+                  className="min-w-0 truncate text-sm text-muted-foreground"
+                  title={file?.name ?? undefined}
+                >
+                  {file?.name ?? 'Aucun fichier sélectionné.'}
+                </p>
+              </div>
             </div>
-          </div>
 
-          <SelectField
-            disabled={uploadState.isLoading}
-            id="workspace-file-category"
-            items={FILE_UPLOAD_CATEGORY_OPTIONS}
-            label="Catégorie"
-            onValueChange={setCategory}
-            value={category}
-          />
-
-          {(validationMessage || serverMessage) && (
-            <p
-              className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-              role="alert"
-            >
-              {validationMessage ?? serverMessage}
-            </p>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
+            <SelectField
               disabled={uploadState.isLoading}
-              onClick={handleClose}
-              type="button"
-              variant="outline"
-            >
-              Annuler
-            </Button>
-            <Button disabled={uploadState.isLoading} type="submit">
-              <Upload aria-hidden="true" className="size-4" />
-              {uploadState.isLoading ? 'Téléversement…' : 'Téléverser'}
-            </Button>
-          </div>
-        </form>
-      </section>
-    </div>
+              id="workspace-file-category"
+              items={FILE_UPLOAD_CATEGORY_OPTIONS}
+              label="Catégorie"
+              onValueChange={setCategory}
+              value={category}
+            />
+
+            {(validationMessage || serverMessage) && (
+              <p
+                className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                role="alert"
+              >
+                {validationMessage ?? serverMessage}
+              </p>
+            )}
+
+            <DialogFooter className="pt-2">
+              <DialogClose
+                disabled={uploadState.isLoading}
+                render={<Button type="button" variant="outline" />}
+              >
+                Annuler
+              </DialogClose>
+              <Button disabled={uploadState.isLoading} type="submit">
+                <Upload aria-hidden="true" className="size-4" />
+                {uploadState.isLoading ? 'Téléversement…' : 'Téléverser'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
   );
 }
 

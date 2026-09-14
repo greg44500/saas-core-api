@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -47,6 +47,50 @@ describe('FileUploadDialog', () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+  });
+
+  it('utilise une modale accessible et place le focus sur la première action utile', async () => {
+    renderDialog();
+
+    expect(
+      screen.getByRole('dialog', { name: 'Ajouter un fichier' }),
+    ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Choisir un fichier' }),
+      ).toHaveFocus();
+    });
+  });
+
+  it('ferme la modale avec Escape quand aucun téléversement n’est en cours', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+
+    renderDialog({ onClose });
+
+    await user.keyboard('{Escape}');
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('bloque la fermeture pendant un téléversement', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+
+    mocks.useUploadWorkspaceFileMutation.mockReturnValue([
+      mocks.uploadWorkspaceFile,
+      { isLoading: true },
+    ]);
+
+    renderDialog({ onClose });
+
+    expect(screen.getByRole('button', { name: 'Annuler' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Téléversement…' })).toBeDisabled();
+
+    await user.keyboard('{Escape}');
+
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('affiche un sélecteur de fichier entièrement maîtrisé en français', async () => {
