@@ -2,9 +2,9 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état du Core au **2026-09-14** après la consolidation DataTable/DataPagination, la migration DLG-1 de `ConfirmationDialog` vers Base UI et le lancement du lot transversal d’harmonisation des `Select`.
+> Cette synthèse décrit l’état réel du Core au **2026-09-14**, après la consolidation DataTable/DataPagination, la migration DLG-1 de `ConfirmationDialog` vers Base UI et le lot transversal d’harmonisation des `Select`, actuellement **en validation finale**.
 >
-> Le code actuel, les contraintes de base de données, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
+> Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
 > **Dernière mise à jour : 2026-09-14**
 
@@ -38,7 +38,7 @@ Branche de référence :
 main
 ```
 
-HEAD distant vérifié au moment de cette mise à jour :
+HEAD distant vérifié avant la présente mise à jour :
 
 ```text
 b7a89d088738d087874ec2e1f9496f9ed80bfd7d
@@ -47,10 +47,14 @@ test(frontend): cover pending dialog closure lock
 
 Ce HEAD contient notamment :
 
-- l’harmonisation DataTable/DataPagination ;
-- le correctif du mock backend `workspaceOwnership.security.integration.test.js` ;
-- DLG-1 : primitive Dialog Base UI + migration de `ConfirmationDialog` ;
-- le verrouillage de fermeture du Dialog pendant `pending`.
+- Design System / D-011 validé ;
+- Sidebar/navigation et Topbars consolidées ;
+- DataTable partagé ;
+- DataPagination partagé ;
+- correctif du mock backend `workspaceOwnership.security.integration.test.js` ;
+- DLG-1 : primitive `components/ui/dialog.jsx` Base UI ;
+- migration de `ConfirmationDialog` ;
+- verrouillage de fermeture du Dialog pendant `pending`.
 
 ### Branche de travail courante
 
@@ -58,24 +62,24 @@ Ce HEAD contient notamment :
 feature/select-base-ui-harmonization
 ```
 
-HEAD fonctionnel avant la présente mise à jour documentaire :
+HEAD fonctionnel juste avant cette mise à jour documentaire :
 
 ```text
-06fce40f967994e5d094ae6d4ecc6bb2d12b37b5
-test(frontend): adapt subscription page Base UI selects
+93fda262ed0da03d41eab497cb5d3a2ac004a023
+test(frontend): align remaining select tests with Base UI
 ```
 
-Cette branche a été créée depuis `main` à `b7a89d...`.
+Cette branche part de `main` à `b7a89d...` et ne doit pas être fusionnée tant que la gate frontend globale n’est pas réellement verte.
 
-Toute nouvelle conversation doit vérifier le HEAD réel de `main` **et** le HEAD réel de la branche de travail avant toute conclusion.
+Toute nouvelle conversation doit vérifier le HEAD réel de `main` et celui de la branche de travail avant toute conclusion.
 
 ---
 
 ## 3. Validations réellement constatées
 
-### 3.1 DLG-1 — validé puis fusionné dans `main`
+### 3.1 DLG-1 — VALIDÉ et fusionné
 
-Le lot Dialog DLG-1 a été validé localement par l’utilisateur avant fusion.
+Le lot Dialog DLG-1 a été validé localement par l’utilisateur puis fusionné dans `main`.
 
 Résultat frontend global communiqué :
 
@@ -84,7 +88,7 @@ Test Files  221 passed (221)
 Tests       741 passed (741)
 ```
 
-Les gates finales communiquées comme vertes :
+Gates communiquées comme vertes :
 
 ```text
 frontend npm run lint   → VERT
@@ -94,20 +98,18 @@ backend npm run lint    → VERT
 backend npm test        → VERT
 ```
 
-La migration DLG-1 a ensuite été fusionnée dans `main`.
+Ne pas rouvrir DLG-1 sans régression concrète.
 
-### 3.2 Lot Select — validation EN COURS
+### 3.2 Lot Select — EN COURS, non encore validé
 
-Après le premier bloc de migration Select, le lint global a réellement été exécuté et a remonté :
+Le premier lint global du lot Select avait produit :
 
 ```text
 5 errors
 9 warnings
 ```
 
-Les 5 erreurs avaient une même catégorie : derniers usages de `<select>` natifs ou ancien import `components/forms/select-field`.
-
-Ils concernaient :
+Les 5 erreurs correspondaient aux derniers `<select>` natifs ou à l’ancien import `components/forms/select-field` dans :
 
 ```text
 features/files/components/file-upload-dialog.jsx
@@ -116,36 +118,109 @@ features/platform/pages/platform-subscriptions-page.jsx
 features/workspace/components/workspace-switcher.jsx
 ```
 
-Ces erreurs ont ensuite été corrigées sur la branche distante.
+Ces erreurs ont été corrigées dans un bloc cohérent.
 
-**Important : la relance du lint après ces corrections n’a pas encore été communiquée.**
-
-Le résultat attendu, mais non encore validé localement, est :
+Une suite frontend globale a ensuite réellement été exécutée et a produit :
 
 ```text
-0 error
-9 warnings
+Test Files  3 failed | 219 passed (222)
+Tests       3 failed | 744 passed (747)
 ```
 
-Ne pas déclarer le lot Select validé tant que les relances ci-dessous ne sont pas réellement vertes.
+Les trois échecs n’étaient pas trois régressions métier indépendantes : ils provenaient de la même transition structurelle des contrôles HTML natifs vers Base UI Select.
 
-### 3.3 Warnings actuellement connus et hors périmètre Select
-
-Les 9 warnings observés sont des warnings `react-hooks/exhaustive-deps`, actuellement dans :
+Fichiers concernés :
 
 ```text
-platform-entitlement-override-form.jsx     3 warnings
-platform-retention-policy-form.jsx         1 warning
-platform-role-form-drawer.jsx              2 warnings
-platform-roles-section.jsx                 1 warning
-workspace-ownership-section.jsx            2 warnings
+platform-audit-logs-page.test.jsx
+platform-plan-form-capabilities.test.jsx
+workspace-switcher.test.jsx
 ```
 
-Ils ne sont pas à corriger opportunément dans le lot Select. Ils doivent faire l’objet d’un nettoyage dédié afin de ne pas mélanger une refactorisation de dépendances React avec l’harmonisation des composants UI.
+Causes :
+
+```text
+1. Audit Logs
+   le test cherchait directement un role="option" alors que le popup Base UI
+   n’est exposé qu’après ouverture du combobox.
+
+2. Plan capabilities
+   le test utilisait encore user.selectOptions(), API adaptée aux <select>
+   natifs mais pas au Select Base UI.
+
+3. WorkspaceSwitcher
+   le test dépendait d’une interaction popup/portal fragile sous jsdom ;
+   le composant était bien migré mais le scénario de test devait adopter
+   une interaction Base UI accessible.
+```
+
+Correction effectuée **en un seul bloc** dans :
+
+```text
+93fda262ed0da03d41eab497cb5d3a2ac004a023
+test(frontend): align remaining select tests with Base UI
+```
+
+Aucun test individuel ne doit être utilisé pour valider ce bloc. La prochaine validation doit être la gate frontend globale.
+
+**Important : aucune gate globale verte postérieure au commit `93fda262...` n’a encore été communiquée.**
+
+Le lot Select ne doit donc pas être déclaré validé ou fusionnable à ce stade.
+
+### 3.3 Warnings React Hooks connus — hors périmètre Select
+
+Les 9 warnings observés précédemment sont des `react-hooks/exhaustive-deps` dans :
+
+```text
+platform-entitlement-override-form.jsx     3
+platform-retention-policy-form.jsx         1
+platform-role-form-drawer.jsx              2
+platform-roles-section.jsx                 1
+workspace-ownership-section.jsx            2
+```
+
+Ils doivent rester hors du lot Select sauf s’ils deviennent réellement bloquants.
+
+Un nettoyage dédié pourra être planifié ensuite ; ne pas mélanger silencieusement refactorisation de hooks et migration UI.
 
 ---
 
-## 4. Architecture frontend à préserver
+## 4. Méthode de correction des tests — règle explicite
+
+Décision de travail à conserver :
+
+```text
+plusieurs FAILS
+→ analyser toute la sortie
+→ regrouper par cause racine
+→ corriger la famille complète en un bloc
+→ relancer une gate globale cohérente
+```
+
+À éviter :
+
+```text
+FAIL 1 → correction → test individuel
+FAIL 2 → correction → test individuel
+FAIL 3 → correction → test individuel
+```
+
+Lorsque plusieurs tests échouent à cause d’une migration structurelle commune, les traiter un par un masque la cohérence du problème et augmente le risque d’oublier des usages.
+
+Pour le lot Select actuel, la validation demandée est donc :
+
+```bash
+cd frontend
+npm run lint
+npm test
+npm run build
+```
+
+Si `npm test` remonte encore plusieurs FAILS, récupérer la sortie complète et traiter toutes les causes communes en un nouveau bloc avant toute nouvelle exécution globale.
+
+---
+
+## 5. Architecture frontend à préserver
 
 Architecture de référence :
 
@@ -170,9 +245,9 @@ Principes obligatoires :
 - Redux Toolkit pour l’état global client ;
 - `useState` pour l’état local ;
 - composants réutilisables obligatoires ;
-- pas de primitive générique dupliquée localement dans une feature.
+- aucune primitive générique concurrente recréée localement sans justification.
 
-Classification utilisée pendant l’audit transversal :
+Classification de l’audit transversal :
 
 ```text
 A. CONFORME
@@ -181,31 +256,27 @@ C. À MIGRER
 D. À CONSERVER SPÉCIFIQUE
 ```
 
-Une migration vers shadcn/Base UI doit résoudre un problème réel de cohérence, accessibilité ou maintenance ; elle ne doit pas être faite uniquement pour uniformiser le nom des fichiers.
+Une migration shadcn/Base UI doit résoudre un problème réel de cohérence, accessibilité ou maintenance, pas seulement uniformiser les noms de fichiers.
 
 ---
 
-## 5. DataTable / DataPagination — consolidés
-
-Le lot transversal DataTable/DataPagination a été terminé et fusionné avant DLG-1.
+## 6. DataTable / DataPagination — consolidés
 
 ### DataTable
 
-Le `DataTable` partagé reste la seule abstraction de table applicative générique.
-
-Décision maintenue :
+Le `DataTable` partagé reste l’abstraction unique de table applicative générique.
 
 ```text
 components/data-display/data-table.jsx
 → table sémantique centralisée
-→ pas de duplication d’un wrapper ui/table inutile
+→ pas de wrapper ui/table concurrent inutile
 ```
 
-Les états serveur, RTK Query, erreurs et chargements ne doivent pas être injectés dans `DataTable`. Le composant reste structurel et présentatif.
+Les états RTK Query, erreurs serveur et chargements restent dans les features/pages ; `DataTable` reste structurel et présentatif.
 
 ### DataPagination
 
-Le composant partagé fournit l’affichage harmonisé :
+Affichage harmonisé :
 
 ```text
 Afficher [10] par page
@@ -213,66 +284,29 @@ Page x sur y · n résultats
 Précédent / Suivant
 ```
 
-Configuration frontend canonique :
+Tailles autorisées :
 
 ```text
 10 / 20 / 50 / 100
 ```
 
-Elle reste compatible avec la validation backend `limit <= 100`.
+Le hook partagé `useDataPagination()` gère `page/pageSize` localement et remet la page à 1 lors d’un changement de taille.
 
-Le hook partagé :
-
-```text
-useDataPagination()
-```
-
-porte l’état local `page/pageSize` et remet la page à 1 lorsqu’on change la taille de page.
-
-Les pages URL-backed continuent à encoder `page/limit` dans l’URL lorsqu’il s’agit d’un vrai état de navigation.
-
-Exception documentée : certains catalogues complets réutilisés par des sélecteurs peuvent rester client-side lorsqu’une pagination serveur casserait leur contrat fonctionnel.
+Les pages réellement URL-backed conservent `page/limit` dans l’URL.
 
 ---
 
-## 6. Dialog — DLG-1 terminé, suite encore à faire
+## 7. Dialog — DLG-1 terminé, DLG-2 à faire
 
-### 6.1 Architecture validée
-
-La cible est :
+Architecture validée :
 
 ```text
 features
-→ wrappers de confirmation métier
+→ wrappers métier
 → ConfirmationDialog
 → components/ui/dialog.jsx
 → @base-ui/react/dialog
 ```
-
-`ConfirmationDialog` reste un wrapper partagé légitime : il porte la sémantique d’une confirmation applicative, mais ne réimplémente plus la mécanique bas niveau d’une modale.
-
-### 6.2 DLG-1 livré
-
-Nouveau composant :
-
-```text
-frontend/src/components/ui/dialog.jsx
-```
-
-Il encapsule les primitives Base UI :
-
-```text
-Dialog.Root
-Dialog.Trigger
-Dialog.Portal
-Dialog.Backdrop
-Dialog.Popup
-Dialog.Title
-Dialog.Description
-Dialog.Close
-```
-
-`ConfirmationDialog` utilise désormais cette primitive partagée.
 
 Base UI porte maintenant :
 
@@ -283,263 +317,171 @@ Base UI porte maintenant :
 - modalité ;
 - verrouillage du scroll.
 
-Contrat UX conservé :
+Contrat `ConfirmationDialog` :
 
-- clic backdrop ne ferme pas la confirmation ;
-- Escape ferme lorsque l’action est idle ;
+- clic backdrop ne ferme pas ;
+- Escape ferme lorsque idle ;
 - `pending === true` bloque fermeture et double action ;
-- le bouton Annuler reçoit le focus initial.
+- Annuler reçoit le focus initial.
 
-### 6.3 `use-dialog-focus.js`
+`use-dialog-focus.js` doit rester tant que `EntityDetailsDrawer` l’utilise.
 
-Le hook manuel n’a **pas** été supprimé du dépôt.
-
-Il n’est plus utilisé par `ConfirmationDialog`, mais il reste requis par :
-
-```text
-components/shared/entity-details-drawer.jsx
-```
-
-Sa suppression appartient au futur chantier Drawer/Sheet, pas à DLG-1.
-
-### 6.4 DLG-2 reste à faire
-
-DLG-1 ne signifie pas que tous les dialogs du frontend ont été migrés.
-
-Il reste à inventorier les shells modaux custom et à les classer :
-
-```text
-CONFORME
-WRAPPER LÉGITIME
-À MIGRER
-À CONSERVER SPÉCIFIQUE
-```
-
-Exemple déjà visible : `FileUploadDialog` possède encore son propre shell de modale. Le lot Select a uniquement migré son champ Catégorie ; il n’a volontairement pas refactoré son Dialog.
+DLG-2 doit ensuite inventorier les shells modaux custom restants. Exemple déjà identifié : `FileUploadDialog` possède encore son propre shell de modale ; le lot Select n’a migré que son champ Catégorie.
 
 ---
 
-## 7. Toast — audité, pas encore migré
+## 8. Toast — audité, non migré
 
-Le frontend possède actuellement :
+État actuel :
 
 ```text
 components/shared/toast-provider.jsx
 ```
 
-avec un moteur maison basé sur contexte React, tableau de notifications et timers.
-
-Décision d’architecture validée :
+Cible validée :
 
 ```text
 features
-→ useToast() / adapter applicatif
+→ useToast() / adapter
 → components/ui/toast.jsx
 → Base UI Toast
 ```
 
-La migration doit préserver l’API applicative autant que possible :
+Conserver autant que possible :
 
 ```text
-toast({
-  title,
-  description,
-  variant,
-})
+toast({ title, description, variant })
 ```
 
-Variantes à conserver :
+Variantes fonctionnelles à préserver : success, error/destructive, warning, info.
 
-```text
-success
-error
-a.k.a destructive selon adaptation interne
-warning
-info
-```
+Les erreurs de validation de champs restent inline.
 
-Ne pas remplacer les erreurs de validation de champs par des toasts : elles restent inline.
-
-Ne pas ajouter Sonner sans besoin concret. Le projet possède déjà Base UI et shadcn fournit désormais un Toast Base UI natif adapté à cette architecture.
-
-Le lot Toast doit être traité séparément après la consolidation Dialog restante.
+Ne pas ajouter Sonner sans besoin concret : Base UI est déjà présent et la primitive shadcn/Base UI est adaptée au projet.
 
 ---
 
-## 8. Select — lot transversal actuellement EN COURS
+## 9. Select — architecture canonique et état du lot
 
-### 8.1 Problème identifié
+### 9.1 Architecture
 
-Une inspection visuelle des journaux d’audit Platform a révélé que les filtres :
-
-```text
-Action
-Ressource
-Statut
-```
-
-utilisaient encore des `<select>` HTML natifs, visuellement et comportementalement différents des Select Base UI déjà utilisés ailleurs.
-
-Le problème était plus large : plusieurs générations de Select coexistaient dans le frontend.
-
-### 8.2 Architecture canonique retenue
-
-Primitive bas niveau :
+Primitive :
 
 ```text
 frontend/src/components/ui/select.jsx
 → @base-ui/react/select
 ```
 
-Wrapper partagé pour les listes simples avec label, hint et erreur :
+Wrapper partagé des listes simples :
 
 ```text
 frontend/src/components/shared/select-field.jsx
 ```
 
-Architecture :
+Flux habituel :
 
 ```text
 features
-→ SelectField partagé
-→ components/ui/select.jsx
+→ SelectField
+→ ui/select.jsx
 → Base UI Select
 ```
 
-ou, pour un composant transversal qui ne correspond pas à un champ de formulaire classique :
+Pour un composant transversal qui n’est pas un champ de formulaire classique :
 
 ```text
 feature/shared component
-→ components/ui/select.jsx directement
+→ ui/select.jsx directement
 ```
 
-Les catalogues volumineux avec recherche/groupes peuvent utiliser une abstraction spécialisée telle que `GroupedSearchSelect`, à condition de rester fondés sur les primitives canoniques et de ne pas réintroduire un `<select>` natif concurrent.
+Les gros catalogues avec recherche/groupes peuvent conserver une abstraction spécialisée telle que `GroupedSearchSelect`, à condition qu’elle n’introduise pas un `<select>` natif concurrent.
 
-### 8.3 Ancien composant supprimé
+### 9.2 Ancien composant supprimé
 
-L’ancien :
+Ancien wrapper natif supprimé :
 
 ```text
-frontend/src/components/forms/select-field.jsx
+components/forms/select-field.jsx
+components/forms/select-field.test.jsx
 ```
 
-était encore un wrapper de `<select>` natif.
-
-Il a été supprimé avec son test afin d’éviter deux `SelectField` concurrents.
-
-Le wrapper canonique est désormais :
+Wrapper canonique :
 
 ```text
 @/components/shared/select-field
 ```
 
-### 8.4 Protection ESLint ajoutée
+### 9.3 Garde ESLint
 
-Le lint frontend contient maintenant une règle qui interdit les `<select>` natifs dans `src` et une règle qui interdit l’ancien import `@/components/forms/select-field`.
-
-Objectif : empêcher le retour silencieux de Select HTML natifs à mesure que le Core est dérivé.
-
-### 8.5 Surfaces migrées dans le lot courant
-
-Le lot courant couvre notamment :
+Le frontend possède maintenant des règles interdisant :
 
 ```text
-Audit logs Platform
-- filtres Action / Ressource / Statut
-
-Commercial invitations
-- formulaire de création
-
-Platform invitations
-- formulaire d’invitation
-
-Platform metric limits
-- sélection du mode limité / illimité
-
-Platform plans
-- capabilities / formulaires de plan
-
-Platform subscriptions
-- édition commerciale
-- attribution d’un trial
-- mode d’annulation
-
-Platform team
-- rôles / membres selon usages concernés
-
-Workspace members
-- rôle / filtres concernés
-
-Files
-- catégorie du fichier dans FileUploadDialog
-
-Retention
-- cible de rétention
-
-WorkspaceSwitcher
-- sélection du workspace actif
+<select> natif dans src
+import depuis @/components/forms/select-field
 ```
 
-### 8.6 Tests Base UI
+L’objectif est d’éviter la réintroduction silencieuse d’une seconde génération de Select lors des futures dérivations du Core.
 
-Les Select Base UI ne sont pas des `<select>` HTML.
+### 9.4 Surfaces migrées
 
-Dans les tests React Testing Library, éviter :
+Le lot couvre notamment :
+
+```text
+Audit Logs Platform
+- Action
+- Ressource
+- Statut
+
+Commercial invitations
+Platform invitations
+Platform metric limits
+Platform plans / capabilities
+Platform subscriptions
+- édition commerciale
+- attribution trial
+- mode d’annulation
+Platform team
+Workspace members
+Files
+- catégorie d’upload
+Retention
+- cible de rétention
+WorkspaceSwitcher
+- workspace actif
+```
+
+### 9.5 Règle de test Base UI
+
+Un Select Base UI n’est pas un `<select>` natif.
+
+Ne pas supposer que :
 
 ```text
 user.selectOptions(...)
 ```
 
-pour ces composants.
+fonctionnera.
 
-Pattern attendu :
-
-```text
-click combobox
-→ click option
-→ assertion sur le résultat métier
-```
-
-Des tests concernés ont déjà été adaptés dans la branche.
-
-### 8.7 État exact avant reprise
-
-Dernier lint réellement exécuté avant les toutes dernières corrections :
+Scénarios préférés :
 
 ```text
-5 errors
-9 warnings
+combobox
+→ ouverture / clavier accessible
+→ choix d’une option
+→ assertion métier
 ```
 
-Les 5 errors ont été corrigées ensuite, mais la relance n’a pas encore été fournie.
-
-Première action obligatoire de la prochaine conversation :
-
-```bash
-cd frontend
-npm run lint
-```
-
-Si le résultat est :
-
-```text
-0 error
-9 warnings
-```
-
-alors le scan global prouve qu’aucun `<select>` natif interdit et aucun ancien import `components/forms/select-field` ne subsiste dans le frontend.
-
-Ensuite seulement : tests ciblés, suite frontend globale, build et validation visuelle.
+Sous jsdom, ne pas écrire un test qui dépend inutilement du positionnement visuel d’un Portal Base UI.
 
 ---
 
-## 9. UX des textes pédagogiques
+## 10. UX des textes pédagogiques
 
 Règle validée :
 
 ```text
 information secondaire / pédagogique
-→ InfoTooltip `(i)`
+→ InfoTooltip
 
 conséquence importante d’une action
 → reste visible
@@ -548,15 +490,13 @@ opération sensible / destructive
 → explication visible obligatoire
 ```
 
-Cette règle reste active pendant l’audit transversal UI.
-
-Ne pas transformer systématiquement toutes les descriptions en tooltips.
+Ne pas transformer toutes les descriptions en tooltips.
 
 ---
 
-## 10. Transfert de propriété et D-023
+## 11. Ownership transfer et D-023
 
-Le transfert de propriété demeure une capacité exceptionnelle gouvernée.
+Le transfert de propriété reste une capacité exceptionnelle gouvernée.
 
 Mécanisme actuel :
 
@@ -568,39 +508,37 @@ Super administrateur Platform
 → révocation possible
 
 owner courant
-→ workflow visible uniquement si autorisation active
-→ choix de la cible
-→ choix du rôle de remplacement
-→ confirmation
-→ mot de passe courant
+→ workflow disponible uniquement si autorisation active
+→ cible + rôle de remplacement
+→ confirmation + mot de passe
 → validation backend
 → transfert transactionnel
-→ autorisation single-use consommée
+→ single-use
 → audit
 ```
 
-TTL serveur :
+TTL :
 
 ```text
 WORKSPACE_OWNERSHIP_TRANSFER_AUTHORIZATION_TTL_HOURS
 ```
 
-Défaut 24 h, maximum absolu 24 h, calculé par le backend.
+Défaut 24 h, maximum absolu 24 h, calculé côté backend.
 
-### D-023
+D-023 :
 
 ```text
-D-023 — Demande gouvernée de capacité exceptionnelle de transfert de propriété
+Demande gouvernée de capacité exceptionnelle de transfert
 Statut : DIFFÉRÉ
 Cible : Core 1.1
 Blocage Core 1.0 : non
 ```
 
-D-023 ne doit pas être implémentée pendant l’audit UI actuel sauf décision explicite de changement de roadmap.
+Ne pas implémenter D-023 pendant l’audit UI actuel sauf décision explicite de changement de roadmap.
 
 ---
 
-## 11. Dettes et roadmap Core 1.0
+## 12. Dettes et roadmap Core 1.0
 
 État canonique selon `docs/DEBT.md` :
 
@@ -618,7 +556,7 @@ D-023  DIFFÉRÉ — Core 1.1
 
 D-020 doit être clôturée ou explicitement reclassifiée avant D-015.
 
-Roadmap canonique :
+Roadmap :
 
 ```text
 D-020 → clôturer ou reclassifier
@@ -633,13 +571,13 @@ post-v1.0 :
 D-023 → workflow gouverné de transfert
 ```
 
-D-002 doit être VALIDÉ avant D-017 et avant la première dérivation métier.
+D-002 doit être VALIDÉ avant D-017 et la première dérivation métier.
 
 ---
 
-## 12. Audit transversal UI — état et ordre de reprise
+## 13. Audit transversal UI — ordre après le lot Select
 
-Lots désormais consolidés :
+Lots consolidés :
 
 ```text
 Design Tokens / D-011
@@ -648,40 +586,33 @@ Topbars
 DataTable
 DataPagination
 Dialog DLG-1 / ConfirmationDialog
-Select : EN COURS, à valider avant fusion
 ```
 
-Ordre recommandé après validation du lot Select :
+Lot courant :
 
 ```text
-1. terminer Dialog DLG-2 : inventaire des shells modaux custom restants
-2. migrer Toast vers la primitive Base UI/shadcn en conservant useToast()
-3. auditer Drawer / Sheet / panneaux latéraux
-4. auditer formulaires partagés
-5. auditer Input / Textarea / Checkbox / Switch
-6. auditer Dropdown menus
-7. auditer Tooltip / Popover / Accordion / Tabs restants
-8. auditer Badge / StatusBadge
-9. auditer les primitives HTML/React directes restantes dans pages/features
+Select — EN COURS DE VALIDATION
 ```
 
-Le chantier Select a été traité avant DLG-2 parce qu’une incohérence visuelle concrète a été découverte dans Platform > Journaux d’audit. Ce changement d’ordre ne modifie pas la roadmap globale.
+Ordre recommandé après validation et fusion Select :
 
-Pour chaque famille :
+```text
+1. DLG-2 : shells modaux custom restants
+2. Toast Base UI/shadcn en conservant useToast()
+3. Drawer / Sheet / panneaux latéraux
+4. formulaires partagés
+5. Input / Textarea / Checkbox / Switch
+6. Dropdown menus
+7. Tooltip / Popover / Accordion / Tabs
+8. Badge / StatusBadge
+9. primitives HTML/React directes restantes
+```
 
-- inventorier les usages réels ;
-- détecter les duplications ;
-- vérifier clavier, focus, ARIA ;
-- vérifier les Design Tokens ;
-- vérifier API, composition et testabilité ;
-- classer `CONFORME / WRAPPER LÉGITIME / À MIGRER / À CONSERVER SPÉCIFIQUE` ;
-- distinguer problème réel et préférence stylistique ;
-- proposer un lot cohérent ;
-- ne pas mélanger plusieurs familles dans une même migration sauf dépendance réelle.
+Pour chaque famille : inventorier, détecter les duplications, vérifier clavier/focus/ARIA, vérifier tokens, API et testabilité, puis classer avant toute migration.
 
 ---
 
-## 13. Chantiers à garder séparés
+## 14. Chantiers à garder séparés
 
 Ne pas mélanger au chantier UI :
 
@@ -694,16 +625,14 @@ E. D-015 versionnement / provenance / releases
 F. D-016 Playwright E2E Core
 G. D-002 corbeille / restauration Files
 H. D-017 dérivation + upgrade pilote
-I. nettoyage des 9 warnings React Hooks connus
+I. nettoyage des warnings React Hooks connus
 ```
-
-Le nettoyage des warnings React Hooks peut devenir un lot technique dédié, mais ne doit pas être glissé silencieusement dans une migration Select/Dialog/Drawer.
 
 ---
 
-## 14. Règles de travail à conserver
+## 15. Règles de travail à conserver
 
-- vérifier branche et HEAD avant toute modification ;
+- vérifier branche et HEAD avant modification ;
 - code + DB + tests réellement exécutés priment sur la synthèse ;
 - JavaScript uniquement ;
 - validation stricte des données ;
@@ -711,38 +640,54 @@ Le nettoyage des warnings React Hooks peut devenir un lot technique dédié, mai
 - DataTable partagé obligatoire pour les tableaux applicatifs ;
 - shadcn/ui/Base UI comme primitives génériques lorsque pertinent ;
 - wrappers applicatifs conservés lorsqu’ils apportent une responsabilité réelle ;
-- ne jamais créer une seconde primitive concurrente sans justification ;
-- aucun snippet sauvage ;
+- aucune primitive concurrente sans justification ;
 - aucun changement hors périmètre ;
 - expliquer avant d’implémenter ;
-- corrections regroupées par cause racine ;
-- si plusieurs tests échouent sur la même erreur structurelle, traiter la cause commune en bloc avant de corriger fichier par fichier ;
-- tests ciblés pendant la correction ;
-- gate globale seulement au moment utile de validation finale ;
-- ne jamais annoncer une gate verte sur la base d’un résultat non exécuté.
+- plusieurs FAILS d’une même famille = analyse globale + correction en bloc ;
+- ne pas enchaîner les tests individuels fail par fail ;
+- gate globale après un bloc de correction transversal ;
+- ne jamais annoncer une gate verte sans résultat réellement exécuté.
 
 ---
 
-## 15. Prochaine action exacte
+## 16. Prochaine action exacte
 
-La prochaine conversation doit **reprendre la branche `feature/select-base-ui-harmonization`**, et non démarrer un nouveau lot immédiatement.
-
-Séquence :
+La prochaine conversation doit reprendre :
 
 ```text
-1. vérifier main et son HEAD ;
-2. vérifier feature/select-base-ui-harmonization et son HEAD réel ;
-3. lire docs/REPRISE-CURRENT.md ;
+feature/select-base-ui-harmonization
+```
+
+et **ne pas démarrer DLG-2 avant d’avoir clôturé le lot Select**.
+
+Séquence obligatoire :
+
+```text
+1. vérifier le HEAD réel de main ;
+2. vérifier le HEAD réel de feature/select-base-ui-harmonization ;
+3. lire intégralement docs/REPRISE-CURRENT.md ;
 4. lire docs/DEBT.md au minimum pour D-020, D-015, D-016, D-002, D-017, D-023 ;
-5. ne modifier aucun fichier avant de connaître le résultat des validations ;
-6. demander / exécuter npm run lint dans frontend ;
-7. si 0 error, exécuter les tests ciblés du lot Select ;
-8. corriger les éventuels échecs par cause racine, en bloc ;
-9. une fois ciblés verts : npm test puis npm run build ;
-10. validation visuelle des Select, notamment Platform > Journaux d’audit ;
-11. revue finale du diff ;
-12. seulement après validation : fusion du lot Select dans main ;
-13. ensuite reprendre DLG-2 puis Toast.
+5. inspecter le diff réel main..feature/select-base-ui-harmonization ;
+6. ne rien modifier avant de connaître le résultat de la gate globale ;
+7. lancer dans frontend : npm run lint ; npm test ; npm run build ;
+8. si plusieurs FAILS apparaissent, collecter toute la sortie et regrouper les causes racines ;
+9. effectuer un seul bloc de correction cohérent ;
+10. relancer ensuite la gate frontend globale, pas des tests fail par fail ;
+11. quand tout est réellement vert : validation visuelle des Select ;
+12. revue finale du diff ;
+13. fusion dans main ;
+14. seulement ensuite reprendre DLG-2 puis Toast.
+```
+
+Validation visuelle prioritaire après gate verte :
+
+```text
+Platform > Journaux d’audit
+WorkspaceSwitcher
+Files > catégorie d’upload
+Platform Plans / capabilities
+Platform Subscriptions
+Retention
 ```
 
 Le présent fichier est une synthèse de reprise et non une source supérieure au code, aux tests ou aux contrats canoniques.
