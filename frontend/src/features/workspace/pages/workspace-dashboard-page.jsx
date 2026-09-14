@@ -11,6 +11,10 @@ function getSummaryGridClass() {
   return getBalancedSixColumnGridClass();
 }
 
+/**
+ * Conserve l'API locale historique du Dashboard Workspace tout en déléguant la
+ * règle de répartition au moteur partagé utilisé aussi par la Platform.
+ */
 function getSummaryItemClass(index, itemCount) {
   return getBalancedSixColumnItemClass(index, itemCount);
 }
@@ -40,7 +44,6 @@ function WorkspaceDashboardPage() {
           <h1 className="text-3xl font-semibold tracking-tight">Tableau de bord</h1>
           <InfoTooltip content={dashboardHelp} label="À propos du tableau de bord" />
         </div>
-        <p className="sr-only">{dashboardHelp}</p>
       </header>
 
       <section

@@ -40,6 +40,11 @@ const LIMIT_LABEL = Object.freeze({
   file_uploads_monthly: 'Téléversements mensuels',
 });
 
+/**
+ * Dépendances de présentation des limites Core. Les valeurs serveur restent
+ * intactes : cette table indique seulement qu'une limite n'a pas de sens comme
+ * avantage commercial visible lorsque la fonctionnalité associée est absente.
+ */
 const LIMIT_REQUIRED_FEATURE = Object.freeze({
   storage_bytes: 'file_upload',
   file_uploads_monthly: 'file_upload',
@@ -81,6 +86,11 @@ function formatFeatureLabel(featureKey) {
   return FEATURE_LABEL[featureKey] ?? featureKey;
 }
 
+/**
+ * Formate uniquement la projection temporelle calculée par le backend. Le
+ * frontend n'infère jamais une échéance à partir du plan, du trial ou d'une
+ * dérogation qu'il ne connaît pas.
+ */
 function formatFeatureAvailability(availability, { now = new Date() } = {}) {
   if (availability?.mode === 'open_ended') return 'Sans échéance';
 
@@ -106,6 +116,11 @@ function formatFeatureAvailability(availability, { now = new Date() } = {}) {
   return `Jusqu’au ${dateLabel} · ${durationLabel}`;
 }
 
+/**
+ * Accepte la clé seule ou l'objet détaillé renvoyé par le backend lors d'une
+ * incompatibilité de plan. Cette tolérance évite de coupler le rendu à une
+ * représentation simplifiée qui ferait perdre `usage`, `limit` et `excess`.
+ */
 function formatLimitLabel(limit) {
   const limitKey = typeof limit === 'string' ? limit : limit?.key;
   return LIMIT_LABEL[limitKey] ?? limitKey ?? 'Limite inconnue';
@@ -127,6 +142,11 @@ function formatBytes(value) {
   return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(amount)} ${units[unitIndex]}`;
 }
 
+/**
+ * Formate une valeur de limite sans en déduire une règle métier. `null` reste
+ * affiché comme illimité, conformément au contrat Plan qui utilise cette
+ * valeur pour l'absence de plafond fini.
+ */
 function formatPlanLimitValue(limitKey, value) {
   if (value === null) return 'Illimité';
   if (limitKey === 'storage_bytes') return formatBytes(Number(value));
@@ -134,6 +154,12 @@ function formatPlanLimitValue(limitKey, value) {
   return '—';
 }
 
+/**
+ * Formate une limite dans une vue d'entitlement utilisateur. Une métrique peut
+ * rester connue du backend pour l'historique, la rétention ou la remédiation
+ * alors que la fonctionnalité commerciale correspondante n'est plus accordée.
+ * Dans ce cas l'UI affiche « — » plutôt qu'un quota trompeur.
+ */
 function formatEffectiveLimitValue(limitKey, value, features = []) {
   const requiredFeature = LIMIT_REQUIRED_FEATURE[limitKey];
 
@@ -144,6 +170,15 @@ function formatEffectiveLimitValue(limitKey, value, features = []) {
   return formatPlanLimitValue(limitKey, value);
 }
 
+/**
+ * Calcule uniquement une information de présentation du trial.
+ *
+ * Le résultat ne doit jamais servir à décider si le trial fournit encore des
+ * droits : cette décision appartient à `effectiveEntitlement` côté backend.
+ *
+ * @param {{ startAt?: string | Date | null, endAt?: string | Date | null, now?: Date }} input
+ * @returns {{ progressPercent: number, remainingDays: number } | null}
+ */
 function getTrialProgress({ startAt, endAt, now = new Date() }) {
   const start = new Date(startAt);
   const end = new Date(endAt);
