@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
+import { findToastByText } from '@/test/toast-assertions';
 
 const mocks = vi.hoisted(() => ({
   cancelSubscription: vi.fn(),
@@ -160,7 +161,7 @@ describe('PlatformSubscriptionsPage', () => {
       planId: subscription.plan.id,
       billingInterval: 'yearly',
     });
-    expect(await screen.findByText('Trial accordé')).toBeInTheDocument();
+    expect(await findToastByText('Trial accordé')).toBeInTheDocument();
   });
 
   it('modifie les conditions commerciales de la souscription', async () => {
@@ -192,7 +193,7 @@ describe('PlatformSubscriptionsPage', () => {
       manualOverride: false,
       manualOverrideReason: null,
     });
-    expect(await screen.findByText('Souscription mise à jour')).toBeInTheDocument();
+    expect(await findToastByText('Souscription mise à jour')).toBeInTheDocument();
   });
 
   it('annule une souscription avec un mode et un motif explicites', async () => {
@@ -213,7 +214,7 @@ describe('PlatformSubscriptionsPage', () => {
       mode: 'immediate',
       reason: 'Demande commerciale',
     });
-    expect(await screen.findByText('Annulation enregistrée')).toBeInTheDocument();
+    expect(await findToastByText('Annulation enregistrée')).toBeInTheDocument();
   });
 
   it('reprend une souscription dont l’annulation est programmée', async () => {
@@ -236,6 +237,8 @@ describe('PlatformSubscriptionsPage', () => {
     await user.click(within(confirmation).getByRole('button', { name: 'Reprendre' }));
 
     expect(mocks.resumeSubscription).toHaveBeenCalledWith(subscription.id);
-    expect(await screen.findByText('Annulation programmée retirée')).toBeInTheDocument();
+    expect(
+      await findToastByText('Annulation programmée retirée'),
+    ).toBeInTheDocument();
   });
 });
