@@ -272,6 +272,86 @@ describe('workspace subscription overview projection', () => {
         });
     });
 
+    it('borne au downgrade une feature retirée du prochain plan', () => {
+        const subscriptionId = new ObjectId();
+        const effectiveAt = new Date('2026-10-01T00:00:00.000Z');
+        const currentPlan = buildPlan({ features: ['export_pdf'] });
+        const targetPlan = buildPlan({ features: [] });
+        const access = {
+            subscription: {
+                _id: subscriptionId,
+                kind: 'commercial',
+                termType: 'fixed',
+                status: 'active',
+                cancelAtPeriodEnd: false,
+            },
+            plan: currentPlan,
+            effectiveCapabilities: {
+                features: ['export_pdf'],
+                limits: {},
+                appliedOverrides: [],
+            },
+        };
+        const commercialSubscription = {
+            _id: subscriptionId,
+            scheduledChange: {
+                type: 'downgrade',
+                targetPlan,
+                effectiveAt,
+            },
+        };
+
+        expect(buildFeatureAvailability({
+            access,
+            commercialSubscription,
+        })).toEqual({
+            export_pdf: {
+                mode: 'bounded',
+                endsAt: effectiveAt,
+            },
+        });
+    });
+
+    it('projette la continuité réelle des features lors d’une résiliation programmée', () => {
+        const currentPeriodEnd = new Date('2026-10-01T00:00:00.000Z');
+        const access = {
+            subscription: {
+                _id: new ObjectId(),
+                kind: 'commercial',
+                termType: 'fixed',
+                status: 'active',
+                cancelAtPeriodEnd: true,
+                currentPeriodEnd,
+            },
+            plan: buildPlan({
+                features: ['file_upload', 'export_pdf'],
+            }),
+            effectiveCapabilities: {
+                features: ['file_upload', 'export_pdf'],
+                limits: {},
+                appliedOverrides: [],
+            },
+        };
+        const baselinePlan = buildPlan({
+            systemRole: PLAN_SYSTEM_ROLE.BASELINE,
+            features: ['file_upload'],
+        });
+
+        expect(buildFeatureAvailability({
+            access,
+            baselinePlan,
+        })).toEqual({
+            file_upload: {
+                mode: 'open_ended',
+                endsAt: null,
+            },
+            export_pdf: {
+                mode: 'bounded',
+                endsAt: currentPeriodEnd,
+            },
+        });
+    });
+
     it('refuse un entitlement effectif incomplet au lieu de fabriquer des droits', () => {
         expect(() => {
             serializeWorkspaceEffectiveEntitlement({
