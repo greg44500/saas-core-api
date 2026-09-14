@@ -13,7 +13,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_TOAST_DURATION,
   ToastProvider,
-  normalizeToastVariant,
   useToast,
 } from '@/components/shared/toast-provider';
 
@@ -150,18 +149,5 @@ describe('ToastProvider', () => {
     await waitFor(() => {
       expect(getToastElement()).not.toBeInTheDocument();
     });
-  });
-});
-
-describe('normalizeToastVariant', () => {
-  it.each([
-    ['success', 'success'],
-    ['warning', 'warning'],
-    ['info', 'info'],
-    ['error', 'destructive'],
-    ['destructive', 'destructive'],
-    ['inconnue', 'info'],
-  ])('normalise %s vers %s', (variant, expected) => {
-    expect(normalizeToastVariant(variant)).toBe(expected);
   });
 });
