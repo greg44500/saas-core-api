@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
+import { findToastByText } from '@/test/toast-assertions';
 
 const mocks = vi.hoisted(() => ({
   deleteWorkspaceFile: vi.fn(),
@@ -242,9 +243,8 @@ describe('WorkspaceFilesPage', () => {
       workspaceId: 'workspace-1',
       fileId: 'file-1',
     });
-    const status = await screen.findByRole('status');
-    expect(status).toHaveTextContent('Fichier retiré');
-    expect(status).toHaveTextContent('contrat.pdf');
+    const toast = await findToastByText('Fichier retiré');
+    expect(toast).toHaveTextContent('contrat.pdf');
   });
 
   it('conserve le dialogue ouvert et affiche le refus backend', async () => {
@@ -341,9 +341,8 @@ describe('WorkspaceFilesPage', () => {
     renderPage();
     await user.click(screen.getByRole('button', { name: 'Télécharger contrat.pdf' }));
 
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Téléchargement impossible');
-    expect(alert).toHaveTextContent('Téléchargement interdit');
+    const toast = await findToastByText('Téléchargement impossible');
+    expect(toast).toHaveTextContent('Téléchargement interdit');
   });
 
   it('affiche un état vide explicite', () => {
