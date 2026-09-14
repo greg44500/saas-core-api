@@ -6,6 +6,7 @@ import { DataTable, DataTableActions } from '@/components/data-display/data-tabl
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { SelectField } from '@/components/shared/select-field';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
@@ -194,14 +195,17 @@ function PlatformSubscriptionsPage() {
     },
   ];
 
+  const pageDescription = 'Administrez les souscriptions commerciales, trials, remises et transitions de cycle de vie.';
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Abonnements</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Administrez les souscriptions commerciales, trials, remises et transitions de cycle de vie.
-          </p>
+        <div className="min-w-0">
+          <div className="flex items-start gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">Abonnements</h1>
+            <InfoTooltip content={pageDescription} label="À propos des abonnements" />
+          </div>
+          <p className="sr-only">{pageDescription}</p>
         </div>
         <Button
           disabled={plansQuery.isLoading || workspacesQuery.isLoading || Boolean(plansQuery.error) || Boolean(workspacesQuery.error)}

@@ -230,18 +230,14 @@ function PlatformTeamInvitationsSection({ now = new Date() }) {
 
   return (
     <div className="mt-5 space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Seules les invitations encore actives sont affichées. Les dates permettent d’identifier rapidement une invitation ancienne, un envoi en échec ou une expiration proche.
-        </p>
-
-        {canInvite && (
+      {canInvite && (
+        <div className="flex justify-end">
           <Button onClick={() => setCreateOpen(true)} type="button">
             <MailPlus aria-hidden="true" className="size-4" />
             Inviter un membre
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {initialLoading && (
         <div className="overflow-hidden rounded-lg border border-border">

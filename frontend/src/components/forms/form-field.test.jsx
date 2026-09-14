@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { DatePicker } from '@/components/forms/date-picker';
 import { FormField } from '@/components/forms/form-field';
 import { Input } from '@/components/ui/input';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 describe('FormField', () => {
   it('associe automatiquement une erreur au champ', () => {
@@ -31,6 +32,28 @@ describe('FormField', () => {
       'aria-describedby',
       'external-help code-message',
     );
+  });
+
+  it('expose une aide pédagogique à la demande via InfoTooltip', () => {
+    render(
+      <TooltipProvider>
+        <FormField
+          id="email"
+          info="Cette adresse sera utilisée lors de l’acceptation."
+          label="Email"
+        >
+          <Input id="email" />
+        </FormField>
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'À propos de Email' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Cette adresse sera utilisée lors de l’acceptation.'),
+    ).not.toBeInTheDocument();
   });
 
   it('relaie aussi les attributs accessibles vers un champ composite', () => {

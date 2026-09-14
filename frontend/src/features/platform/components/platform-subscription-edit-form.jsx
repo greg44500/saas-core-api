@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { DatePicker } from '@/components/forms/date-picker';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
 
@@ -108,16 +109,20 @@ function PlatformSubscriptionEditForm({
             <textarea className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" id="subscription-discount-reason" maxLength={500} onChange={(event) => setDiscountReason(event.target.value)} required value={discountReason} />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="subscription-discount-end">Fin de la remise</label>
+            <div className="flex items-center gap-1.5">
+              <label className="text-sm font-medium" htmlFor="subscription-discount-end">Fin de la remise</label>
+              <InfoTooltip
+                className="size-5"
+                content="Laissez vide pour une remise sans date d’expiration programmée."
+                label="À propos de la fin de la remise"
+              />
+            </div>
             <DatePicker
               disabled={pending}
               id="subscription-discount-end"
               onChange={setDiscountEndsAt}
               value={discountEndsAt}
             />
-            <p className="text-xs text-muted-foreground">
-              Laissez vide pour une remise sans date d’expiration programmée.
-            </p>
           </div>
         </>
       )}

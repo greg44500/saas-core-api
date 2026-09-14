@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
 import { PlatformPlanCapabilitiesEditor } from '@/features/platform/components/platform-plan-capabilities-editor';
@@ -190,11 +191,12 @@ function PlatformPlanForm({
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <section className="space-y-4">
-        <div>
+        <div className="flex items-start gap-2">
           <h3 className="font-semibold">Offre commerciale</h3>
-          <p className="text-sm text-muted-foreground">
-            L’identité technique est gérée automatiquement par le backend. Le nom commercial peut évoluer librement.
-          </p>
+          <InfoTooltip
+            content="L’identité technique est gérée automatiquement par le backend. Le nom commercial peut évoluer librement."
+            label="À propos de l’offre commerciale"
+          />
         </div>
 
         {isBaseline && (
@@ -266,9 +268,15 @@ function PlatformPlanForm({
 
       <section className="space-y-4">
         <div>
-          <h3 className="font-semibold">Fonctionnalités et limites incluses par défaut</h3>
-          <p className="text-sm text-muted-foreground">
-            Configurez chaque domaine commercial dans un même bloc : fonctionnalités, limites et quotas. Une modification du plan s’applique à tous les workspaces qui l’utilisent ; les exceptions individuelles restent gérées dans les dérogations.
+          <div className="flex items-start gap-2">
+            <h3 className="font-semibold">Fonctionnalités et limites incluses par défaut</h3>
+            <InfoTooltip
+              content="Configurez chaque domaine commercial dans un même bloc : fonctionnalités, limites et quotas."
+              label="À propos des fonctionnalités et limites"
+            />
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Une modification du plan s’applique à tous les workspaces qui l’utilisent ; les exceptions individuelles restent gérées dans les dérogations.
           </p>
         </div>
 

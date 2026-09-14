@@ -1,3 +1,4 @@
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import {
   Select,
   SelectContent,
@@ -18,6 +19,7 @@ function SelectField({
   error,
   hint,
   id,
+  info,
   items = [],
   label,
   labelClassName,
@@ -35,13 +37,20 @@ function SelectField({
 
   return (
     <div className={cn('space-y-2', className)}>
-      <label
-        className={cn('text-sm font-medium', labelClassName)}
-        htmlFor={id}
-        id={labelId}
-      >
-        {label}
-      </label>
+      <div className="flex items-center gap-1.5">
+        <label
+          className={cn('text-sm font-medium', labelClassName)}
+          htmlFor={id}
+          id={labelId}
+        >
+          {label}
+        </label>
+        <InfoTooltip
+          className="size-5"
+          content={info}
+          label={`À propos de ${label}`}
+        />
+      </div>
       <Select
         disabled={disabled}
         items={items}

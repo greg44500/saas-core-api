@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router';
 
 import { DEFAULT_DATA_PAGE_SIZE } from '@/components/data-display/data-pagination-config';
 import { DataPagination } from '@/components/data-display/data-pagination';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { Button } from '@/components/ui/button';
 import { AuditLogFilters, EMPTY_FILTERS } from '@/features/audit-log/components/audit-log-filters';
 import { AuditLogTable } from '@/features/audit-log/components/audit-log-table';
@@ -114,14 +115,19 @@ function PlatformAuditLogsPage() {
     );
   }
 
+  const pageDescription = 'Consultez l’historique global audité de la Plateforme. Les adresses IP, agents utilisateurs et métadonnées techniques restent volontairement absents de cette vue.';
+
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Journaux d’audit</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Consultez l’historique global audité de la Plateforme. Les adresses IP,
-          agents utilisateurs et métadonnées techniques restent volontairement absents de cette vue.
-        </p>
+      <header className="min-w-0">
+        <div className="flex items-start gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">Journaux d’audit</h1>
+          <InfoTooltip
+            content={pageDescription}
+            label="À propos des journaux d’audit"
+          />
+        </div>
+        <p className="sr-only">{pageDescription}</p>
       </header>
 
       <AuditLogFilters

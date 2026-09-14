@@ -14,6 +14,7 @@ import {
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -259,16 +260,22 @@ function PlatformCommercialInvitationsPage() {
     },
   ];
 
+  const pageDescription = 'Proposez une offre privée à un futur client ou bêta-testeur. Le premier workspace est créé uniquement après authentification et acceptation du bénéficiaire.';
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Invitations commerciales
-          </h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Proposez une offre privée à un futur client ou bêta-testeur. Le premier workspace est créé uniquement après authentification et acceptation du bénéficiaire.
-          </p>
+        <div className="min-w-0">
+          <div className="flex items-start gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Invitations commerciales
+            </h1>
+            <InfoTooltip
+              content={pageDescription}
+              label="À propos des invitations commerciales"
+            />
+          </div>
+          <p className="sr-only">{pageDescription}</p>
         </div>
 
         {canCreate && (

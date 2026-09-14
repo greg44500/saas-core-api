@@ -72,8 +72,8 @@ function CommercialInvitationForm({
     >
       <FormField
         error={errors.email?.message}
-        hint="L’adresse doit correspondre au compte utilisé lors de l’acceptation."
         id="commercial-invitation-email"
+        info="L’adresse doit correspondre au compte utilisé lors de l’acceptation."
         label="Email du bénéficiaire"
       >
         <Input
@@ -86,8 +86,8 @@ function CommercialInvitationForm({
 
       <FormField
         error={errors.workspaceName?.message}
-        hint="Ce workspace sera créé uniquement lors de l’acceptation."
         id="commercial-invitation-workspace-name"
+        info="Ce workspace sera créé uniquement lors de l’acceptation."
         label="Nom du premier workspace"
       >
         <Input
@@ -102,8 +102,8 @@ function CommercialInvitationForm({
         render={({ field }) => (
           <SelectField
             error={errors.planId?.message}
-            hint="Seuls les Plans privés compatibles avec D-020 sont proposés."
             id="commercial-invitation-plan"
+            info="Seuls les Plans privés compatibles avec D-020 sont proposés."
             items={eligiblePlans.map((plan) => ({
               value: plan.id,
               label: getCommercialInvitationPlanLabel(plan),
@@ -154,8 +154,8 @@ function CommercialInvitationForm({
 
       <FormField
         error={errors.reason?.message}
-        hint="Motif interne conservé dans la traçabilité Platform et jamais affiché au bénéficiaire."
         id="commercial-invitation-reason"
+        info="Motif interne conservé dans la traçabilité Platform et jamais affiché au bénéficiaire."
         label="Motif administratif"
       >
         <Textarea

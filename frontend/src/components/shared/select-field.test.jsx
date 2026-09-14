@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SelectField } from '@/components/shared/select-field';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 const items = [
   { value: 'active', label: 'Actif' },
@@ -64,5 +65,27 @@ describe('SelectField', () => {
     );
 
     expect(screen.getByRole('combobox', { name: 'Statut' })).toBeDisabled();
+  });
+
+  it('expose une aide pédagogique à la demande sans l’afficher sous le champ', () => {
+    render(
+      <TooltipProvider>
+        <SelectField
+          id="status"
+          info="Cette valeur décrit le cycle de vie du compte."
+          items={items}
+          label="Statut"
+          onValueChange={vi.fn()}
+          value="active"
+        />
+      </TooltipProvider>,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'À propos de Statut' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Cette valeur décrit le cycle de vie du compte.'),
+    ).not.toBeInTheDocument();
   });
 });

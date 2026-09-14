@@ -1,5 +1,6 @@
 import { Navigate, useParams } from 'react-router';
 
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { PageLoader } from '@/components/shared/page-loader';
 import { SectionTabs } from '@/components/shared/section-tabs';
 import { useGetCurrentPlatformContextQuery } from '@/features/platform/api/platform-current-context-api';
@@ -23,7 +24,7 @@ const PLATFORM_TEAM_SECTIONS = Object.freeze([
     to: '/platform/team/invitations',
     permission: PLATFORM_PERMISSION.TEAM_READ,
     description:
-      'Suivez les invitations envoyées et leur cycle de vie avant l’entrée dans l’équipe.',
+      'Suivez les invitations envoyées et leur cycle de vie avant l’entrée dans l’équipe. Seules les invitations encore actives sont affichées ; les dates permettent d’identifier rapidement une invitation ancienne, un envoi en échec ou une expiration proche.',
   }),
   Object.freeze({
     key: 'roles',
@@ -31,7 +32,7 @@ const PLATFORM_TEAM_SECTIONS = Object.freeze([
     to: '/platform/team/roles',
     permission: PLATFORM_PERMISSION.ROLES_READ,
     description:
-      'Consultez les rôles système et gérez les rôles personnalisés ainsi que leurs permissions selon votre niveau d’autorisation.',
+      'Consultez les rôles système et gérez les rôles personnalisés ainsi que leurs permissions selon votre niveau d’autorisation. Les rôles système sont protégés ; seuls le Fondateur et les Super administrateurs peuvent administrer les rôles personnalisés.',
   }),
 ]);
 
@@ -87,15 +88,21 @@ function PlatformTeamPage() {
     return <Navigate replace to={visibleSections[0].to} />;
   }
 
+  const pageDescription = 'Gérez les collaborateurs internes, les invitations et la répartition des rôles sans mélanger les droits de la Plateforme avec ceux des workspaces clients.';
+
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Équipe de la Plateforme
-        </h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Gérez les collaborateurs internes, les invitations et la répartition des rôles sans mélanger les droits de la Plateforme avec ceux des workspaces clients.
-        </p>
+      <header className="min-w-0">
+        <div className="flex items-start gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Équipe de la Plateforme
+          </h1>
+          <InfoTooltip
+            content={pageDescription}
+            label="À propos de l’équipe de la Plateforme"
+          />
+        </div>
+        <p className="sr-only">{pageDescription}</p>
       </header>
 
       <SectionTabs
@@ -107,15 +114,19 @@ function PlatformTeamPage() {
         aria-labelledby="platform-team-section-title"
         className="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
       >
-        <h2
-          className="text-lg font-semibold"
-          id="platform-team-section-title"
-        >
-          {activeSection.label}
-        </h2>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          {activeSection.description}
-        </p>
+        <div className="flex items-start gap-2">
+          <h2
+            className="text-lg font-semibold"
+            id="platform-team-section-title"
+          >
+            {activeSection.label}
+          </h2>
+          <InfoTooltip
+            content={activeSection.description}
+            label={`À propos de ${activeSection.label}`}
+          />
+        </div>
+        <p className="sr-only">{activeSection.description}</p>
 
         <PlatformTeamSectionContent sectionKey={activeSection.key} />
       </section>
