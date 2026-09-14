@@ -24,11 +24,11 @@ import { PlatformTablePageSkeleton } from '@/features/platform/components/platfo
 import { PlatformSubscriptionDetailsDrawer } from '@/features/platform/components/platform-subscription-details-drawer';
 import { PlatformSubscriptionEditForm } from '@/features/platform/components/platform-subscription-edit-form';
 import { PlatformSubscriptionGrantTrialForm } from '@/features/platform/components/platform-subscription-grant-trial-form';
+import { PlatformSubscriptionStatusBadge } from '@/features/platform/components/platform-subscription-status-badge';
 import {
   formatPlatformSubscriptionBillingInterval,
   formatPlatformSubscriptionDate,
   formatPlatformSubscriptionPrice,
-  formatPlatformSubscriptionStatus,
 } from '@/features/platform/lib/platform-subscription-formatters';
 import { useDataPagination } from '@/hooks/use-data-pagination';
 
@@ -167,7 +167,9 @@ function PlatformSubscriptionsPage() {
     {
       id: 'status',
       header: 'Statut',
-      cell: (subscription) => formatPlatformSubscriptionStatus(subscription.status),
+      cell: (subscription) => (
+        <PlatformSubscriptionStatusBadge status={subscription.status} />
+      ),
     },
     {
       id: 'billing',
