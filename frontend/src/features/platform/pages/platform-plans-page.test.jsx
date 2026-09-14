@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
+import { findToastByText } from '@/test/toast-assertions';
 
 const mocks = vi.hoisted(() => ({
   archivePlan: vi.fn(),
@@ -197,7 +198,7 @@ describe('PlatformPlansPage', () => {
       );
     });
     expect(mocks.createPlan.mock.calls[0][0]).not.toHaveProperty('key');
-    expect(await screen.findByText('Plan créé')).toBeInTheDocument();
+    expect(await findToastByText('Plan créé')).toBeInTheDocument();
   });
 
   it('ouvre les détails puis archive un plan ordinaire avec confirmation', async () => {
@@ -216,7 +217,7 @@ describe('PlatformPlansPage', () => {
     await waitFor(() => {
       expect(mocks.archivePlan).toHaveBeenCalledWith(plan.id);
     });
-    expect(await screen.findByText('Plan archivé')).toBeInTheDocument();
+    expect(await findToastByText('Plan archivé')).toBeInTheDocument();
   });
 
   it('ne propose pas l’archivage du plan de référence', async () => {
