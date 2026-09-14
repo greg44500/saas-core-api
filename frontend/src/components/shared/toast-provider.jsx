@@ -27,6 +27,8 @@ import {
 import { cn } from '@/lib/utils';
 
 const DEFAULT_TOAST_DURATION = 5000;
+// La migration Base UI ne doit pas introduire silencieusement une limite produit inexistante auparavant.
+const TOAST_VISIBLE_LIMIT = Number.MAX_SAFE_INTEGER;
 const ToastContext = createContext(null);
 
 const TOAST_VARIANTS = Object.freeze({
@@ -153,7 +155,7 @@ function ToastAdapter({ children }) {
 function ToastProvider({ children }) {
   return (
     <ToastPrimitiveProvider
-      limit={Number.MAX_SAFE_INTEGER}
+      limit={TOAST_VISIBLE_LIMIT}
       timeout={DEFAULT_TOAST_DURATION}
     >
       <ToastAdapter>{children}</ToastAdapter>
@@ -171,9 +173,4 @@ function useToast() {
   return context;
 }
 
-export {
-  DEFAULT_TOAST_DURATION,
-  ToastProvider,
-  normalizeToastVariant,
-  useToast,
-};
+export { DEFAULT_TOAST_DURATION, ToastProvider, useToast };
