@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état réel du Core au **2026-09-14** après la fusion du lot Select/UX dans `main` et la validation complète du lot DLG-2 d’harmonisation des shells modaux.
+> Cette synthèse décrit l’état réel du Core au **2026-09-14** après la fusion et la validation complète des lots DLG-2 et Toast Base UI.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
@@ -38,56 +38,50 @@ Branche de référence :
 main
 ```
 
-HEAD distant vérifié avant la présente mise à jour :
+HEAD fonctionnel distant vérifié après fusion du lot Toast et avant la présente mise à jour documentaire :
 
 ```text
-a477a150fcbbcfcb56c35ed7c93fd7e9c2a2dfd0
-Merge pull request #12 from greg44500/feature/select-base-ui-harmonization
+7058d368fcb362267c9f6c8fc0cdb8f9ffe40e83
+Merge branch 'feature/toast-base-ui-harmonization'
 ```
 
-Ce HEAD contient notamment :
+Parents du merge :
+
+```text
+fccc121a7c841b1fb1a66e62c3660d87246c66d1
+1170b3027558bd5ae07646bc45d9453e118ed5c8
+```
+
+Le second parent correspond au HEAD fonctionnel Toast entièrement validé avant fusion.
+
+Ce `main` contient notamment :
 
 - Design System / D-011 validé ;
-- Sidebar/navigation et Topbars consolidées ;
+- Sidebar/navigation et Topbars existantes consolidées ;
 - DataTable partagé ;
 - DataPagination partagé ;
 - DLG-1 : primitive `components/ui/dialog.jsx` Base UI ;
-- migration de `ConfirmationDialog` ;
-- verrouillage de fermeture du Dialog pendant `pending` ;
+- `ConfirmationDialog` migré sur la primitive canonique ;
+- DLG-2 : `FileUploadDialog` migré sur Dialog Base UI ;
 - Select Base UI harmonisé ;
 - UX pédagogique Platform/Workspace harmonisée via `InfoTooltip` ;
 - projection `featureAvailability` des fonctionnalités Workspace ;
-- statuts de souscription Platform alignés sur les tons sémantiques.
+- statuts de souscription Platform alignés sur les tons sémantiques ;
+- Toast Base UI canonique avec maintien de l’API applicative `useToast()`.
 
-Le lot Select/UX a été fusionné via la PR #12.
+### Branche de travail
 
-### Branche de travail courante
+Le lot Toast est fusionné. Il n’existe plus de branche fonctionnelle active à considérer comme source de vérité supérieure à `main`.
 
-```text
-feature/dialog-dlg2-harmonization
-```
-
-HEAD fonctionnel validé avant la présente mise à jour documentaire :
+La branche historique :
 
 ```text
-4f5589638aed9f7b6ef87fce5e60ccf8ac96326c
-test(platform): await portalled select options
+feature/toast-base-ui-harmonization
 ```
 
-La branche part de `main` à `a477a150...`.
+peut rester temporairement présente jusqu’à nettoyage Git, mais elle ne doit plus servir de base à un nouveau chantier.
 
-Avant le commit documentaire courant, la comparaison était :
-
-```text
-feature/dialog-dlg2-harmonization
-→ 3 commits devant main
-→ 0 commit derrière main
-→ merge-base = a477a150fcbbcfcb56c35ed7c93fd7e9c2a2dfd0
-```
-
-Aucune divergence Git n’était à résoudre.
-
-Toute nouvelle conversation doit vérifier le HEAD réel de `main` et celui de la branche de travail avant toute conclusion.
+Toute nouvelle conversation doit commencer par vérifier le HEAD réel de `main` avant toute conclusion ou création de branche.
 
 ---
 
@@ -101,9 +95,7 @@ Ne pas rouvrir DLG-1 sans régression concrète.
 
 ### 3.2 Lot Select / UX — VALIDÉ et fusionné
 
-Le lot Select a supprimé les derniers `<select>` natifs concernés et les usages de l’ancien wrapper.
-
-La primitive canonique est désormais :
+La primitive canonique est :
 
 ```text
 frontend/src/components/ui/select.jsx
@@ -116,48 +108,24 @@ Le wrapper partagé canonique est :
 frontend/src/components/shared/select-field.jsx
 ```
 
-L’ancien wrapper a été supprimé :
-
-```text
-frontend/src/components/forms/select-field.jsx
-frontend/src/components/forms/select-field.test.jsx
-```
-
-ESLint interdit maintenant :
+L’ancien wrapper a été supprimé et ESLint interdit désormais les régressions principales :
 
 ```text
 <select> natif dans frontend/src
 import depuis @/components/forms/select-field
 ```
 
-Les tests Base UI utilisent une interaction accessible de type :
+Les tests Base UI utilisent des interactions accessibles de type :
 
 ```text
 combobox
-→ ouverture / clavier
+→ ouverture
+→ attente éventuelle du contenu portallé
 → option
 → assertion métier
 ```
 
-et non `user.selectOptions()`, réservé aux `<select>` natifs.
-
-Surfaces migrées notamment :
-
-```text
-Platform Audit Logs
-Commercial Invitations
-Platform Invitations
-Platform metric limits
-Platform Plans / capabilities
-Platform Subscriptions
-Platform Team
-Workspace Members
-Files upload category
-Retention target
-WorkspaceSwitcher
-```
-
-Avant fusion, l’utilisateur a réellement exécuté et communiqué comme vertes les cinq gates suivantes :
+Avant fusion, l’utilisateur a réellement exécuté et communiqué comme vertes les gates suivantes :
 
 ```text
 frontend npm run lint   → VERT
@@ -169,15 +137,9 @@ backend npm test        → VERT
 
 La validation manuelle/visuelle a également été déclarée conforme.
 
-Le lot a ensuite été fusionné dans `main` via la PR #12.
+### 3.3 DLG-2 — VALIDÉ et fusionné
 
-### 3.3 DLG-2 — VALIDÉ localement, prêt à fusionner
-
-Audit effectué :
-
-- les confirmations métier existantes passent déjà par `ConfirmationDialog` ;
-- aucun wrapper métier déjà conforme n’a été réécrit inutilement ;
-- le seul shell modal autonome comparable identifié dans ce lot était `FileUploadDialog`.
+Audit réalisé : les confirmations métier existantes passaient déjà par `ConfirmationDialog`; le seul shell modal autonome comparable identifié dans le périmètre était `FileUploadDialog`.
 
 Migration réalisée :
 
@@ -199,23 +161,9 @@ verrouillage du scroll
 portal / overlay
 ```
 
-Le sélecteur de fichier a également été corrigé sur le plan sémantique : le contrôle visible `Choisir un fichier` est désormais un vrai bouton clavier déclenchant l’input fichier caché, et non un `<label>` simplement stylé comme un bouton.
+Le contrôle visible `Choisir un fichier` est un vrai bouton clavier déclenchant l’input fichier caché.
 
-Tests ajoutés/renforcés notamment :
-
-```text
-dialog accessible nommé "Ajouter un fichier"
-focus initial sur "Choisir un fichier"
-fermeture par Escape lorsque idle
-fermeture bloquée pendant le téléversement
-sélection du fichier et de la catégorie
-validation client des types
-messages backend
-```
-
-Une régression de test indépendante de DLG-2 a été révélée par la gate globale sur `PlatformSubscriptionsPage` : le helper cherchait une option Base UI portallée de façon synchrone. La correction a uniquement remplacé la recherche immédiate par une attente `findByRole('option')`, sans modifier le comportement applicatif.
-
-L’utilisateur a ensuite réellement exécuté et communiqué comme vertes les gates DLG-2 suivantes :
+L’utilisateur a réellement exécuté et communiqué comme vertes les gates DLG-2 :
 
 ```text
 frontend npm run lint   → VERT
@@ -223,25 +171,96 @@ frontend npm test       → VERT
 frontend npm run build  → VERT
 ```
 
-Le backend n’a pas été relancé pour DLG-2 car aucun fichier backend n’a été modifié dans ce lot.
+Aucun fichier backend n’avait été modifié dans ce lot ; le backend n’a donc pas été relancé pour cette gate.
 
-La validation manuelle/clavier a également été effectuée et déclarée conforme, notamment :
+La validation manuelle/clavier a été déclarée conforme : ouverture, focus initial, Tab / Shift+Tab, Escape, blocage de fermeture pendant upload, Select au-dessus de la modale et restauration du focus.
+
+DLG-2 a ensuite été fusionné dans `main`. Ne plus le présenter comme « prêt à fusionner ».
+
+### 3.4 Toast Base UI — VALIDÉ et fusionné
+
+Architecture désormais canonique :
 
 ```text
-ouverture et centrage
-focus initial
-Tab / Shift+Tab
-Escape
-blocage de fermeture pendant upload
-Select Catégorie au-dessus de la modale
-restauration du focus à la fermeture
+features
+→ useToast()
+→ components/shared/toast-provider.jsx
+→ components/ui/toast.jsx
+→ @base-ui/react/toast
 ```
 
-DLG-2 est donc techniquement et visuellement validé sur le HEAD fonctionnel `4f558963...`.
+La migration a volontairement conservé l’API applicative existante afin d’éviter de coupler les features à Base UI :
 
-### 3.4 Warnings React Hooks connus — hors périmètre
+```text
+toast({ title, description, variant, duration })
+dismissToast(id)
+```
 
-Les warnings `react-hooks/exhaustive-deps` déjà identifiés restent hors de ce lot sauf régression concrète :
+Contrat conservé :
+
+```text
+success
+error / destructive
+warning
+info
+```
+
+`error` est normalisé vers le type Base UI `destructive`.
+
+Comportements conservés :
+
+```text
+durée par défaut : 5000 ms
+duration <= 0 : notification persistante
+fermeture manuelle
+fermeture programmatique
+stack de notifications sans nouvelle limite produit implicite
+```
+
+Base UI porte désormais la file de notifications, les timers, les annonces accessibles, les transitions et les comportements propres à la primitive.
+
+Les tests métier ne dépendent plus des anciennes implémentations DOM `role="status"` / `role="alert"` du toast visible. Le helper partagé canonique est :
+
+```text
+frontend/src/test/toast-assertions.js
+→ findToastByText(...)
+→ cible la surface applicative [data-slot="toast"]
+```
+
+Les `role="status"` et `role="alert"` qui appartiennent réellement à des skeletons, erreurs inline ou dialogues de confirmation restent inchangés.
+
+La migration a également révélé des tests Select Base UI trop synchrones. Lorsqu’une option est rendue dans un Portal, les tests doivent utiliser une attente accessible (`findByRole`) lorsque le montage peut être différé.
+
+Après correction globale par cause racine, l’utilisateur a réellement exécuté et communiqué comme vertes les gates finales :
+
+```text
+frontend npm test       → VERT — 760 tests
+frontend npm run lint   → VERT
+frontend npm run build  → VERT
+```
+
+Le backend n’a pas été relancé car le lot Toast n’a modifié aucun fichier backend.
+
+La validation manuelle/visuelle a également été déclarée conforme par l’utilisateur.
+
+HEAD fonctionnel Toast validé avant fusion :
+
+```text
+1170b3027558bd5ae07646bc45d9453e118ed5c8
+```
+
+Merge dans `main` :
+
+```text
+7058d368fcb362267c9f6c8fc0cdb8f9ffe40e83
+Merge branch 'feature/toast-base-ui-harmonization'
+```
+
+Ne pas rouvrir ce lot sans régression concrète.
+
+### 3.5 Warnings React Hooks connus — hors périmètre
+
+Les warnings `react-hooks/exhaustive-deps` déjà identifiés restent hors de ces migrations sauf régression concrète :
 
 ```text
 platform-entitlement-override-form.jsx
@@ -257,27 +276,30 @@ Leur nettoyage ne doit pas être mélangé silencieusement à une autre migratio
 
 ## 4. Méthode de correction des tests — règle à conserver
 
-Décision de travail :
+Décision de travail confirmée pendant la migration Toast :
 
 ```text
 plusieurs FAILS
-→ analyser toute la sortie
+→ récupérer la sortie complète
+→ analyser toute la famille
 → regrouper par cause racine
-→ corriger la famille complète en un bloc
-→ relancer une gate globale cohérente
+→ corriger en un bloc cohérent
+→ relancer une gate globale
 ```
 
 À éviter :
 
 ```text
-FAIL 1 → correction → test individuel
-FAIL 2 → correction → test individuel
-FAIL 3 → correction → test individuel
+FAIL 1 → patch isolé
+FAIL 2 → patch isolé
+FAIL 3 → patch isolé
 ```
 
 Ne jamais annoncer une gate verte sans résultat réellement exécuté.
 
-Pour les composants Base UI portallés, ne pas supposer que le contenu du popup est forcément disponible de façon synchrone juste après le clic : les tests doivent attendre l’élément accessible lorsque le montage peut être différé.
+Pour les composants Base UI portallés, ne pas supposer que le contenu du popup est disponible de façon synchrone immédiatement après le clic.
+
+Les tests doivent viser le contrat applicatif stable plutôt que le DOM interne d’une primitive tierce.
 
 ---
 
@@ -312,7 +334,7 @@ Le `DataTable` partagé reste l’abstraction unique pour les tableaux applicati
 
 ---
 
-## 6. Dialog — DLG-1 et DLG-2 terminés côté branche
+## 6. Dialog — DLG-1 et DLG-2 terminés et fusionnés
 
 Architecture validée :
 
@@ -328,42 +350,39 @@ Base UI porte notamment : focus initial, boucle Tab, restauration du focus, Esca
 
 DLG-1 a migré `ConfirmationDialog`.
 
-DLG-2 a audité les shells modaux custom restants et migré le seul cas autonome identifié dans ce périmètre : `FileUploadDialog`.
+DLG-2 a audité les shells modaux custom restants et migré `FileUploadDialog`.
 
 Les wrappers métier utilisant déjà `ConfirmationDialog` restent légitimes et ne doivent pas être aplatis simplement pour réduire le nombre de composants.
 
-`use-dialog-focus.js` doit rester tant que `EntityDetailsDrawer` l’utilise. Les drawers/sheets constituent un chantier séparé et ne doivent pas être absorbés rétroactivement dans DLG-2.
+`use-dialog-focus.js` doit rester tant que `EntityDetailsDrawer` l’utilise. Les drawers/sheets constituent un chantier séparé.
 
 ---
 
-## 7. Toast — audité, non migré
+## 7. Toast — architecture canonique fusionnée
 
-État actuel :
-
-```text
-components/shared/toast-provider.jsx
-```
-
-Cible validée :
+Primitive générique :
 
 ```text
-features
-→ useToast() / adapter
-→ components/ui/toast.jsx
-→ Base UI Toast
+frontend/src/components/ui/toast.jsx
 ```
 
-Conserver autant que possible :
+Adapter applicatif :
 
 ```text
-toast({ title, description, variant })
+frontend/src/components/shared/toast-provider.jsx
 ```
 
-Variantes à préserver : success, error/destructive, warning, info.
+Helper de test partagé :
+
+```text
+frontend/src/test/toast-assertions.js
+```
+
+Règle : les features continuent d’appeler `useToast()` et ne doivent pas importer directement Base UI Toast.
 
 Les erreurs de validation de champs restent inline.
 
-Ne pas ajouter Sonner sans besoin concret.
+Ne pas ajouter Sonner ou une seconde infrastructure de toast sans besoin produit démontré.
 
 ---
 
@@ -385,42 +404,13 @@ opération sensible / destructive
 → explication visible obligatoire
 ```
 
-Cette règle a été appliquée sur les zones Platform concernées, notamment :
-
-```text
-Plans
-Abonnements
-Invitations commerciales
-Gestion client > Workspaces
-Gestion client > Utilisateurs
-Journaux d’audit
-Équipe Platform et ses onglets
-```
-
-et sur les zones Workspace concernées, notamment :
-
-```text
-Tableau de bord
-cartes de synthèse
-activité récente
-Historique d’activité
-Membres
-Rôles et permissions
-```
-
-Les vues déjà conformes n’ont pas été retouchées inutilement.
-
 `FormField` et `SelectField` savent porter une aide `info` via `InfoTooltip`, tandis que `hint` reste réservé aux consignes qui doivent rester visibles.
 
 ---
 
 ## 9. Disponibilité temporelle des fonctionnalités d’un Workspace
 
-Le bloc utilisateur des droits effectifs ne doit pas seulement indiquer qu’une fonctionnalité est disponible ; il doit aussi permettre de comprendre rapidement jusqu’à quand elle l’est lorsqu’une échéance réelle existe.
-
-Le calcul est effectué côté backend.
-
-Le DTO utilisateur expose une projection assainie :
+Le DTO utilisateur expose la projection assainie :
 
 ```text
 featureAvailability
@@ -438,40 +428,21 @@ bounded
 → affichage utilisateur : "Jusqu’au <date> · <durée restante>"
 ```
 
-Le terme `Sans échéance` est volontairement préféré à `Permanent`, car un plan ou une souscription peut évoluer ultérieurement.
-
-La résolution tient compte notamment de :
-
-```text
-baseline
-trial
-subscription active
-cancelAtPeriodEnd
-scheduledChange / downgrade
-EntitlementOverride temporaire ou sans fin
-continuité éventuelle par la baseline
-```
+La résolution est effectuée côté backend et tient compte notamment de la baseline, du trial, de la souscription active, de `cancelAtPeriodEnd`, des changements programmés et des overrides.
 
 Lorsque plusieurs mécanismes accordent la même fonctionnalité, l’horizon affiché correspond à la continuité réelle la plus longue.
 
 Le frontend ne reconstruit pas cette logique commercialement sensible.
 
-Les métadonnées internes des overrides restent masquées :
+Les métadonnées internes des overrides restent masquées.
 
-```text
-motif
-origine
-auteur
-identifiant interne
-```
-
-Le contrat canonique `docs/contracts/COMMERCIAL.md` a été aligné avec cette projection.
+Le contrat canonique `docs/contracts/COMMERCIAL.md` est aligné avec cette projection.
 
 ---
 
 ## 10. Statuts de souscription Platform — contrat visuel
 
-Le tableau Platform des souscriptions utilise le composant métier :
+Le tableau Platform des souscriptions utilise :
 
 ```text
 PlatformSubscriptionStatusBadge
@@ -488,8 +459,6 @@ past_due  → Paiement en retard   → destructive
 canceled  → Annulé               → neutral / archive
 expired   → Expiré               → neutral / archive
 ```
-
-Les couleurs ne sont pas codées directement dans le tableau ; le domaine mappe ses états vers les tons du Design System partagé.
 
 ---
 
@@ -530,7 +499,7 @@ Ne pas ajouter d’UI de demande de transfert côté owner avant D-023.
 
 ## 12. Dettes et roadmap Core 1.0
 
-État canonique selon `docs/DEBT.md` :
+État canonique vérifié dans `docs/DEBT.md` :
 
 ```text
 D-020  EN COURS
@@ -546,7 +515,7 @@ D-023  DIFFÉRÉ — Core 1.1
 
 D-020 doit être clôturée ou explicitement reclassifiée avant D-015.
 
-Roadmap canonique :
+Roadmap Core :
 
 ```text
 D-020 → clôturer ou reclassifier
@@ -557,48 +526,49 @@ D-002 → corbeille / restauration Files
 D-017 → dérivation + upgrade pilote
 → tag Core stable
 
-post-v1.0 :
-D-023 → workflow gouverné de transfert
+post-Core 1.0 :
+D-023 → workflow gouverné de demande de transfert
 ```
 
-D-002 doit être `VALIDÉ` avant D-017 et la première dérivation métier.
+D-002 doit être `VALIDÉ` avant D-017 et avant toute première dérivation métier.
 
 ---
 
-## 13. Audit transversal UI — ordre après DLG-2
+## 13. Audit transversal UI — état et ordre de poursuite
 
-Lots déjà consolidés dans `main` :
+Lots consolidés dans `main` :
 
 ```text
 Design Tokens / D-011
-Sidebar / navigation
+Sidebar / navigation existante
 Topbars
 DataTable
 DataPagination
 Dialog DLG-1 / ConfirmationDialog
+Dialog DLG-2 / FileUploadDialog
 Select Base UI
+Toast Base UI
 ```
 
-Lot validé sur la branche courante et prêt pour intégration :
+Ordre recommandé pour poursuivre l’audit UI :
 
 ```text
-DLG-2 / FileUploadDialog Base UI
+1. Drawer / Sheet / panneaux latéraux
+2. formulaires partagés
+3. Input / Textarea / Checkbox / Switch
+4. Dropdown menus
+5. Tooltip / Popover / Accordion / Tabs
+6. Badge / StatusBadge
+7. primitives HTML/React directes restantes
 ```
 
-Ordre recommandé après fusion de DLG-2 :
+Pour chaque famille : inventorier avant de coder, détecter les duplications, vérifier clavier/focus/ARIA, tokens, API, responsabilité du composant et testabilité, puis décider si une migration est réellement nécessaire.
 
-```text
-1. Toast Base UI/shadcn en conservant useToast()
-2. Drawer / Sheet / panneaux latéraux
-3. formulaires partagés
-4. Input / Textarea / Checkbox / Switch
-5. Dropdown menus
-6. Tooltip / Popover / Accordion / Tabs
-7. Badge / StatusBadge
-8. primitives HTML/React directes restantes
-```
+### Sidebar
 
-Pour chaque famille : inventorier, détecter les duplications, vérifier clavier/focus/ARIA, vérifier tokens, API et testabilité, puis classer avant toute migration.
+La Sidebar existante est fonctionnelle mais doit faire l’objet d’une revue dédiée d’alignement avec shadcn/ui avant de considérer son architecture définitivement stabilisée.
+
+Ne pas lancer une réécriture de Sidebar implicitement dans le lot Drawer/Sheet. Auditer d’abord l’existant et proposer une décision explicite avant toute implémentation.
 
 ---
 
@@ -610,7 +580,7 @@ Ne pas mélanger au chantier UI :
 D-023 workflow ownership Core 1.1
 gouvernance juridique de conservation des données
 reset reproductible de la base de développement
-validation négative finale D-020
+validation négative finale / clôture D-020
 D-015 versionnement / provenance / releases
 D-016 Playwright E2E Core
 D-002 corbeille / restauration Files
@@ -623,6 +593,7 @@ nettoyage des warnings React Hooks connus
 ## 15. Règles de travail à conserver
 
 - vérifier branche et HEAD avant modification ;
+- toujours repartir de `main` pour un nouveau lot, sauf décision explicite contraire ;
 - code + DB + tests réellement exécutés priment sur la synthèse ;
 - JavaScript uniquement ;
 - validation stricte des données ;
@@ -636,34 +607,45 @@ nettoyage des warnings React Hooks connus
 - plusieurs FAILS d’une même famille = analyse globale + correction en bloc ;
 - gate globale après un bloc transversal ;
 - ne jamais annoncer une gate verte sans résultat réellement exécuté ;
-- une information pédagogique secondaire va dans un `InfoTooltip`, pas une information critique.
+- une information pédagogique secondaire va dans un `InfoTooltip`, pas une information critique ;
+- ne pas adapter le code de production uniquement pour satisfaire un test dépendant du DOM interne d’une primitive tierce.
 
 ---
 
 ## 16. Prochaine action exacte
 
-DLG-2 a franchi :
+Les lots suivants sont maintenant fusionnés et validés :
 
 ```text
-frontend lint → VERT
-frontend tests → VERT
-frontend build → VERT
-validation visuelle/manuelle/clavier → VALIDÉE
+DLG-1
+Select Base UI / UX
+DLG-2
+Toast Base UI
 ```
 
-La prochaine action n’est plus une correction DLG-2.
-
-Séquence :
+Le prochain lot UI recommandé est :
 
 ```text
-1. vérifier le diff final main..feature/dialog-dlg2-harmonization ;
-2. vérifier les HEAD distants ;
-3. fusionner la branche dans main uniquement sur décision explicite ;
-4. vérifier le nouveau HEAD de main ;
-5. mettre à jour la reprise si la fusion change le contexte ;
-6. seulement ensuite démarrer le lot Toast Base UI/shadcn.
+Drawer / Sheet / panneaux latéraux
 ```
 
-Ne pas fusionner implicitement.
+Avant tout code :
+
+```text
+1. vérifier le HEAD réel de main ;
+2. lire docs/REPRISE-CURRENT.md ;
+3. vérifier l’état canonique utile dans docs/DEBT.md ;
+4. inspecter l’ensemble des drawers / sheets / panneaux latéraux existants ;
+5. identifier les primitives shadcn/Base UI déjà présentes ;
+6. distinguer les wrappers métier légitimes des shells custom dupliqués ;
+7. vérifier notamment EntityDetailsDrawer et l’usage résiduel de use-dialog-focus.js ;
+8. auditer le lien éventuel avec la Sidebar sans modifier la Sidebar ;
+9. proposer un périmètre précis et un plan de migration ;
+10. ne modifier aucun fichier avant validation du périmètre.
+```
+
+En parallèle, la roadmap Core métier reste gouvernée par `docs/DEBT.md` et notamment par la nécessité de clôturer ou reclassifier D-020 avant D-015.
+
+Ne pas fusionner implicitement une future branche.
 
 Le présent fichier est une synthèse de reprise et non une source supérieure au code, aux tests ou aux contrats canoniques.
