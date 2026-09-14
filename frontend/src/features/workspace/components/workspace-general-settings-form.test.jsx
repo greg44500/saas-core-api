@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
+import { findToastByText } from '@/test/toast-assertions';
 
 const updateWorkspaceMock = vi.hoisted(() => vi.fn());
 const updateUnwrapMock = vi.hoisted(() => vi.fn());
@@ -61,9 +62,9 @@ describe('WorkspaceGeneralSettingsForm', () => {
       });
     });
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Nom du workspace mis à jour',
-    );
+    expect(
+      await findToastByText('Nom du workspace mis à jour'),
+    ).toBeInTheDocument();
   });
 
   it('présente un refus backend dans un toast sans reconstruire la règle côté frontend', async () => {
@@ -81,8 +82,7 @@ describe('WorkspaceGeneralSettingsForm', () => {
     await user.type(nameInput, 'Nouveau nom');
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
 
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Modification impossible');
-    expect(alert).toHaveTextContent('Workspace indisponible');
+    const toast = await findToastByText('Modification impossible');
+    expect(toast).toHaveTextContent('Workspace indisponible');
   });
 });
