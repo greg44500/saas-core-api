@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
+import { findToastByText } from '@/test/toast-assertions';
 
 const mocks = vi.hoisted(() => ({
   revokeCancellation: vi.fn(),
@@ -135,9 +136,8 @@ describe('CommercialLifecycleSection', () => {
       subscriptionId: 'subscription-1',
       reason: 'Offre devenue inutile',
     });
-    const status = await screen.findByRole('status');
-    expect(status).toHaveTextContent('Résiliation programmée');
-    expect(status).toHaveTextContent(effectiveDate);
+    const toast = await findToastByText('Résiliation programmée');
+    expect(toast).toHaveTextContent(effectiveDate);
   });
 
   it('garde un refus serveur de résiliation dans le dialogue', async () => {
