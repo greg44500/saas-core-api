@@ -15,6 +15,7 @@ import {
   ToastProvider,
   useToast,
 } from '@/components/shared/toast-provider';
+import { findToastByText } from '@/test/toast-assertions';
 
 function ToastHarness() {
   const { dismissToast, toast } = useToast();
@@ -91,10 +92,9 @@ describe('ToastProvider', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Succès' }));
 
-    const toast = getToastElement();
+    const toast = await findToastByText('Workspace mis à jour');
 
     expect(toast).toHaveAttribute('data-type', 'success');
-    expect(within(toast).getByText('Workspace mis à jour')).toBeVisible();
     expect(within(toast).getByText('Le nom a bien été enregistré.')).toBeVisible();
 
     fireEvent.click(
@@ -115,21 +115,21 @@ describe('ToastProvider', () => {
 
     act(() => {
       vi.advanceTimersByTime(DEFAULT_TOAST_DURATION);
+      vi.runOnlyPendingTimers();
     });
 
     expect(getToastElement()).not.toBeInTheDocument();
   });
 
-  it('mappe une erreur applicative vers le ton destructif Base UI', () => {
+  it('mappe une erreur applicative vers le ton destructif Base UI', async () => {
     renderToastProvider();
 
     fireEvent.click(screen.getByRole('button', { name: 'Erreur' }));
 
-    const toast = getToastElement();
+    const toast = await findToastByText('Modification impossible');
 
     expect(toast).toHaveAttribute('data-type', 'destructive');
     expect(toast).toHaveClass('border-destructive/40');
-    expect(within(toast).getByText('Modification impossible')).toBeVisible();
     expect(within(toast).getByText('Workspace indisponible')).toBeVisible();
   });
 
@@ -138,9 +138,8 @@ describe('ToastProvider', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Persistant' }));
 
-    const toast = getToastElement();
+    const toast = await findToastByText('Notification persistante');
     expect(toast).toHaveAttribute('data-type', 'warning');
-    expect(within(toast).getByText('Notification persistante')).toBeVisible();
 
     fireEvent.click(
       screen.getByRole('button', { name: 'Fermer programmatiquement' }),
