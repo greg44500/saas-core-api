@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
+import { findToastByText } from '@/test/toast-assertions';
 
 const mocks = vi.hoisted(() => ({
   disableUser: vi.fn(),
@@ -290,6 +291,6 @@ describe('PlatformUsersPage', () => {
       });
     });
 
-    expect(await screen.findByText('Utilisateur désactivé')).toBeInTheDocument();
+    expect(await findToastByText('Utilisateur désactivé')).toBeInTheDocument();
   });
 });

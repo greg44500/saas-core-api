@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { findToastByText } from '@/test/toast-assertions';
 
 const mocks = vi.hoisted(() => ({
   createInvitation: vi.fn(),
@@ -229,7 +230,7 @@ describe('WorkspaceMembersPage', () => {
       email: 'jane@example.com',
       roleId: 'role-member',
     });
-    expect(await screen.findByRole('status')).toHaveTextContent('Invitation envoyée');
+    expect(await findToastByText('Invitation envoyée')).toBeInTheDocument();
   });
 
   it('conserve une erreur de suspension dans la confirmation sensible', async () => {

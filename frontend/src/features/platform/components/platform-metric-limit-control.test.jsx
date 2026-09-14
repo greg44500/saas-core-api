@@ -105,7 +105,10 @@ describe('PlatformMetricLimitControl', () => {
     );
 
     await user.click(screen.getByRole('combobox', { name: 'Mode' }));
-    await user.click(screen.getByRole('option', { name: 'Illimité' }));
+
+    // Base UI monte la liste du Select dans un Portal : attendre l'option évite
+    // de coupler le test au cycle de rendu interne de la primitive.
+    await user.click(await screen.findByRole('option', { name: 'Illimité' }));
 
     expect(onModeChange).toHaveBeenCalledWith('unlimited');
   });

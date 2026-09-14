@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
+import { findToastByText } from '@/test/toast-assertions';
 
 const mocks = vi.hoisted(() => ({
   endTrialToFree: vi.fn(),
@@ -197,9 +198,8 @@ describe('WorkspaceSubscriptionPage', () => {
       planId: 'plan-ai',
       billingInterval: 'yearly',
     });
-    const status = await screen.findByRole('status');
-    expect(status).toHaveTextContent('Plan de l’essai mis à jour');
-    expect(status).toHaveTextContent(
+    const toast = await findToastByText('Plan de l’essai mis à jour');
+    expect(toast).toHaveTextContent(
       'La période d’essai utilise maintenant le plan IA. Sa date de fin reste inchangée.',
     );
   });
@@ -221,9 +221,8 @@ describe('WorkspaceSubscriptionPage', () => {
     );
 
     expect(mocks.endTrialToFree).toHaveBeenCalledWith({ workspaceId: 'workspace-1' });
-    const status = await screen.findByRole('status');
-    expect(status).toHaveTextContent('Période d’essai terminée');
-    expect(status).toHaveTextContent('Le plan Free est de nouveau effectif.');
+    const toast = await findToastByText('Période d’essai terminée');
+    expect(toast).toHaveTextContent('Le plan Free est de nouveau effectif.');
   });
 
   it('conserve le refus du retour baseline dans le dialogue de confirmation', async () => {
@@ -306,7 +305,9 @@ describe('WorkspaceSubscriptionPage', () => {
       planId: 'plan-premium',
       billingInterval: 'monthly',
     });
-    expect(await screen.findByRole('status')).toHaveTextContent('Période d’essai démarrée');
+    expect(
+      await findToastByText('Période d’essai démarrée'),
+    ).toBeInTheDocument();
   });
 
   it('explique à un admin que les commandes commerciales restent owner-only', () => {

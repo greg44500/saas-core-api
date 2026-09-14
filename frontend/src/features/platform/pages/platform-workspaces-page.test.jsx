@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
 import { PLATFORM_PERMISSION } from '@/features/platform/constants/platform-permissions';
+import { findToastByText } from '@/test/toast-assertions';
 
 const mocks = vi.hoisted(() => ({
   authorizeOwnershipTransfer: vi.fn(),
@@ -251,7 +252,7 @@ describe('PlatformWorkspacesPage', () => {
         statusReasonDetails: undefined,
       });
     });
-    expect(await screen.findByText('Workspace suspendu')).toBeInTheDocument();
+    expect(await findToastByText('Workspace suspendu')).toBeInTheDocument();
   });
 
   it('réactive un workspace suspendu', async () => {
@@ -279,7 +280,7 @@ describe('PlatformWorkspacesPage', () => {
     await waitFor(() => {
       expect(mocks.reactivateWorkspace).toHaveBeenCalledWith(listedWorkspace.id);
     });
-    expect(await screen.findByText('Workspace réactivé')).toBeInTheDocument();
+    expect(await findToastByText('Workspace réactivé')).toBeInTheDocument();
   });
 
   it('permet uniquement au contexte possédant la permission réservée d’autoriser temporairement le transfert', async () => {
@@ -296,7 +297,9 @@ describe('PlatformWorkspacesPage', () => {
     await waitFor(() => {
       expect(mocks.authorizeOwnershipTransfer).toHaveBeenCalledWith(listedWorkspace.id);
     });
-    expect(await screen.findByText('Transfert de propriété temporairement autorisé')).toBeInTheDocument();
+    expect(
+      await findToastByText('Transfert de propriété temporairement autorisé'),
+    ).toBeInTheDocument();
   });
 
   it('masque entièrement la capacité exceptionnelle sans permission réservée', async () => {
@@ -342,6 +345,8 @@ describe('PlatformWorkspacesPage', () => {
     await waitFor(() => {
       expect(mocks.revokeOwnershipTransfer).toHaveBeenCalledWith(listedWorkspace.id);
     });
-    expect(await screen.findByText('Autorisation de transfert révoquée')).toBeInTheDocument();
+    expect(
+      await findToastByText('Autorisation de transfert révoquée'),
+    ).toBeInTheDocument();
   });
 });

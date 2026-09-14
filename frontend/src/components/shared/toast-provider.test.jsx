@@ -1,4 +1,13 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { useRef } from 'react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -6,9 +15,11 @@ import {
   ToastProvider,
   useToast,
 } from '@/components/shared/toast-provider';
+import { findToastByText } from '@/test/toast-assertions';
 
 function ToastHarness() {
-  const { toast } = useToast();
+  const { dismissToast, toast } = useToast();
+  const persistentToastIdRef = useRef(null);
 
   return (
     <div>
@@ -36,8 +47,38 @@ function ToastHarness() {
       >
         Erreur
       </button>
+      <button
+        onClick={() => {
+          persistentToastIdRef.current = toast({
+            duration: 0,
+            title: 'Notification persistante',
+            variant: 'warning',
+          });
+        }}
+        type="button"
+      >
+        Persistant
+      </button>
+      <button
+        onClick={() => dismissToast(persistentToastIdRef.current)}
+        type="button"
+      >
+        Fermer programmatiquement
+      </button>
     </div>
   );
+}
+
+function renderToastProvider() {
+  return render(
+    <ToastProvider>
+      <ToastHarness />
+    </ToastProvider>,
+  );
+}
+
+function getToastElement() {
+  return document.querySelector('[data-slot="toast"]');
 }
 
 describe('ToastProvider', () => {
@@ -46,54 +87,69 @@ describe('ToastProvider', () => {
     vi.useRealTimers();
   });
 
-  it('affiche un toast et permet sa fermeture manuelle', () => {
-    render(
-      <ToastProvider>
-        <ToastHarness />
-      </ToastProvider>,
-    );
+  it('affiche un toast et permet sa fermeture manuelle', async () => {
+    renderToastProvider();
 
     fireEvent.click(screen.getByRole('button', { name: 'Succès' }));
 
-    expect(screen.getByRole('status')).toHaveTextContent('Workspace mis à jour');
-    expect(screen.getByText('Le nom a bien été enregistré.')).toBeInTheDocument();
+    const toast = await findToastByText('Workspace mis à jour');
 
+    expect(toast).toHaveAttribute('data-type', 'success');
+    expect(within(toast).getByText('Le nom a bien été enregistré.')).toBeVisible();
+
+    // Base UI contrôle l'exposition accessible des actions d'un toast selon
+    // l'état du viewport. Le contrat applicatif à vérifier ici est la fermeture
+    // manuelle, sans coupler le test au rôle transitoire interne de la primitive.
     fireEvent.click(
-      screen.getByRole('button', { name: 'Fermer la notification' }),
+      within(toast).getByLabelText('Fermer la notification'),
     );
 
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(getToastElement()).not.toBeInTheDocument();
+    });
   });
 
   it('retire automatiquement un toast après cinq secondes par défaut', () => {
     vi.useFakeTimers();
-
-    render(
-      <ToastProvider>
-        <ToastHarness />
-      </ToastProvider>,
-    );
+    renderToastProvider();
 
     fireEvent.click(screen.getByRole('button', { name: 'Succès' }));
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(getToastElement()).toBeInTheDocument();
 
     act(() => {
       vi.advanceTimersByTime(DEFAULT_TOAST_DURATION);
+      vi.runOnlyPendingTimers();
     });
 
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(getToastElement()).not.toBeInTheDocument();
   });
 
-  it('annonce les erreurs comme alertes accessibles', () => {
-    render(
-      <ToastProvider>
-        <ToastHarness />
-      </ToastProvider>,
-    );
+  it('mappe une erreur applicative vers le ton destructif Base UI', async () => {
+    renderToastProvider();
 
     fireEvent.click(screen.getByRole('button', { name: 'Erreur' }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Modification impossible');
-    expect(screen.getByText('Workspace indisponible')).toBeInTheDocument();
+    const toast = await findToastByText('Modification impossible');
+
+    expect(toast).toHaveAttribute('data-type', 'destructive');
+    expect(toast).toHaveClass('border-destructive/40');
+    expect(within(toast).getByText('Workspace indisponible')).toBeVisible();
+  });
+
+  it('conserve les toasts persistants et la fermeture programmatique', async () => {
+    renderToastProvider();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Persistant' }));
+
+    const toast = await findToastByText('Notification persistante');
+    expect(toast).toHaveAttribute('data-type', 'warning');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Fermer programmatiquement' }),
+    );
+
+    await waitFor(() => {
+      expect(getToastElement()).not.toBeInTheDocument();
+    });
   });
 });

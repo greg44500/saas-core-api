@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
+import { findToastByText } from '@/test/toast-assertions';
 
 const useGetCurrentUserQueryMock = vi.hoisted(() => vi.fn());
 const useUpdateCurrentUserMutationMock = vi.hoisted(() => vi.fn());
@@ -101,7 +102,7 @@ describe('ProfilePage', () => {
       });
     });
     expect(unwrapMock).toHaveBeenCalledTimes(1);
-    expect(await screen.findByRole('status')).toHaveTextContent('Profil mis à jour');
+    expect(await findToastByText('Profil mis à jour')).toBeInTheDocument();
   });
 
   it('présente une erreur serveur de mise à jour dans un toast', async () => {
@@ -114,8 +115,7 @@ describe('ProfilePage', () => {
     await user.type(firstNameInput, 'Gregory');
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
 
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Mise à jour impossible');
-    expect(alert).toHaveTextContent('Profil indisponible');
+    const toast = await findToastByText('Mise à jour impossible');
+    expect(toast).toHaveTextContent('Profil indisponible');
   });
 });
