@@ -69,7 +69,11 @@ function resolvedMutation(mock) {
 
 async function chooseSelectOption(user, scope, label, optionName) {
   await user.click(scope.getByRole('combobox', { name: label }));
-  await user.click(screen.getByRole('option', { name: optionName }));
+
+  // Base UI rend la liste dans un Portal. Son montage peut être différé d'un
+  // cycle de rendu : attendre l'option teste le comportement utilisateur réel
+  // sans rendre la suite dépendante du timing interne de la primitive.
+  await user.click(await screen.findByRole('option', { name: optionName }));
 }
 
 function renderPage() {
