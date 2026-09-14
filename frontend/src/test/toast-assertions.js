@@ -11,7 +11,9 @@ async function findToastByText(text, queryOptions) {
   return waitFor(() => {
     const toast = Array.from(
       document.querySelectorAll('[data-slot="toast"]'),
-    ).find((element) => within(element).queryByText(text, queryOptions));
+    ).find(
+      (element) => within(element).queryAllByText(text, queryOptions).length > 0,
+    );
 
     if (!toast) {
       throw new Error(
