@@ -97,8 +97,11 @@ describe('ToastProvider', () => {
     expect(toast).toHaveAttribute('data-type', 'success');
     expect(within(toast).getByText('Le nom a bien été enregistré.')).toBeVisible();
 
+    // Base UI contrôle l'exposition accessible des actions d'un toast selon
+    // l'état du viewport. Le contrat applicatif à vérifier ici est la fermeture
+    // manuelle, sans coupler le test au rôle transitoire interne de la primitive.
     fireEvent.click(
-      within(toast).getByRole('button', { name: 'Fermer la notification' }),
+      within(toast).getByLabelText('Fermer la notification'),
     );
 
     await waitFor(() => {
