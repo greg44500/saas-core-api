@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/components/shared/toast-provider';
+import { findToastByText } from '@/test/toast-assertions';
 
 const navigateMock = vi.hoisted(() => vi.fn());
 const transferWorkspaceOwnershipMock = vi.hoisted(() => vi.fn());
@@ -183,9 +184,9 @@ describe('WorkspaceOwnershipSection', () => {
         currentPassword: '123456789012345',
       });
     });
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Propriété du workspace transférée',
-    );
+    expect(
+      await findToastByText('Propriété du workspace transférée'),
+    ).toBeInTheDocument();
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith(
         `/workspaces/${workspaceId}/dashboard`,
