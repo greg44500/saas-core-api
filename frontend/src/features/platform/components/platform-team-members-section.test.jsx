@@ -319,10 +319,8 @@ describe('PlatformTeamMembersSection', () => {
       screen.getByRole('dialog', { name: 'Modifier le rôle' }),
     ).toBeInTheDocument();
 
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Nouveau rôle' }),
-      ROLE_IDS.customerSupport,
-    );
+    await user.click(screen.getByRole('combobox', { name: 'Nouveau rôle' }));
+    await user.click(screen.getByRole('option', { name: 'Support client' }));
     await user.click(screen.getByRole('button', { name: 'Confirmer' }));
 
     expect(mocks.updateMemberRole).toHaveBeenCalledWith({

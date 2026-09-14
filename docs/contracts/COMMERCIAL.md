@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Contrat commercial canonique
 
 **Statut :** canonique — actif  
-**Dernière mise à jour :** 2026-09-05  
+**Dernière mise à jour :** 2026-09-14  
 **Périmètre :** Plan, Subscription, TrialEligibility, entitlement effectif, UsageMetric, quotas, EntitlementOverride et administration commerciale Platform
 
 ---
@@ -419,6 +419,7 @@ La vue expose les droits réellement applicables :
 ```text
 plan
 features
+featureAvailability
 limits
 subscriptionKind
 subscriptionStatus
@@ -430,7 +431,29 @@ nonBlockingLimits
 
 Point important : `features` et `limits` sont les valeurs **effectives après composition avec les EntitlementOverride actifs**, pas une simple copie du Plan catalogue.
 
-Le frontend doit consommer ces valeurs et ne pas recalculer les overrides.
+`featureAvailability` fournit, pour chaque feature effectivement présente, son horizon utilisateur déjà résolu par le backend :
+
+```text
+featureAvailability[featureKey] = {
+  mode: "open_ended",
+  endsAt: null
+}
+
+ou
+
+featureAvailability[featureKey] = {
+  mode: "bounded",
+  endsAt: <date de fin effective>
+}
+```
+
+`open_ended` signifie qu’aucune fin de droit n’est actuellement programmée. Cette valeur ne signifie pas qu’un droit est immuable ou garanti définitivement.
+
+`bounded` signifie qu’une fin de disponibilité est déjà déterminable. Le backend calcule cette projection à partir de la source de droit réellement effective et de sa continuité éventuelle : trial, Subscription courante, résiliation programmée, downgrade programmé, baseline de fallback lorsqu’elle redevient applicable et overrides de feature actifs.
+
+Lorsqu’une même feature reste accordée par plusieurs sources successives, la projection représente la continuité effective du droit et ne doit pas annoncer une coupure qui n’existera pas réellement.
+
+Le frontend doit consommer `features`, `limits` et `featureAvailability` tels quels. Il peut formater la date ou une durée restante pour l’affichage, mais il ne doit jamais recalculer l’origine, l’échéance ou la continuité des droits commerciaux.
 
 ### 11.3 Confidentialité des overrides côté Workspace
 
@@ -443,6 +466,8 @@ grantedBy
 identifiant interne de l’override
 historique administratif
 ```
+
+`featureAvailability` ne déroge pas à cette règle : une éventuelle date de fin utile à l’utilisateur peut être exposée sans révéler qu’elle provient d’un override ni divulguer son motif, sa source ou son auteur.
 
 Ces informations appartiennent à Platform.
 

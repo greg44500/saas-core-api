@@ -1,5 +1,12 @@
 import { useNavigate, useParams } from 'react-router';
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useListWorkspacesQuery } from '@/features/workspace/api/workspace-api';
 
 function WorkspaceSwitcher({ currentWorkspace }) {
@@ -17,10 +24,12 @@ function WorkspaceSwitcher({ currentWorkspace }) {
   const activeWorkspace = availableWorkspaces.find(
     (workspace) => workspace.id === workspaceId,
   ) ?? currentWorkspace;
+  const workspaceItems = availableWorkspaces.map((workspace) => ({
+    value: workspace.id,
+    label: workspace.name,
+  }));
 
-  function handleChange(event) {
-    const nextWorkspaceId = event.target.value;
-
+  function handleChange(nextWorkspaceId) {
     if (!nextWorkspaceId || nextWorkspaceId === workspaceId) {
       return;
     }
@@ -38,21 +47,30 @@ function WorkspaceSwitcher({ currentWorkspace }) {
   }
 
   return (
-    <label className="flex min-w-0 items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       <span className="shrink-0 text-sm text-muted-foreground">Espace de travail :</span>
-      <select
-        aria-label="Espace de travail actif"
-        className="h-9 w-full max-w-64 truncate rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        onChange={handleChange}
-        value={workspaceId ?? ''}
+      <Select
+        items={workspaceItems}
+        onValueChange={(nextWorkspaceId) => {
+          if (typeof nextWorkspaceId === 'string') handleChange(nextWorkspaceId);
+        }}
+        value={workspaceId ?? null}
       >
-        {availableWorkspaces.map((workspace) => (
-          <option key={workspace.id} value={workspace.id}>
-            {workspace.name}
-          </option>
-        ))}
-      </select>
-    </label>
+        <SelectTrigger
+          aria-label="Espace de travail actif"
+          className="h-9 w-full max-w-64 font-medium shadow-sm"
+        >
+          <SelectValue placeholder="Sélectionner un espace de travail" />
+        </SelectTrigger>
+        <SelectContent>
+          {availableWorkspaces.map((workspace) => (
+            <SelectItem key={workspace.id} value={workspace.id}>
+              {workspace.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 

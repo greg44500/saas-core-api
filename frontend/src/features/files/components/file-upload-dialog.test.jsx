@@ -77,7 +77,8 @@ describe('FileUploadDialog', () => {
     renderDialog({ onClose, onUploaded });
 
     await user.upload(screen.getByLabelText('Fichier'), file);
-    await user.selectOptions(screen.getByLabelText('Catégorie'), 'document');
+    await user.click(screen.getByRole('combobox', { name: 'Catégorie' }));
+    await user.click(screen.getByRole('option', { name: 'Document' }));
     await user.click(screen.getByRole('button', { name: 'Téléverser' }));
 
     expect(mocks.uploadWorkspaceFile).toHaveBeenCalledWith({

@@ -1,9 +1,14 @@
+import { SelectField } from '@/components/shared/select-field';
 import { Slider } from '@/components/ui/slider';
 import {
   formatPlatformPlanLimit,
   formatPlatformPlanMetric,
 } from '@/features/platform/lib/platform-plan-formatters';
 
+const LIMIT_MODE_ITEMS = Object.freeze([
+  { value: 'limited', label: 'Plafond défini' },
+  { value: 'unlimited', label: 'Illimité' },
+]);
 
 function isByteMetric(metric) {
   return metric?.presentation?.unit === 'bytes'
@@ -110,21 +115,15 @@ function PlatformMetricLimitControl({
     return (
       <div className="space-y-3">
         {unlimitedAllowed && (
-          <div className="space-y-2">
-            <label className="text-xs font-medium" htmlFor={`${idPrefix}-mode`}>
-              Mode
-            </label>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              disabled={disabled}
-              id={`${idPrefix}-mode`}
-              onChange={(event) => onModeChange?.(event.target.value)}
-              value={effectiveMode}
-            >
-              <option value="limited">Plafond défini</option>
-              <option value="unlimited">Illimité</option>
-            </select>
-          </div>
+          <SelectField
+            disabled={disabled}
+            id={`${idPrefix}-mode`}
+            items={LIMIT_MODE_ITEMS}
+            label="Mode"
+            labelClassName="text-xs"
+            onValueChange={onModeChange}
+            value={effectiveMode}
+          />
         )}
 
         {effectiveMode !== 'unlimited' && (
@@ -171,21 +170,15 @@ function PlatformMetricLimitControl({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <div className="space-y-2">
-        <label className="text-xs font-medium" htmlFor={`${idPrefix}-mode`}>
-          Mode
-        </label>
-        <select
-          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-          disabled={disabled}
-          id={`${idPrefix}-mode`}
-          onChange={(event) => onModeChange?.(event.target.value)}
-          value={mode}
-        >
-          <option value="limited">Plafond défini</option>
-          <option value="unlimited">Illimité</option>
-        </select>
-      </div>
+      <SelectField
+        disabled={disabled}
+        id={`${idPrefix}-mode`}
+        items={LIMIT_MODE_ITEMS}
+        label="Mode"
+        labelClassName="text-xs"
+        onValueChange={onModeChange}
+        value={mode}
+      />
 
       {mode !== 'unlimited' && (
         <div className="space-y-2">
@@ -223,7 +216,6 @@ function PlatformMetricLimitControl({
     </div>
   );
 }
-
 
 export {
   PlatformMetricLimitControl,

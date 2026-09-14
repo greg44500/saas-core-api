@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
+  PlatformMetricLimitControl,
   getSliderConfiguration,
 } from '@/features/platform/components/platform-metric-limit-control';
 
@@ -72,5 +75,38 @@ describe('getSliderConfiguration', () => {
       value: 50,
       minimumValue: 51,
     })).toBeNull();
+  });
+});
+
+describe('PlatformMetricLimitControl', () => {
+  it('transmet le passage en illimité depuis le Select Base UI', async () => {
+    const user = userEvent.setup();
+    const onModeChange = vi.fn();
+
+    render(
+      <PlatformMetricLimitControl
+        idPrefix="members-limit"
+        metric={{
+          key: 'members',
+          presentation: { label: 'Membres' },
+          overridePolicy: {
+            control: 'linear_slider',
+            min: 0,
+            max: 50,
+            step: 1,
+            allowUnlimited: true,
+          },
+        }}
+        mode="limited"
+        onModeChange={onModeChange}
+        onValueChange={vi.fn()}
+        value={5}
+      />,
+    );
+
+    await user.click(screen.getByRole('combobox', { name: 'Mode' }));
+    await user.click(screen.getByRole('option', { name: 'Illimité' }));
+
+    expect(onModeChange).toHaveBeenCalledWith('unlimited');
   });
 });

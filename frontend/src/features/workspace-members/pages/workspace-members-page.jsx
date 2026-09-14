@@ -5,9 +5,17 @@ import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Tooltip,
   TooltipContent,
@@ -98,6 +106,13 @@ function WorkspaceMembersPage() {
       ),
     [actorPermissionSet, rolesQuery.data],
   );
+  const assignableRoleItems = useMemo(
+    () => assignableRoles.map((role) => ({
+      value: role.id,
+      label: role.name,
+    })),
+    [assignableRoles],
+  );
 
   const selectedInviteRole = useMemo(
     () => (rolesQuery.data ?? []).find((role) => role.id === inviteRoleId) ?? null,
@@ -114,6 +129,8 @@ function WorkspaceMembersPage() {
 
   async function handleInvite(event) {
     event.preventDefault();
+
+    if (!inviteEmail.trim() || !inviteRoleId) return;
 
     try {
       await createInvitation({
@@ -233,17 +250,26 @@ function WorkspaceMembersPage() {
         const memberName = `${member.user.firstName} ${member.user.lastName}`;
 
         return can(WORKSPACE_PERMISSION.MEMBER_UPDATE) && !protectedMember && assignableRoles.length > 0 ? (
-          <select
-            aria-label={`Rôle de ${memberName}`}
-            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+          <Select
             disabled={updateRoleState.isLoading}
+            items={assignableRoleItems}
+            onValueChange={(roleId) => handleRoleChange(member.id, roleId)}
             value={member.role.id}
-            onChange={(event) => handleRoleChange(member.id, event.target.value)}
           >
-            {assignableRoles.map((role) => (
-              <option key={role.id} value={role.id}>{role.name}</option>
-            ))}
-          </select>
+            <SelectTrigger
+              aria-label={`Rôle de ${memberName}`}
+              className="h-9 min-w-40"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {assignableRoleItems.map((role) => (
+                <SelectItem key={role.value} value={role.value}>
+                  {role.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : member.role.name;
       },
     },
@@ -305,13 +331,13 @@ function WorkspaceMembersPage() {
     },
   ];
 
+  const membersHelp = `Gérez les accès à ${workspace.name} selon les permissions de votre rôle.`;
+
   return (
     <div className="space-y-8">
-      <div>
+      <div className="flex items-start gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">Membres</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Gérez les accès à {workspace.name} selon les permissions de votre rôle.
-        </p>
+        <InfoTooltip content={membersHelp} label="À propos des membres" />
       </div>
 
       {can(WORKSPACE_PERMISSION.MEMBER_INVITE) && can(WORKSPACE_PERMISSION.ROLE_READ) && (
@@ -328,18 +354,22 @@ function WorkspaceMembersPage() {
               placeholder="membre@entreprise.fr"
             />
             <div className="space-y-2">
-              <select
-                aria-label="Rôle du membre"
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                required
-                value={inviteRoleId}
-                onChange={(event) => setInviteRoleId(event.target.value)}
+              <Select
+                items={assignableRoleItems}
+                onValueChange={setInviteRoleId}
+                value={inviteRoleId || null}
               >
-                <option value="">Choisir un rôle</option>
-                {assignableRoles.map((role) => (
-                  <option key={role.id} value={role.id}>{role.name}</option>
-                ))}
-              </select>
+                <SelectTrigger aria-label="Rôle du membre">
+                  <SelectValue placeholder="Choisir un rôle" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignableRoleItems.map((role) => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {selectedInviteRole && (
                 <Button
                   className="h-auto px-0 py-0 text-xs"

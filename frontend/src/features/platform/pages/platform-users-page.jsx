@@ -6,6 +6,7 @@ import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { useGetCurrentUserQuery } from '@/features/auth/api/auth-api';
@@ -221,13 +222,19 @@ function PlatformUsersPage() {
     },
   ];
 
+  const pageDescription = 'Consultez les utilisateurs rattachés à au moins un espace de travail client et gérez le cycle de vie de leur compte selon vos permissions Platform.';
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Utilisateurs clients</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Consultez les utilisateurs rattachés à au moins un espace de travail client et gérez le cycle de vie de leur compte selon vos permissions Platform.
-        </p>
+      <div className="min-w-0">
+        <div className="flex items-start gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">Utilisateurs clients</h1>
+          <InfoTooltip
+            content={pageDescription}
+            label="À propos des utilisateurs clients"
+          />
+        </div>
+        <p className="sr-only">{pageDescription}</p>
       </div>
 
       <section className="rounded-xl border border-border bg-card">

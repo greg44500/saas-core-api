@@ -1,6 +1,14 @@
 import { FeatureToggle } from '@/components/shared/feature-toggle';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
+import { SelectField } from '@/components/shared/select-field';
 import { SmoothCollapse } from '@/components/shared/smooth-collapse';
 import { isByteMetric } from '@/features/platform/lib/platform-plan-limit-utils';
+
+const LIMIT_MODE_ITEMS = Object.freeze([
+  { value: 'none', label: 'Aucune' },
+  { value: 'limited', label: 'Plafond' },
+  { value: 'unlimited', label: 'Illimité' },
+]);
 
 function PlatformPlanLimitControl({
   disabled = false,
@@ -15,36 +23,25 @@ function PlatformPlanLimitControl({
     <div
       className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-[1fr_170px_170px] sm:items-end"
     >
-      <div>
-        <div className="text-sm font-medium">{metric.label}</div>
-        {metric.description && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            {metric.description}
-          </p>
-        )}
+      <div className="flex min-w-0 items-center gap-1.5 self-center">
+        <div className="min-w-0 text-sm font-medium">{metric.label}</div>
+        <InfoTooltip
+          className="size-5"
+          content={metric.description}
+          label={`Informations sur ${metric.label}`}
+        />
       </div>
 
-      <div className="space-y-1">
-        <label
-          className="text-xs text-muted-foreground"
-          htmlFor={`platform-plan-limit-mode-${metricKey}`}
-        >
-          Mode
-        </label>
-        <select
-          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={disabled}
-          id={`platform-plan-limit-mode-${metricKey}`}
-          onChange={(event) => onLimitChange(metricKey, {
-            mode: event.target.value,
-          })}
-          value={limit.mode}
-        >
-          <option value="none">Aucune</option>
-          <option value="limited">Plafond</option>
-          <option value="unlimited">Illimité</option>
-        </select>
-      </div>
+      <SelectField
+        className="space-y-1"
+        disabled={disabled}
+        id={`platform-plan-limit-mode-${metricKey}`}
+        items={LIMIT_MODE_ITEMS}
+        label="Mode"
+        labelClassName="text-xs font-normal text-muted-foreground"
+        onValueChange={(mode) => onLimitChange(metricKey, { mode })}
+        value={limit.mode}
+      />
 
       {limit.mode === 'limited' && (
         <div className="space-y-1">

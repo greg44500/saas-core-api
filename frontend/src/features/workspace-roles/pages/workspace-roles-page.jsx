@@ -4,6 +4,7 @@ import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { DataPagination } from '@/components/data-display/data-pagination';
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
@@ -235,14 +236,14 @@ function WorkspaceRolesPage() {
     },
   ];
 
+  const rolesHelp = `Consultez les rôles de ${workspace.name} et gérez les rôles personnalisés dans la limite de vos propres permissions.`;
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="flex items-start gap-2">
           <h1 className="text-2xl font-semibold tracking-tight">Rôles et permissions</h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Consultez les rôles de {workspace.name} et gérez les rôles personnalisés dans la limite de vos propres permissions.
-          </p>
+          <InfoTooltip content={rolesHelp} label="À propos des rôles et permissions" />
         </div>
         {can(WORKSPACE_PERMISSION.ROLE_CREATE) && (
           <Button onClick={openCreate} type="button">
@@ -285,10 +286,13 @@ function WorkspaceRolesPage() {
 
       <section className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="border-b border-border p-5">
-          <h2 className="text-lg font-semibold">Rôles du workspace</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Les rôles système sont consultables mais protégés contre les modifications génériques.
-          </p>
+          <div className="flex items-start gap-2">
+            <h2 className="text-lg font-semibold">Rôles du workspace</h2>
+            <InfoTooltip
+              content="Les rôles système sont consultables mais protégés contre les modifications génériques."
+              label="À propos des rôles du workspace"
+            />
+          </div>
         </div>
 
         {roles.length === 0 ? (

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router';
 
 import { DEFAULT_DATA_PAGE_SIZE } from '@/components/data-display/data-pagination-config';
 import { DataPagination } from '@/components/data-display/data-pagination';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { Button } from '@/components/ui/button';
 import {
   useGetWorkspaceAuditMetadataQuery,
@@ -105,16 +106,19 @@ function WorkspaceAuditLogPage() {
     );
   }
 
+  const historyHelp = `Consultez les événements audités de ${workspace.name}. Les informations techniques sensibles ne sont pas exposées dans cette vue.`;
+
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
+      <header>
         <p className="text-sm font-medium text-primary">Administration</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Historique d’activité</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Consultez les événements audités de{' '}
-          <strong className="font-semibold text-foreground">{workspace.name}</strong>. Les informations
-          techniques sensibles ne sont pas exposées dans cette vue.
-        </p>
+        <div className="mt-1 flex items-start gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">Historique d’activité</h1>
+          <InfoTooltip
+            content={historyHelp}
+            label="À propos de l’historique d’activité"
+          />
+        </div>
       </header>
 
       <AuditLogFilters

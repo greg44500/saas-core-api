@@ -87,6 +87,36 @@ function formatFeatureLabel(featureKey) {
 }
 
 /**
+ * Formate uniquement la projection temporelle calculée par le backend. Le
+ * frontend n'infère jamais une échéance à partir du plan, du trial ou d'une
+ * dérogation qu'il ne connaît pas.
+ */
+function formatFeatureAvailability(availability, { now = new Date() } = {}) {
+  if (availability?.mode === 'open_ended') return 'Sans échéance';
+
+  const end = new Date(availability?.endsAt);
+  if (
+    availability?.mode !== 'bounded'
+    || Number.isNaN(end.getTime())
+    || !(now instanceof Date)
+    || Number.isNaN(now.getTime())
+  ) {
+    return 'Disponibilité à vérifier';
+  }
+
+  const remaining = Math.max(end.getTime() - now.getTime(), 0);
+  const remainingDays = Math.ceil(remaining / DAY_IN_MS);
+  const dateLabel = new Intl.DateTimeFormat('fr-FR', {
+    dateStyle: 'medium',
+  }).format(end);
+  const durationLabel = remainingDays === 0
+    ? 'échéance atteinte'
+    : `${remainingDays} jour${remainingDays > 1 ? 's' : ''} restant${remainingDays > 1 ? 's' : ''}`;
+
+  return `Jusqu’au ${dateLabel} · ${durationLabel}`;
+}
+
+/**
  * Accepte la clé seule ou l'objet détaillé renvoyé par le backend lors d'une
  * incompatibilité de plan. Cette tolérance évite de coupler le rendu à une
  * représentation simplifiée qui ferait perdre `usage`, `limit` et `excess`.
@@ -189,6 +219,7 @@ export {
   formatAccessReason,
   formatBillingInterval,
   formatEffectiveLimitValue,
+  formatFeatureAvailability,
   formatFeatureLabel,
   formatLimitLabel,
   formatPlanLimitValue,

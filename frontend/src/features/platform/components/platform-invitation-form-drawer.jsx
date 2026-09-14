@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 
 import { FormField } from '@/components/forms/form-field';
-import { SelectField } from '@/components/forms/select-field';
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
+import { SelectField } from '@/components/shared/select-field';
 import { useToast } from '@/components/shared/toast-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -188,9 +188,10 @@ function PlatformInvitationFormDrawer({
             ? 'Aucun rôle assignable avec votre niveau d’accès actuel.'
             : 'Le backend revalidera la hiérarchie des permissions au moment de l’invitation.'}
           id="platform-invitation-role"
+          items={roleOptions}
           label="Rôle prévu"
-          onChange={(event) => updateField('roleId', event.target.value)}
-          options={roleOptions}
+          onValueChange={(value) => updateField('roleId', value)}
+          placeholder="Choisissez un rôle"
           value={form.roleId}
         />
 

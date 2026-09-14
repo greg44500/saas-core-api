@@ -117,7 +117,8 @@ describe('PlatformInvitationFormDrawer', () => {
     await user.type(screen.getByLabelText('Prénom'), 'Marie');
     await user.type(screen.getByLabelText('Nom'), 'Martin');
     await user.type(screen.getByLabelText('Adresse email'), 'marie@example.com');
-    await user.selectOptions(screen.getByLabelText('Rôle prévu'), role.id);
+    await user.click(screen.getByRole('combobox', { name: 'Rôle prévu' }));
+    await user.click(screen.getByRole('option', { name: 'Support technique' }));
     await user.click(screen.getByRole('button', { name: 'Envoyer l’invitation' }));
 
     expect(mocks.createInvitation).toHaveBeenCalledWith({

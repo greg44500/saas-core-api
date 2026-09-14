@@ -2,17 +2,11 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état réel du Core au 2026-09-12 après :
-> - la fusion du chantier Design Tokens + Sidebar shadcn ;
-> - l’alignement des Topbars Platform et Workspace ;
-> - l’alignement ciblé des `Select` sur la primitive shadcn/Base UI ;
-> - la mise en place de la gate de transfert de propriété exceptionnelle ;
-> - le nettoyage UX de plusieurs textes pédagogiques vers `InfoTooltip` ;
-> - le cadrage différé D-023 du workflow gouverné de demande de transfert pour Core 1.1.
+> Cette synthèse décrit l’état réel du Core au **2026-09-14** après la validation du lot transversal Select, l’harmonisation UX des informations pédagogiques Platform/Workspace, l’ajout de la projection temporelle des fonctionnalités effectives et l’alignement visuel des statuts de souscription Platform.
 >
-> Le code actuel, les contraintes de base de données, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
+> Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
-> **Dernière mise à jour : 2026-09-12**
+> **Dernière mise à jour : 2026-09-14**
 
 ---
 
@@ -20,7 +14,7 @@
 
 En cas de contradiction :
 
-1. code actuel et contraintes de base de données ;
+1. code actuel et contraintes DB ;
 2. tests automatisés réellement exécutés et validés ;
 3. contrats canoniques ;
 4. architecture, sécurité et guidelines canoniques ;
@@ -28,7 +22,7 @@ En cas de contradiction :
 6. documentation opérationnelle ;
 7. présent fichier de reprise.
 
-Les anciennes synthèses de reprise ne sont pas autoritatives lorsqu’elles sont dépassées.
+Les anciennes synthèses ne sont pas autoritatives lorsqu’elles sont dépassées.
 
 Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présenté comme `v1.0.0` ni comme automatiquement prêt pour la production.
 
@@ -36,190 +30,268 @@ Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présent
 
 ## 2. État Git de référence
 
+### `main`
+
 Branche de référence :
 
 ```text
 main
 ```
 
-Dernier HEAD connu avant la présente mise à jour documentaire :
+HEAD distant vérifié avant la présente mise à jour :
 
 ```text
-bc169c129d38353b48901984514f2e1f22d0ea26
-docs: refine governed ownership transfer workflow
+b7a89d088738d087874ec2e1f9496f9ed80bfd7d
+test(frontend): cover pending dialog closure lock
 ```
 
-Dernier lot fonctionnel significatif avant les ajustements UI/documentaires :
+Ce HEAD contient notamment :
+
+- Design System / D-011 validé ;
+- Sidebar/navigation et Topbars consolidées ;
+- DataTable partagé ;
+- DataPagination partagé ;
+- DLG-1 : primitive `components/ui/dialog.jsx` Base UI ;
+- migration de `ConfirmationDialog` ;
+- verrouillage de fermeture du Dialog pendant `pending`.
+
+### Branche de travail courante
 
 ```text
-1904c42115e2ebc6ad1c63689223e1dedce350a7
-feat(core): gate ownership transfer and align workspace controls
+feature/select-base-ui-harmonization
 ```
 
-Commits récents importants :
+HEAD fonctionnel validé juste avant cette mise à jour documentaire :
 
 ```text
-7efcb4c2  fix(frontend): align workspace topbar actions
-1904c421  feat(core): gate ownership transfer and align workspace controls
-6d7f21a7  test(frontend): cover select display labels
-90875a0d  fix(frontend): render select labels from declared items
-8049384d  fix(frontend): move files page guidance to info tooltip
-392a41d7  test(frontend): align files page guidance and select interaction
-276edef3  docs: defer governed ownership transfer requests to Core 1.1
-bc169c12  docs: refine governed ownership transfer workflow
+de7429ddca2a4d9e0562170ab05135f6114de7b8
+fix(platform): style subscription statuses semantically
 ```
 
-Toute nouvelle conversation doit vérifier le HEAD réel de `main` avant modification.
+La branche part de `main` à `b7a89d...`.
+
+Revue finale du diff effectuée :
+
+```text
+feature/select-base-ui-harmonization
+→ 17 commits devant main
+→ 0 commit derrière main
+→ merge-base = b7a89d088738d087874ec2e1f9496f9ed80bfd7d
+```
+
+Aucune divergence n’est à résoudre avant intégration.
+
+Toute nouvelle conversation doit vérifier le HEAD réel de `main` et celui de la branche de travail avant toute conclusion.
 
 ---
 
-## 3. Validation réellement constatée — ne pas surinterpréter
+## 3. Validations réellement constatées
 
-État antérieur validé du chantier Sidebar/Topbar Platform :
+### 3.1 DLG-1 — VALIDÉ et fusionné
 
-```text
-frontend suite globale avant dernière correction : 717 / 718 tests verts
-unique échec : platform-layout.test.jsx
-→ cause identifiée : mock obsolète ne transmettant plus le slot `actions`
-→ test corrigé puis relancé de manière ciblée : VERT
+Le lot Dialog DLG-1 a été validé localement par l’utilisateur puis fusionné dans `main`.
 
-autres tests ciblés Sidebar / Router / Topbar : VERT
-frontend lint : VERT
-frontend build : VERT
-validation visuelle : effectuée
-```
+Ne pas rouvrir DLG-1 sans régression concrète.
 
-Puis, lors du lot ownership/select/UX, une exécution frontend ciblée a réellement produit :
+### 3.2 Lot Select — VALIDÉ localement, prêt à fusionner
+
+Le lot Select a connu une première phase de correction où les derniers `<select>` natifs et usages de l’ancien wrapper ont été supprimés.
+
+La primitive canonique est désormais :
 
 ```text
-7 fichiers ciblés
-39 tests
-→ 5 fichiers verts
-→ 2 fichiers en échec
-→ 37 tests verts / 2 échecs
+frontend/src/components/ui/select.jsx
+→ @base-ui/react/select
 ```
 
-Les deux échecs avaient une même cause : `SelectValue` affichait la valeur technique (`__all__`, `standard`) au lieu du libellé utilisateur. La primitive partagée `components/ui/select.jsx` a ensuite été corrigée pour dériver les libellés depuis les `SelectItem`, et un test de primitive a été ajouté.
-
-Après cette correction, la page Fichiers a encore été modifiée pour déplacer son sous-titre pédagogique vers `InfoTooltip`, avec adaptation du test de page.
-
-**Important :** dans cette conversation, les résultats des relances ciblées postérieures à ces deux derniers correctifs n’ont pas encore été communiqués. Ne pas affirmer qu’ils sont verts tant qu’ils ne sont pas réellement exécutés localement.
-
-Relances ciblées recommandées avant tout nouveau chantier si elles n’ont pas déjà été faites localement :
+Le wrapper partagé canonique est :
 
 ```text
-frontend/src/components/ui/select.test.jsx
-frontend/src/features/files/components/file-list-filters.test.jsx
-frontend/src/features/subscription/components/commercial-lifecycle-section.test.jsx
-frontend/src/features/files/pages/workspace-files-page.test.jsx
+frontend/src/components/shared/select-field.jsx
 ```
 
-Les tests backend ciblés du lot ownership ont été demandés mais leur résultat n’a pas été communiqué dans cette conversation. Ne pas les marquer implicitement verts sans preuve locale.
+L’ancien wrapper a été supprimé :
 
-Méthode à conserver :
+```text
+frontend/src/components/forms/select-field.jsx
+frontend/src/components/forms/select-field.test.jsx
+```
 
-- pendant les corrections, utiliser `npx vitest run <fichiers ciblés>` ;
-- ne pas utiliser `npm test -- ...` si cela déclenche la suite complète dans ce dépôt ;
-- regrouper les corrections par cause racine ;
-- réserver les suites globales aux gates finales réellement utiles.
+ESLint interdit maintenant :
+
+```text
+<select> natif dans frontend/src
+import depuis @/components/forms/select-field
+```
+
+Les tests Base UI ont été adaptés à une interaction accessible de type :
+
+```text
+combobox
+→ ouverture / clavier
+→ option
+→ assertion métier
+```
+
+et non à `user.selectOptions()`, réservé aux `<select>` natifs.
+
+Surfaces migrées notamment :
+
+```text
+Platform Audit Logs
+Commercial Invitations
+Platform Invitations
+Platform metric limits
+Platform Plans / capabilities
+Platform Subscriptions
+Platform Team
+Workspace Members
+Files upload category
+Retention target
+WorkspaceSwitcher
+```
+
+### 3.3 Gates globales finales — VALIDÉES par l’utilisateur
+
+Après récupération du HEAD `de7429dd...`, l’utilisateur a réellement exécuté et communiqué comme vertes les cinq gates suivantes :
+
+```text
+frontend npm run lint   → VERT
+frontend npm test       → VERT
+frontend npm run build  → VERT
+backend npm run lint    → VERT
+backend npm test        → VERT
+```
+
+La validation manuelle/visuelle a également été effectuée par l’utilisateur et déclarée conforme.
+
+Le lot est donc techniquement et visuellement validé sur ce HEAD.
+
+### 3.4 Warnings React Hooks connus — hors périmètre
+
+Les warnings `react-hooks/exhaustive-deps` déjà identifiés restent hors de ce lot sauf régression concrète :
+
+```text
+platform-entitlement-override-form.jsx
+platform-retention-policy-form.jsx
+platform-role-form-drawer.jsx
+platform-roles-section.jsx
+workspace-ownership-section.jsx
+```
+
+Leur nettoyage ne doit pas être mélangé silencieusement à une autre migration UI.
 
 ---
 
-## 4. Design System / navigation — acquis à préserver
+## 4. Méthode de correction des tests — règle à conserver
 
-`D-011` reste **VALIDÉ**. Le chantier postérieur est un alignement transversal, pas une réouverture de D-011.
+Décision de travail :
 
-Architecture frontend de référence :
+```text
+plusieurs FAILS
+→ analyser toute la sortie
+→ regrouper par cause racine
+→ corriger la famille complète en un bloc
+→ relancer une gate globale cohérente
+```
+
+À éviter :
+
+```text
+FAIL 1 → correction → test individuel
+FAIL 2 → correction → test individuel
+FAIL 3 → correction → test individuel
+```
+
+Ne jamais annoncer une gate verte sans résultat réellement exécuté.
+
+---
+
+## 5. Architecture frontend à préserver
+
+Architecture de référence :
 
 ```text
 Design tokens
 → components/ui
 → components/shared
-→ components/data-display
+→ components/forms / components/data-display
 → features/*/components
 → pages = assemblage
 ```
 
-Le frontend reste Tailwind CSS v4 CSS-first avec shadcn/ui + Base UI lorsque pertinent.
+Principes obligatoires :
 
-Pour chaque famille de composants :
+- JavaScript uniquement ;
+- Tailwind CSS v4 CSS-first ;
+- shadcn/ui + Base UI pour les primitives génériques lorsque pertinent ;
+- composants partagés pour les comportements transversaux ;
+- composants feature pour le métier ;
+- pages sans logique métier lourde ;
+- RTK Query pour l’état serveur ;
+- Redux Toolkit pour l’état global client ;
+- `useState` pour l’état local ;
+- composants réutilisables obligatoires ;
+- aucune primitive générique concurrente recréée localement sans justification.
 
-```text
-A. CONFORME
-B. WRAPPER LÉGITIME
-C. À MIGRER
-D. À CONSERVER SPÉCIFIQUE
-```
-
-Ne jamais migrer vers shadcn par réflexe si le wrapper actuel apporte une responsabilité réelle.
-
-### Sidebar / navigation
-
-Le contrat suivant est conservé :
-
-```text
-coreWorkspaceNavigation
-+
-APPLICATION_WORKSPACE_NAVIGATION_MODULES
-↓
-composeWorkspaceNavigation()
-↓
-filtrage features + permissions
-↓
-AppSidebar
-```
-
-Le Core reste métier-neutre.
-
-Le renderer partagé repose sur les primitives Sidebar / Collapsible / Popover / Sheet et couvre desktop, mode icône, mobile, groupes, tooltips, route active et navigation accessible.
-
-Ne pas recréer une seconde Sidebar maison.
+Le `DataTable` partagé reste l’abstraction unique pour les tableaux applicatifs génériques.
 
 ---
 
-## 5. Topbars Platform et Workspace — état actuel
+## 6. Dialog — DLG-1 terminé, DLG-2 à faire après fusion
 
-Les deux côtés utilisent désormais le même principe d’actions :
-
-```text
-[ Recherche extensible ] [ Identité ] [ Préférences d’affichage si contexte Dashboard ] [ Déconnexion ]
-```
-
-Le composant partagé est :
+Architecture validée :
 
 ```text
-frontend/src/components/shared/expandable-search.jsx
+features
+→ wrappers métier
+→ ConfirmationDialog
+→ components/ui/dialog.jsx
+→ @base-ui/react/dialog
 ```
 
-Responsabilité actuelle : UI seulement. Aucun moteur métier de recherche n’est inventé dans le Core.
+Base UI porte notamment : focus initial, boucle Tab, restauration du focus, Escape, modalité et verrouillage du scroll.
 
-`AuthenticatedUserIdentity` expose un slot `actions`, utilisé par Platform et Workspace pour placer les préférences avant la déconnexion.
+`use-dialog-focus.js` doit rester tant que `EntityDetailsDrawer` l’utilise.
 
-Les préférences d’affichage restent contextuelles au Dashboard ; la recherche reste disponible plus largement dans la Topbar.
+DLG-2 devra inventorier les shells modaux custom restants. `FileUploadDialog` reste un exemple connu : le lot Select n’a migré que son champ Catégorie.
 
 ---
 
-## 6. Select shadcn/Base UI — correction transversale récente
+## 7. Toast — audité, non migré
 
-Les `select` natifs ciblés dans le lot récent ont été remplacés par la primitive partagée `components/ui/select.jsx` dans les surfaces concernées, notamment :
+État actuel :
 
-- filtre de catégorie des Fichiers ;
-- périodicité de l’essai ;
-- cible de downgrade ;
-- sélection du nouveau propriétaire / rôle de remplacement ;
-- motif de suspension Platform.
+```text
+components/shared/toast-provider.jsx
+```
 
-Un écart Base UI a été identifié : sans collection déclarée, `SelectValue` affichait la valeur technique au lieu du libellé.
+Cible validée :
 
-La correction a été faite **dans la primitive partagée**, pas dupliquée dans chaque feature. Elle dérive la collection depuis les `SelectItem` déclarés afin que les triggers affichent les libellés utilisateurs.
+```text
+features
+→ useToast() / adapter
+→ components/ui/toast.jsx
+→ Base UI Toast
+```
 
-Ne pas réintroduire des mappings locaux `value → label` dans chaque feature sauf cas réellement spécifique.
+Conserver autant que possible :
+
+```text
+toast({ title, description, variant })
+```
+
+Variantes à préserver : success, error/destructive, warning, info.
+
+Les erreurs de validation de champs restent inline.
+
+Ne pas ajouter Sonner sans besoin concret.
 
 ---
 
-## 7. UX des textes pédagogiques
+## 8. UX des informations pédagogiques — règle transversale validée
 
-Règle validée :
+Règle à appliquer sur Platform comme dans les Workspaces :
 
 ```text
 information secondaire / pédagogique
@@ -228,168 +300,175 @@ information secondaire / pédagogique
 conséquence importante d’une action
 → reste visible
 
+information critique / erreur / blocage
+→ reste visible
+
 opération sensible / destructive
 → explication visible obligatoire
 ```
 
-Applications récentes :
+Cette règle a été appliquée durant le lot sur les zones Platform concernées, notamment :
 
-- page Abonnement : plusieurs explications secondaires déplacées vers `InfoTooltip` ;
-- Paramètres Workspace : information technique secondaire déplacée vers `InfoTooltip` ;
-- page Fichiers : le sous-titre `Consultez et téléchargez...` a été déplacé dans un `(i)` à côté du titre ;
-- les conséquences de fin d’essai, résiliation, transfert et autres opérations sensibles restent visibles.
+```text
+Plans
+Abonnements
+Invitations commerciales
+Gestion client > Workspaces
+Gestion client > Utilisateurs
+Journaux d’audit
+Équipe Platform et ses onglets
+```
 
-Cette règle doit guider le reste de l’audit UI sans transformer toutes les descriptions en tooltips.
+et sur les zones Workspace concernées, notamment :
+
+```text
+Tableau de bord
+cartes de synthèse
+activité récente
+Historique d’activité
+Membres
+Rôles et permissions
+```
+
+Les vues déjà conformes n’ont pas été retouchées inutilement.
+
+`FormField` et `SelectField` savent désormais porter une aide `info` via `InfoTooltip`, tandis que `hint` reste réservé aux consignes qui doivent rester visibles.
 
 ---
 
-## 8. Transfert de propriété — gate exceptionnelle implémentée
+## 9. Disponibilité temporelle des fonctionnalités d’un Workspace
 
-Le transfert de propriété ne doit plus être considéré comme une fonction normale toujours disponible à l’owner.
+Le bloc utilisateur des droits effectifs ne doit pas seulement indiquer qu’une fonctionnalité est disponible ; il doit aussi permettre de comprendre rapidement jusqu’à quand elle l’est lorsqu’une échéance réelle existe.
 
-Le mécanisme bas niveau actuel est une **capacité opérationnelle exceptionnelle**.
+Le calcul est effectué côté backend.
 
-Contrat :
+Le DTO utilisateur expose une projection assainie :
+
+```text
+featureAvailability
+```
+
+Formes principales :
+
+```text
+open_ended
+→ aucune extinction actuellement programmée
+→ affichage utilisateur : "Sans échéance"
+
+bounded
+→ fin de droit réellement programmée
+→ affichage utilisateur : "Jusqu’au <date> · <durée restante>"
+```
+
+Le terme `Sans échéance` est volontairement préféré à `Permanent`, car un plan ou une souscription peut évoluer ultérieurement.
+
+La résolution tient compte notamment de :
+
+```text
+baseline
+trial
+subscription active
+cancelAtPeriodEnd
+scheduledChange / downgrade
+EntitlementOverride temporaire ou sans fin
+continuité éventuelle par la baseline
+```
+
+Lorsque plusieurs mécanismes accordent la même fonctionnalité, l’horizon affiché correspond à la continuité réelle la plus longue.
+
+Le frontend ne reconstruit pas cette logique commercialement sensible.
+
+Les métadonnées internes des overrides restent masquées :
+
+```text
+motif
+origine
+auteur
+identifiant interne
+```
+
+Le contrat canonique `docs/contracts/COMMERCIAL.md` a été aligné avec cette projection.
+
+---
+
+## 10. Statuts de souscription Platform — contrat visuel
+
+Le tableau Platform des souscriptions utilise désormais le composant métier :
+
+```text
+PlatformSubscriptionStatusBadge
+→ StatusBadge partagé
+→ tokens sémantiques du Design System
+```
+
+Mapping actuel :
+
+```text
+active    → Actif                → success
+trialing  → Trial                → warning
+past_due  → Paiement en retard   → destructive
+canceled  → Annulé               → neutral / archive
+expired   → Expiré               → neutral / archive
+```
+
+Les couleurs ne sont pas codées directement dans le tableau ; le domaine mappe ses états vers les tons du Design System partagé.
+
+---
+
+## 11. Ownership transfer et D-023
+
+Le transfert de propriété reste une capacité exceptionnelle gouvernée.
+
+Mécanisme actuel :
 
 ```text
 Super administrateur Platform
-→ permission réservée dédiée
-→ autorise temporairement UN workspace
+→ permission réservée
+→ autorisation temporaire d’un workspace
 → TTL serveur
-→ autorisation révocable
+→ révocation possible
 
 owner courant
-→ voit le workflow uniquement si l’autorisation est active
-→ choisit la cible
-→ choisit son rôle après transfert
-→ confirme les conséquences
-→ confirme son mot de passe courant
-→ backend revalide
+→ workflow disponible uniquement si autorisation active
+→ cible + rôle de remplacement
+→ confirmation + mot de passe
+→ validation backend
 → transfert transactionnel
-→ autorisation consommée single-use
+→ single-use
 → audit
 ```
 
-### TTL
-
-Variable backend :
+D-023 reste :
 
 ```text
-WORKSPACE_OWNERSHIP_TRANSFER_AUTHORIZATION_TTL_HOURS
-```
-
-Règles :
-
-- valeur serveur ;
-- défaut 24 h ;
-- validation stricte ;
-- minimum > 0 ;
-- maximum absolu 24 h ;
-- le frontend ne décide jamais de la durée ;
-- le backend calcule `expiresAt`.
-
-### Sécurité
-
-La permission Platform dédiée est `RESERVED`, donc non attribuable à un rôle Platform ordinaire. Le frontend ne doit pas disperser des tests `role === super_admin` : il consomme la permission effective.
-
-Le transfert reste exécuté par l’owner lui-même, pas par le Super administrateur à sa place.
-
-Le backend vérifie notamment autorisation active, expiration, révocation, consommation, owner courant, invariants d’unicité owner et mot de passe.
-
-L’état courant de l’autorisation est porté par le Workspace ; AuditLog conserve l’historique.
-
----
-
-## 9. D-023 — workflow gouverné différé à Core 1.1
-
-`docs/DEBT.md` contient désormais D-023 :
-
-```text
-D-023 — Demande gouvernée de capacité exceptionnelle de transfert de propriété
-Statut : DIFFÉRÉ — cible Core 1.1
+Statut : DIFFÉRÉ
+Cible : Core 1.1
 Blocage Core 1.0 : non
 ```
 
-### Décision v1.0
-
-Avant D-023 :
-
-- aucun bouton owner `Demander capacité de transfert` ;
-- aucune cloche de demandes de transfert dans la Topbar Platform ;
-- aucun workflow commercialisé comme un droit normal ;
-- gate bas niveau existante conservée fermée par défaut.
-
-Cette décision permet de versionner Core 1.0 sans implémenter prématurément le workflow complet.
-
-### Cible Core 1.1
-
-Le workflow prévu :
-
-```text
-Paramètres > Sécurité
-→ owner crée une demande
-→ WorkspaceOwnershipTransferRequest persistée
-→ données workspace/identités référencées par IDs serveur
-→ audit
-→ compteur Platform
-→ cloche Topbar Platform pour la permission réservée
-→ /platform/ownership-transfer-requests
-→ Super Admin examine
-→ backend revalide l’éligibilité
-→ Autoriser / Refuser sans ressaisie manuelle
-→ autorisation temporaire existante
-→ owner transfère avec réauthentification
-→ single-use
-→ clôture et audit
-```
-
-### Cloche Platform prévue
-
-La cloche est un signal **spécifique D-023**, pas le prétexte à construire un centre de notifications générique.
-
-Règles prévues :
-
-- visible uniquement lorsque la permission réservée de traitement des transferts est présente ;
-- en pratique réservée au Super administrateur ;
-- cloche disponible même à zéro pour rester le point d’entrée de la file ;
-- aucune pastille à zéro ;
-- compteur des seules demandes `requested` réellement à traiter ;
-- badge `1..9`, puis `9+` ;
-- accessible name avec nombre en attente ;
-- clic vers `/platform/ownership-transfer-requests`.
-
-### Refus et nouvelle demande
-
-Les blocages objectifs doivent venir du backend sous forme de codes structurés : workspace suspendu/inactif, owner invalide, `past_due`, cible inéligible, demande concurrente, autorisation concurrente, etc.
-
-Le frontend traduit ces codes en explications actionnables.
-
-Une demande refusée reste immutable dans l’historique. Après correction de la cause, l’owner crée une **nouvelle demande avec un nouveau `requestId`**.
-
-Une simple remédiation de quota n’est pas automatiquement bloquante : toute règle de refus doit être justifiée par un risque réel de sécurité, gouvernance ou paiement.
-
-D-023 ne doit pas être implémentée pendant l’audit UI actuel sauf décision explicite de changement de roadmap.
+Ne pas ajouter d’UI de demande de transfert côté owner avant D-023.
 
 ---
 
-## 10. D-020 et roadmap Core 1.0
+## 12. Dettes et roadmap Core 1.0
 
-D-020 reste **EN COURS**.
-
-Contrôles manuels négatifs restant à confirmer :
+État canonique selon `docs/DEBT.md` :
 
 ```text
-mauvaise identité
-→ aucune acceptation/création indue
-
-refus bénéficiaire
-→ invitation declined
-→ acceptation ultérieure impossible
-→ secret runtime nettoyé
-→ session courante fermée comme prévu
+D-020  EN COURS
+D-011  VALIDÉ
+D-021  VALIDÉ
+D-022  VALIDÉ
+D-015  PLANIFIÉ
+D-016  PLANIFIÉ
+D-002  PLANIFIÉ
+D-017  PLANIFIÉ
+D-023  DIFFÉRÉ — Core 1.1
 ```
 
-Roadmap canonique actuelle :
+D-020 doit être clôturée ou explicitement reclassifiée avant D-015.
+
+Roadmap canonique :
 
 ```text
 D-020 → clôturer ou reclassifier
@@ -398,119 +477,112 @@ D-016 → Playwright E2E Core
 D-002 → corbeille / restauration Files
 → audit final architecture / sécurité / qualité
 D-017 → dérivation + upgrade pilote
-→ tag Core stable ensuite
+→ tag Core stable
 
 post-v1.0 :
-D-023 → workflow gouverné de transfert — cible Core 1.1
+D-023 → workflow gouverné de transfert
 ```
 
-D-002 doit être VALIDÉ avant D-017 et avant la première dérivation métier.
+D-002 doit être `VALIDÉ` avant D-017 et la première dérivation métier.
 
 ---
 
-## 11. Audit transversal shadcn/ui / Base UI — travail à reprendre
+## 13. Audit transversal UI — ordre après intégration du lot courant
 
-Le chantier global n’est pas terminé. Tokens, Sidebar/navigation, Topbars et quelques `Select` ont été traités, mais le reste doit encore être audité.
-
-Ne pas réauditer immédiatement Sidebar/tokens sauf régression concrète.
-
-Priorité recommandée :
+Lots déjà consolidés :
 
 ```text
-1. DataTable partagé + primitive table
-2. DataPagination
-3. Dialog / modal / confirmations
-4. Drawer / Sheet / panneaux latéraux
-5. formulaires partagés
-6. Input / Textarea / Checkbox / Switch
-7. Select restant hors lot récent
-8. Dropdown menus
-9. Tooltip / Popover / Accordion / Tabs restants
-10. Badge / StatusBadge
-11. primitives HTML/React directes dans pages/features
+Design Tokens / D-011
+Sidebar / navigation
+Topbars
+DataTable
+DataPagination
+Dialog DLG-1 / ConfirmationDialog
+Select Base UI
 ```
 
-Pour chaque famille :
+Le lot courant est validé localement et en attente d’intégration explicite dans `main`.
 
-- identifier le composant réel ;
-- inventorier les usages ;
-- détecter les duplications ;
-- vérifier accessibilité clavier/ARIA/focus ;
-- vérifier cohérence Design Tokens ;
-- vérifier API et testabilité ;
-- classer `CONFORME / WRAPPER LÉGITIME / À MIGRER / À CONSERVER SPÉCIFIQUE` ;
-- distinguer problème réel et préférence stylistique ;
-- proposer les migrations par valeur / risque ;
-- ne rien coder avant validation utilisateur.
-
-Le `DataTable` partagé reste obligatoire pour les tableaux applicatifs. L’objectif est de consolider cette abstraction, pas de créer plusieurs tables concurrentes.
-
----
-
-## 12. Chantiers à garder séparés
-
-Ne pas mélanger à l’audit UI :
+Ordre recommandé après fusion :
 
 ```text
-A. D-023 workflow de demande ownership Core 1.1
-B. gouvernance de conservation des données
-C. reset reproductible de la base de développement
-D. validation négative finale D-020
-E. D-015 versionnement / provenance / releases
-F. D-016 Playwright E2E Core
-G. D-002 corbeille / restauration Files
-H. D-017 dérivation + upgrade pilote
+1. DLG-2 : shells modaux custom restants
+2. Toast Base UI/shadcn en conservant useToast()
+3. Drawer / Sheet / panneaux latéraux
+4. formulaires partagés
+5. Input / Textarea / Checkbox / Switch
+6. Dropdown menus
+7. Tooltip / Popover / Accordion / Tabs
+8. Badge / StatusBadge
+9. primitives HTML/React directes restantes
+```
+
+Pour chaque famille : inventorier, détecter les duplications, vérifier clavier/focus/ARIA, vérifier tokens, API et testabilité, puis classer avant toute migration.
+
+---
+
+## 14. Chantiers à garder séparés
+
+Ne pas mélanger au chantier UI :
+
+```text
+D-023 workflow ownership Core 1.1
+gouvernance juridique de conservation des données
+reset reproductible de la base de développement
+validation négative finale D-020
+D-015 versionnement / provenance / releases
+D-016 Playwright E2E Core
+D-002 corbeille / restauration Files
+D-017 dérivation + upgrade pilote
+nettoyage des warnings React Hooks connus
 ```
 
 ---
 
-## 13. Règles de travail pour la prochaine conversation
+## 15. Règles de travail à conserver
 
-Conserver impérativement :
-
-- travailler à partir de `main` ;
-- vérifier branche et HEAD avant toute conclusion ;
+- vérifier branche et HEAD avant modification ;
 - code + DB + tests réellement exécutés priment sur la synthèse ;
 - JavaScript uniquement ;
 - validation stricte des données ;
-- séparation routes/controllers/services/models/validation côté backend ;
-- pages frontend = assemblage, pas logique métier lourde ;
-- `useState` pour état local ;
-- Redux Toolkit pour état global client ;
-- RTK Query pour état serveur ;
 - composants réutilisables obligatoires ;
 - DataTable partagé obligatoire pour les tableaux applicatifs ;
-- shadcn/ui comme base des primitives génériques lorsqu’adapté ;
-- wrappers custom conservés lorsqu’ils apportent une vraie responsabilité ;
-- aucun snippet sauvage ;
+- shadcn/ui/Base UI comme primitives génériques lorsque pertinent ;
+- wrappers applicatifs conservés lorsqu’ils apportent une responsabilité réelle ;
+- aucune primitive concurrente sans justification ;
 - aucun changement hors périmètre ;
 - expliquer avant d’implémenter ;
-- ne pas coder pendant une phase d’audit avant validation explicite ;
-- corrections par cause racine et lots cohérents ;
-- tests ciblés avec `npx vitest run <fichiers>` pendant le développement ;
-- ne pas relancer inutilement 700+ tests ;
-- gate globale uniquement au moment utile de validation finale.
+- plusieurs FAILS d’une même famille = analyse globale + correction en bloc ;
+- gate globale après un bloc transversal ;
+- ne jamais annoncer une gate verte sans résultat réellement exécuté ;
+- une information pédagogique secondaire va dans un `InfoTooltip`, pas une information critique.
 
 ---
 
-## 14. Amorçage recommandé du prochain chantier
+## 16. Prochaine action exacte
 
-La prochaine conversation doit reprendre **le reste de l’audit transversal UI**, après vérification rapide des validations ciblées encore non confirmées.
-
-Ordre recommandé :
+Le lot courant a franchi :
 
 ```text
-1. se connecter à greg44500/saas-core-api ;
-2. travailler à partir de main ;
-3. vérifier le HEAD réel ;
-4. lire intégralement docs/REPRISE-CURRENT.md ;
-5. lire docs/DEBT.md, notamment D-011, D-020, D-023 et l’ordre de roadmap ;
-6. ne modifier aucun fichier immédiatement ;
-7. vérifier si les relances ciblées Select/Fichiers ont déjà été exécutées localement ;
-8. si nécessaire, demander uniquement les tests ciblés manquants ;
-9. auditer DataTable puis DataPagination ;
-10. produire une matrice de conformité complète ;
-11. attendre validation utilisateur avant toute implémentation.
+gates frontend → VERT
+backend lint/tests → VERT
+validation visuelle/manuelle → VALIDÉE
+revue finale main..feature → PROPRE
 ```
 
-Le présent document est une synthèse de reprise et non une source supérieure au code, aux tests ou aux contrats canoniques.
+La prochaine action n’est plus une correction Select.
+
+Séquence :
+
+```text
+1. vérifier une dernière fois les HEAD distants ;
+2. fusionner feature/select-base-ui-harmonization dans main uniquement sur décision explicite ;
+3. vérifier le nouveau HEAD de main ;
+4. mettre à jour la reprise si la fusion change le contexte ;
+5. seulement ensuite démarrer DLG-2 ;
+6. Toast vient après DLG-2 sauf décision explicite contraire.
+```
+
+Ne pas fusionner implicitement.
+
+Le présent fichier est une synthèse de reprise et non une source supérieure au code, aux tests ou aux contrats canoniques.

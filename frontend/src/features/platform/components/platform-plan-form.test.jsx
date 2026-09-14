@@ -30,6 +30,11 @@ const capabilities = {
   ],
 };
 
+async function chooseOption(user, combobox, optionName) {
+  await user.click(combobox);
+  await user.click(screen.getByRole('option', { name: optionName }));
+}
+
 describe('PlatformPlanForm', () => {
   it('crée un payload complet sans demander de clé technique', async () => {
     const user = userEvent.setup();
@@ -95,7 +100,11 @@ describe('PlatformPlanForm', () => {
         name: 'Activer Téléversement de fichiers',
       }),
     );
-    await user.selectOptions(screen.getByLabelText('Mode', { selector: '#platform-plan-limit-mode-storage_bytes' }), 'limited');
+    await chooseOption(
+      user,
+      screen.getByLabelText('Mode', { selector: '#platform-plan-limit-mode-storage_bytes' }),
+      'Plafond',
+    );
     await user.type(screen.getByLabelText('Valeur (Mo)'), '100');
     await user.click(screen.getByRole('button', { name: 'Créer le plan' }));
 

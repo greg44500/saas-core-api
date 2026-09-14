@@ -6,6 +6,19 @@ const STATUS_LABELS = Object.freeze({
   expired: 'Expiré',
 });
 
+/**
+ * Les tons suivent le contrat visuel Platform déjà utilisé pour les Workspaces :
+ * actif = succès, état transitoire = avertissement, incident = erreur et état
+ * clos/historique = ton neutre d'archive.
+ */
+const PLATFORM_SUBSCRIPTION_STATUS_TONE = Object.freeze({
+  active: 'success',
+  trialing: 'warning',
+  past_due: 'destructive',
+  canceled: 'neutral',
+  expired: 'neutral',
+});
+
 const KIND_LABELS = Object.freeze({
   baseline: 'Socle',
   commercial: 'Commercial',
@@ -68,6 +81,7 @@ function formatPlatformSubscriptionDate(value) {
 }
 
 export {
+  PLATFORM_SUBSCRIPTION_STATUS_TONE,
   formatPlatformSubscriptionBillingInterval,
   formatPlatformSubscriptionDate,
   formatPlatformSubscriptionDiscountType,

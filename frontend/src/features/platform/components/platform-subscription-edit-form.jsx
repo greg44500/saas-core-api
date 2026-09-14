@@ -1,7 +1,21 @@
 import { useState } from 'react';
 
 import { DatePicker } from '@/components/forms/date-picker';
+import { InfoTooltip } from '@/components/shared/info-tooltip';
+import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
+
+const BILLING_INTERVAL_ITEMS = Object.freeze([
+  { value: 'none', label: 'Aucune' },
+  { value: 'monthly', label: 'Mensuelle' },
+  { value: 'yearly', label: 'Annuelle' },
+]);
+
+const DISCOUNT_TYPE_ITEMS = Object.freeze([
+  { value: 'none', label: 'Aucune' },
+  { value: 'percentage', label: 'Pourcentage' },
+  { value: 'fixed_amount', label: 'Montant fixe' },
+]);
 
 function toDateInputValue(value) {
   if (!value) return '';
@@ -49,49 +63,40 @@ function PlatformSubscriptionEditForm({
     onSubmit(payload);
   }
 
+  const planItems = plans.map((item) => ({
+    value: item.id,
+    label: item.name,
+    disabled: item.status !== 'active',
+  }));
+
   return (
     <form className="space-y-5" onSubmit={submit}>
-      <div className="space-y-2">
-        <label className="text-sm font-medium" htmlFor="subscription-plan">Plan</label>
-        <select
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          id="subscription-plan"
-          onChange={(event) => setPlan(event.target.value)}
-          value={plan}
-        >
-          {plans.map((item) => (
-            <option disabled={item.status !== 'active'} key={item.id} value={item.id}>{item.name}</option>
-          ))}
-        </select>
-      </div>
+      <SelectField
+        disabled={pending}
+        id="subscription-plan"
+        items={planItems}
+        label="Plan"
+        onValueChange={setPlan}
+        value={plan}
+      />
 
-      <div className="space-y-2">
-        <label className="text-sm font-medium" htmlFor="subscription-billing">Périodicité</label>
-        <select
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          id="subscription-billing"
-          onChange={(event) => setBillingInterval(event.target.value)}
-          value={billingInterval}
-        >
-          <option value="none">Aucune</option>
-          <option value="monthly">Mensuelle</option>
-          <option value="yearly">Annuelle</option>
-        </select>
-      </div>
+      <SelectField
+        disabled={pending}
+        id="subscription-billing"
+        items={BILLING_INTERVAL_ITEMS}
+        label="Périodicité"
+        onValueChange={setBillingInterval}
+        value={billingInterval}
+      />
 
-      <div className="space-y-2">
-        <label className="text-sm font-medium" htmlFor="subscription-discount-type">Type de remise</label>
-        <select
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          id="subscription-discount-type"
-          onChange={(event) => setDiscountType(event.target.value)}
-          value={discountType}
-        >
-          <option value="none">Aucune</option>
-          <option value="percentage">Pourcentage</option>
-          <option value="fixed_amount">Montant fixe</option>
-        </select>
-      </div>
+      <SelectField
+        disabled={pending}
+        id="subscription-discount-type"
+        items={DISCOUNT_TYPE_ITEMS}
+        label="Type de remise"
+        onValueChange={setDiscountType}
+        value={discountType}
+      />
 
       {discountType !== 'none' && (
         <>
@@ -104,16 +109,20 @@ function PlatformSubscriptionEditForm({
             <textarea className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" id="subscription-discount-reason" maxLength={500} onChange={(event) => setDiscountReason(event.target.value)} required value={discountReason} />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="subscription-discount-end">Fin de la remise</label>
+            <div className="flex items-center gap-1.5">
+              <label className="text-sm font-medium" htmlFor="subscription-discount-end">Fin de la remise</label>
+              <InfoTooltip
+                className="size-5"
+                content="Laissez vide pour une remise sans date d’expiration programmée."
+                label="À propos de la fin de la remise"
+              />
+            </div>
             <DatePicker
               disabled={pending}
               id="subscription-discount-end"
               onChange={setDiscountEndsAt}
               value={discountEndsAt}
             />
-            <p className="text-xs text-muted-foreground">
-              Laissez vide pour une remise sans date d’expiration programmée.
-            </p>
           </div>
         </>
       )}

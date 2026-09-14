@@ -193,12 +193,8 @@ function PlatformRolesSection() {
 
   return (
     <div className="mt-5 space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Les rôles système sont protégés. Seuls le Fondateur et les Super administrateurs peuvent administrer les rôles personnalisés.
-        </p>
-
-        {canCreate && (
+      {canCreate && (
+        <div className="flex justify-end">
           <Button
             onClick={() => setFormState({ mode: 'create', role: null })}
             type="button"
@@ -206,8 +202,8 @@ function PlatformRolesSection() {
             <Plus aria-hidden="true" className="size-4" />
             Créer un rôle
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {initialLoading && (
         <div className="overflow-hidden rounded-lg border border-border">

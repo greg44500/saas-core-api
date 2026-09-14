@@ -1,6 +1,8 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
+
 const useWorkspaceDashboardWidgetsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/features/workspace/hooks/use-workspace-dashboard-widgets', () => ({
@@ -90,6 +92,14 @@ const baseData = {
   isPreferencesLoading: false,
 };
 
+function renderDashboard() {
+  return render(
+    <TooltipProvider>
+      <WorkspaceDashboardPage />
+    </TooltipProvider>,
+  );
+}
+
 describe('WorkspaceDashboardPage', () => {
   beforeEach(() => {
     useWorkspaceDashboardWidgetsMock.mockReset();
@@ -98,10 +108,16 @@ describe('WorkspaceDashboardPage', () => {
 
   afterEach(() => cleanup());
 
-  it('compose les widgets visibles fournis par le registre', () => {
-    render(<WorkspaceDashboardPage />);
+  it('compose les widgets visibles fournis par le registre et déporte l’aide du header', () => {
+    renderDashboard();
 
     expect(screen.getByRole('heading', { name: 'Tableau de bord' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'À propos du tableau de bord' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Vue synthétique du workspace courant/),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('Statut du workspace : Actif')).toBeInTheDocument();
     expect(screen.getByText('Votre rôle : Administrateur')).toBeInTheDocument();
     expect(screen.getByText('Membres : 4')).toBeInTheDocument();
@@ -144,7 +160,7 @@ describe('WorkspaceDashboardPage', () => {
       visibleWidgets: allWidgets.filter((widget) => widget.id !== 'core.files'),
     });
 
-    render(<WorkspaceDashboardPage />);
+    renderDashboard();
 
     expect(screen.queryByText('Fichiers actifs : 7')).not.toBeInTheDocument();
     expect(screen.getByText('Membres : 4')).toBeInTheDocument();
@@ -157,7 +173,7 @@ describe('WorkspaceDashboardPage', () => {
       isPreferencesLoading: true,
     });
 
-    render(<WorkspaceDashboardPage />);
+    renderDashboard();
 
     expect(screen.getByText('Statut du workspace : Actif')).toBeInTheDocument();
     expect(screen.getByText('Votre rôle : Administrateur')).toBeInTheDocument();

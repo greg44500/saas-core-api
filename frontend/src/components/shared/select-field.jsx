@@ -1,3 +1,4 @@
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import {
   Select,
   SelectContent,
@@ -18,6 +19,7 @@ function SelectField({
   error,
   hint,
   id,
+  info,
   items = [],
   label,
   labelClassName,
@@ -26,6 +28,7 @@ function SelectField({
   onValueChange,
   placeholder = 'Sélectionner…',
   triggerClassName,
+  triggerRef,
   value,
 }) {
   const labelId = `${id}-label`;
@@ -34,16 +37,28 @@ function SelectField({
 
   return (
     <div className={cn('space-y-2', className)}>
-      <label className={cn('text-sm font-medium', labelClassName)} id={labelId}>
-        {label}
-      </label>
+      <div className="flex items-center gap-1.5">
+        <label
+          className={cn('text-sm font-medium', labelClassName)}
+          htmlFor={id}
+          id={labelId}
+        >
+          {label}
+        </label>
+        <InfoTooltip
+          className="size-5"
+          content={info}
+          label={`À propos de ${label}`}
+        />
+      </div>
       <Select
+        disabled={disabled}
         items={items}
         name={name}
         onValueChange={(nextValue) => {
           if (typeof nextValue === 'string') onValueChange?.(nextValue);
         }}
-        value={value ?? null}
+        value={value === '' ? null : (value ?? null)}
       >
         <SelectTrigger
           aria-describedby={hasMessage ? messageId : undefined}
@@ -53,12 +68,17 @@ function SelectField({
           disabled={disabled}
           id={id}
           onBlur={onBlur}
+          ref={triggerRef}
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
           {items.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
+            <SelectItem
+              disabled={item.disabled}
+              key={item.value}
+              value={item.value}
+            >
               {item.label}
             </SelectItem>
           ))}

@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import {
   Card,
   CardContent,
@@ -16,7 +17,7 @@ function DashboardSummaryCard({
 }) {
   const content = (
     <Card className="h-full shadow-sm transition-colors hover:border-primary/30">
-      <CardContent>
+      <CardContent className="pr-10">
         <p className="text-sm text-muted-foreground">{label}</p>
         {isLoading ? (
           <div aria-live="polite" className="mt-2" role="status">
@@ -28,22 +29,31 @@ function DashboardSummaryCard({
             {isError ? 'Indisponible' : value}
           </p>
         )}
-        {description && (
-          <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-        )}
       </CardContent>
     </Card>
   );
 
-  if (!href || isLoading || isError) return content;
-
   return (
-    <Link
-      className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      to={href}
-    >
-      {content}
-    </Link>
+    <div className="relative h-full">
+      {!href || isLoading || isError ? content : (
+        <Link
+          className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          to={href}
+        >
+          {content}
+        </Link>
+      )}
+      {description && (
+        <>
+          <InfoTooltip
+            className="absolute right-3 top-3 z-10 size-5"
+            content={description}
+            label={`À propos de ${label}`}
+          />
+          <span className="sr-only">{description}</span>
+        </>
+      )}
+    </div>
   );
 }
 

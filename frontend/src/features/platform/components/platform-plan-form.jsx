@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { InfoTooltip } from '@/components/shared/info-tooltip';
+import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
 import { PlatformPlanCapabilitiesEditor } from '@/features/platform/components/platform-plan-capabilities-editor';
 import { buildPlatformCapabilityGroups } from '@/features/platform/lib/platform-capability-groups';
@@ -10,6 +12,11 @@ import {
 } from '@/features/platform/lib/platform-plan-formatters';
 
 const PRICE_PATTERN = /^\d+(?:[.,]\d{1,2})?$/;
+
+const PLAN_STATUS_ITEMS = Object.freeze([
+  { value: PLATFORM_PLAN_STATUS.ACTIVE, label: 'Actif' },
+  { value: PLATFORM_PLAN_STATUS.INACTIVE, label: 'Inactif' },
+]);
 
 function minorToMajor(value) {
   if (!Number.isInteger(value)) return '0';
@@ -184,11 +191,12 @@ function PlatformPlanForm({
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <section className="space-y-4">
-        <div>
+        <div className="flex items-start gap-2">
           <h3 className="font-semibold">Offre commerciale</h3>
-          <p className="text-sm text-muted-foreground">
-            L’identité technique est gérée automatiquement par le backend. Le nom commercial peut évoluer librement.
-          </p>
+          <InfoTooltip
+            content="L’identité technique est gérée automatiquement par le backend. Le nom commercial peut évoluer librement."
+            label="À propos de l’offre commerciale"
+          />
         </div>
 
         {isBaseline && (
@@ -208,13 +216,14 @@ function PlatformPlanForm({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="platform-plan-status">Statut</label>
-            <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" disabled={isBaseline} id="platform-plan-status" onChange={(event) => setStatus(event.target.value)} value={isBaseline ? PLATFORM_PLAN_STATUS.ACTIVE : status}>
-              <option value="active">Actif</option>
-              <option value="inactive">Inactif</option>
-            </select>
-          </div>
+          <SelectField
+            disabled={isBaseline}
+            id="platform-plan-status"
+            items={PLAN_STATUS_ITEMS}
+            label="Statut"
+            onValueChange={setStatus}
+            value={isBaseline ? PLATFORM_PLAN_STATUS.ACTIVE : status}
+          />
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="platform-plan-order">Ordre d’affichage</label>
             <input className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id="platform-plan-order" min="0" onChange={(event) => setDisplayOrder(event.target.value)} type="number" value={displayOrder} />
@@ -259,9 +268,15 @@ function PlatformPlanForm({
 
       <section className="space-y-4">
         <div>
-          <h3 className="font-semibold">Fonctionnalités et limites incluses par défaut</h3>
-          <p className="text-sm text-muted-foreground">
-            Configurez chaque domaine commercial dans un même bloc : fonctionnalités, limites et quotas. Une modification du plan s’applique à tous les workspaces qui l’utilisent ; les exceptions individuelles restent gérées dans les dérogations.
+          <div className="flex items-start gap-2">
+            <h3 className="font-semibold">Fonctionnalités et limites incluses par défaut</h3>
+            <InfoTooltip
+              content="Configurez chaque domaine commercial dans un même bloc : fonctionnalités, limites et quotas."
+              label="À propos des fonctionnalités et limites"
+            />
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Une modification du plan s’applique à tous les workspaces qui l’utilisent ; les exceptions individuelles restent gérées dans les dérogations.
           </p>
         </div>
 
