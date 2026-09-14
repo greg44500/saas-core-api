@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import {
   act,
   cleanup,
@@ -5,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,6 +19,7 @@ import {
 
 function ToastHarness() {
   const { dismissToast, toast } = useToast();
+  const persistentToastIdRef = useRef(null);
 
   return (
     <div>
@@ -46,13 +49,18 @@ function ToastHarness() {
       </button>
       <button
         onClick={() => {
-          const id = toast({
+          persistentToastIdRef.current = toast({
             duration: 0,
             title: 'Notification persistante',
             variant: 'warning',
           });
-          dismissToast(id);
         }}
+        type="button"
+      >
+        Persistant
+      </button>
+      <button
+        onClick={() => dismissToast(persistentToastIdRef.current)}
         type="button"
       >
         Fermer programmatiquement
@@ -69,8 +77,8 @@ function renderToastProvider() {
   );
 }
 
-function getVisibleToast(title) {
-  return screen.getByText(title).closest('[data-slot="toast"]');
+function getToastElement() {
+  return document.querySelector('[data-slot="toast"]');
 }
 
 describe('ToastProvider', () => {
@@ -84,16 +92,18 @@ describe('ToastProvider', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Succès' }));
 
-    expect(screen.getByText('Workspace mis à jour')).toBeVisible();
-    expect(screen.getByText('Le nom a bien été enregistré.')).toBeVisible();
-    expect(getVisibleToast('Workspace mis à jour')).toHaveAttribute('data-type', 'success');
+    const toast = getToastElement();
+
+    expect(toast).toHaveAttribute('data-type', 'success');
+    expect(within(toast).getByText('Workspace mis à jour')).toBeVisible();
+    expect(within(toast).getByText('Le nom a bien été enregistré.')).toBeVisible();
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Fermer la notification' }),
+      within(toast).getByRole('button', { name: 'Fermer la notification' }),
     );
 
     await waitFor(() => {
-      expect(screen.queryByText('Workspace mis à jour')).not.toBeInTheDocument();
+      expect(getToastElement()).not.toBeInTheDocument();
     });
   });
 
@@ -102,13 +112,13 @@ describe('ToastProvider', () => {
     renderToastProvider();
 
     fireEvent.click(screen.getByRole('button', { name: 'Succès' }));
-    expect(screen.getByText('Workspace mis à jour')).toBeInTheDocument();
+    expect(getToastElement()).toBeInTheDocument();
 
     act(() => {
       vi.advanceTimersByTime(DEFAULT_TOAST_DURATION);
     });
 
-    expect(screen.queryByText('Workspace mis à jour')).not.toBeInTheDocument();
+    expect(getToastElement()).not.toBeInTheDocument();
   });
 
   it('mappe une erreur applicative vers le ton destructif Base UI', () => {
@@ -116,22 +126,29 @@ describe('ToastProvider', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Erreur' }));
 
-    const toast = getVisibleToast('Modification impossible');
+    const toast = getToastElement();
 
     expect(toast).toHaveAttribute('data-type', 'destructive');
     expect(toast).toHaveClass('border-destructive/40');
-    expect(screen.getByText('Workspace indisponible')).toBeVisible();
+    expect(within(toast).getByText('Modification impossible')).toBeVisible();
+    expect(within(toast).getByText('Workspace indisponible')).toBeVisible();
   });
 
-  it('conserve la fermeture programmatique via l’identifiant retourné', async () => {
+  it('conserve les toasts persistants et la fermeture programmatique', async () => {
     renderToastProvider();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Persistant' }));
+
+    const toast = getToastElement();
+    expect(toast).toHaveAttribute('data-type', 'warning');
+    expect(within(toast).getByText('Notification persistante')).toBeVisible();
 
     fireEvent.click(
       screen.getByRole('button', { name: 'Fermer programmatiquement' }),
     );
 
     await waitFor(() => {
-      expect(screen.queryByText('Notification persistante')).not.toBeInTheDocument();
+      expect(getToastElement()).not.toBeInTheDocument();
     });
   });
 });
