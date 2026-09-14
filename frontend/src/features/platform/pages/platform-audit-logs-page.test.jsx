@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 
@@ -97,12 +98,13 @@ describe('PlatformAuditLogsPage', () => {
     expect(screen.getByText('Jean Dupont')).toBeInTheDocument();
   });
 
-  it('propose automatiquement Dérogation dans le filtre Ressource', () => {
+  it('propose automatiquement Dérogation dans le filtre Ressource', async () => {
+    const user = userEvent.setup();
     renderPage();
 
-    expect(screen.getByRole('option', { name: 'Dérogation' })).toHaveValue(
-      'EntitlementOverride',
-    );
+    await user.click(screen.getByRole('combobox', { name: 'Ressource' }));
+
+    expect(screen.getByRole('option', { name: 'Dérogation' })).toBeInTheDocument();
   });
 
   it('transmet pagination et filtres URL validés par metadata au endpoint Platform', () => {

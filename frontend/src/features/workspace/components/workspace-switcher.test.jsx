@@ -51,12 +51,15 @@ describe('WorkspaceSwitcher', () => {
       .toHaveTextContent('Acme');
   });
 
-  it('navigue vers le dashboard du workspace sélectionné', async () => {
+  it('navigue vers le dashboard du workspace sélectionné au clavier', async () => {
     const user = userEvent.setup();
     const router = renderSwitcher();
+    const trigger = screen.getByRole('combobox', { name: 'Espace de travail actif' });
 
-    await user.click(screen.getByRole('combobox', { name: 'Espace de travail actif' }));
-    await user.click(screen.getByRole('option', { name: 'Beta' }));
+    trigger.focus();
+    await user.keyboard('{ArrowDown}');
+    await user.keyboard('b');
+    await user.keyboard('{Enter}');
 
     expect(router.state.location.pathname).toBe('/workspaces/workspace-2/dashboard');
   });
