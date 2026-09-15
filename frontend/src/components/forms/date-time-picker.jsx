@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 
 import { DatePicker } from '@/components/forms/date-picker';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 const TIME_PATTERN = /^(\d{2}):(\d{2})$/;
@@ -130,8 +131,7 @@ function DateTimePicker({
         <label className="text-xs font-medium text-muted-foreground" htmlFor={`${rootId}-time`}>
           {timeLabel}
         </label>
-        <input
-          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        <Input
           disabled={disabled}
           id={`${rootId}-time`}
           onChange={(event) => handleTimeChange(event.target.value)}
