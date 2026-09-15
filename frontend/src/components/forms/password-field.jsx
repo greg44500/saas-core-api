@@ -3,18 +3,29 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
-function PasswordField({ id, describedBy, invalid = false, ...props }) {
+function PasswordField({
+  id,
+  className,
+  describedBy,
+  invalid = false,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  ...props
+}) {
   const [visible, setVisible] = useState(false);
+  const resolvedDescribedBy = ariaDescribedBy ?? describedBy;
+  const resolvedInvalid = ariaInvalid ?? (invalid || undefined);
 
   return (
     <div className="relative">
       <Input
+        aria-describedby={resolvedDescribedBy}
+        aria-invalid={resolvedInvalid}
+        className={cn('pr-11', className)}
         id={id}
         type={visible ? 'text' : 'password'}
-        aria-describedby={describedBy}
-        aria-invalid={invalid || undefined}
-        className="pr-11"
         {...props}
       />
       <Button
