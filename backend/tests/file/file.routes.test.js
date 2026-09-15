@@ -126,9 +126,11 @@ vi.mock('../../modules/file/file.controller.js', () => ({
         res.status(201).json({ status: 'success' });
     }),
     list: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
+    listTrash: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     getById: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     download: vi.fn((req, res) => res.status(200).end()),
     remove: vi.fn((req, res) => res.status(204).send()),
+    restore: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
 }));
 
 const createTestApp = () => {
