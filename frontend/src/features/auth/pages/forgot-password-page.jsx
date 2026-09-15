@@ -59,8 +59,6 @@ function ForgotPasswordPage() {
             id="recoveryEmail"
             type="email"
             autoComplete="email"
-            aria-invalid={Boolean(errors.email) || undefined}
-            aria-describedby={errors.email ? 'recoveryEmail-message' : undefined}
             {...register('email')}
           />
         </FormField>
