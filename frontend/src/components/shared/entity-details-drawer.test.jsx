@@ -1,63 +1,36 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { EntityDetailsDrawer } from './entity-details-drawer';
 
+afterEach(() => {
+  document.body.style.overflow = '';
+});
+
 describe('EntityDetailsDrawer', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.stubGlobal('requestAnimationFrame', (callback) => {
-      callback(0);
-      return 1;
-    });
-    vi.stubGlobal('cancelAnimationFrame', vi.fn());
-  });
-
-  afterEach(() => {
-    document.body.style.overflow = '';
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-  });
-
-  it('applique le style partagé et conserve le drawer monté pendant la fermeture', () => {
-    const onClose = vi.fn();
-    const { rerender } = render(
-      <EntityDetailsDrawer onClose={onClose} open title="Détails">
+  it('conserve le style, le positionnement et la transition du drawer partagé', () => {
+    render(
+      <EntityDetailsDrawer onClose={vi.fn()} open title="Détails">
         <p>Contenu</p>
       </EntityDetailsDrawer>,
     );
 
-    const drawer = screen.getByRole('dialog');
+    const drawer = screen.getByRole('dialog', { name: 'Détails' });
 
-    expect(drawer).toHaveClass('shadow-lg');
-    expect(drawer).toHaveClass('transition-transform');
-    expect(drawer).toHaveClass('duration-300');
-    expect(drawer).toHaveClass('ease-in-out');
-    expect(drawer).toHaveClass('translate-x-0');
-
-    rerender(
-      <EntityDetailsDrawer onClose={onClose} open={false} title="Détails">
-        <p>Contenu</p>
-      </EntityDetailsDrawer>,
+    expect(drawer).toHaveClass(
+      'bottom-0',
+      'top-16',
+      'w-full',
+      'max-w-xl',
+      'shadow-lg',
+      'transition-transform',
+      'duration-300',
+      'ease-in-out',
+      'data-ending-style:translate-x-full',
+      'data-starting-style:translate-x-full',
     );
-
-    const closingDrawer = screen.getByRole('dialog', { hidden: true });
-
-    expect(closingDrawer).toHaveAttribute('aria-hidden', 'true');
-    expect(closingDrawer).toHaveClass('ease-in-out');
-    expect(closingDrawer).toHaveClass('translate-x-full');
-
-    act(() => {
-      vi.advanceTimersByTime(299);
-    });
-
-    expect(screen.getByRole('dialog', { hidden: true })).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
-
-    expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument();
   });
 
   it('rend le drawer dans document.body pour rester attaché au viewport', () => {
@@ -69,34 +42,34 @@ describe('EntityDetailsDrawer', () => {
       </div>,
     );
 
-    const drawer = screen.getByRole('dialog');
+    const drawer = screen.getByRole('dialog', { name: 'Détails' });
 
     expect(container).not.toContainElement(drawer);
     expect(document.body).toContainElement(drawer);
   });
 
-  it('utilise un backdrop décoratif et le niveau de layer du Design System', () => {
+  it('conserve le backdrop sous la topbar et le layer du Design System', () => {
     render(
       <EntityDetailsDrawer onClose={vi.fn()} open title="Détails">
         <p>Contenu</p>
       </EntityDetailsDrawer>,
     );
 
-    const drawer = screen.getByRole('dialog');
-    const overlay = drawer.previousElementSibling;
+    const drawer = screen.getByRole('dialog', { name: 'Détails' });
+    const overlay = document.querySelector('[data-slot="sheet-overlay"]');
 
-    expect(drawer.parentElement).toHaveClass('z-[var(--layer-drawer)]');
-    expect(overlay).toHaveAttribute('aria-hidden', 'true');
+    expect(drawer).toHaveClass('z-[calc(var(--layer-drawer)+1)]');
     expect(overlay).toHaveClass(
+      'top-16',
+      'z-[var(--layer-drawer)]',
       'bg-overlay/45',
       'transition-opacity',
       'duration-300',
       'ease-in-out',
-      'opacity-100',
     );
   });
 
-  it('déplace la description visuelle vers l’aide contextuelle sans casser aria-describedby', () => {
+  it('déplace la description visuelle vers l’aide contextuelle sans casser la description accessible', () => {
     render(
       <EntityDetailsDrawer
         description="Informations détaillées sur cette entité."
@@ -108,17 +81,18 @@ describe('EntityDetailsDrawer', () => {
       </EntityDetailsDrawer>,
     );
 
-    const drawer = screen.getByRole('dialog');
+    const drawer = screen.getByRole('dialog', { name: 'Détails' });
     const infoButton = screen.getByRole('button', { name: 'À propos de Détails' });
     const description = screen.getByText('Informations détaillées sur cette entité.');
 
     expect(infoButton).toBeInTheDocument();
     expect(description).toHaveClass('sr-only');
-    expect(drawer).toHaveAttribute('aria-describedby', description.id);
+    expect(drawer).toHaveAccessibleDescription('Informations détaillées sur cette entité.');
   });
 
-  it('place le focus dans la modale, boucle Tab et ferme avec Escape', () => {
+  it('délègue à Base UI le focus modal, la boucle Tab et Escape', async () => {
     const onClose = vi.fn();
+    const user = userEvent.setup();
 
     render(
       <EntityDetailsDrawer onClose={onClose} open title="Détails">
@@ -129,13 +103,79 @@ describe('EntityDetailsDrawer', () => {
     const closeButton = screen.getByRole('button', { name: 'Fermer' });
     const actionButton = screen.getByRole('button', { name: 'Action interne' });
 
-    expect(closeButton).toHaveFocus();
-    expect(document.body.style.overflow).toBe('hidden');
+    await waitFor(() => expect(closeButton).toHaveFocus());
 
-    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    await user.tab({ shift: true });
     expect(actionButton).toHaveFocus();
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('ferme via le bouton partagé sans dupliquer le callback métier', async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <EntityDetailsDrawer onClose={onClose} open title="Détails">
+        <p>Contenu</p>
+      </EntityDetailsDrawer>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Fermer' }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('ferme via le backdrop sans modifier le contrat métier', async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <EntityDetailsDrawer onClose={onClose} open title="Détails">
+        <p>Contenu</p>
+      </EntityDetailsDrawer>,
+    );
+
+    const overlay = document.querySelector('[data-slot="sheet-overlay"]');
+
+    await user.click(overlay);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('restaure le focus sur le déclencheur après fermeture contrôlée', async () => {
+    const user = userEvent.setup();
+
+    function DrawerHarness() {
+      const [open, setOpen] = useState(false);
+
+      return (
+        <>
+          <button onClick={() => setOpen(true)} type="button">
+            Ouvrir les détails
+          </button>
+          <EntityDetailsDrawer
+            onClose={() => setOpen(false)}
+            open={open}
+            title="Détails"
+          >
+            <p>Contenu</p>
+          </EntityDetailsDrawer>
+        </>
+      );
+    }
+
+    render(<DrawerHarness />);
+
+    const trigger = screen.getByRole('button', { name: 'Ouvrir les détails' });
+    await user.click(trigger);
+
+    const closeButton = await screen.findByRole('button', { name: 'Fermer' });
+    await waitFor(() => expect(closeButton).toHaveFocus());
+
+    await user.click(closeButton);
+
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 });
