@@ -7,6 +7,9 @@ import {
     deleteWorkspaceFile,
 } from './fileDelete.service.js';
 import {
+    permanentlyDeleteWorkspaceFile,
+} from './filePermanentDelete.service.js';
+import {
     getWorkspaceFile,
     listWorkspaceFiles,
     openWorkspaceFileDownload,
@@ -187,6 +190,18 @@ const restore = async (request, response) => {
     });
 };
 
+const removePermanently = async (request, response) => {
+    await permanentlyDeleteWorkspaceFile({
+        workspaceId: request.workspace._id,
+        fileId: request.validated.params.fileId,
+        actorId: request.user._id,
+        ipAddress: request.context.ipAddress,
+        userAgent: request.context.userAgent,
+    });
+
+    response.status(204).send();
+};
+
 
 export {
     download,
@@ -195,6 +210,7 @@ export {
     list,
     listTrash,
     remove,
+    removePermanently,
     restore,
     upload,
 };
