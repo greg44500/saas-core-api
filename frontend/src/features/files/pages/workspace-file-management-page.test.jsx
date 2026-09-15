@@ -95,7 +95,7 @@ describe('WorkspaceFileManagementPage', () => {
     vi.clearAllMocks();
   });
 
-  it('présente stockage et navigation de cycle de vie sans répéter le titre actif', () => {
+  it('sépare la capacité de stockage des compteurs portés par les onglets', () => {
     renderPage([
       WORKSPACE_PERMISSION.FILE_READ,
       WORKSPACE_PERMISSION.FILE_TRASH_READ,
@@ -103,13 +103,26 @@ describe('WorkspaceFileManagementPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Fichiers' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'À propos des fichiers' })).toBeInTheDocument();
-    expect(screen.queryByText('Gérez les fichiers et la capacité de stockage de Acme.'))
-      .not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Stockage' })).toBeInTheDocument();
-    expect(screen.getByText('14 fichiers actifs')).toBeInTheDocument();
-    expect(screen.getByText('3 fichiers dans la corbeille')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Fichiers actifs/ })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Corbeille/ })).toBeInTheDocument();
+    expect(screen.getByText('32 Mo disponibles')).toBeInTheDocument();
+
+    expect(screen.queryByText('14 fichiers actifs')).not.toBeInTheDocument();
+    expect(screen.queryByText('3 fichiers dans la corbeille')).not.toBeInTheDocument();
+
+    const tabList = screen.getByRole('tablist', {
+      name: 'Cycle de vie des fichiers',
+    });
+    expect(tabList).toHaveClass('border-b');
+
+    const activeTab = screen.getByRole('tab', {
+      name: /Fichiers actifs\s*14/,
+    });
+    const trashTab = screen.getByRole('tab', {
+      name: /Corbeille\s*3/,
+    });
+
+    expect(activeTab).toHaveClass('border-b-2');
+    expect(trashTab).toHaveClass('border-b-2');
     expect(screen.getByText('Active files panel embedded compact')).toBeInTheDocument();
     expect(screen.queryByText('Trash panel embedded compact')).not.toBeInTheDocument();
   });
@@ -122,7 +135,7 @@ describe('WorkspaceFileManagementPage', () => {
       WORKSPACE_PERMISSION.FILE_TRASH_READ,
     ]);
 
-    await user.click(screen.getByRole('tab', { name: /Corbeille/ }));
+    await user.click(screen.getByRole('tab', { name: /Corbeille\s*3/ }));
 
     expect(screen.getByText('Trash panel embedded compact')).toBeInTheDocument();
     expect(screen.queryByText('Active files panel embedded compact')).not.toBeInTheDocument();
