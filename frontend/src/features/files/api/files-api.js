@@ -87,7 +87,8 @@ const workspaceFilesApi = baseApi.injectEndpoints({
         responseHandler: 'text',
       }),
       // Le fichier quitte le listing actif et entre immédiatement dans la
-      // corbeille ; le stockage reste volontairement inchangé jusqu'à la purge.
+      // corbeille ; le stockage reste volontairement inchangé jusqu'à sa
+      // suppression définitive.
       invalidatesTags: (_result, _error, { workspaceId }) => [
         { type: 'WorkspaceFiles', id: workspaceId },
         { type: 'WorkspaceFileTrash', id: workspaceId },
@@ -106,6 +107,19 @@ const workspaceFilesApi = baseApi.injectEndpoints({
         { type: 'WorkspaceFileTrash', id: workspaceId },
       ],
     }),
+    permanentlyDeleteWorkspaceFile: build.mutation({
+      query: ({ workspaceId, fileId }) => ({
+        url: `/workspaces/${workspaceId}/files/${fileId}/permanent`,
+        method: 'DELETE',
+        responseHandler: 'text',
+      }),
+      // L'effacement est irréversible : le fichier quitte la Corbeille et la
+      // consommation storage_bytes est réellement libérée côté backend.
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        { type: 'WorkspaceFileTrash', id: workspaceId },
+        { type: 'WorkspaceFileStorage', id: workspaceId },
+      ],
+    }),
   }),
 });
 
@@ -115,6 +129,7 @@ export const {
   useGetWorkspaceFileStorageQuery,
   useListWorkspaceFilesQuery,
   useListWorkspaceFileTrashQuery,
+  usePermanentlyDeleteWorkspaceFileMutation,
   useRestoreWorkspaceFileMutation,
   useUploadWorkspaceFileMutation,
 } = workspaceFilesApi;
