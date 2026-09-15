@@ -122,8 +122,6 @@ function LoginPage() {
             id="email"
             type="email"
             autoComplete="email"
-            aria-invalid={Boolean(errors.email) || undefined}
-            aria-describedby={errors.email ? 'email-message' : undefined}
             {...register('email')}
           />
         </FormField>
@@ -132,8 +130,6 @@ function LoginPage() {
           <PasswordField
             id="password"
             autoComplete="current-password"
-            invalid={Boolean(errors.password)}
-            describedBy={errors.password ? 'password-message' : undefined}
             {...register('password')}
           />
         </FormField>
