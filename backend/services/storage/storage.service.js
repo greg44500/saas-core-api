@@ -13,6 +13,7 @@ const REQUIRED_PROVIDER_METHODS = Object.freeze([
     'initialize',
     'storeFromTemporaryPath',
     'deleteFile',
+    'fileExists',
     'createFileReadStream',
 ]);
 
@@ -153,6 +154,22 @@ const createStorageService = ({
     };
 
     /**
+     * Vérifie l'existence physique avant une opération qui doit garantir que
+     * les métadonnées MongoDB ne réactivent pas un contenu déjà disparu.
+     */
+    const fileExists = async ({
+        provider,
+        storageKey,
+    }) => {
+        const resolvedProvider =
+            resolveProvider(provider);
+
+        return resolvedProvider.fileExists({
+            storageKey,
+        });
+    };
+
+    /**
      * Ouvre un flux de lecture depuis le fournisseur ayant stocké le fichier.
      */
     const createFileReadStream = async ({
@@ -172,6 +189,7 @@ const createStorageService = ({
         initialize,
         storeFile,
         deleteFile,
+        fileExists,
         createFileReadStream,
     });
 };
