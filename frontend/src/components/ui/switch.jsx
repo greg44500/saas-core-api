@@ -9,6 +9,10 @@ function Switch({
   onCheckedChange,
   ...props
 }) {
+  const handleCheckedChange = (nextChecked) => {
+    onCheckedChange?.(nextChecked);
+  };
+
   return (
     <BaseSwitch.Root
       checked={checked}
@@ -22,7 +26,7 @@ function Switch({
       data-slot="switch"
       disabled={disabled}
       nativeButton
-      onCheckedChange={onCheckedChange}
+      onCheckedChange={handleCheckedChange}
       render={<button type="button" />}
       {...props}
     >
