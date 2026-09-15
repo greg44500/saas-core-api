@@ -11,6 +11,10 @@ import {
     listWorkspaceFiles,
     openWorkspaceFileDownload,
 } from './fileRead.service.js';
+import {
+    listWorkspaceTrashFiles,
+    restoreWorkspaceFile,
+} from './fileTrash.service.js';
 
 
 /**
@@ -86,6 +90,25 @@ const list = async (request, response) => {
     });
 };
 
+const listTrash = async (request, response) => {
+    const {
+        files,
+        pagination,
+    } = await listWorkspaceTrashFiles({
+        workspaceId: request.workspace._id,
+        page: request.validated.query.page,
+        limit: request.validated.query.limit,
+        category: request.validated.query.category,
+        search: request.validated.query.search,
+    });
+
+    response.status(200).json({
+        status: 'success',
+        data: { files },
+        meta: pagination,
+    });
+};
+
 const getById = async (request, response) => {
     const file = await getWorkspaceFile({
         workspaceId: request.workspace._id,
@@ -135,11 +158,28 @@ const remove = async (request, response) => {
     response.status(204).send();
 };
 
+const restore = async (request, response) => {
+    const file = await restoreWorkspaceFile({
+        workspaceId: request.workspace._id,
+        fileId: request.validated.params.fileId,
+        actorId: request.user._id,
+        ipAddress: request.context.ipAddress,
+        userAgent: request.context.userAgent,
+    });
+
+    response.status(200).json({
+        status: 'success',
+        data: { file },
+    });
+};
+
 
 export {
     download,
     getById,
     list,
+    listTrash,
     remove,
+    restore,
     upload,
 };
