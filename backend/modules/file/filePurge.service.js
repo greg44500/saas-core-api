@@ -46,8 +46,13 @@ const assertValidBatchSize = (batchSize) => {
     }
 };
 
-const buildDuePurgeFilter = ({ now, fileId = undefined }) => ({
+const buildDuePurgeFilter = ({
+    now,
+    fileId = undefined,
+    workspaceId = undefined,
+}) => ({
     ...(fileId === undefined ? {} : { _id: fileId }),
+    ...(workspaceId === undefined ? {} : { workspace: workspaceId }),
     status: FILE_STATUS.DELETED,
     purgeScheduledAt: mongoose.trusted({
         $lte: now,
@@ -60,10 +65,15 @@ const buildDuePurgeFilter = ({ now, fileId = undefined }) => ({
  * Le jeton de claim constitue un compare-and-set : deux workers peuvent avoir
  * lu le même candidat, mais un seul détient une lease active. Une lease expirée
  * peut être reprise après crash. purgeClaimedAt reste non nul pendant toute la
- * phase destructive afin qu'une future restauration D-002 puisse refuser le
- * fichier dès que la purge a réellement commencé.
+ * phase destructive afin qu'une restauration concurrente soit refusée dès que
+ * la suppression définitive a réellement commencé.
  */
-const claimPurgeCandidate = async ({ fileId, now }) => {
+const claimPurgeCandidate = async ({
+    fileId,
+    now,
+    workspaceId = undefined,
+    actorId = null,
+}) => {
     const claimId = randomUUID();
     const claimExpiresAt = new Date(
         now.getTime() + PURGE_CLAIM_LEASE_MS,
@@ -74,7 +84,7 @@ const claimPurgeCandidate = async ({ fileId, now }) => {
             purgeClaimedAt: now,
             purgeClaimId: claimId,
             purgeClaimExpiresAt: claimExpiresAt,
-            updatedBy: null,
+            updatedBy: actorId,
         },
     };
 
@@ -89,6 +99,7 @@ const claimPurgeCandidate = async ({ fileId, now }) => {
                 ...buildDuePurgeFilter({
                     fileId,
                     now,
+                    workspaceId,
                 }),
                 ...extraFilter,
             },
@@ -143,7 +154,8 @@ const claimPurgeCandidate = async ({ fileId, now }) => {
 };
 
 /**
- * Finalise la purge uniquement si le worker détient toujours le claim.
+ * Finalise la suppression physique uniquement si le demandeur détient toujours
+ * le claim courant.
  *
  * La décrémentation de storage_bytes, la transition PURGED et l'AuditLog sont
  * dans la même transaction MongoDB. Si la transaction échoue après la
@@ -154,10 +166,16 @@ const finalizePurgedFile = async ({
     fileId,
     claimId,
     now,
+    workspaceId = undefined,
+    actorId = null,
+    auditAction = AUDIT_ACTION.FILE_PURGED,
+    ipAddress = null,
+    userAgent = null,
 }) =>
     mongoose.connection.transaction(async (session) => {
         let query = File.findOne({
             _id: fileId,
+            ...(workspaceId === undefined ? {} : { workspace: workspaceId }),
             status: FILE_STATUS.DELETED,
             purgeScheduledAt: mongoose.trusted({
                 $lte: now,
@@ -178,7 +196,7 @@ const finalizePurgedFile = async ({
                 workspaceId: file.workspace,
                 metricKey: CORE_PLAN_METRIC.STORAGE_BYTES,
                 amount: file.sizeBytes,
-                actorId: null,
+                actorId,
                 session,
             });
         }
@@ -189,18 +207,20 @@ const finalizePurgedFile = async ({
         file.purgeClaimId = null;
         file.purgeClaimExpiresAt = null;
         file.storageUsageReleasePending = false;
-        file.updatedBy = null;
+        file.updatedBy = actorId;
 
         await file.save({ session });
 
         await createAuditLog(
             {
-                actor: null,
+                actor: actorId,
                 workspace: file.workspace,
-                action: AUDIT_ACTION.FILE_PURGED,
+                action: auditAction,
                 entityType: AUDIT_ENTITY_TYPE.FILE,
                 entityId: file._id,
                 status: AUDIT_STATUS.SUCCESS,
+                ...(ipAddress === null ? {} : { ipAddress }),
+                ...(userAgent === null ? {} : { userAgent }),
                 metadata: {
                     sizeBytes: file.sizeBytes,
                     purgeScheduledAt: file.purgeScheduledAt,
@@ -213,7 +233,8 @@ const finalizePurgedFile = async ({
     });
 
 /**
- * Purge un lot borné de fichiers arrivés au terme de leur rétention.
+ * Supprime définitivement un lot borné de fichiers arrivés au terme de leur
+ * rétention.
  *
  * La lecture initiale ne constitue jamais l'autorité destructive : chaque
  * candidat doit être réclamé atomiquement juste avant l'appel provider. Le
