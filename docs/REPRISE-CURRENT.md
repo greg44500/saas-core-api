@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état réel du Core au **2026-09-15** après la fusion de FORM-1 et pendant l’implémentation du lot FORM-2 — alignement des primitives de contrôles de formulaire.
+> Cette synthèse décrit l’état réel du Core au **2026-09-15** après la fusion de FORM-1 et la validation complète du lot FORM-2 — alignement des primitives de contrôles de formulaire — actuellement en attente de fusion dans `main`.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
@@ -83,16 +83,25 @@ Base exacte de la branche :
 5cf9e9ea4237a987e06ac611000ef56574a365ef
 ```
 
-FORM-2 est **EN COURS**. Le code de cette branche ne doit pas être fusionné dans `main` avant :
+HEAD fonctionnel FORM-2 validé avant la présente mise à jour documentaire :
 
 ```text
-tests ciblés réellement exécutés
-→ frontend npm test
-→ frontend npm run lint
-→ frontend npm run build
-→ validation visuelle / clavier
-→ autorisation explicite de fusion
+b877415f2b24d2fb3b6afb7daa8bc5561485c527
 ```
+
+FORM-2 est **VALIDÉ — prêt à fusionner**, mais n’est pas encore fusionné dans `main`.
+
+Validations réellement communiquées comme conformes par l’utilisateur :
+
+```text
+tests ciblés          → VERT
+frontend npm test     → VERT
+frontend npm run lint → VERT
+frontend npm run build→ VERT
+validation visuelle / clavier → CONFORME
+```
+
+Aucun backend n’a été modifié par FORM-2 ; aucune gate backend n’a été rejouée pour ce lot.
 
 Toute nouvelle conversation doit commencer par vérifier le HEAD réel de `main` et celui de cette branche avant toute conclusion.
 
@@ -363,7 +372,7 @@ Les consommateurs directs de `FormField` ne doivent pas dupliquer manuellement `
 
 Ne pas rouvrir FORM-1 sans régression concrète.
 
-### 3.7 FORM-2 — EN COURS, non validé
+### 3.7 FORM-2 — VALIDÉ, prêt à fusionner
 
 Périmètre validé avant implémentation :
 
@@ -378,7 +387,7 @@ Décision d’architecture : ne pas migrer mécaniquement Input, Textarea ou Che
 
 Le Switch est différent : la primitive interactive manuelle est remplacée par Base UI tout en conservant l’API applicative `checked`, `disabled`, `id`, `onCheckedChange` et les attributs ARIA.
 
-Travail déjà présent sur la branche FORM-2 :
+Travail présent sur la branche FORM-2 :
 
 - `Input`, `Textarea` et `Checkbox` harmonisés avec `data-slot` et états invalides Design System ;
 - `Switch` basé sur `@base-ui/react/switch`, rendu comme bouton natif ;
@@ -389,7 +398,19 @@ Travail déjà présent sur la branche FORM-2 :
 - parcours d’acceptation d’invitations Workspace et Platform alignés sur le contrat ARIA standard de FORM-1 ;
 - l’input fichier de `FileUploadDialog` reste volontairement natif et spécifique.
 
-Aucune gate FORM-2 ne doit être considérée verte tant que l’utilisateur ne l’a pas réellement exécutée et communiquée.
+Validations réellement exécutées et communiquées par l’utilisateur :
+
+```text
+tests ciblés          → VERT
+frontend npm test     → VERT
+frontend npm run lint → VERT
+frontend npm run build→ VERT
+validation visuelle / clavier → CONFORME
+```
+
+Le backend n’a pas été relancé : FORM-2 n’a modifié aucun fichier backend.
+
+Ne pas fusionner dans `main` sans autorisation explicite de l’utilisateur.
 
 ### 3.8 Warnings React Hooks connus — hors périmètre
 
@@ -712,13 +733,13 @@ Drawer / Sheet / EntityDetailsDrawer Base UI
 FORM-1 / formulaires partagés
 ```
 
-Lot actif :
+Lot validé sur branche, en attente de fusion :
 
 ```text
 FORM-2 / Input / Textarea / Checkbox / Switch
 ```
 
-Ordre recommandé après validation et fusion de FORM-2 :
+Ordre recommandé après fusion de FORM-2 :
 
 ```text
 1. Dropdown menus
@@ -780,25 +801,27 @@ nettoyage des warnings React Hooks connus
 
 ## 16. Prochaine action exacte
 
-FORM-2 est implémenté sur :
+FORM-2 est entièrement validé sur :
 
 ```text
 feature/form-control-primitives-alignment
 ```
 
-Il n’est pas encore validé ni fusionné.
-
-Prochaine gate :
+Statut :
 
 ```text
-1. mettre à jour la branche locale : git pull --ff-only ;
-2. exécuter les tests ciblés des primitives et composants modifiés ;
-3. si les tests ciblés sont verts, exécuter npm test ;
-4. exécuter npm run lint ;
-5. exécuter npm run build ;
-6. valider visuellement et au clavier les contrôles principaux, notamment Switch, Checkbox, DatePicker, formulaires Platform et parcours d’invitation ;
-7. analyser globalement toute famille de FAILS avant correction ;
-8. ne fusionner dans main qu’après gate verte et autorisation explicite.
+VALIDÉ — prêt à fusionner
+```
+
+Prochaine action :
+
+```text
+1. vérifier que main n’a pas bougé depuis la base de FORM-2 ;
+2. fusionner FORM-2 dans main uniquement après autorisation explicite de l’utilisateur ;
+3. pousser main ;
+4. vérifier le nouveau HEAD distant ;
+5. mettre la reprise à jour avec le commit de merge réel ;
+6. seulement ensuite auditer le prochain lot UI : Dropdown menus.
 ```
 
 Le backend n’a pas été modifié par FORM-2 ; ne pas prétendre qu’une gate backend a été rejouée si elle ne l’a pas été.
