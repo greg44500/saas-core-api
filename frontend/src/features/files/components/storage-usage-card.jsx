@@ -77,7 +77,7 @@ function StorageUsageCard({
           <div className="flex min-w-0 items-center gap-1">
             <CardTitle as="h2">Stockage</CardTitle>
             <InfoTooltip
-              content="Le stockage inclut les fichiers actifs et les fichiers supprimés encore conservés avant leur purge définitive."
+              content="Le stockage inclut les fichiers actifs et les fichiers supprimés encore conservés avant leur suppression définitive."
               label="À propos du stockage"
             />
           </div>
@@ -155,7 +155,7 @@ function StorageUsageCard({
 
             {deletedCount !== null ? (
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Les fichiers placés dans la corbeille continuent d’occuper leur espace jusqu’à leur purge définitive.
+                Les fichiers placés dans la corbeille continuent d’occuper leur espace jusqu’à leur suppression définitive.
               </p>
             ) : null}
           </div>
