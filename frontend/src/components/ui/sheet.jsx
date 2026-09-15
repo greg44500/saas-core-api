@@ -44,13 +44,14 @@ const SHEET_SIDE_CLASS = Object.freeze({
 function SheetContent({
   children,
   className,
+  overlayClassName,
   side = 'right',
   showCloseButton = true,
   ...props
 }) {
   return (
     <SheetPortal>
-      <SheetOverlay />
+      <SheetOverlay className={overlayClassName} />
       <SheetPrimitive.Popup
         className={cn(
           'fixed z-[calc(var(--layer-drawer)+1)] flex flex-col border-border bg-background text-foreground shadow-xl outline-none',
