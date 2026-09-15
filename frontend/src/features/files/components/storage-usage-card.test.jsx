@@ -33,8 +33,8 @@ describe('StorageUsageCard', () => {
     expect(screen.getByText('32 Mo disponibles')).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '68');
     expect(screen.getByText('Capacité disponible')).toBeInTheDocument();
-    expect(screen.queryByText(/fichiers? actifs?/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/dans la corbeille/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('14 fichiers actifs')).not.toBeInTheDocument();
+    expect(screen.queryByText('3 fichiers dans la corbeille')).not.toBeInTheDocument();
   });
 
   it('exprime le niveau de risque autrement que par la couleur', () => {
@@ -50,7 +50,7 @@ describe('StorageUsageCard', () => {
     expect(presentation.indicatorClassName).toBe('bg-warning');
   });
 
-  it('ne répète pas les informations de cycle de vie des fichiers', () => {
+  it('ne répète pas le message de cycle de vie sous la jauge', () => {
     render(
       <StorageUsageCard
         storage={{
@@ -64,8 +64,11 @@ describe('StorageUsageCard', () => {
     );
 
     expect(screen.getByText('90 Mo disponibles')).toBeInTheDocument();
-    expect(screen.queryByText(/fichiers?/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/corbeille/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'Les fichiers placés dans la corbeille continuent d’occuper leur espace jusqu’à leur suppression définitive.',
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it('gère explicitement un stockage illimité', () => {
