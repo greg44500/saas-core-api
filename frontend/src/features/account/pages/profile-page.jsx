@@ -106,8 +106,6 @@ function ProfilePage() {
               <Input
                 id="firstName"
                 autoComplete="given-name"
-                aria-invalid={Boolean(errors.firstName) || undefined}
-                aria-describedby={errors.firstName ? 'firstName-message' : undefined}
                 {...register('firstName')}
               />
             </FormField>
@@ -116,8 +114,6 @@ function ProfilePage() {
               <Input
                 id="lastName"
                 autoComplete="family-name"
-                aria-invalid={Boolean(errors.lastName) || undefined}
-                aria-describedby={errors.lastName ? 'lastName-message' : undefined}
                 {...register('lastName')}
               />
             </FormField>
