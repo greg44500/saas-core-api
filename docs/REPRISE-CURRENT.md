@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse sert d’amorce autoritative de reprise pour la fin de stabilisation du Core avant versionnement puis dérivation métier.
+> Cette synthèse sert d’amorce de reprise pour la fin de stabilisation du Core, le cadrage du versionnement puis la future dérivation métier.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
@@ -22,82 +22,133 @@ En cas de contradiction :
 6. documentation opérationnelle ;
 7. présent fichier de reprise.
 
-Les anciennes synthèses ne sont pas autoritatives lorsqu’elles sont dépassées.
+Les anciennes synthèses de reprise ne sont pas autoritatives lorsqu’elles sont dépassées.
 
 Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présenté comme `v1.0.0` ni comme automatiquement prêt pour la production.
 
 ---
 
-## 2. État Git au moment de cette synthèse
+## 2. État Git et validation de référence
 
-### `main`
-
-HEAD vérifié avant fusion de FORM-2 :
+### Baseline applicative validée et fusionnée dans `main`
 
 ```text
-5cf9e9ea4237a987e06ac611000ef56574a365ef
-merge(forms): harmonize shared field architecture
+79c52c1ac922b0c6a5beb8475b003c1b00b62b44
+refactor(ui): preserve responsive section tab overflow
 ```
 
-### Branche FORM-2
+Ce commit contient les deux branches finalisées puis intégrées par fast-forward :
 
 ```text
-feature/form-control-primitives-alignment
+feature/d-002-file-trash-restore
+→ feature/file-management-ux-storage
+→ main
 ```
 
-FORM-2 a été entièrement validé sur cette branche :
+La relation Git avait été vérifiée avant fusion :
 
 ```text
-tests ciblés          → VERT
-frontend npm test     → VERT
-frontend npm run lint → VERT
-frontend npm run build→ VERT
-validation visuelle / clavier → CONFORME
+main historique
+→ D-002
+→ File Management UX / Storage
 ```
 
-Le backend n’a pas été modifié par FORM-2 et n’a pas été rejoué spécifiquement pour ce lot.
+Il n’y a donc pas eu de merge conflict ni de commit de merge artificiel.
 
-La fusion de FORM-2 dans `main` a été explicitement autorisée par l’utilisateur le 2026-09-15.
+Après cette baseline applicative, `main` avance uniquement par les commits documentaires de synchronisation de `docs/DEBT.md` puis du présent fichier. Toute nouvelle conversation doit vérifier le HEAD distant réel de `main` avant de travailler.
 
-**Important pour toute nouvelle conversation :** vérifier le HEAD réel de `main` avant toute conclusion. Si FORM-2 a été fusionné après la génération de ce document, Git et le code priment sur les SHA ci-dessus.
+### Validation réellement déclarée
+
+Avant fusion des deux branches :
+
+```text
+tests applicables → VERT
+lint               → VERT
+build frontend     → VERT
+validation fonctionnelle / visuelle → OK
+```
+
+Cette validation porte sur la baseline applicative `79c52c1…`. Les commits documentaires suivants ne modifient pas le code exécutable.
+
+Ne jamais inventer de nouvelle gate : si une future étape exige une gate globale, elle devra être réellement rejouée.
 
 ---
 
-## 3. Lots UI / Design System déjà stabilisés
+## 3. D-002 — Files : VALIDÉE et fusionnée
 
-Les lots suivants sont validés et déjà fusionnés dans `main` avant FORM-2 :
-
-```text
-D-011.A Design System Core
-D-011.B Préférences de confort
-D-011.C Préférences d’affichage métier
-DLG-1 Dialog / ConfirmationDialog Base UI
-Select Base UI / UX
-DLG-2 FileUploadDialog Base UI
-Toast Base UI
-Drawer / Sheet / EntityDetailsDrawer Base UI
-FORM-1 architecture partagée des champs
-```
-
-FORM-2 est validé et autorisé à fusionner :
+`docs/DEBT.md` porte désormais D-002 au statut :
 
 ```text
-Input     → primitive native partagée conservée
-Textarea  → primitive native partagée conservée
-Checkbox  → primitive native partagée conservée
-Switch    → moteur migré vers @base-ui/react/switch
+VALIDÉ — 2026-09-15
 ```
 
-FORM-2 a également :
+Le blocage D-002 avant D-017 et avant la première dérivation métier est levé.
 
-- harmonisé `data-slot` et états invalides des contrôles ;
-- ajouté les tests de contrat des quatre primitives ;
-- fait réutiliser `Input` par `DatePicker` et `DateTimePicker` ;
-- remplacé les contrôles HTML directs audités dans les formulaires Platform/Workspace par les primitives partagées ;
-- réaligné les acceptations d’invitations Workspace et Platform sur le contrat ARIA de FORM-1 ;
-- conservé volontairement le file input technique de `FileUploadDialog` comme contrôle natif spécifique.
+### Cycle de vie Files validé
 
-Aucune logique métier, validation Zod, mutation RTK Query, contrat API, RBAC ou Sidebar n’a été modifié par FORM-2.
+```text
+fichier actif
+→ suppression logique
+→ corbeille
+→ restauration
+ou
+→ suppression définitive volontaire
+ou
+→ suppression définitive automatique à l’échéance
+```
+
+Invariants importants :
+
+- un fichier placé dans la corbeille continue de consommer `storage_bytes` tant que son contenu physique existe ;
+- une restauration avant suppression physique ne réserve jamais le stockage une seconde fois ;
+- la libération du quota intervient lors de la suppression physique effective ;
+- restauration et suppression définitive sont protégées contre les concurrences par le mécanisme de claim existant ;
+- les permissions restent séparées selon le niveau de pouvoir.
+
+Permissions ajoutées :
+
+```text
+file:trash:read
+file:restore
+file:delete:permanent
+```
+
+La migration idempotente existante reste :
+
+```text
+npm run migration:file-trash-permissions
+```
+
+Elle doit faire partie de la discipline de déploiement/versionnement pour tout environnement possédant déjà des rôles système persistés.
+
+### UX Files validée
+
+La surface utilisateur est désormais concentrée sous :
+
+```text
+Ressources
+└── Fichiers
+```
+
+La page comporte :
+
+- titre `Fichiers` avec aide contextuelle ;
+- carte `Stockage` uniquement consacrée à capacité utilisée / limite / restant / pourcentage ;
+- métrique de stockage fondée sur `UsageMetric.storage_bytes` et la limite d’entitlement effective, pas sur une somme frontend des fichiers actifs ;
+- onglets `Fichiers actifs <nombre>` et `Corbeille <nombre>` ;
+- style d’onglets harmonisé avec la navigation secondaire de `Équipe de la Plateforme` ;
+- `DataTable` partagé ;
+- upload avec état d’attente explicite et spinner pendant validations backend / antivirus / persistance ;
+- prévisualisation authentifiée PDF/JPEG/PNG via le flux de téléchargement existant ;
+- téléchargement ;
+- suppression logique ;
+- restauration ;
+- suppression définitive avec confirmation irréversible ;
+- surbrillance de ligne au hover/focus dans la Corbeille.
+
+Le vocabulaire utilisateur privilégie `suppression définitive` / `effacement` plutôt que le terme technique historique `purge`. Les identifiants internes historiques (`purgeScheduledAt`, services/jobs, etc.) n’ont pas été renommés sans nécessité.
+
+Le widget Workspace Dashboard `Fichiers actifs` a été retiré : le Dashboard utilisateur est destiné à recevoir prioritairement les futurs KPI métier, tandis que stockage et gestion documentaire appartiennent à `Ressources > Fichiers`.
 
 ---
 
@@ -130,22 +181,38 @@ Règles :
 - erreurs, blocages et conséquences sensibles restent visibles ;
 - accessibilité structurelle toujours active, indépendamment du profil renforcé.
 
+### Navigation secondaire / Tabs
+
+Le Core possède désormais deux responsabilités distinctes mais visuellement harmonisées :
+
+```text
+SectionTabs
+→ navigation URL avec NavLink
+→ ex. Équipe de la Plateforme
+
+components/ui/Tabs — variante section
+→ changement de panneau Base UI dans une même surface
+→ ex. Fichiers actifs / Corbeille
+```
+
+Les styles de navigation secondaire sont centralisés afin d’éviter leur divergence.
+
 Règle de test Base UI : les composants portallés peuvent nécessiter `findByRole` après l’interaction d’ouverture. Les tests métier doivent viser le contrat applicatif stable, pas le DOM interne d’une bibliothèque tierce.
 
 ---
 
 ## 5. État canonique des dettes Core
 
-Selon `docs/DEBT.md` :
+Après synchronisation de D-002 :
 
 ```text
 D-020  EN COURS
 D-011  VALIDÉ
 D-021  VALIDÉ
 D-022  VALIDÉ
+D-002  VALIDÉ — 2026-09-15
 D-015  PLANIFIÉ
 D-016  PLANIFIÉ
-D-002  PLANIFIÉ
 D-017  PLANIFIÉ
 D-023  DIFFÉRÉ — Core 1.1
 ```
@@ -162,107 +229,126 @@ D-012 E2E du produit dérivé
 D-013 configuration / déploiement production
 ```
 
-Dettes conditionnelles / différées :
+Dettes conditionnelles :
 
 ```text
 D-008 notifications étendues
 D-009 API Keys / Webhooks
 D-010 authentification avancée / Google SSO
-D-023 demande gouvernée de transfert de propriété — Core 1.1
 ```
 
 Google SSO ne bloque pas Core 1.0.
 
+### Point documentaire à ne pas oublier
+
+`docs/DEBT.md` maintient actuellement D-020 en `EN COURS` et la considère comme le blocker immédiat avant D-015.
+
+Ne pas la déclarer implicitement clôturée dans une nouvelle conversation. Avant D-015, il faudra soit :
+
+```text
+constater que son critère de clôture est réellement atteint
+→ la passer VALIDÉE
+
+ou
+justifier explicitement une reclassification
+```
+
 ---
 
-## 6. Point complet : ce qu’il reste AVANT le versionnement D-015
+## 6. Questions utilisateur à traiter AVANT tout nouveau code
 
-Cette section distingue :
+La prochaine conversation doit commencer par une phase de discussion et de décision.
 
-```text
-blockers canoniques
-+
-travaux de stabilisation que nous avons volontairement choisi de terminer avant de figer le Core
-```
+L’utilisateur souhaite poser plusieurs questions autour du **versioning du Core** et du **clonage / dérivation du SaaS**.
 
-### 6.1 Finaliser et fusionner FORM-2
+Ne pas lancer automatiquement D-015, D-016, un audit UI ou un nouveau module avant d’avoir répondu à ces questions.
 
-FORM-2 est validé et autorisé à fusionner.
-
-Après merge/push :
-
-- vérifier le nouveau HEAD réel de `main` ;
-- ne pas supprimer immédiatement la branche tant que la reprise n’est pas confirmée ;
-- considérer FORM-2 comme clos sauf régression concrète.
-
-### 6.2 Terminer l’audit transversal UI avant gel d’architecture
-
-Ce chantier n’est pas listé comme dette bloquante autonome dans `DEBT.md`, mais il fait partie de notre objectif explicite de disposer d’un Core clonable, professionnel et maintenable avant versionnement.
-
-Familles restant à auditer :
+Les sujets à clarifier pourront notamment couvrir :
 
 ```text
-1. Dropdown menus
-2. Tooltip / Popover / Accordion / Tabs
-3. Badge / StatusBadge
-4. primitives HTML / React directes restantes
-5. Sidebar — revue dédiée d’alignement shadcn/ui
+version release candidate vs version stable
+SemVer et signification réelle de v1.0.0
+tag Git vs GitHub Release vs branche
+moment où le Core doit être considéré comme gelé
+clone Git vs fork vs template repository vs nouveau dépôt dérivé
+nommage des dépôts dérivés
+conservation ou non de l’historique Git
+relation future avec le dépôt Core d’origine
+stratégie d’upgrade d’un SaaS dérivé quand le Core évolue
+remote upstream éventuel
+risques de conflits Core / métier
+provenance du Core dans chaque dérivé
+migrations DB et configuration lors d’un clone puis d’un upgrade
+README, docs et tests à conserver dans les dérivés
+moment exact du premier clone pilote
+place de D-016 et D-017 dans cette séquence
+moment où créer le premier tag réellement immuable
 ```
 
-Règle : **audit avant migration**. Pour chaque famille :
+Ce sont des sujets d’architecture de distribution : les réponses doivent précéder l’implémentation de D-015.
+
+### Principe déjà retenu
+
+D-015 doit être compris comme la construction d’une **release candidate reproductible du Core et de sa discipline de versionnement**, pas comme l’affirmation automatique que la première version produite est déjà le tag stable final immuable.
+
+D-017 doit réellement tester :
 
 ```text
-inventaire réel
-→ duplications
-→ clavier / focus / ARIA
-→ tokens / Design System
-→ API du composant
-→ responsabilité shared vs feature
-→ tests
-→ décision : conserver / harmoniser / migrer
+Core release candidate
+→ dérivé pilote
+→ ajout métier réel
+→ évolution Core compatible
+→ upgrade du dérivé
+→ migrations/configuration
+→ tests Core + métier + E2E
+→ analyse des conflits et de la provenance
 ```
 
-Ne pas réécrire un composant fonctionnel uniquement parce qu’une primitive Base UI existe.
+Le premier dérivé utile doit donc servir de validation réelle de la stratégie de clonage/upgrade, pas seulement de copie ponctuelle du dépôt.
 
-### 6.3 Contrôler les reliquats techniques UI
+---
 
-À vérifier explicitement pendant la fin de l’audit :
+## 7. Ce qui reste à décider / vérifier avant D-015
 
-- consommateurs résiduels éventuels de `use-dialog-focus.js` avant suppression ;
-- primitives HTML directes restantes réellement justifiées ;
-- warnings React Hooks connus, sans les mélanger silencieusement à un autre lot :
+Après la phase de questions versioning/clonage, faire une revue bornée de ce qui reste réellement avant le gel de release candidate.
+
+### 7.1 D-020
+
+Statut canonique actuel : `EN COURS`.
+
+Vérifier son critère de clôture réel et mettre le registre à jour avant D-015.
+
+### 7.2 Audit transversal frontend restant
+
+Une ancienne reprise listait encore :
 
 ```text
-platform-entitlement-override-form.jsx
-platform-retention-policy-form.jsx
-platform-role-form-drawer.jsx
-platform-roles-section.jsx
-workspace-ownership-section.jsx
+Dropdown menus
+Tooltip / Popover / Accordion / Tabs
+Badge / StatusBadge
+primitives HTML / React directes restantes
+Sidebar — revue dédiée d’alignement shadcn/ui
 ```
 
-Ces warnings doivent être requalifiés : corriger si dette réelle, documenter/différer si choix intentionnel.
+Cette liste ne doit pas être appliquée aveuglément : plusieurs composants ont évolué depuis. Il faut **réauditer l’état réel du code**, supprimer les points devenus obsolètes et ne conserver que les écarts démontrés.
 
-### 6.4 Clôturer D-020 — invitation commerciale
+Règle : audit avant migration ; ne pas réécrire un composant fonctionnel uniquement parce qu’une primitive Base UI existe.
 
-D-020 reste le **seul blocker métier/documentaire explicitement EN COURS avant D-015**.
+La Sidebar reste un sujet de revue shadcn/ui connu, mais aucune réécriture globale ne doit être lancée sans décision explicite.
 
-Le contrat, la sécurité, le backend, le frontend et les tests sont déjà très avancés ; le critère de clôture restant déclaré dans `DEBT.md` est notamment la validation fonctionnelle manuelle finale.
+### 7.3 Reliquats techniques
 
-Avant D-015 :
+Vérifier à partir du code réel :
 
-```text
-validation fonctionnelle D-020
-→ éventuels correctifs ciblés
-→ tests applicables
-→ mise à jour DEBT.md
-→ D-020 VALIDÉ ou reclassification explicite et justifiée
-```
+- consommateurs éventuels de `use-dialog-focus.js` avant toute suppression ;
+- contrôles HTML directs encore réellement justifiés ;
+- warnings React Hooks précédemment connus ;
+- documentation devenue obsolète ;
+- cohérence des scripts, migrations, `.env.example` et opérations de setup.
 
-D-020 doit être clôturée ou explicitement reclassifiée avant l’ouverture de la release candidate D-015.
+### 7.4 Gate globale pré-D-015
 
-### 6.5 Faire une gate globale pré-versionnement
-
-Après les derniers lots UI et D-020, exécuter une gate complète avant de commencer D-015 :
+Une fois la liste des derniers blockers fermée :
 
 ```text
 backend npm run lint
@@ -273,25 +359,26 @@ frontend npm run build
 validation manuelle des parcours critiques touchés
 ```
 
-Ne pas annoncer le Core stabilisé si une gate n’a pas été réellement exécutée.
+Cette gate doit être réellement exécutée avant de déclarer le Core prêt pour D-015.
 
-### 6.6 Revue globale pré-D-015
+### 7.5 Revue pré-versionnement
 
-Avant d’ouvrir D-015, faire un point explicite sur :
+Faire un point explicite sur :
 
 - dettes actives réelles ;
-- documentation obsolète à supprimer ou archiver ;
-- contrats canoniques ;
 - README global du Core ;
-- scripts de setup/dev/test/migration ;
-- cohérence des `.env.example` et variables requises ;
-- migrations DB existantes et discipline future ;
-- séparation claire Core générique / futur métier ;
-- absence de secrets, données locales ou artefacts de développement dans le dépôt ;
-- structure des tests et commandes reproductibles ;
-- liste des éléments volontairement différés après Core 1.0.
+- documentation historique à supprimer/archiver ;
+- contrats canoniques ;
+- migrations DB existantes et leur ordre ;
+- scripts setup/dev/test/release ;
+- `.env.example` ;
+- absence de secrets/artefacts locaux ;
+- séparation Core générique / futur métier ;
+- stratégie de provenance ;
+- stratégie de clonage et d’upgrade décidée avec l’utilisateur ;
+- éléments volontairement différés après Core 1.0.
 
-Cette revue doit produire une décision claire :
+Résultat attendu :
 
 ```text
 PRÊT POUR D-015
@@ -301,128 +388,39 @@ LISTE FERMÉE DES BLOQUANTS RESTANTS
 
 ---
 
-## 7. D-015 — versionnement du Core
+## 8. Roadmap actuelle proposée
 
-D-015 est la prochaine grande gate une fois la stabilisation précédente terminée.
-
-À finaliser avant `v1.0.0` :
+Sous réserve des décisions prises lors des questions versioning/clonage :
 
 ```text
-SemVer
-provenance Core
-stratégie tags / releases
-CHANGELOG / release notes
-contrats et changements de configuration
-migrations DB
-ordre pre-deploy / post-deploy
-reprise / rollback
-provenance machine-readable
-gate de release reproductible
+D-002 Files                                  VALIDÉ
+→ questions / décisions versioning + clonage
+→ clôture ou reclassification explicite D-020
+→ audit final des reliquats pré-gel réellement encore applicables
+→ gate globale pré-D-015
+→ revue globale pré-versionnement
+→ D-015 release candidate / SemVer / provenance / releases / migrations
+→ D-016 Playwright E2E Core
+→ audit final Core
+→ D-017 dérivé pilote + premier module métier + test réel d’upgrade
+→ corrections éventuelles
+→ nouvelle gate
+→ tag/release Core stable immuable lorsque la stratégie est réellement validée
 ```
 
-D-015 ne signifie pas que le produit dérivé est prêt pour la production. Il stabilise la distribution et l’évolution du Core.
-
----
-
-## 8. Ce qu’il reste APRÈS D-015 avant le premier vrai clone métier
-
-Le registre canonique impose encore des étapes avant la première dérivation réelle.
-
-### 8.1 D-016 — Playwright E2E Core
-
-**Bloquant Core 1.0.**
-
-Couvrir les parcours transversaux critiques :
-
-```text
-auth / session / refresh / logout
-lifecycle Account / Workspace
-isolation tenant
-RBAC
-subscription / entitlement / quota
-administration Platform
-Files
-principaux états interdits
-```
-
-### 8.2 D-002 — corbeille / restauration Files
-
-**Bloquant avant D-017 ET avant toute première dérivation métier.**
-
-À implémenter :
-
-- listing de corbeille ;
-- restauration sécurisée ;
-- permissions dédiées ;
-- isolation Workspace ;
-- restauration simple/multiple si pertinente ;
-- cohérence existence physique / purge ;
-- quotas ;
-- audit ;
-- UI `Ressources > Corbeille` avec `DataTable` partagé ;
-- tests sécurité/concurrence.
-
-Invariant : un fichier soft-deleted dont le contenu physique existe consomme toujours `storage_bytes`; une restauration avant purge ne réserve pas le stockage une seconde fois.
-
-### 8.3 Audit final Core
-
-Après D-015, D-016 et D-002, réaliser un audit final :
-
-```text
-architecture
-sécurité
-qualité
-contrats
-migrations
-documentation
-DX de clonage
-séparation Core / métier
-```
-
-### 8.4 D-017 — vraie validation de dérivation + upgrade
-
-D-017 ne consiste pas simplement à copier le dépôt.
-
-Exercice canonique :
+Ne pas confondre :
 
 ```text
 release candidate Core
-→ dépôt pilote dérivé
-→ petit module métier réel
-→ évolution Core compatible
-→ upgrade réel du dérivé
-→ migrations/configuration
-→ tests Core + métier + E2E
-→ analyse des conflits et de la provenance
+≠
+tag stable final
+≠
+produit dérivé production-ready
 ```
-
-Le premier clone métier doit donc devenir le **pilote de D-017** plutôt qu’un simple fork sans stratégie d’upgrade.
 
 ---
 
-## 9. Séquence recommandée consolidée
-
-```text
-FORM-2 merge
-→ audit UI restant
-→ revue Sidebar dédiée
-→ requalification des reliquats techniques UI
-→ validation / clôture D-020
-→ gate globale pré-versionnement
-→ revue globale pré-D-015
-→ D-015 versionnement / provenance / releases / migrations
-→ D-016 Playwright E2E Core
-→ D-002 corbeille / restauration Files
-→ audit final Core
-→ D-017 clone pilote + premier module métier + test d’upgrade
-→ tag Core stable
-```
-
-Ne pas inverser D-002 et D-017 : `DEBT.md` rend D-002 bloquante avant toute première dérivation métier.
-
----
-
-## 10. Préparation du futur SaaS métier
+## 9. Préparation du futur SaaS métier
 
 Avant de coder le métier dans le dérivé, cadrer séparément :
 
@@ -446,35 +444,36 @@ stratégie de tests
 
 Le dérivé doit ajouter des modules métier sans casser les invariants du Core.
 
-Les pages métier assemblent des composants ; les appels serveur restent via RTK Query ; la logique métier backend reste dans les services ; validation Zod stricte ; audit, soft delete, rôles et permissions sont réutilisés lorsque pertinents.
+Les pages métier assemblent des composants ; les appels serveur restent via RTK Query ; la logique métier backend reste dans les services ; validation Zod stricte ; audit, soft delete, rôles et permissions sont réutilisés lorsque pertinent.
 
 Les sujets production spécifiques du dérivé devront ensuite traiter D-003 à D-007, D-012 et D-013 selon le produit réel.
 
 ---
 
-## 11. Prochaine conversation — première action obligatoire
+## 10. Prochaine conversation — ordre obligatoire
 
-La prochaine conversation ne doit pas démarrer directement par un nouveau lot de code.
+La prochaine conversation ne doit pas commencer par du code.
 
-Commencer par :
+Ordre demandé :
 
 ```text
-1. vérifier la branche active et le HEAD réel de main ;
-2. confirmer que FORM-2 est bien fusionné ;
-3. lire docs/REPRISE-CURRENT.md ;
-4. lire docs/DEBT.md et vérifier D-020 / D-015 / D-016 / D-002 / D-017 ;
-5. inspecter l’état réel du dépôt ;
-6. faire un point exhaustif de tout ce qui reste avant D-015 ;
-7. classer chaque élément : BLOQUANT / À TERMINER AVANT GEL / DIFFÉRABLE ;
-8. proposer l’ordre final de travail avant versionnement ;
-9. ne modifier aucun fichier avant validation de ce plan.
+1. vérifier que la branche réelle est main ;
+2. vérifier le HEAD distant réel de main ;
+3. lire intégralement docs/REPRISE-CURRENT.md ;
+4. lire dans docs/DEBT.md D-002, D-015, D-016, D-017 et D-020 ;
+5. confirmer que D-002 est bien VALIDÉE et que les deux branches Files sont intégrées ;
+6. répondre d’abord aux questions de l’utilisateur sur le versioning et le clonage du SaaS ;
+7. challenger les options : avantages, risques, maintenabilité, upgrades, provenance et migrations ;
+8. aboutir à une stratégie explicite avant tout code ;
+9. seulement ensuite réévaluer les derniers blockers pré-D-015 ;
+10. ne modifier aucun fichier tant que l’utilisateur n’a pas validé cette stratégie.
 ```
 
-Le premier audit UI restant connu est `Dropdown menus`, mais il ne doit être lancé qu’après le point global pré-versionnement demandé ci-dessus.
+La discussion doit être pédagogique et concrète : expliquer la différence entre copie, clone, fork, template, release, tag, branche et mécanisme d’upgrade, puis relier ces choix au fonctionnement réel de `saas-core-api`.
 
 ---
 
-## 12. Règles de travail à conserver
+## 11. Règles de travail à conserver
 
 - vérifier branche et HEAD avant modification ;
 - toujours repartir de `main` pour un nouveau lot sauf décision explicite contraire ;
