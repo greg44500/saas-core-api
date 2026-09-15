@@ -48,7 +48,9 @@ import {
     download,
     getById,
     list,
+    listTrash,
     remove,
+    restore,
     upload,
 } from './file.controller.js';
 
@@ -80,6 +82,23 @@ router.get(
     list,
 );
 
+/**
+ * La corbeille est une surface d'administration distincte du listing actif.
+ * Elle doit être déclarée avant /:fileId afin que "trash" ne puisse jamais être
+ * interprété comme un identifiant de fichier.
+ */
+router.get(
+    '/trash',
+    authenticate,
+    validateRequest({
+        params: workspaceIdParamsSchema,
+        query: listWorkspaceFilesQuerySchema,
+    }),
+    loadWorkspaceContext,
+    authorizePermission(CORE_PERMISSION.FILE_TRASH_READ),
+    listTrash,
+);
+
 router.get(
     '/:fileId/download',
     authenticate,
@@ -89,6 +108,25 @@ router.get(
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.FILE_READ),
     download,
+);
+
+/**
+ * Restaurer ne crée pas de nouvelle consommation : le fichier supprimé reste
+ * comptabilisé jusqu'à sa purge. L'action reste donc autorisée en remédiation,
+ * sous réserve de la permission dédiée et de l'absence de purge en cours.
+ */
+router.post(
+    '/:fileId/restore',
+    authenticate,
+    validateRequest({
+        params: workspaceFileParamsSchema,
+    }),
+    loadWorkspaceContext,
+    authorizePermission(CORE_PERMISSION.FILE_RESTORE),
+    enforceWorkspaceAccessMode({
+        allowDuringRemediation: true,
+    }),
+    restore,
 );
 
 router.get(
