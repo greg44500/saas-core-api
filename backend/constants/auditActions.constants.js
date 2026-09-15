@@ -399,9 +399,13 @@ const AUDIT_ACTION_REGISTRY = freezeRegistry({
         value: 'FILE_RESTORED',
         label: 'Fichier restauré',
     },
+    FILE_PERMANENTLY_DELETED: {
+        value: 'FILE_PERMANENTLY_DELETED',
+        label: 'Fichier supprimé définitivement',
+    },
     FILE_PURGED: {
         value: 'FILE_PURGED',
-        label: 'Fichier purgé',
+        label: 'Fichier supprimé définitivement automatiquement',
     },
 
     ORGANIZATION_CREATED: {
