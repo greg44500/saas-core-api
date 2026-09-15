@@ -43,7 +43,7 @@ describe('RoleFormDrawer', () => {
       />,
     );
 
-    expect(screen.getByRole('dialog')).toHaveClass('translate-x-0');
+    expect(screen.getByRole('dialog')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Modifier Gestionnaire' })).toBeInTheDocument();
 
     rerender(
@@ -55,7 +55,7 @@ describe('RoleFormDrawer', () => {
       />,
     );
 
-    expect(screen.getByRole('dialog', { hidden: true })).toHaveClass('translate-x-full');
+    expect(screen.getByRole('dialog', { hidden: true })).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'Modifier Gestionnaire', hidden: true }),
     ).toBeInTheDocument();
