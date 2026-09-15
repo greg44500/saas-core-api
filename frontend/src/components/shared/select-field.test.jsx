@@ -67,6 +67,26 @@ describe('SelectField', () => {
     expect(screen.getByRole('combobox', { name: 'Statut' })).toBeDisabled();
   });
 
+  it('associe une erreur au trigger via le contrat Field partagé', () => {
+    render(
+      <SelectField
+        error="Choisissez un statut."
+        id="status"
+        items={items}
+        label="Statut"
+        onValueChange={vi.fn()}
+        value=""
+      />,
+    );
+
+    const trigger = screen.getByRole('combobox', { name: 'Statut' });
+    const error = screen.getByRole('alert');
+
+    expect(trigger).toHaveAttribute('aria-invalid', 'true');
+    expect(trigger).toHaveAttribute('aria-describedby', error.id);
+    expect(error).toHaveAttribute('data-slot', 'field-error');
+  });
+
   it('expose une aide pédagogique à la demande sans l’afficher sous le champ', () => {
     render(
       <TooltipProvider>
