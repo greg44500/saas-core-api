@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 
 import { InfoTooltip } from '@/components/shared/info-tooltip';
@@ -25,12 +25,38 @@ const DRAWER_TRANSITION_MS = 300;
  * porte la mécanique transversale du panneau : Portal, focus modal, Escape,
  * restauration du focus et verrouillage du scroll.
  *
+ * Le wrapper conserve toutefois la responsabilité de présence du panneau afin
+ * de préserver le contrat historique : les données restent montées pendant la
+ * transition de sortie avant le démontage final.
+ *
  * Le texte explicatif reste disponible aux technologies d'assistance via la
  * description Base UI, mais n'encombre pas visuellement tous les drawers :
  * l'utilisateur le retrouve à la demande via le tooltip d'information commun.
  */
 function EntityDetailsDrawer({ children, description, onClose, open, title }) {
   const closeButtonRef = useRef(null);
+  const [isMounted, setIsMounted] = useState(open);
+
+  useEffect(() => {
+    if (open) {
+      setIsMounted(true);
+      return undefined;
+    }
+
+    if (!isMounted) return undefined;
+
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+      ?? false;
+    const timeoutId = window.setTimeout(() => {
+      setIsMounted(false);
+    }, reduceMotion ? 0 : DRAWER_TRANSITION_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isMounted, open]);
+
+  if (!isMounted) return null;
 
   return (
     <Sheet
@@ -44,6 +70,7 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
       <SheetContent
         className="inset-y-auto bottom-0 top-16 h-auto w-full max-w-xl min-w-0 transform-gpu overflow-hidden p-0 shadow-lg transition-transform duration-300 ease-in-out will-change-transform data-ending-style:translate-x-full data-ending-style:opacity-100 data-starting-style:translate-x-full data-starting-style:opacity-100"
         initialFocus={closeButtonRef}
+        keepMounted
         overlayClassName="top-16 bg-overlay/45 duration-300 ease-in-out will-change-opacity"
         render={<aside />}
         side="right"
