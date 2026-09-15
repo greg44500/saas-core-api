@@ -14,7 +14,9 @@ const Textarea = forwardRef(function Textarea({ className, ...props }, ref) {
         className,
       )}
       data-slot="textarea"
+      lang="fr-FR"
       ref={ref}
+      spellCheck
       {...props}
     />
   );
