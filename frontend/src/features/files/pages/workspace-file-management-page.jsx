@@ -97,18 +97,18 @@ function WorkspaceFileManagementPage() {
         storage={storageQuery.data ?? null}
       />
 
-      <Tabs onValueChange={handleTabChange} value={activeTab}>
-        <TabsList aria-label="Cycle de vie des fichiers">
-          <TabsTrigger value={ACTIVE_TAB}>
-            Fichiers actifs
-            {activeCount !== null ? (
-              <span className="ml-1 text-xs tabular-nums text-muted-foreground">
-                {activeCount}
-              </span>
-            ) : null}
-          </TabsTrigger>
+      {canViewTrash ? (
+        <Tabs onValueChange={handleTabChange} value={activeTab}>
+          <TabsList aria-label="Cycle de vie des fichiers">
+            <TabsTrigger value={ACTIVE_TAB}>
+              Fichiers actifs
+              {activeCount !== null ? (
+                <span className="ml-1 text-xs tabular-nums text-muted-foreground">
+                  {activeCount}
+                </span>
+              ) : null}
+            </TabsTrigger>
 
-          {canViewTrash ? (
             <TabsTrigger value={TRASH_TAB}>
               Corbeille
               {deletedCount !== null ? (
@@ -117,19 +117,23 @@ function WorkspaceFileManagementPage() {
                 </span>
               ) : null}
             </TabsTrigger>
-          ) : null}
-        </TabsList>
+          </TabsList>
 
-        <TabsContent value={ACTIVE_TAB}>
-          {activeTab === ACTIVE_TAB ? <WorkspaceFilesPage embedded /> : null}
-        </TabsContent>
-
-        {canViewTrash ? (
-          <TabsContent value={TRASH_TAB}>
-            {activeTab === TRASH_TAB ? <WorkspaceFileTrashPage embedded /> : null}
+          <TabsContent value={ACTIVE_TAB}>
+            {activeTab === ACTIVE_TAB ? (
+              <WorkspaceFilesPage embedded hideSectionTitle />
+            ) : null}
           </TabsContent>
-        ) : null}
-      </Tabs>
+
+          <TabsContent value={TRASH_TAB}>
+            {activeTab === TRASH_TAB ? (
+              <WorkspaceFileTrashPage embedded hideSectionTitle />
+            ) : null}
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <WorkspaceFilesPage embedded />
+      )}
     </div>
   );
 }
