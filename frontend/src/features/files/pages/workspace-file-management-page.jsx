@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { InfoTooltip } from '@/components/shared/info-tooltip';
@@ -61,11 +60,6 @@ function WorkspaceFileManagementPage() {
 
   const storageError = Boolean(storageQuery.error);
 
-  const description = useMemo(
-    () => `Gérez les fichiers et la capacité de stockage de ${workspace.name}.`,
-    [workspace.name],
-  );
-
   function handleTabChange(value) {
     const nextParams = new URLSearchParams(searchParams);
 
@@ -87,13 +81,10 @@ function WorkspaceFileManagementPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-1">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Fichiers</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">Fichiers</h1>
         <InfoTooltip
-          content="Le stockage inclut les fichiers actifs et les fichiers supprimés encore conservés avant leur purge définitive."
-          label="À propos du stockage des fichiers"
+          content={`Gérez les fichiers et la capacité de stockage de ${workspace.name}.`}
+          label="À propos des fichiers"
         />
       </div>
 
