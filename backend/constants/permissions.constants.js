@@ -85,6 +85,12 @@ const CORE_PERMISSION = Object.freeze({
      * doit pas être confondue avec la simple lecture de la corbeille.
      */
     FILE_RESTORE: 'file:restore',
+
+    /*
+     * La suppression définitive détruit le contenu physique et libère le quota.
+     * Elle est irréversible et doit donc rester distincte du soft-delete.
+     */
+    FILE_DELETE_PERMANENTLY: 'file:delete:permanent',
 });
 
 export { CORE_PERMISSION };
