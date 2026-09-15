@@ -4,6 +4,7 @@ import { DateTimePicker } from '@/components/forms/date-time-picker';
 import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   getRequiredLimitValue,
   isOperationalValueSufficient,
@@ -667,8 +668,8 @@ function PlatformEntitlementOverrideForm({
 
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="override-reason">Motif</label>
-          <textarea
-            className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          <Textarea
+            className="min-h-28"
             id="override-reason"
             maxLength={500}
             onChange={(event) => setReason(event.target.value)}
