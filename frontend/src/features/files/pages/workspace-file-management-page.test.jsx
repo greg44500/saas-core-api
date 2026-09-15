@@ -96,6 +96,9 @@ describe('WorkspaceFileManagementPage', () => {
     ]);
 
     expect(screen.getByRole('heading', { name: 'Fichiers' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'À propos des fichiers' })).toBeInTheDocument();
+    expect(screen.queryByText('Gérez les fichiers et la capacité de stockage de Acme.'))
+      .not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Stockage' })).toBeInTheDocument();
     expect(screen.getByText('14 fichiers actifs')).toBeInTheDocument();
     expect(screen.getByText('3 fichiers dans la corbeille')).toBeInTheDocument();
