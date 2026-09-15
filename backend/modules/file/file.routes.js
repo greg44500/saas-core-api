@@ -47,6 +47,7 @@ import {
 import {
     download,
     getById,
+    getStorageUsage,
     list,
     listTrash,
     remove,
@@ -80,6 +81,22 @@ router.get(
     loadWorkspaceContext,
     authorizePermission(CORE_PERMISSION.FILE_READ),
     list,
+);
+
+/**
+ * La consommation de stockage est une information de lecture du domaine File.
+ * Elle est déclarée avant /:fileId pour ne jamais interpréter "storage" comme
+ * un identifiant de fichier et reste visible pendant une remédiation de quota.
+ */
+router.get(
+    '/storage',
+    authenticate,
+    validateRequest({
+        params: workspaceIdParamsSchema,
+    }),
+    loadWorkspaceContext,
+    authorizePermission(CORE_PERMISSION.FILE_READ),
+    getStorageUsage,
 );
 
 /**
@@ -141,9 +158,9 @@ router.get(
 );
 
 /**
- * La suppression logique libère de la capacité et constitue donc une action
- * corrective valide en remédiation. Le contenu physique reste conservé jusqu'à
- * la purge différée du bloc F3.
+ * La suppression logique libère l'accès fonctionnel mais pas encore le stockage :
+ * le contenu physique reste conservé jusqu'à la purge différée. L'action reste
+ * néanmoins corrective en remédiation puisqu'elle prépare cette libération.
  */
 router.delete(
     '/:fileId',
