@@ -104,8 +104,6 @@ function SecurityPage() {
             <PasswordField
               id="currentPassword"
               autoComplete="current-password"
-              invalid={Boolean(errors.currentPassword)}
-              describedBy={errors.currentPassword ? 'currentPassword-message' : undefined}
               {...register('currentPassword')}
             />
           </FormField>
@@ -123,10 +121,10 @@ function SecurityPage() {
           <FormField id="newPassword" label="Nouveau mot de passe" error={errors.newPassword?.message}>
             <div className="space-y-2">
               <PasswordField
+                aria-describedby={errors.newPassword ? 'newPassword-message' : undefined}
+                aria-invalid={Boolean(errors.newPassword) || undefined}
                 id="newPassword"
                 autoComplete="new-password"
-                invalid={Boolean(errors.newPassword)}
-                describedBy={errors.newPassword ? 'newPassword-message' : undefined}
                 {...register('newPassword')}
               />
               <PasswordPolicyFeedback password={newPassword} policy={passwordPolicy} />
@@ -141,8 +139,6 @@ function SecurityPage() {
             <PasswordField
               id="confirmNewPassword"
               autoComplete="new-password"
-              invalid={Boolean(errors.confirmNewPassword)}
-              describedBy={errors.confirmNewPassword ? 'confirmNewPassword-message' : undefined}
               {...register('confirmNewPassword')}
             />
           </FormField>
