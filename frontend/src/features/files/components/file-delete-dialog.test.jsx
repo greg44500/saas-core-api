@@ -14,7 +14,7 @@ describe('FileDeleteDialog', () => {
     cleanup();
   });
 
-  it('explique la rétention et ne promet pas encore une corbeille restaurable', () => {
+  it('explique la rétention et la restauration depuis la corbeille', () => {
     render(
       <FileDeleteDialog
         errorMessage={null}
@@ -29,8 +29,7 @@ describe('FileDeleteDialog', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('contrat.pdf')).toBeInTheDocument();
     expect(screen.getByText(/au maximum 30 jours/i)).toBeInTheDocument();
-    expect(screen.getByText(/restauration utilisateur n’est pas encore disponible/i)).toBeInTheDocument();
-    expect(screen.queryByText(/placé dans la corbeille/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/restaurer depuis la Corbeille/i)).toBeInTheDocument();
   });
 
   it('délègue explicitement confirmation et annulation', async () => {
