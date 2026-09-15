@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Registre canonique des dettes actives
 
 **Statut :** source de vérité documentaire pour les dettes non résolues  
-**Dernière mise à jour :** 2026-09-12  
+**Dernière mise à jour :** 2026-09-15  
 **Périmètre :** Core clonable et, lorsque précisé, applications dérivées
 
 ---
@@ -68,12 +68,12 @@ produit dérivé automatiquement production-ready
 | D-022 | Intégrité des Entitlement Override Groups | VALIDÉ |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
-| D-002 | Corbeille et restauration des fichiers | PLANIFIÉ |
+| D-002 | Corbeille et restauration des fichiers | VALIDÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
-D-001, D-011, D-014, D-018, D-019, D-021 et D-022 sont clôturées.
+D-001, D-002, D-011, D-014, D-018, D-019, D-021 et D-022 sont clôturées.
 
-D-020 doit être clôturée ou explicitement reclassifiée avant D-015. D-002 doit être `VALIDÉ` avant D-017 et avant toute première dérivation métier.
+D-020 doit être clôturée ou explicitement reclassifiée avant D-015. La condition D-002 préalable à D-017 et à la première dérivation métier est levée depuis le 2026-09-15.
 
 ### 4.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -106,15 +106,46 @@ Pour chaque dette active : conserver un identifiant stable, un statut autorisé,
 
 ## D-002 — Corbeille et restauration des fichiers
 
-**Statut :** PLANIFIÉ  
+**Statut :** VALIDÉ — 2026-09-15  
 **Périmètre :** Core Files  
-**Blocage :** oui avant D-017 et première dérivation métier
+**Blocage :** levé pour D-017 et première dérivation métier
 
-Le cycle doit compléter le soft delete/purge D-019 par listing de corbeille et restauration sécurisés : permissions dédiées, isolation Workspace, restauration simple/multiple lorsque pertinente, existence physique, coordination avec purge, quotas, audit, UI `Ressources > Corbeille` avec `DataTable` partagé et tests sécurité/concurrence.
+Le cycle utilisateur complète le soft delete et le moteur d'effacement physique D-019 avec une corbeille sécurisée, restauration et suppression définitive volontaire.
 
-Invariant : un fichier soft-deleted dont le contenu physique existe consomme encore `storage_bytes`; une restauration avant purge ne réserve donc pas le stockage une seconde fois.
+État validé :
 
-**Critère de clôture :** cycle utilisateur suppression/restauration cohérent avec D-019, sécurisé, testé et documenté.
+```text
+fichier actif
+→ suppression logique
+→ corbeille
+→ restauration possible tant que l'effacement physique n'a pas commencé
+ou
+→ suppression définitive volontaire
+ou
+→ suppression définitive automatique à l'échéance
+```
+
+Garanties implémentées :
+
+- permissions dédiées `file:trash:read`, `file:restore` et `file:delete:permanent` ;
+- isolation Workspace et contrôles RBAC côté backend ;
+- vérification de l'existence physique avant restauration ;
+- coordination restauration / suppression définitive avec le mécanisme de claim concurrent de D-019 ;
+- suppression définitive irréversible avec confirmation UI, suppression physique puis libération du quota ;
+- audit des transitions sensibles ;
+- migration idempotente `migration:file-trash-permissions` pour mettre à niveau les rôles système existants ;
+- listing Corbeille avec `DataTable` partagé ;
+- surface unifiée `Ressources > Fichiers` avec onglets `Fichiers actifs` / `Corbeille` ;
+- compteur de cycle de vie porté par les onglets et non dupliqué dans la carte de stockage ;
+- stockage affiché depuis la métrique autoritative `UsageMetric.storage_bytes` et la limite d'entitlement effective ;
+- prévisualisation authentifiée PDF/JPEG/PNG via le flux de téléchargement existant ;
+- tests sécurité, routes, services, concurrence et frontend associés.
+
+Invariant conservé : un fichier soft-deleted dont le contenu physique existe consomme encore `storage_bytes`; une restauration avant suppression physique ne réserve donc pas le stockage une seconde fois. La libération du stockage intervient lors de la suppression physique effective.
+
+Les validations locales finales du lot ont été confirmées le 2026-09-15 : tests, lint et build applicables verts, ainsi que validation fonctionnelle/visuelle du parcours Fichiers.
+
+**Critère de clôture atteint :** cycle suppression logique → corbeille → restauration ou suppression définitive cohérent avec D-019, sécurisé, testé et intégré à l'UX Files du Core.
 
 ---
 
@@ -472,7 +503,7 @@ Couvrir les parcours transversaux critiques : auth/session/refresh/logout, lifec
 
 **Statut :** PLANIFIÉ  
 **Blocage Core 1.0 :** oui pour valider réellement la stratégie de distribution  
-**Dépendances :** D-014 validée, puis D-015, D-016 et D-002
+**Dépendances :** D-014 et D-002 validées, puis D-015 et D-016
 
 Exercice : release candidate Core → dépôt pilote dérivé → petit module métier → évolution Core compatible → upgrade réel → migrations/configuration → tests Core+métier+E2E → analyse des conflits/provenance.
 
@@ -764,9 +795,9 @@ D-011.B préférences de confort                              VALIDÉ
 D-011.C préférences d'affichage métier                      VALIDÉ
 D-021 gate sécurité Auth / invitations / tokens             VALIDÉ — 2026-09-12
 D-022 intégrité Entitlement Override Groups                 VALIDÉ — 2026-09-12
+D-002 corbeille / restauration / suppression Files          VALIDÉ — 2026-09-15
 → D-015 release/version/provenance/migrations               PLANIFIÉ
 → D-016 Playwright E2E Core                                 PLANIFIÉ
-→ D-002 corbeille / restauration Files                      PLANIFIÉ — avant première dérivation
 → audit final architecture / sécurité / qualité
 → D-017 dérivation + upgrade pilote                         PLANIFIÉ
 → taguer uniquement ensuite la release Core stable
@@ -774,7 +805,7 @@ D-022 intégrité Entitlement Override Groups                 VALIDÉ — 2026-0
 → D-023 demande gouvernée de transfert de propriété        DIFFÉRÉ — cible Core 1.1
 ```
 
-Aucune première dérivation métier avant D-002 `VALIDÉ`. Aucune release `v1.0.0` avant clôture/reclassification explicite des blockers Core applicables ; D-020 reste le blocker immédiat avant D-015. D-023 ne bloque pas Core 1.0 tant que le workflow owner reste fermé par défaut et qu'aucune surface `Demander capacité de transfert` n'est exposée avant son traitement.
+La condition D-002 avant première dérivation est désormais levée. Aucune release `v1.0.0` avant clôture/reclassification explicite des blockers Core applicables ; D-020 reste le blocker immédiat avant D-015. D-023 ne bloque pas Core 1.0 tant que le workflow owner reste fermé par défaut et qu'aucune surface `Demander capacité de transfert` n'est exposée avant son traitement.
 
 ---
 
