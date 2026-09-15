@@ -116,11 +116,17 @@ function FilePreviewDialog({ file, onClose, open, workspaceId }) {
             ) : null}
 
             {!previewState.isLoading && !errorMessage && sourceUrl && isPdf ? (
-              <iframe
+              <object
+                aria-label={`Prévisualisation de ${file.originalName}`}
                 className="h-[70vh] w-full rounded-md border border-border bg-background"
-                src={sourceUrl}
-                title={`Prévisualisation de ${file.originalName}`}
-              />
+                data={sourceUrl}
+                type="application/pdf"
+              >
+                <p className="p-4 text-sm text-muted-foreground">
+                  Votre navigateur ne permet pas d’afficher ce PDF directement. Utilisez le
+                  téléchargement depuis la liste des fichiers.
+                </p>
+              </object>
             ) : null}
 
             {!previewState.isLoading
