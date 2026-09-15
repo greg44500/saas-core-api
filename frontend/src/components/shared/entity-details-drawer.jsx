@@ -5,6 +5,7 @@ import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetTitle,
@@ -68,14 +69,17 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
           <Tooltip>
             <TooltipTrigger
               render={(
-                <Button
-                  aria-label="Fermer"
-                  className="shrink-0"
-                  onClick={onClose}
+                <SheetClose
                   ref={closeButtonRef}
-                  size="icon"
-                  type="button"
-                  variant="ghost"
+                  render={(
+                    <Button
+                      aria-label="Fermer"
+                      className="shrink-0"
+                      size="icon"
+                      type="button"
+                      variant="ghost"
+                    />
+                  )}
                 />
               )}
             >
