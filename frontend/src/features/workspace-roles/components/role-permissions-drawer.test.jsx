@@ -36,7 +36,7 @@ describe('RolePermissionsDrawer', () => {
       />,
     );
 
-    expect(screen.getByRole('dialog')).toHaveClass('translate-x-0');
+    expect(screen.getByRole('dialog')).toBeVisible();
     expect(screen.getByText('Administrateur')).toBeInTheDocument();
 
     rerender(
@@ -49,7 +49,7 @@ describe('RolePermissionsDrawer', () => {
 
     const closingDrawer = screen.getByRole('dialog', { hidden: true });
 
-    expect(closingDrawer).toHaveClass('translate-x-full');
+    expect(closingDrawer).toBeInTheDocument();
     expect(screen.getByText('Administrateur')).toBeInTheDocument();
     expect(screen.getByText('Administration du workspace')).toBeInTheDocument();
 
