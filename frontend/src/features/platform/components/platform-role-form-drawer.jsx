@@ -174,8 +174,7 @@ function PlatformRoleFormDrawer({
     if (containsNonAssignablePermission) {
       setFieldErrors((current) => ({
         ...current,
-        permissions:
-          'Une permission sélectionnée n’est plus assignable avec votre niveau d’accès actuel.',
+        permissions: 'Une permission sélectionnée n’est plus assignable avec votre niveau d’accès actuel.',
       }));
       return;
     }
@@ -230,8 +229,6 @@ function PlatformRoleFormDrawer({
           label="Nom du rôle"
         >
           <Input
-            aria-describedby={fieldErrors.name ? 'platform-role-name-message' : undefined}
-            aria-invalid={fieldErrors.name ? 'true' : undefined}
             id="platform-role-name"
             maxLength={100}
             onChange={(event) => updateField('name', event.target.value)}
@@ -246,8 +243,6 @@ function PlatformRoleFormDrawer({
           label="Justification métier"
         >
           <Textarea
-            aria-describedby="platform-role-description-message"
-            aria-invalid={fieldErrors.description ? 'true' : undefined}
             id="platform-role-description"
             maxLength={500}
             onChange={(event) => updateField('description', event.target.value)}

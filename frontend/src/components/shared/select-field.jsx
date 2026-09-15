@@ -1,12 +1,17 @@
 import { InfoTooltip } from '@/components/shared/info-tooltip';
 import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@/components/ui/field';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 
 /**
  * Champ Select partagé pour les listes simples. Les catalogues volumineux avec
@@ -36,21 +41,22 @@ function SelectField({
   const hasMessage = Boolean(error || hint);
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <Field className={className}>
       <div className="flex items-center gap-1.5">
-        <label
-          className={cn('text-sm font-medium', labelClassName)}
+        <FieldLabel
+          className={labelClassName}
           htmlFor={id}
           id={labelId}
         >
           {label}
-        </label>
+        </FieldLabel>
         <InfoTooltip
           className="size-5"
           content={info}
           label={`À propos de ${label}`}
         />
       </div>
+
       <Select
         disabled={disabled}
         items={items}
@@ -84,16 +90,13 @@ function SelectField({
           ))}
         </SelectContent>
       </Select>
-      {hasMessage && (
-        <p
-          className={error ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}
-          id={messageId}
-          role={error ? 'alert' : undefined}
-        >
-          {error ?? hint}
-        </p>
-      )}
-    </div>
+
+      {error ? (
+        <FieldError id={messageId}>{error}</FieldError>
+      ) : hint ? (
+        <FieldDescription id={messageId}>{hint}</FieldDescription>
+      ) : null}
+    </Field>
   );
 }
 

@@ -132,10 +132,6 @@ function PlatformInvitationFormDrawer({
             label="Prénom"
           >
             <Input
-              aria-describedby={fieldErrors.firstName
-                ? 'platform-invitation-first-name-message'
-                : undefined}
-              aria-invalid={fieldErrors.firstName ? 'true' : undefined}
               autoComplete="given-name"
               id="platform-invitation-first-name"
               maxLength={100}
@@ -150,10 +146,6 @@ function PlatformInvitationFormDrawer({
             label="Nom"
           >
             <Input
-              aria-describedby={fieldErrors.lastName
-                ? 'platform-invitation-last-name-message'
-                : undefined}
-              aria-invalid={fieldErrors.lastName ? 'true' : undefined}
               autoComplete="family-name"
               id="platform-invitation-last-name"
               maxLength={100}
@@ -170,8 +162,6 @@ function PlatformInvitationFormDrawer({
           label="Adresse email"
         >
           <Input
-            aria-describedby="platform-invitation-email-message"
-            aria-invalid={fieldErrors.email ? 'true' : undefined}
             autoComplete="email"
             id="platform-invitation-email"
             maxLength={254}

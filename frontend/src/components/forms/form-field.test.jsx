@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DatePicker } from '@/components/forms/date-picker';
 import { FormField } from '@/components/forms/form-field';
+import { PasswordField } from '@/components/forms/password-field';
 import { Input } from '@/components/ui/input';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -64,6 +65,20 @@ describe('FormField', () => {
     );
 
     const input = screen.getByLabelText('Date de début');
+    const error = screen.getByRole('alert');
+
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input).toHaveAttribute('aria-describedby', error.id);
+  });
+
+  it('relaie le même contrat vers PasswordField', () => {
+    render(
+      <FormField id="password" label="Mot de passe" error="Mot de passe requis.">
+        <PasswordField id="password" />
+      </FormField>,
+    );
+
+    const input = screen.getByLabelText('Mot de passe');
     const error = screen.getByRole('alert');
 
     expect(input).toHaveAttribute('aria-invalid', 'true');
