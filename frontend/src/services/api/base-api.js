@@ -21,6 +21,7 @@ const baseApi = createApi({
     'WorkspaceInvitations',
     'WorkspaceFiles',
     'WorkspaceFileTrash',
+    'WorkspaceFileStorage',
     'WorkspaceSubscription',
     'PlatformUsers',
     'PlatformWorkspaces',
