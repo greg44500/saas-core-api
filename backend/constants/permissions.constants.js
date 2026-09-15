@@ -72,6 +72,19 @@ const CORE_PERMISSION = Object.freeze({
      * l'upload. Elle reste réservée aux rôles d'administration du workspace.
      */
     FILE_DELETE: 'file:delete',
+
+    /*
+     * La corbeille expose des ressources volontairement sorties du listing
+     * actif. Sa consultation reste donc une capacité d'administration distincte
+     * de file:read et peut être déléguée indépendamment.
+     */
+    FILE_TRASH_READ: 'file:trash:read',
+
+    /*
+     * Restaurer modifie le cycle de vie d'un fichier supprimé. Cette action ne
+     * doit pas être confondue avec la simple lecture de la corbeille.
+     */
+    FILE_RESTORE: 'file:restore',
 });
 
 export { CORE_PERMISSION };
