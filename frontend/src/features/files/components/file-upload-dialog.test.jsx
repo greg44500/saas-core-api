@@ -74,7 +74,7 @@ describe('FileUploadDialog', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('bloque la fermeture pendant un téléversement', async () => {
+  it('bloque la fermeture et rend le traitement visible pendant un téléversement', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
 
@@ -83,10 +83,16 @@ describe('FileUploadDialog', () => {
       { isLoading: true },
     ]);
 
-    renderDialog({ onClose });
+    const { container } = renderDialog({ onClose });
 
     expect(screen.getByRole('button', { name: 'Annuler' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Téléversement…' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Vérification et enregistrement…' }),
+    ).toBeDisabled();
+    expect(container.querySelector('[data-slot="spinner"]')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Le serveur vérifie le fichier avant de l’ajouter au workspace.',
+    );
 
     await user.keyboard('{Escape}');
 
