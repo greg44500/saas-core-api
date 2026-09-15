@@ -12,6 +12,7 @@ import { uploadSingleFile } from '../../middlewares/uploadMiddleware.js';
 import {
     download,
     getById,
+    getStorageUsage,
     list,
     remove,
     upload,
@@ -127,6 +128,7 @@ vi.mock('../../modules/file/file.controller.js', () => ({
     }),
     list: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     listTrash: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
+    getStorageUsage: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     getById: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     download: vi.fn((req, res) => res.status(200).end()),
     remove: vi.fn((req, res) => res.status(204).send()),
@@ -155,6 +157,7 @@ beforeEach(() => {
     cleanupErrorMiddleware.mockClear();
     upload.mockClear();
     list.mockClear();
+    getStorageUsage.mockClear();
     getById.mockClear();
     download.mockClear();
     remove.mockClear();
@@ -216,6 +219,8 @@ describe('file.routes', () => {
 
         expect((await request(app).get(`/workspaces/${workspace}/files`)).status)
             .toBe(200);
+        expect((await request(app).get(`/workspaces/${workspace}/files/storage`)).status)
+            .toBe(200);
         expect((await request(app).get(`/workspaces/${workspace}/files/${file}`)).status)
             .toBe(200);
         expect((await request(app).get(`/workspaces/${workspace}/files/${file}/download`)).status)
@@ -225,6 +230,7 @@ describe('file.routes', () => {
             CORE_PERMISSION.FILE_READ,
         );
         expect(list).toHaveBeenCalledOnce();
+        expect(getStorageUsage).toHaveBeenCalledOnce();
         expect(getById).toHaveBeenCalledOnce();
         expect(download).toHaveBeenCalledOnce();
     });
