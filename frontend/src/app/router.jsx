@@ -234,6 +234,15 @@ function createAppRoutes(applicationRoutes = APPLICATION_FRONTEND_ROUTES) {
                   },
                 },
                 {
+                  path: 'files/trash',
+                  lazy: async () => {
+                    const { WorkspaceFileTrashRoute } = await import(
+                      '@/features/files/components/workspace-file-trash-route'
+                    );
+                    return { Component: WorkspaceFileTrashRoute };
+                  },
+                },
+                {
                   path: 'subscription',
                   lazy: async () => {
                     const { WorkspaceSubscriptionRoute } = await import(
