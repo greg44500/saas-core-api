@@ -1,4 +1,4 @@
-import { Download, Trash2 } from 'lucide-react';
+import { Download, Eye, Trash2 } from 'lucide-react';
 
 import { DataTable, DataTableActions } from '@/components/data-display/data-table';
 import { ActionIconButton } from '@/components/shared/action-icon-button';
@@ -24,15 +24,23 @@ import {
  * @param {Array<object>} props.files
  * @param {string | null} props.downloadingFileId
  * @param {boolean} props.canDelete
+ * @param {(file: object) => void} props.onPreview
  * @param {(file: object) => void} props.onDownload
  * @param {(file: object) => void} props.onDelete
  */
-function FilesTable({ canDelete, downloadingFileId, files, onDelete, onDownload }) {
+function FilesTable({
+  canDelete,
+  downloadingFileId,
+  files,
+  onDelete,
+  onDownload,
+  onPreview,
+}) {
   const columns = [
     {
       id: 'file',
       header: 'Fichier',
-      headerClassName: 'w-[46%]',
+      headerClassName: 'w-[42%]',
       cellClassName: 'min-w-0',
       cell: (file) => (
         <p className="truncate font-medium" title={file.originalName}>
@@ -64,10 +72,16 @@ function FilesTable({ canDelete, downloadingFileId, files, onDelete, onDownload 
     {
       id: 'actions',
       header: 'Actions',
-      headerClassName: 'w-[12%]',
+      headerClassName: 'w-[16%]',
       cellClassName: 'whitespace-nowrap',
       cell: (file) => (
         <DataTableActions className="items-center justify-end">
+          <ActionIconButton
+            Icon={Eye}
+            label={`Visualiser ${file.originalName}`}
+            onClick={() => onPreview(file)}
+            variant="outline"
+          />
           <ActionIconButton
             Icon={Download}
             disabled={downloadingFileId === file.id}
