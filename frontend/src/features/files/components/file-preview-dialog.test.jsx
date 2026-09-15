@@ -90,8 +90,8 @@ describe('FilePreviewDialog', () => {
 
     expect(mocks.createObjectURL).toHaveBeenCalledWith(blob);
     expect(
-      await screen.findByTitle('Prévisualisation de contrat.pdf'),
-    ).toHaveAttribute('src', 'blob:preview-pdf');
+      await screen.findByLabelText('Prévisualisation de contrat.pdf'),
+    ).toHaveAttribute('data', 'blob:preview-pdf');
 
     unmount();
     expect(mocks.revokeObjectURL).toHaveBeenCalledWith('blob:preview-pdf');
@@ -138,7 +138,7 @@ describe('FilePreviewDialog', () => {
       />,
     );
 
-    await screen.findByTitle('Prévisualisation de contrat.pdf');
+    await screen.findByLabelText('Prévisualisation de contrat.pdf');
     await user.click(screen.getByRole('button', { name: 'Fermer' }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
