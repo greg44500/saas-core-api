@@ -110,10 +110,10 @@ function ResetPasswordPage() {
         <FormField id="resetNewPassword" label="Nouveau mot de passe" error={errors.newPassword?.message}>
           <div className="space-y-2">
             <PasswordField
+              aria-describedby={errors.newPassword ? 'resetNewPassword-message' : undefined}
+              aria-invalid={Boolean(errors.newPassword) || undefined}
               id="resetNewPassword"
               autoComplete="new-password"
-              invalid={Boolean(errors.newPassword)}
-              describedBy={errors.newPassword ? 'resetNewPassword-message' : undefined}
               {...register('newPassword')}
             />
             <PasswordPolicyFeedback password={newPassword} policy={passwordPolicy} />
@@ -128,8 +128,6 @@ function ResetPasswordPage() {
           <PasswordField
             id="resetConfirmPassword"
             autoComplete="new-password"
-            invalid={Boolean(errors.confirmPassword)}
-            describedBy={errors.confirmPassword ? 'resetConfirmPassword-message' : undefined}
             {...register('confirmPassword')}
           />
         </FormField>
