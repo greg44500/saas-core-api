@@ -228,10 +228,10 @@ function AcceptPlatformInvitationPage() {
         >
           <div className="space-y-2">
             <PasswordField
+              aria-describedby={errors.password ? 'platform-invitation-password-message' : undefined}
+              aria-invalid={Boolean(errors.password) || undefined}
               autoComplete="new-password"
-              describedBy={errors.password ? 'platform-invitation-password-message' : undefined}
               id="platform-invitation-password"
-              invalid={Boolean(errors.password)}
               {...register('password')}
             />
             <PasswordPolicyFeedback password={password} policy={passwordPolicy} />
@@ -245,11 +245,7 @@ function AcceptPlatformInvitationPage() {
         >
           <PasswordField
             autoComplete="new-password"
-            describedBy={errors.confirmPassword
-              ? 'platform-invitation-confirm-password-message'
-              : undefined}
             id="platform-invitation-confirm-password"
-            invalid={Boolean(errors.confirmPassword)}
             {...register('confirmPassword')}
           />
         </FormField>
@@ -257,6 +253,7 @@ function AcceptPlatformInvitationPage() {
         <div className="space-y-2">
           <label className="flex items-start gap-3 text-sm" htmlFor="platformInvitationLegalAccepted">
             <Checkbox
+              aria-describedby={errors.legalAccepted ? 'platformInvitationLegalAccepted-message' : undefined}
               aria-invalid={Boolean(errors.legalAccepted) || undefined}
               id="platformInvitationLegalAccepted"
               {...register('legalAccepted')}
