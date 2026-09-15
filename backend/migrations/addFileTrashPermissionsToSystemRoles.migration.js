@@ -26,6 +26,7 @@ const migrateFileTrashPermissionsToSystemRoles = async () => {
                     $each: [
                         CORE_PERMISSION.FILE_TRASH_READ,
                         CORE_PERMISSION.FILE_RESTORE,
+                        CORE_PERMISSION.FILE_DELETE_PERMANENTLY,
                     ],
                 },
             },
