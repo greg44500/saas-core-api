@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état réel du Core au **2026-09-15** après la fusion et la validation complète du lot Drawer / Sheet / panneaux latéraux basé sur Base UI.
+> Cette synthèse décrit l’état réel du Core au **2026-09-15** après la fusion de FORM-1 et pendant l’implémentation du lot FORM-2 — alignement des primitives de contrôles de formulaire.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
@@ -38,21 +38,19 @@ Branche de référence :
 main
 ```
 
-HEAD fonctionnel distant vérifié après fusion du lot Drawer / Sheet et avant la présente mise à jour documentaire :
+HEAD fonctionnel distant vérifié avant la création de FORM-2 :
 
 ```text
-24eb5ae0c4d773fa370821746acef19fb2f9e31e
-merge(ui): migrate entity details drawers to Base UI Sheet
+5cf9e9ea4237a987e06ac611000ef56574a365ef
+merge(forms): harmonize shared field architecture
 ```
 
-Parents du merge :
+Parents du merge FORM-1 :
 
 ```text
-a77b6fc9e44af1b7b46e8b981fa19462cb54a8f6
-1ff5c4733e30c871ced18b329a95ae84901f69c9
+d80d34b032c5177cda8e1c0e6c3552febfd0ab9f
+059616cd86898a2d86bc310edfc5c7f1e962ea0a
 ```
-
-Le second parent correspond au HEAD fonctionnel Drawer / Sheet entièrement validé avant fusion.
 
 Ce `main` contient notamment :
 
@@ -66,23 +64,37 @@ Ce `main` contient notamment :
 - Select Base UI harmonisé ;
 - Toast Base UI canonique avec maintien de l’API applicative `useToast()` ;
 - Drawer / Sheet : `EntityDetailsDrawer` migré sur la primitive `components/ui/sheet.jsx` basée sur Base UI Dialog ;
+- FORM-1 : architecture partagée de champs harmonisée autour de `Field`, `FormField`, `SelectField`, `Input` et `PasswordField` ;
 - UX pédagogique Platform/Workspace harmonisée via `InfoTooltip` ;
 - projection `featureAvailability` des fonctionnalités Workspace ;
 - statuts de souscription Platform alignés sur les tons sémantiques.
 
 ### Branche de travail
 
-Le lot Drawer / Sheet est fusionné. Il n’existe plus de branche fonctionnelle active à considérer comme source de vérité supérieure à `main`.
-
-La branche historique :
+Le lot actif est :
 
 ```text
-feature/sheet-entity-details-drawer-base-ui
+feature/form-control-primitives-alignment
 ```
 
-peut rester temporairement présente jusqu’à nettoyage Git, mais elle ne doit plus servir de base à un nouveau chantier.
+Base exacte de la branche :
 
-Toute nouvelle conversation doit commencer par vérifier le HEAD réel de `main` avant toute conclusion ou création de branche.
+```text
+5cf9e9ea4237a987e06ac611000ef56574a365ef
+```
+
+FORM-2 est **EN COURS**. Le code de cette branche ne doit pas être fusionné dans `main` avant :
+
+```text
+tests ciblés réellement exécutés
+→ frontend npm test
+→ frontend npm run lint
+→ frontend npm run build
+→ validation visuelle / clavier
+→ autorisation explicite de fusion
+```
+
+Toute nouvelle conversation doit commencer par vérifier le HEAD réel de `main` et celui de cette branche avant toute conclusion.
 
 ---
 
@@ -322,7 +334,64 @@ merge(ui): migrate entity details drawers to Base UI Sheet
 
 Ne pas rouvrir ce lot sans régression concrète.
 
-### 3.6 Warnings React Hooks connus — hors périmètre
+### 3.6 FORM-1 — VALIDÉ et fusionné
+
+FORM-1 a consolidé l’architecture des champs partagés et a été fusionné dans `main` sous :
+
+```text
+5cf9e9ea4237a987e06ac611000ef56574a365ef
+merge(forms): harmonize shared field architecture
+```
+
+Architecture à préserver :
+
+```text
+components/ui/field.jsx
+→ primitives de structure Field / Label / Description / Error
+
+components/forms/form-field.jsx
+→ contrat applicatif label / erreur / hint / info / ARIA
+
+components/shared/select-field.jsx
+→ adaptation du Select partagé au même contrat de champ
+
+components/forms/password-field.jsx
+→ composant composite reposant sur Input et relayant les attributs ARIA standards
+```
+
+Les consommateurs directs de `FormField` ne doivent pas dupliquer manuellement `aria-describedby` et `aria-invalid` lorsque `FormField` peut les injecter. Un composant composite ou un wrapper intermédiaire reste toutefois responsable de relayer ces attributs vers le contrôle réellement interactif.
+
+Ne pas rouvrir FORM-1 sans régression concrète.
+
+### 3.7 FORM-2 — EN COURS, non validé
+
+Périmètre validé avant implémentation :
+
+```text
+Input     → primitive native conservée
+Textarea  → primitive native conservée
+Checkbox  → primitive native conservée
+Switch    → moteur migré vers @base-ui/react/switch
+```
+
+Décision d’architecture : ne pas migrer mécaniquement Input, Textarea ou Checkbox vers Base UI lorsqu’un contrôle HTML natif satisfait déjà le contrat et conserve une intégration directe avec React Hook Form / formulaires HTML.
+
+Le Switch est différent : la primitive interactive manuelle est remplacée par Base UI tout en conservant l’API applicative `checked`, `disabled`, `id`, `onCheckedChange` et les attributs ARIA.
+
+Travail déjà présent sur la branche FORM-2 :
+
+- `Input`, `Textarea` et `Checkbox` harmonisés avec `data-slot` et états invalides Design System ;
+- `Switch` basé sur `@base-ui/react/switch`, rendu comme bouton natif ;
+- tests de contrat des quatre primitives ajoutés ;
+- `DatePicker` et `DateTimePicker` réutilisent `Input` sans changer parsing ni conversion ISO ;
+- contrôles directs remplacés par les primitives partagées dans les formulaires Platform audités ;
+- `RoleFormDrawer` Workspace réutilise `Textarea` et `Checkbox` ;
+- parcours d’acceptation d’invitations Workspace et Platform alignés sur le contrat ARIA standard de FORM-1 ;
+- l’input fichier de `FileUploadDialog` reste volontairement natif et spécifique.
+
+Aucune gate FORM-2 ne doit être considérée verte tant que l’utilisateur ne l’a pas réellement exécutée et communiquée.
+
+### 3.8 Warnings React Hooks connus — hors périmètre
 
 Les warnings `react-hooks/exhaustive-deps` déjà identifiés restent hors de ces migrations sauf régression concrète :
 
@@ -640,17 +709,22 @@ Dialog DLG-2 / FileUploadDialog
 Select Base UI
 Toast Base UI
 Drawer / Sheet / EntityDetailsDrawer Base UI
+FORM-1 / formulaires partagés
 ```
 
-Ordre recommandé pour poursuivre l’audit UI :
+Lot actif :
 
 ```text
-1. formulaires partagés
-2. Input / Textarea / Checkbox / Switch
-3. Dropdown menus
-4. Tooltip / Popover / Accordion / Tabs
-5. Badge / StatusBadge
-6. primitives HTML/React directes restantes
+FORM-2 / Input / Textarea / Checkbox / Switch
+```
+
+Ordre recommandé après validation et fusion de FORM-2 :
+
+```text
+1. Dropdown menus
+2. Tooltip / Popover / Accordion / Tabs
+3. Badge / StatusBadge
+4. primitives HTML/React directes restantes
 ```
 
 Pour chaque famille : inventorier avant de coder, détecter les duplications, vérifier clavier/focus/ARIA, tokens, API, responsabilité du composant et testabilité, puis décider si une migration est réellement nécessaire.
@@ -706,41 +780,35 @@ nettoyage des warnings React Hooks connus
 
 ## 16. Prochaine action exacte
 
-Les lots suivants sont maintenant fusionnés et validés :
+FORM-2 est implémenté sur :
 
 ```text
-DLG-1
-Select Base UI / UX
-DLG-2
-Toast Base UI
-Drawer / Sheet / panneaux latéraux
+feature/form-control-primitives-alignment
 ```
 
-Le prochain lot UI recommandé est :
+Il n’est pas encore validé ni fusionné.
+
+Prochaine gate :
 
 ```text
-formulaires partagés
+1. mettre à jour la branche locale : git pull --ff-only ;
+2. exécuter les tests ciblés des primitives et composants modifiés ;
+3. si les tests ciblés sont verts, exécuter npm test ;
+4. exécuter npm run lint ;
+5. exécuter npm run build ;
+6. valider visuellement et au clavier les contrôles principaux, notamment Switch, Checkbox, DatePicker, formulaires Platform et parcours d’invitation ;
+7. analyser globalement toute famille de FAILS avant correction ;
+8. ne fusionner dans main qu’après gate verte et autorisation explicite.
 ```
 
-Avant tout code :
+Le backend n’a pas été modifié par FORM-2 ; ne pas prétendre qu’une gate backend a été rejouée si elle ne l’a pas été.
 
-```text
-1. vérifier le HEAD réel de main ;
-2. lire docs/REPRISE-CURRENT.md ;
-3. vérifier l’état canonique utile dans docs/DEBT.md ;
-4. inventorier les formulaires partagés et wrappers de champs existants ;
-5. distinguer les primitives UI génériques des composants de formulaire partagés et des formulaires métier ;
-6. rechercher les duplications réelles avant toute migration ;
-7. vérifier validation, erreurs inline, aide pédagogique, accessibilité et testabilité ;
-8. identifier les primitives shadcn/Base UI déjà disponibles ;
-9. proposer un périmètre précis et un plan de migration ;
-10. ne modifier aucun fichier avant validation du périmètre.
-```
+Après FORM-2, le prochain audit UI recommandé est `Dropdown menus`.
 
 Avant suppression éventuelle de `use-dialog-focus.js`, vérifier explicitement tous ses consommateurs réels.
 
 En parallèle, la roadmap Core métier reste gouvernée par `docs/DEBT.md` et notamment par la nécessité de clôturer ou reclassifier D-020 avant D-015.
 
-Ne pas fusionner implicitement une future branche.
+Ne pas fusionner implicitement la branche FORM-2.
 
 Le présent fichier est une synthèse de reprise et non une source supérieure au code, aux tests ou aux contrats canoniques.
