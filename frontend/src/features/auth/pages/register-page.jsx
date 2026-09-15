@@ -7,6 +7,7 @@ import { PasswordField } from '@/components/forms/password-field';
 import { PasswordPolicyFeedback } from '@/components/forms/password-policy-feedback';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Field, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import {
   useGetPasswordPolicyQuery,
@@ -108,31 +109,38 @@ function RegisterPage() {
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField id="firstName" label="Prénom" error={errors.firstName?.message}>
-            <Input id="firstName" autoComplete="given-name" aria-invalid={Boolean(errors.firstName) || undefined} aria-describedby={errors.firstName ? 'firstName-message' : undefined} {...register('firstName')} />
+            <Input id="firstName" autoComplete="given-name" {...register('firstName')} />
           </FormField>
           <FormField id="lastName" label="Nom" error={errors.lastName?.message}>
-            <Input id="lastName" autoComplete="family-name" aria-invalid={Boolean(errors.lastName) || undefined} aria-describedby={errors.lastName ? 'lastName-message' : undefined} {...register('lastName')} />
+            <Input id="lastName" autoComplete="family-name" {...register('lastName')} />
           </FormField>
         </div>
 
         <FormField id="email" label="Email" error={errors.email?.message}>
-          <Input id="email" type="email" autoComplete="email" aria-invalid={Boolean(errors.email) || undefined} aria-describedby={errors.email ? 'email-message' : undefined} {...register('email')} />
+          <Input id="email" type="email" autoComplete="email" {...register('email')} />
         </FormField>
 
         <FormField id="password" label="Mot de passe" error={errors.password?.message}>
           <div className="space-y-2">
-            <PasswordField id="password" autoComplete="new-password" invalid={Boolean(errors.password)} describedBy={errors.password ? 'password-message' : undefined} {...register('password')} />
+            <PasswordField
+              aria-describedby={errors.password ? 'password-message' : undefined}
+              aria-invalid={Boolean(errors.password) || undefined}
+              id="password"
+              autoComplete="new-password"
+              {...register('password')}
+            />
             <PasswordPolicyFeedback password={password} policy={passwordPolicy} />
           </div>
         </FormField>
 
         <FormField id="confirmPassword" label="Confirmer le mot de passe" error={errors.confirmPassword?.message}>
-          <PasswordField id="confirmPassword" autoComplete="new-password" invalid={Boolean(errors.confirmPassword)} describedBy={errors.confirmPassword ? 'confirmPassword-message' : undefined} {...register('confirmPassword')} />
+          <PasswordField id="confirmPassword" autoComplete="new-password" {...register('confirmPassword')} />
         </FormField>
 
-        <div className="space-y-2">
+        <Field>
           <label className="flex items-start gap-3 text-sm" htmlFor="legalAccepted">
             <Checkbox
+              aria-describedby={errors.legalAccepted ? 'legalAccepted-message' : undefined}
               aria-invalid={Boolean(errors.legalAccepted) || undefined}
               id="legalAccepted"
               {...register('legalAccepted')}
@@ -148,12 +156,10 @@ function RegisterPage() {
               </Link>.
             </span>
           </label>
-          {errors.legalAccepted && (
-            <p className="text-sm text-destructive" id="legalAccepted-message" role="alert">
-              {errors.legalAccepted.message}
-            </p>
-          )}
-        </div>
+          <FieldError id="legalAccepted-message">
+            {errors.legalAccepted?.message}
+          </FieldError>
+        </Field>
 
         {errors.root?.server && <p className="text-sm text-destructive" role="alert">{errors.root.server.message}</p>}
 
