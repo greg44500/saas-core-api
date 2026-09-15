@@ -16,6 +16,7 @@ import {
 } from '@/features/files/api/files-api';
 import { FileDeleteDialog } from '@/features/files/components/file-delete-dialog';
 import { FileListFilters } from '@/features/files/components/file-list-filters';
+import { FilePreviewDialog } from '@/features/files/components/file-preview-dialog';
 import { FileUploadDialog } from '@/features/files/components/file-upload-dialog';
 import { FilesTable } from '@/features/files/components/files-table';
 import { downloadBlob } from '@/features/files/lib/download-blob';
@@ -45,6 +46,7 @@ function WorkspaceFilesPage() {
   const [search, setSearch] = useState('');
   const [downloadingFileId, setDownloadingFileId] = useState(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [filePendingPreview, setFilePendingPreview] = useState(null);
   const [filePendingDeletion, setFilePendingDeletion] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
 
@@ -156,7 +158,7 @@ function WorkspaceFilesPage() {
         <div className="flex items-center gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Fichiers</h1>
           <InfoTooltip
-            content={`Consultez et téléchargez les fichiers actifs de ${workspace.name}.`}
+            content={`Consultez, prévisualisez et téléchargez les fichiers actifs de ${workspace.name}.`}
             label="À propos des fichiers"
           />
         </div>
@@ -222,6 +224,7 @@ function WorkspaceFilesPage() {
                 files={files}
                 onDelete={openDeleteDialog}
                 onDownload={handleDownload}
+                onPreview={setFilePendingPreview}
               />
             )}
 
@@ -256,6 +259,13 @@ function WorkspaceFilesPage() {
           open={uploadDialogOpen}
         />
       )}
+
+      <FilePreviewDialog
+        file={filePendingPreview}
+        onClose={() => setFilePendingPreview(null)}
+        open={Boolean(filePendingPreview)}
+        workspaceId={workspace.id}
+      />
 
       {canDelete && (
         <FileDeleteDialog
