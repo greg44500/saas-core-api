@@ -41,7 +41,7 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
       open={open}
     >
       <SheetContent
-        className="inset-y-auto bottom-0 top-16 h-auto w-full max-w-xl min-w-0 overflow-hidden p-0 shadow-lg transition-transform duration-300 ease-in-out will-change-transform data-ending-style:translate-x-full data-ending-style:opacity-100 data-starting-style:translate-x-full data-starting-style:opacity-100"
+        className="inset-y-auto bottom-0 top-16 h-auto w-full max-w-xl min-w-0 transform-gpu overflow-hidden p-0 shadow-lg transition-transform duration-300 ease-in-out will-change-transform data-ending-style:translate-x-full data-ending-style:opacity-100 data-starting-style:translate-x-full data-starting-style:opacity-100"
         initialFocus={closeButtonRef}
         overlayClassName="top-16 bg-overlay/45 duration-300 ease-in-out will-change-opacity"
         render={<aside />}
