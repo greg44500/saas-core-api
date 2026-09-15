@@ -10,11 +10,12 @@ describe('PasswordField', () => {
       <PasswordField
         aria-describedby="password-message"
         aria-invalid="true"
+        aria-label="Mot de passe"
         id="password"
       />,
     );
 
-    const input = screen.getByLabelText('Afficher le mot de passe').previousSibling;
+    const input = screen.getByLabelText('Mot de passe');
 
     expect(input).toHaveAttribute('aria-describedby', 'password-message');
     expect(input).toHaveAttribute('aria-invalid', 'true');
