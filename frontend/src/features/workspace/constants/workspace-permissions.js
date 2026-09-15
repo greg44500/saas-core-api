@@ -16,6 +16,8 @@ const WORKSPACE_PERMISSION = Object.freeze({
   FILE_READ: 'file:read',
   FILE_UPLOAD: 'file:upload',
   FILE_DELETE: 'file:delete',
+  FILE_TRASH_READ: 'file:trash:read',
+  FILE_RESTORE: 'file:restore',
 });
 
 export { WORKSPACE_PERMISSION };
