@@ -32,7 +32,7 @@ function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
 }
 
-function WorkspaceFilesPage({ embedded = false }) {
+function WorkspaceFilesPage({ embedded = false, hideSectionTitle = false }) {
   const { workspace, can, hasFeature } = useWorkspaceContext();
   const { toast } = useToast();
   const {
@@ -162,6 +162,8 @@ function WorkspaceFilesPage({ embedded = false }) {
     </Button>
   ) : null;
 
+  const showSectionHeader = !hideSectionTitle || (embedded && uploadButton);
+
   return (
     <div className="space-y-6">
       {!embedded ? (
@@ -178,17 +180,21 @@ function WorkspaceFilesPage({ embedded = false }) {
       ) : null}
 
       <section className="rounded-xl border border-border bg-card">
-        <div className="flex flex-col gap-4 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Fichiers actifs</h2>
-            {!filesQuery.isLoading && !hasLoadError && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {totalFiles} fichier{totalFiles === 1 ? '' : 's'}
-              </p>
-            )}
+        {showSectionHeader ? (
+          <div className="flex flex-col gap-4 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between">
+            {!hideSectionTitle ? (
+              <div>
+                <h2 className="text-lg font-semibold">Fichiers actifs</h2>
+                {!filesQuery.isLoading && !hasLoadError && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {totalFiles} fichier{totalFiles === 1 ? '' : 's'}
+                  </p>
+                )}
+              </div>
+            ) : null}
+            {embedded ? uploadButton : null}
           </div>
-          {embedded ? uploadButton : null}
-        </div>
+        ) : null}
 
         {filesQuery.isLoading ? (
           <DataTableSkeleton columns={5} rows={6} />
