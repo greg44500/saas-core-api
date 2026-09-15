@@ -3,10 +3,9 @@ import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 /**
  * Confirme uniquement le soft-delete du Core.
  *
- * L'interface évite volontairement le mot « corbeille » tant que le listing et
- * la restauration des fichiers supprimés ne sont pas réellement disponibles.
- * Le backend conserve néanmoins le contenu physique pendant sa période de
- * rétention avant purge définitive.
+ * Le backend conserve le contenu physique pendant sa période de rétention avant
+ * purge définitive. Tant que la purge n'a pas commencé, l'utilisateur autorisé
+ * peut restaurer le fichier depuis la Corbeille.
  *
  * @param {object} props
  * @param {{ id: string, originalName: string } | null} props.file
@@ -42,7 +41,7 @@ function FileDeleteDialog({
           </p>
           <p className="text-sm text-muted-foreground">
             Le contenu est conservé temporairement pendant au maximum 30 jours avant sa purge
-            définitive. La restauration utilisateur n’est pas encore disponible dans cette version.
+            définitive. Vous pourrez le restaurer depuis la Corbeille tant que la purge n’a pas commencé.
           </p>
         </div>
       )}
