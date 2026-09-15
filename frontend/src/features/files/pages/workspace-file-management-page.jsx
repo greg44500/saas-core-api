@@ -54,10 +54,6 @@ function WorkspaceFileManagementPage() {
     ? (trashSummaryQuery.data?.pagination?.total ?? null)
     : null;
 
-  const storageLoading = storageQuery.isLoading
-    || (activeSummaryQuery.isLoading && activeCount === null)
-    || (canViewTrash && trashSummaryQuery.isLoading && deletedCount === null);
-
   const storageError = Boolean(storageQuery.error);
 
   function handleTabChange(value) {
@@ -72,12 +68,6 @@ function WorkspaceFileManagementPage() {
     setSearchParams(nextParams, { replace: true });
   }
 
-  function retryStorageSummary() {
-    storageQuery.refetch();
-    activeSummaryQuery.refetch();
-    if (canViewTrash) trashSummaryQuery.refetch();
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-1">
@@ -89,43 +79,44 @@ function WorkspaceFileManagementPage() {
       </div>
 
       <StorageUsageCard
-        activeCount={activeCount}
-        deletedCount={deletedCount}
         isError={storageError}
-        isLoading={storageLoading}
-        onRetry={retryStorageSummary}
+        isLoading={storageQuery.isLoading}
+        onRetry={storageQuery.refetch}
         storage={storageQuery.data ?? null}
       />
 
       {canViewTrash ? (
         <Tabs onValueChange={handleTabChange} value={activeTab}>
-          <TabsList aria-label="Cycle de vie des fichiers">
-            <TabsTrigger value={ACTIVE_TAB}>
+          <TabsList
+            aria-label="Cycle de vie des fichiers"
+            variant="section"
+          >
+            <TabsTrigger value={ACTIVE_TAB} variant="section">
               Fichiers actifs
               {activeCount !== null ? (
-                <span className="ml-1 text-xs tabular-nums text-muted-foreground">
+                <span className="ml-1 text-xs tabular-nums">
                   {activeCount}
                 </span>
               ) : null}
             </TabsTrigger>
 
-            <TabsTrigger value={TRASH_TAB}>
+            <TabsTrigger value={TRASH_TAB} variant="section">
               Corbeille
               {deletedCount !== null ? (
-                <span className="ml-1 text-xs tabular-nums text-muted-foreground">
+                <span className="ml-1 text-xs tabular-nums">
                   {deletedCount}
                 </span>
               ) : null}
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value={ACTIVE_TAB}>
+          <TabsContent value={ACTIVE_TAB} variant="section">
             {activeTab === ACTIVE_TAB ? (
               <WorkspaceFilesPage embedded hideSectionTitle />
             ) : null}
           </TabsContent>
 
-          <TabsContent value={TRASH_TAB}>
+          <TabsContent value={TRASH_TAB} variant="section">
             {activeTab === TRASH_TAB ? (
               <WorkspaceFileTrashPage embedded hideSectionTitle />
             ) : null}
