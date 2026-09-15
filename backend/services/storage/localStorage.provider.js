@@ -240,6 +240,28 @@ const createLocalStorageProvider = ({
 
 
     /**
+     * Confirme qu'une clé pointe encore vers un fichier ordinaire.
+     *
+     * Une entrée absente ou remplacée par un autre type de ressource n'est pas
+     * restaurable : la base ne doit jamais réactiver des métadonnées orphelines.
+     */
+    const fileExists = async ({ storageKey }) => {
+        const targetPath = resolveStoragePath(storageKey);
+
+        try {
+            const targetStats = await lstat(targetPath);
+            return targetStats.isFile();
+        } catch (error) {
+            if (error.code === 'ENOENT') {
+                return false;
+            }
+
+            throw error;
+        }
+    };
+
+
+    /**
      * Ouvre un flux de lecture sans exposer le chemin physique au contrôleur.
      */
     const createFileReadStream = async ({ storageKey }) => {
@@ -261,6 +283,7 @@ const createLocalStorageProvider = ({
         initialize,
         storeFromTemporaryPath,
         deleteFile,
+        fileExists,
         createFileReadStream,
     });
 };
