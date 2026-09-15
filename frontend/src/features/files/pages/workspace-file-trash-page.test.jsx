@@ -215,7 +215,11 @@ describe('WorkspaceFileTrashPage', () => {
 
     expect(screen.getByText('La corbeille est vide')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    expect(screen.getByText(/suppression définitive/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Les fichiers supprimés apparaîtront ici jusqu’à leur suppression définitive.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('conserve le shell et affiche le skeleton pendant le chargement initial', () => {
