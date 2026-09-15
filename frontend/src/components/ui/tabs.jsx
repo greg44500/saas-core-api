@@ -1,12 +1,17 @@
 import { Tabs as BaseTabs } from '@base-ui/react/tabs';
 
+import {
+  SECTION_TAB_BASE_UI_STATE_CLASS_NAME,
+  SECTION_TAB_LIST_CLASS_NAME,
+  SECTION_TAB_NAV_CLASS_NAME,
+  SECTION_TAB_TRIGGER_BASE_CLASS_NAME,
+} from '@/components/ui/section-tab-styles';
 import { cn } from '@/lib/utils';
 
 const TABS_LIST_VARIANTS = Object.freeze({
   default:
     'inline-flex min-h-10 items-center gap-1 rounded-lg border border-border bg-muted/40 p-1',
-  section:
-    'flex w-full min-w-max gap-6 overflow-x-auto overflow-y-hidden border-b border-border',
+  section: `${SECTION_TAB_NAV_CLASS_NAME} ${SECTION_TAB_LIST_CLASS_NAME} w-full`,
 });
 
 const TABS_TRIGGER_VARIANTS = Object.freeze({
@@ -17,9 +22,8 @@ const TABS_TRIGGER_VARIANTS = Object.freeze({
     'data-disabled:pointer-events-none data-disabled:opacity-50',
   ].join(' '),
   section: [
-    'relative -mb-px inline-flex min-h-10 items-center border-b-2 border-transparent px-1 pb-3 pt-1 text-sm font-medium text-muted-foreground outline-none transition-colors',
-    'hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-    'data-active:border-primary data-active:text-primary',
+    SECTION_TAB_TRIGGER_BASE_CLASS_NAME,
+    SECTION_TAB_BASE_UI_STATE_CLASS_NAME,
     'data-disabled:pointer-events-none data-disabled:opacity-50',
   ].join(' '),
 });
