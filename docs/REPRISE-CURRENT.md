@@ -2,11 +2,11 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état réel du Core au **2026-09-14** après la fusion et la validation complète des lots DLG-2 et Toast Base UI.
+> Cette synthèse décrit l’état réel du Core au **2026-09-15** après la fusion et la validation complète du lot Drawer / Sheet / panneaux latéraux basé sur Base UI.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
-> **Dernière mise à jour : 2026-09-14**
+> **Dernière mise à jour : 2026-09-15**
 
 ---
 
@@ -38,21 +38,21 @@ Branche de référence :
 main
 ```
 
-HEAD fonctionnel distant vérifié après fusion du lot Toast et avant la présente mise à jour documentaire :
+HEAD fonctionnel distant vérifié après fusion du lot Drawer / Sheet et avant la présente mise à jour documentaire :
 
 ```text
-7058d368fcb362267c9f6c8fc0cdb8f9ffe40e83
-Merge branch 'feature/toast-base-ui-harmonization'
+24eb5ae0c4d773fa370821746acef19fb2f9e31e
+merge(ui): migrate entity details drawers to Base UI Sheet
 ```
 
 Parents du merge :
 
 ```text
-fccc121a7c841b1fb1a66e62c3660d87246c66d1
-1170b3027558bd5ae07646bc45d9453e118ed5c8
+a77b6fc9e44af1b7b46e8b981fa19462cb54a8f6
+1ff5c4733e30c871ced18b329a95ae84901f69c9
 ```
 
-Le second parent correspond au HEAD fonctionnel Toast entièrement validé avant fusion.
+Le second parent correspond au HEAD fonctionnel Drawer / Sheet entièrement validé avant fusion.
 
 Ce `main` contient notamment :
 
@@ -64,19 +64,20 @@ Ce `main` contient notamment :
 - `ConfirmationDialog` migré sur la primitive canonique ;
 - DLG-2 : `FileUploadDialog` migré sur Dialog Base UI ;
 - Select Base UI harmonisé ;
+- Toast Base UI canonique avec maintien de l’API applicative `useToast()` ;
+- Drawer / Sheet : `EntityDetailsDrawer` migré sur la primitive `components/ui/sheet.jsx` basée sur Base UI Dialog ;
 - UX pédagogique Platform/Workspace harmonisée via `InfoTooltip` ;
 - projection `featureAvailability` des fonctionnalités Workspace ;
-- statuts de souscription Platform alignés sur les tons sémantiques ;
-- Toast Base UI canonique avec maintien de l’API applicative `useToast()`.
+- statuts de souscription Platform alignés sur les tons sémantiques.
 
 ### Branche de travail
 
-Le lot Toast est fusionné. Il n’existe plus de branche fonctionnelle active à considérer comme source de vérité supérieure à `main`.
+Le lot Drawer / Sheet est fusionné. Il n’existe plus de branche fonctionnelle active à considérer comme source de vérité supérieure à `main`.
 
 La branche historique :
 
 ```text
-feature/toast-base-ui-harmonization
+feature/sheet-entity-details-drawer-base-ui
 ```
 
 peut rester temporairement présente jusqu’à nettoyage Git, mais elle ne doit plus servir de base à un nouveau chantier.
@@ -139,8 +140,6 @@ La validation manuelle/visuelle a également été déclarée conforme.
 
 ### 3.3 DLG-2 — VALIDÉ et fusionné
 
-Audit réalisé : les confirmations métier existantes passaient déjà par `ConfirmationDialog`; le seul shell modal autonome comparable identifié dans le périmètre était `FileUploadDialog`.
-
 Migration réalisée :
 
 ```text
@@ -175,11 +174,11 @@ Aucun fichier backend n’avait été modifié dans ce lot ; le backend n’a do
 
 La validation manuelle/clavier a été déclarée conforme : ouverture, focus initial, Tab / Shift+Tab, Escape, blocage de fermeture pendant upload, Select au-dessus de la modale et restauration du focus.
 
-DLG-2 a ensuite été fusionné dans `main`. Ne plus le présenter comme « prêt à fusionner ».
+DLG-2 a ensuite été fusionné dans `main`.
 
 ### 3.4 Toast Base UI — VALIDÉ et fusionné
 
-Architecture désormais canonique :
+Architecture canonique :
 
 ```text
 features
@@ -189,7 +188,7 @@ features
 → @base-ui/react/toast
 ```
 
-La migration a volontairement conservé l’API applicative existante afin d’éviter de coupler les features à Base UI :
+L’API applicative reste :
 
 ```text
 toast({ title, description, variant, duration })
@@ -207,29 +206,15 @@ info
 
 `error` est normalisé vers le type Base UI `destructive`.
 
-Comportements conservés :
+Comportements conservés : durée par défaut `5000 ms`, notification persistante pour `duration <= 0`, fermeture manuelle et programmatique, stack sans nouvelle limite produit implicite.
 
-```text
-durée par défaut : 5000 ms
-duration <= 0 : notification persistante
-fermeture manuelle
-fermeture programmatique
-stack de notifications sans nouvelle limite produit implicite
-```
-
-Base UI porte désormais la file de notifications, les timers, les annonces accessibles, les transitions et les comportements propres à la primitive.
-
-Les tests métier ne dépendent plus des anciennes implémentations DOM `role="status"` / `role="alert"` du toast visible. Le helper partagé canonique est :
+Helper de test partagé :
 
 ```text
 frontend/src/test/toast-assertions.js
 → findToastByText(...)
 → cible la surface applicative [data-slot="toast"]
 ```
-
-Les `role="status"` et `role="alert"` qui appartiennent réellement à des skeletons, erreurs inline ou dialogues de confirmation restent inchangés.
-
-La migration a également révélé des tests Select Base UI trop synchrones. Lorsqu’une option est rendue dans un Portal, les tests doivent utiliser une attente accessible (`findByRole`) lorsque le montage peut être différé.
 
 Après correction globale par cause racine, l’utilisateur a réellement exécuté et communiqué comme vertes les gates finales :
 
@@ -241,7 +226,7 @@ frontend npm run build  → VERT
 
 Le backend n’a pas été relancé car le lot Toast n’a modifié aucun fichier backend.
 
-La validation manuelle/visuelle a également été déclarée conforme par l’utilisateur.
+La validation manuelle/visuelle a également été déclarée conforme.
 
 HEAD fonctionnel Toast validé avant fusion :
 
@@ -258,7 +243,86 @@ Merge branch 'feature/toast-base-ui-harmonization'
 
 Ne pas rouvrir ce lot sans régression concrète.
 
-### 3.5 Warnings React Hooks connus — hors périmètre
+### 3.5 Drawer / Sheet / panneaux latéraux — VALIDÉ et fusionné
+
+Audit réalisé avant implémentation :
+
+- `frontend/src/components/ui/sheet.jsx` existait déjà et reposait sur `@base-ui/react/dialog` ;
+- `EntityDetailsDrawer` constituait un wrapper partagé légitime mais réimplémentait manuellement Portal, overlay, focus trap, Escape, verrouillage du scroll et restauration du focus ;
+- les wrappers métier `MemberDetailsDrawer`, `RoleFormDrawer` et `RolePermissionsDrawer` conservaient une responsabilité métier réelle et ne devaient pas être aplatis ;
+- la Sidebar a été explicitement maintenue hors périmètre.
+
+Architecture désormais canonique :
+
+```text
+features/*/components
+→ EntityDetailsDrawer
+→ components/ui/sheet.jsx
+→ @base-ui/react/dialog
+```
+
+Base UI porte désormais :
+
+```text
+Portal
+modalité
+focus initial
+boucle Tab / Shift+Tab
+Escape
+restauration du focus
+verrouillage du scroll
+fermeture via Close / backdrop
+sémantique dialog
+```
+
+Le contrat UI historique a été conservé :
+
+```text
+panneau sous la topbar : top-16
+largeur : w-full / max-w-xl
+transition : 300 ms
+backdrop sous la topbar
+contenu métier conservé pendant toute la transition de sortie
+```
+
+`EntityDetailsDrawer` conserve uniquement le cycle de présence nécessaire aux `300 ms` de fermeture. Il ne réimplémente plus Portal, focus trap, Escape ou restauration du focus.
+
+`components/ui/sheet.jsx` accepte un `overlayClassName` optionnel et transmet la présence contrôlée au Portal afin de permettre au wrapper partagé de préserver ce contrat de sortie sans introduire de comportement métier dans la primitive générique.
+
+Le bouton de fermeture compose `TooltipTrigger → SheetClose → Button` avec les primitives Base UI plutôt qu’un `onClick` modal custom.
+
+Les tests métier ont été découplés des anciennes classes internes `translate-x-0` / `translate-x-full`. Ils vérifient désormais le contrat applicatif : données retenues pendant la fermeture puis démontage final.
+
+La gate a également révélé un test `AuditLogFilters` déjà trop synchrone sur `main`. Le helper attend maintenant l’option portallée avec `findByRole` avant interaction.
+
+L’utilisateur a réellement exécuté et communiqué comme vertes les validations finales :
+
+```text
+tests ciblés Drawer / Select   → VERT
+frontend npm test              → VERT
+afrontend npm run lint         → VERT
+frontend npm run build         → VERT
+validation visuelle/manuelle   → CONFORME
+```
+
+Le backend n’a pas été relancé : le lot n’a modifié aucun fichier backend.
+
+HEAD fonctionnel validé avant fusion :
+
+```text
+1ff5c4733e30c871ced18b329a95ae84901f69c9
+```
+
+Merge dans `main` :
+
+```text
+24eb5ae0c4d773fa370821746acef19fb2f9e31e
+merge(ui): migrate entity details drawers to Base UI Sheet
+```
+
+Ne pas rouvrir ce lot sans régression concrète.
+
+### 3.6 Warnings React Hooks connus — hors périmètre
 
 Les warnings `react-hooks/exhaustive-deps` déjà identifiés restent hors de ces migrations sauf régression concrète :
 
@@ -276,7 +340,7 @@ Leur nettoyage ne doit pas être mélangé silencieusement à une autre migratio
 
 ## 4. Méthode de correction des tests — règle à conserver
 
-Décision de travail confirmée pendant la migration Toast :
+Décision de travail confirmée pendant les migrations Base UI :
 
 ```text
 plusieurs FAILS
@@ -299,7 +363,18 @@ Ne jamais annoncer une gate verte sans résultat réellement exécuté.
 
 Pour les composants Base UI portallés, ne pas supposer que le contenu du popup est disponible de façon synchrone immédiatement après le clic.
 
-Les tests doivent viser le contrat applicatif stable plutôt que le DOM interne d’une primitive tierce.
+Règle de test :
+
+```text
+interaction d’ouverture
+→ await findByRole(...) si contenu portallé
+→ interaction
+→ assertion métier
+```
+
+Les tests de features doivent viser le contrat applicatif stable et non les classes ou le DOM interne d’une primitive tierce.
+
+Une différence de comportement JSDOM/CSS ne doit pas conduire à supprimer un invariant produit réel : le lot Drawer a confirmé que la rétention du contenu pendant la fermeture faisait partie du contrat partagé et devait rester garantie par le composant.
 
 ---
 
@@ -334,7 +409,9 @@ Le `DataTable` partagé reste l’abstraction unique pour les tableaux applicati
 
 ---
 
-## 6. Dialog — DLG-1 et DLG-2 terminés et fusionnés
+## 6. Dialog / Sheet — primitives canoniques fusionnées
+
+### Dialog
 
 Architecture validée :
 
@@ -346,15 +423,29 @@ features
 → @base-ui/react/dialog
 ```
 
-Base UI porte notamment : focus initial, boucle Tab, restauration du focus, Escape, modalité et verrouillage du scroll.
-
 DLG-1 a migré `ConfirmationDialog`.
 
-DLG-2 a audité les shells modaux custom restants et migré `FileUploadDialog`.
+DLG-2 a migré `FileUploadDialog`.
 
-Les wrappers métier utilisant déjà `ConfirmationDialog` restent légitimes et ne doivent pas être aplatis simplement pour réduire le nombre de composants.
+Les wrappers métier utilisant déjà `ConfirmationDialog` restent légitimes lorsqu’ils apportent une responsabilité réelle.
 
-`use-dialog-focus.js` doit rester tant que `EntityDetailsDrawer` l’utilise. Les drawers/sheets constituent un chantier séparé.
+### Sheet / Drawer
+
+Architecture validée :
+
+```text
+features
+→ wrappers métier Drawer
+→ EntityDetailsDrawer
+→ components/ui/sheet.jsx
+→ @base-ui/react/dialog
+```
+
+`EntityDetailsDrawer` ne dépend plus de `use-dialog-focus.js`.
+
+Le fichier `use-dialog-focus.js` ne doit toutefois pas être supprimé sans preuve qu’aucun autre consommateur ne subsiste. Faire un audit de consommateurs avant toute suppression.
+
+La Sidebar reste un chantier distinct : aucune réécriture de Sidebar ne doit être introduite implicitement dans un autre lot.
 
 ---
 
@@ -548,18 +639,18 @@ Dialog DLG-1 / ConfirmationDialog
 Dialog DLG-2 / FileUploadDialog
 Select Base UI
 Toast Base UI
+Drawer / Sheet / EntityDetailsDrawer Base UI
 ```
 
 Ordre recommandé pour poursuivre l’audit UI :
 
 ```text
-1. Drawer / Sheet / panneaux latéraux
-2. formulaires partagés
-3. Input / Textarea / Checkbox / Switch
-4. Dropdown menus
-5. Tooltip / Popover / Accordion / Tabs
-6. Badge / StatusBadge
-7. primitives HTML/React directes restantes
+1. formulaires partagés
+2. Input / Textarea / Checkbox / Switch
+3. Dropdown menus
+4. Tooltip / Popover / Accordion / Tabs
+5. Badge / StatusBadge
+6. primitives HTML/React directes restantes
 ```
 
 Pour chaque famille : inventorier avant de coder, détecter les duplications, vérifier clavier/focus/ARIA, tokens, API, responsabilité du composant et testabilité, puis décider si une migration est réellement nécessaire.
@@ -568,7 +659,7 @@ Pour chaque famille : inventorier avant de coder, détecter les duplications, v�
 
 La Sidebar existante est fonctionnelle mais doit faire l’objet d’une revue dédiée d’alignement avec shadcn/ui avant de considérer son architecture définitivement stabilisée.
 
-Ne pas lancer une réécriture de Sidebar implicitement dans le lot Drawer/Sheet. Auditer d’abord l’existant et proposer une décision explicite avant toute implémentation.
+Ne pas lancer une réécriture de Sidebar implicitement dans un autre lot UI. Auditer d’abord l’existant et proposer une décision explicite avant toute implémentation.
 
 ---
 
@@ -608,7 +699,8 @@ nettoyage des warnings React Hooks connus
 - gate globale après un bloc transversal ;
 - ne jamais annoncer une gate verte sans résultat réellement exécuté ;
 - une information pédagogique secondaire va dans un `InfoTooltip`, pas une information critique ;
-- ne pas adapter le code de production uniquement pour satisfaire un test dépendant du DOM interne d’une primitive tierce.
+- ne pas adapter le code de production uniquement pour satisfaire un test dépendant du DOM interne d’une primitive tierce ;
+- ne pas supprimer un hook ou composant partagé sans audit de ses consommateurs.
 
 ---
 
@@ -621,12 +713,13 @@ DLG-1
 Select Base UI / UX
 DLG-2
 Toast Base UI
+Drawer / Sheet / panneaux latéraux
 ```
 
 Le prochain lot UI recommandé est :
 
 ```text
-Drawer / Sheet / panneaux latéraux
+formulaires partagés
 ```
 
 Avant tout code :
@@ -635,14 +728,16 @@ Avant tout code :
 1. vérifier le HEAD réel de main ;
 2. lire docs/REPRISE-CURRENT.md ;
 3. vérifier l’état canonique utile dans docs/DEBT.md ;
-4. inspecter l’ensemble des drawers / sheets / panneaux latéraux existants ;
-5. identifier les primitives shadcn/Base UI déjà présentes ;
-6. distinguer les wrappers métier légitimes des shells custom dupliqués ;
-7. vérifier notamment EntityDetailsDrawer et l’usage résiduel de use-dialog-focus.js ;
-8. auditer le lien éventuel avec la Sidebar sans modifier la Sidebar ;
+4. inventorier les formulaires partagés et wrappers de champs existants ;
+5. distinguer les primitives UI génériques des composants de formulaire partagés et des formulaires métier ;
+6. rechercher les duplications réelles avant toute migration ;
+7. vérifier validation, erreurs inline, aide pédagogique, accessibilité et testabilité ;
+8. identifier les primitives shadcn/Base UI déjà disponibles ;
 9. proposer un périmètre précis et un plan de migration ;
 10. ne modifier aucun fichier avant validation du périmètre.
 ```
+
+Avant suppression éventuelle de `use-dialog-focus.js`, vérifier explicitement tous ses consommateurs réels.
 
 En parallèle, la roadmap Core métier reste gouvernée par `docs/DEBT.md` et notamment par la nécessité de clôturer ou reclassifier D-020 avant D-015.
 
