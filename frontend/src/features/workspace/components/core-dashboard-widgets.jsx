@@ -2,7 +2,6 @@ import {
   useGetWorkspaceAuditMetadataQuery,
   useListWorkspaceAuditLogsQuery,
 } from '@/features/audit-log/api/audit-log-api';
-import { useListWorkspaceFilesQuery } from '@/features/files/api/files-api';
 import { useGetWorkspaceSubscriptionQuery } from '@/features/subscription/api/subscription-api';
 import {
   useListWorkspaceInvitationsQuery,
@@ -85,26 +84,6 @@ function PendingInvitationsDashboardWidget() {
   );
 }
 
-function FilesDashboardWidget() {
-  const { workspace } = useWorkspaceContext();
-  const query = useListWorkspaceFilesQuery({
-    workspaceId: workspace.id,
-    page: 1,
-    limit: SUMMARY_QUERY_LIMIT,
-  });
-
-  return (
-    <DashboardSummaryCard
-      description="Fichiers actifs accessibles dans le workspace."
-      href={`/workspaces/${workspace.id}/files`}
-      isError={query.isError}
-      isLoading={isInitialQueryLoading(query)}
-      label="Fichiers actifs"
-      value={formatDashboardCount(query.data?.pagination?.total ?? null)}
-    />
-  );
-}
-
 function SubscriptionDashboardWidget() {
   const { workspace } = useWorkspaceContext();
   const query = useGetWorkspaceSubscriptionQuery(workspace.id);
@@ -146,7 +125,6 @@ function RecentActivityDashboardWidget() {
 }
 
 export {
-  FilesDashboardWidget,
   MembersDashboardWidget,
   PendingInvitationsDashboardWidget,
   RecentActivityDashboardWidget,
