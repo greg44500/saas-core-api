@@ -9,6 +9,7 @@ import {
 } from '../../middlewares/enforceWorkspaceAccessMode.js';
 import {
     listTrash,
+    removePermanently,
     restore,
 } from '../../modules/file/file.controller.js';
 import { fileRouter } from '../../modules/file/file.routes.js';
@@ -88,6 +89,10 @@ vi.mock('../../modules/file/file.controller.js', () => ({
     getById: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     download: vi.fn((req, res) => res.status(200).end()),
     remove: vi.fn((req, res) => res.status(204).send()),
+    removePermanently: vi.fn((req, res) => {
+        executionOrder.push('remove-permanently');
+        res.status(204).send();
+    }),
     restore: vi.fn((req, res) => {
         executionOrder.push('restore');
         res.status(200).json({ status: 'success' });
@@ -105,6 +110,7 @@ beforeEach(() => {
     permissionMiddleware.mockClear();
     workspaceAccessMiddleware.mockClear();
     listTrash.mockClear();
+    removePermanently.mockClear();
     restore.mockClear();
 });
 
@@ -148,6 +154,30 @@ describe('file trash routes', () => {
             'authorize',
             'workspace-access',
             'restore',
+        ]);
+    });
+
+    it('protège la suppression définitive avec sa permission dédiée', async () => {
+        const response = await request(createTestApp())
+            .delete(
+                '/workspaces/507f1f77bcf86cd799439011/files/507f1f77bcf86cd799439012/permanent',
+            );
+
+        expect(response.status).toBe(204);
+        expect(authorizePermission).toHaveBeenCalledWith(
+            CORE_PERMISSION.FILE_DELETE_PERMANENTLY,
+        );
+        expect(enforceWorkspaceAccessMode).toHaveBeenCalledWith({
+            allowDuringRemediation: true,
+        });
+        expect(removePermanently).toHaveBeenCalledOnce();
+        expect(executionOrder).toEqual([
+            'authenticate',
+            'validate',
+            'workspace-context',
+            'authorize',
+            'workspace-access',
+            'remove-permanently',
         ]);
     });
 });
