@@ -130,7 +130,7 @@ function WorkspaceFilesPage({ embedded = false, hideSectionTitle = false }) {
       setPage(1);
       toast({
         title: 'Fichier retiré',
-        description: `${deletedFileName} a été retiré des fichiers actifs. Son contenu reste temporairement conservé avant purge.`,
+        description: `${deletedFileName} a été retiré des fichiers actifs. Son contenu reste temporairement conservé avant sa suppression définitive.`,
         variant: 'success',
       });
     } catch (error) {
