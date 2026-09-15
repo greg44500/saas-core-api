@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 
 /**
  * Champ Select partagé pour les listes simples. Les catalogues volumineux avec
@@ -45,7 +44,7 @@ function SelectField({
     <Field className={className}>
       <div className="flex items-center gap-1.5">
         <FieldLabel
-          className={cn(labelClassName)}
+          className={labelClassName}
           htmlFor={id}
           id={labelId}
         >
