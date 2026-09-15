@@ -1,4 +1,5 @@
 import { SelectField } from '@/components/shared/select-field';
+import { Checkbox } from '@/components/ui/checkbox';
 import { PlatformMetricLimitControl } from '@/features/platform/components/platform-metric-limit-control';
 import {
   formatPlatformPlanLimit,
@@ -124,13 +125,12 @@ function PlatformFeatureLimitConfiguration({
                     </div>
 
                     <label className="flex items-center gap-2 text-sm">
-                      <input
+                      <Checkbox
                         checked={Boolean(configuration.enabled)}
                         disabled={forceEnabled}
                         onChange={(event) => onUpdateRelatedLimit(metricKey, {
                           enabled: event.target.checked,
                         })}
-                        type="checkbox"
                       />
                       {configuration.locked
                         ? 'Dérogation liée'
