@@ -1,5 +1,13 @@
 import { NavLink } from 'react-router';
 
+import {
+  SECTION_TAB_ACTIVE_CLASS_NAME,
+  SECTION_TAB_INACTIVE_CLASS_NAME,
+  SECTION_TAB_LIST_CLASS_NAME,
+  SECTION_TAB_NAV_CLASS_NAME,
+  SECTION_TAB_TRIGGER_BASE_CLASS_NAME,
+} from '@/components/ui/section-tab-styles';
+
 /**
  * Navigation secondaire réutilisable pour les espaces fonctionnels composés
  * de plusieurs vues partageables par URL.
@@ -8,16 +16,16 @@ function SectionTabs({ ariaLabel, items }) {
   return (
     <nav
       aria-label={ariaLabel}
-      className="overflow-x-auto overflow-y-hidden border-b border-border"
+      className={SECTION_TAB_NAV_CLASS_NAME}
     >
-      <div className="flex min-w-max gap-6">
+      <div className={SECTION_TAB_LIST_CLASS_NAME}>
         {items.map(({ label, to }) => (
           <NavLink
             className={({ isActive }) => (
-              `relative -mb-px border-b-2 px-1 pb-3 pt-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+              `${SECTION_TAB_TRIGGER_BASE_CLASS_NAME} ${
                 isActive
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  ? SECTION_TAB_ACTIVE_CLASS_NAME
+                  : SECTION_TAB_INACTIVE_CLASS_NAME
               }`
             )}
             end
