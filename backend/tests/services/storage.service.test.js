@@ -34,6 +34,9 @@ const createProviderMock = (provider) => ({
             deleted: true,
         }),
 
+    fileExists: vi.fn()
+        .mockResolvedValue(true),
+
     createFileReadStream: vi.fn()
         .mockResolvedValue({
             mockedStream: true,
@@ -84,6 +87,36 @@ describe('Storage service', () => {
             storageKey:
                 'workspaces/workspace-1/document.pdf',
         });
+    });
+
+
+    it('délègue la vérification d’existence au fournisseur réel du fichier', async () => {
+        const localProvider = createProviderMock(
+            FILE_STORAGE_PROVIDER.LOCAL,
+        );
+
+        const service = createStorageService({
+            providers: [
+                localProvider,
+            ],
+            defaultProvider:
+                FILE_STORAGE_PROVIDER.LOCAL,
+        });
+
+        const exists = await service.fileExists({
+            provider: FILE_STORAGE_PROVIDER.LOCAL,
+            storageKey:
+                'workspaces/workspace-1/document.pdf',
+        });
+
+        expect(
+            localProvider.fileExists,
+        ).toHaveBeenCalledWith({
+            storageKey:
+                'workspaces/workspace-1/document.pdf',
+        });
+
+        expect(exists).toBe(true);
     });
 
 
