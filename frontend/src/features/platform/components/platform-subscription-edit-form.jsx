@@ -4,6 +4,9 @@ import { DatePicker } from '@/components/forms/date-picker';
 import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 const BILLING_INTERVAL_ITEMS = Object.freeze([
   { value: 'none', label: 'Aucune' },
@@ -102,11 +105,24 @@ function PlatformSubscriptionEditForm({
         <>
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="subscription-discount-value">Valeur de la remise</label>
-            <input className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" id="subscription-discount-value" min="1" onChange={(event) => setDiscountValue(event.target.value)} type="number" value={discountValue} />
+            <Input
+              id="subscription-discount-value"
+              min="1"
+              onChange={(event) => setDiscountValue(event.target.value)}
+              type="number"
+              value={discountValue}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="subscription-discount-reason">Motif de la remise</label>
-            <textarea className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" id="subscription-discount-reason" maxLength={500} onChange={(event) => setDiscountReason(event.target.value)} required value={discountReason} />
+            <Textarea
+              className="min-h-20"
+              id="subscription-discount-reason"
+              maxLength={500}
+              onChange={(event) => setDiscountReason(event.target.value)}
+              required
+              value={discountReason}
+            />
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
@@ -128,14 +144,24 @@ function PlatformSubscriptionEditForm({
       )}
 
       <label className="flex items-center gap-2 text-sm font-medium">
-        <input checked={manualOverride} onChange={(event) => setManualOverride(event.target.checked)} type="checkbox" />
+        <Checkbox
+          checked={manualOverride}
+          onChange={(event) => setManualOverride(event.target.checked)}
+        />
         Dérogation administrative
       </label>
 
       {manualOverride && (
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="subscription-override-reason">Motif de la dérogation</label>
-          <textarea className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" id="subscription-override-reason" maxLength={500} onChange={(event) => setManualOverrideReason(event.target.value)} required value={manualOverrideReason} />
+          <Textarea
+            className="min-h-20"
+            id="subscription-override-reason"
+            maxLength={500}
+            onChange={(event) => setManualOverrideReason(event.target.value)}
+            required
+            value={manualOverrideReason}
+          />
         </div>
       )}
 
