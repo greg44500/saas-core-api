@@ -1,10 +1,10 @@
 import { HardDrive } from 'lucide-react';
 
+import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -74,11 +74,12 @@ function StorageUsageCard({
           <div className="rounded-lg bg-muted p-2 text-muted-foreground">
             <HardDrive aria-hidden="true" className="size-5" />
           </div>
-          <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-1">
             <CardTitle as="h2">Stockage</CardTitle>
-            <CardDescription>
-              Capacité réellement consommée par les fichiers du workspace.
-            </CardDescription>
+            <InfoTooltip
+              content="Le stockage inclut les fichiers actifs et les fichiers supprimés encore conservés avant leur purge définitive."
+              label="À propos du stockage"
+            />
           </div>
         </div>
       </CardHeader>
