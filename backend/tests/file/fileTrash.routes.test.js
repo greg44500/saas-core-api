@@ -84,6 +84,7 @@ vi.mock('../../modules/file/file.controller.js', () => ({
         executionOrder.push('list-trash');
         res.status(200).json({ status: 'success' });
     }),
+    getStorageUsage: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     getById: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     download: vi.fn((req, res) => res.status(200).end()),
     remove: vi.fn((req, res) => res.status(204).send()),
