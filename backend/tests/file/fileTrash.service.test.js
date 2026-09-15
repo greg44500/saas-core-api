@@ -172,7 +172,7 @@ describe('restoreWorkspaceFile', () => {
         expect(createAuditLog).not.toHaveBeenCalled();
     });
 
-    it('refuse la restauration dès que la purge a réclamé le fichier', async () => {
+    it('refuse la restauration dès que la suppression définitive a réclamé le fichier', async () => {
         const candidate = buildDeletedFile({
             purgeClaimedAt: new Date('2026-10-01T10:00:00.000Z'),
             purgeClaimId: 'claim-1',
@@ -186,7 +186,7 @@ describe('restoreWorkspaceFile', () => {
             actorId: '507f1f77bcf86cd799439015',
         })).rejects.toMatchObject({
             statusCode: 409,
-            message: 'La restauration est impossible car la purge du fichier a commencé',
+            message: 'La restauration est impossible car la suppression définitive du fichier a commencé',
         });
 
         expect(storageService.fileExists).not.toHaveBeenCalled();
@@ -291,7 +291,7 @@ describe('restoreWorkspaceFile', () => {
         }));
     });
 
-    it('refuse la restauration si la purge gagne la course après la vérification physique', async () => {
+    it('refuse la restauration si la suppression définitive gagne la course après la vérification physique', async () => {
         const candidate = buildDeletedFile();
         mockFindOneLean(candidate);
         storageService.fileExists.mockResolvedValue(true);
