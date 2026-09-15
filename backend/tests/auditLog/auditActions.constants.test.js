@@ -44,12 +44,15 @@ describe('Audit actions constants', () => {
     });
 
 
-    it('prévoit séparément le rejet, la suppression et la purge des fichiers', () => {
+    it('distingue suppression logique, suppression définitive utilisateur et automatique', () => {
         expect(AUDIT_ACTION.FILE_UPLOAD_REJECTED)
             .toBe('FILE_UPLOAD_REJECTED');
 
         expect(AUDIT_ACTION.FILE_DELETED)
             .toBe('FILE_DELETED');
+
+        expect(AUDIT_ACTION.FILE_PERMANENTLY_DELETED)
+            .toBe('FILE_PERMANENTLY_DELETED');
 
         expect(AUDIT_ACTION.FILE_PURGED)
             .toBe('FILE_PURGED');
