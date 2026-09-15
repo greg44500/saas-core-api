@@ -32,6 +32,24 @@ const workspaceFilesApi = baseApi.injectEndpoints({
         { type: 'WorkspaceFiles', id: workspaceId },
       ],
     }),
+    listWorkspaceFileTrash: build.query({
+      query: ({ workspaceId, page = 1, limit = 20, category, search }) => ({
+        url: `/workspaces/${workspaceId}/files/trash`,
+        params: {
+          page,
+          limit,
+          ...(category ? { category } : {}),
+          ...(search ? { search } : {}),
+        },
+      }),
+      transformResponse: (response) => ({
+        files: response?.data?.files ?? [],
+        pagination: response?.meta ?? null,
+      }),
+      providesTags: (_result, _error, { workspaceId }) => [
+        { type: 'WorkspaceFileTrash', id: workspaceId },
+      ],
+    }),
     uploadWorkspaceFile: build.mutation({
       query: ({ workspaceId, file, category }) => ({
         url: `/workspaces/${workspaceId}/files`,
@@ -58,11 +76,24 @@ const workspaceFilesApi = baseApi.injectEndpoints({
         // corps vide conserve le contrat HTTP réel du soft-delete.
         responseHandler: 'text',
       }),
-      // La suppression retire immédiatement le fichier du listing actif ; le
-      // cache doit donc être invalidé même si le contenu physique est conservé
-      // côté serveur jusqu'à la purge différée.
+      // Le fichier quitte le listing actif et entre immédiatement dans la
+      // corbeille ; les deux caches représentent donc la même transition.
       invalidatesTags: (_result, _error, { workspaceId }) => [
         { type: 'WorkspaceFiles', id: workspaceId },
+        { type: 'WorkspaceFileTrash', id: workspaceId },
+      ],
+    }),
+    restoreWorkspaceFile: build.mutation({
+      query: ({ workspaceId, fileId }) => ({
+        url: `/workspaces/${workspaceId}/files/${fileId}/restore`,
+        method: 'POST',
+      }),
+      transformResponse: (response) => response?.data?.file ?? null,
+      // La restauration effectue la transition inverse : la ligne disparaît de
+      // la corbeille et redevient immédiatement visible dans les fichiers actifs.
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        { type: 'WorkspaceFiles', id: workspaceId },
+        { type: 'WorkspaceFileTrash', id: workspaceId },
       ],
     }),
   }),
@@ -72,6 +103,8 @@ export const {
   useDeleteWorkspaceFileMutation,
   useDownloadWorkspaceFileMutation,
   useListWorkspaceFilesQuery,
+  useListWorkspaceFileTrashQuery,
+  useRestoreWorkspaceFileMutation,
   useUploadWorkspaceFileMutation,
 } = workspaceFilesApi;
 
