@@ -16,14 +16,20 @@ vi.mock('@/features/files/api/files-api', () => ({
 }));
 
 vi.mock('@/features/files/pages/workspace-files-page', () => ({
-  WorkspaceFilesPage: ({ embedded }) => (
-    <div>Active files panel {embedded ? 'embedded' : 'standalone'}</div>
+  WorkspaceFilesPage: ({ embedded, hideSectionTitle }) => (
+    <div>
+      Active files panel {embedded ? 'embedded' : 'standalone'}
+      {hideSectionTitle ? ' compact' : ' titled'}
+    </div>
   ),
 }));
 
 vi.mock('@/features/files/pages/workspace-file-trash-page', () => ({
-  WorkspaceFileTrashPage: ({ embedded }) => (
-    <div>Trash panel {embedded ? 'embedded' : 'standalone'}</div>
+  WorkspaceFileTrashPage: ({ embedded, hideSectionTitle }) => (
+    <div>
+      Trash panel {embedded ? 'embedded' : 'standalone'}
+      {hideSectionTitle ? ' compact' : ' titled'}
+    </div>
   ),
 }));
 
@@ -89,7 +95,7 @@ describe('WorkspaceFileManagementPage', () => {
     vi.clearAllMocks();
   });
 
-  it('présente stockage, compteurs et fichiers actifs dans une seule surface', () => {
+  it('présente stockage et navigation de cycle de vie sans répéter le titre actif', () => {
     renderPage([
       WORKSPACE_PERMISSION.FILE_READ,
       WORKSPACE_PERMISSION.FILE_TRASH_READ,
@@ -102,11 +108,13 @@ describe('WorkspaceFileManagementPage', () => {
     expect(screen.getByRole('heading', { name: 'Stockage' })).toBeInTheDocument();
     expect(screen.getByText('14 fichiers actifs')).toBeInTheDocument();
     expect(screen.getByText('3 fichiers dans la corbeille')).toBeInTheDocument();
-    expect(screen.getByText('Active files panel embedded')).toBeInTheDocument();
-    expect(screen.queryByText('Trash panel embedded')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Fichiers actifs/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Corbeille/ })).toBeInTheDocument();
+    expect(screen.getByText('Active files panel embedded compact')).toBeInTheDocument();
+    expect(screen.queryByText('Trash panel embedded compact')).not.toBeInTheDocument();
   });
 
-  it('bascule vers la corbeille sans créer une seconde entrée de navigation', async () => {
+  it('bascule vers la corbeille dans la même surface', async () => {
     const user = userEvent.setup();
 
     renderPage([
@@ -116,15 +124,16 @@ describe('WorkspaceFileManagementPage', () => {
 
     await user.click(screen.getByRole('tab', { name: /Corbeille/ }));
 
-    expect(screen.getByText('Trash panel embedded')).toBeInTheDocument();
-    expect(screen.queryByText('Active files panel embedded')).not.toBeInTheDocument();
+    expect(screen.getByText('Trash panel embedded compact')).toBeInTheDocument();
+    expect(screen.queryByText('Active files panel embedded compact')).not.toBeInTheDocument();
   });
 
-  it('ne révèle ni onglet ni compteur de corbeille sans file:trash:read', () => {
+  it('supprime entièrement les onglets quand la corbeille n’est pas autorisée', () => {
     renderPage([WORKSPACE_PERMISSION.FILE_READ]);
 
-    expect(screen.queryByRole('tab', { name: /Corbeille/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     expect(screen.queryByText(/dans la corbeille/)).not.toBeInTheDocument();
+    expect(screen.getByText('Active files panel embedded titled')).toBeInTheDocument();
     expect(mocks.useListWorkspaceFileTrashQuery).toHaveBeenCalledWith(
       {
         workspaceId: 'workspace-1',
@@ -144,7 +153,7 @@ describe('WorkspaceFileManagementPage', () => {
       '/workspaces/workspace-1/files?tab=trash',
     );
 
-    expect(screen.getByText('Trash panel embedded')).toBeInTheDocument();
-    expect(screen.queryByText('Active files panel embedded')).not.toBeInTheDocument();
+    expect(screen.getByText('Trash panel embedded compact')).toBeInTheDocument();
+    expect(screen.queryByText('Active files panel embedded compact')).not.toBeInTheDocument();
   });
 });
