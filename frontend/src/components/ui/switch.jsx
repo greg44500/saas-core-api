@@ -1,47 +1,39 @@
+import { Switch as BaseSwitch } from '@base-ui/react/switch';
+
 import { cn } from '@/lib/utils';
 
-/**
- * Primitive de switch accessible et réutilisable.
- *
- * La couleur et le mouvement sont centralisés ici afin que les features ne
- * recréent pas leur propre interrupteur. La valeur sémantique reste portée par
- * `aria-checked`, la couleur ne constituant jamais l'unique signal d'état.
- */
 function Switch({
-  id,
   checked = false,
+  className,
   disabled = false,
   onCheckedChange,
-  className,
-  'aria-label': ariaLabel,
-  'aria-describedby': ariaDescribedBy,
+  ...props
 }) {
   return (
-    <button
-      aria-checked={checked}
-      aria-describedby={ariaDescribedBy}
-      aria-label={ariaLabel}
+    <BaseSwitch.Root
+      checked={checked}
       className={cn(
-        'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
-        checked
-          ? 'border-primary bg-primary'
-          : 'border-border bg-muted',
+        'inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+        'data-checked:bg-primary data-unchecked:bg-muted',
+        'data-disabled:cursor-not-allowed data-disabled:opacity-50',
         className,
       )}
+      data-slot="switch"
       disabled={disabled}
-      id={id}
-      onClick={() => onCheckedChange?.(!checked)}
-      role="switch"
-      type="button"
+      nativeButton
+      onCheckedChange={onCheckedChange}
+      render={<button type="button" />}
+      {...props}
     >
-      <span
-        aria-hidden="true"
+      <BaseSwitch.Thumb
         className={cn(
-          'pointer-events-none block size-4 rounded-full bg-background shadow-sm transition-transform duration-200 ease-in-out',
-          checked ? 'translate-x-6' : 'translate-x-1',
+          'pointer-events-none block size-5 rounded-full bg-background shadow-sm transition-transform',
+          'data-checked:translate-x-5 data-unchecked:translate-x-0',
         )}
+        data-slot="switch-thumb"
       />
-    </button>
+    </BaseSwitch.Root>
   );
 }
 
