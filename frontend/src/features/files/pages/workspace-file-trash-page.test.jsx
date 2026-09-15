@@ -6,13 +6,17 @@ import { ToastProvider } from '@/components/shared/toast-provider';
 import { findToastByText } from '@/test/toast-assertions';
 
 const mocks = vi.hoisted(() => ({
+  permanentlyDeleteWorkspaceFile: vi.fn(),
   restoreWorkspaceFile: vi.fn(),
   useListWorkspaceFileTrashQuery: vi.fn(),
+  usePermanentlyDeleteWorkspaceFileMutation: vi.fn(),
   useRestoreWorkspaceFileMutation: vi.fn(),
 }));
 
 vi.mock('@/features/files/api/files-api', () => ({
   useListWorkspaceFileTrashQuery: mocks.useListWorkspaceFileTrashQuery,
+  usePermanentlyDeleteWorkspaceFileMutation:
+    mocks.usePermanentlyDeleteWorkspaceFileMutation,
   useRestoreWorkspaceFileMutation: mocks.useRestoreWorkspaceFileMutation,
 }));
 
@@ -55,8 +59,10 @@ function renderPage(permissions = [WORKSPACE_PERMISSION.FILE_TRASH_READ]) {
 
 describe('WorkspaceFileTrashPage', () => {
   beforeEach(() => {
+    mocks.permanentlyDeleteWorkspaceFile.mockReset();
     mocks.restoreWorkspaceFile.mockReset();
     mocks.useListWorkspaceFileTrashQuery.mockReset();
+    mocks.usePermanentlyDeleteWorkspaceFileMutation.mockReset();
     mocks.useRestoreWorkspaceFileMutation.mockReset();
 
     mocks.useListWorkspaceFileTrashQuery.mockReturnValue({
@@ -73,6 +79,10 @@ describe('WorkspaceFileTrashPage', () => {
       mocks.restoreWorkspaceFile,
       { isLoading: false },
     ]);
+    mocks.usePermanentlyDeleteWorkspaceFileMutation.mockReturnValue([
+      mocks.permanentlyDeleteWorkspaceFile,
+      { isLoading: false },
+    ]);
   });
 
   afterEach(() => {
@@ -80,10 +90,11 @@ describe('WorkspaceFileTrashPage', () => {
     vi.clearAllMocks();
   });
 
-  it('affiche la corbeille avec le DataTable partagé et les échéances de purge', () => {
+  it('affiche la corbeille avec le DataTable partagé et une échéance explicite', () => {
     renderPage([
       WORKSPACE_PERMISSION.FILE_TRASH_READ,
       WORKSPACE_PERMISSION.FILE_RESTORE,
+      WORKSPACE_PERMISSION.FILE_DELETE_PERMANENTLY,
     ]);
 
     expect(mocks.useListWorkspaceFileTrashQuery).toHaveBeenCalledWith({
@@ -99,18 +110,32 @@ describe('WorkspaceFileTrashPage', () => {
     expect(within(table).getByText('contrat.pdf')).toBeInTheDocument();
     expect(within(table).getByRole('columnheader', { name: 'Supprimé le' }))
       .toBeInTheDocument();
-    expect(within(table).getByRole('columnheader', { name: 'Purge prévue' }))
-      .toBeInTheDocument();
+    expect(
+      within(table).getByRole('columnheader', {
+        name: 'Suppression définitive prévue',
+      }),
+    ).toBeInTheDocument();
     expect(
       within(table).getByRole('button', { name: 'Restaurer contrat.pdf' }),
     ).toBeInTheDocument();
+    expect(
+      within(table).getByRole('button', {
+        name: 'Supprimer définitivement contrat.pdf',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/purge/i)).not.toBeInTheDocument();
   });
 
-  it('masque la restauration sans permission file:restore', () => {
+  it('masque les actions que le rôle ne possède pas', () => {
     renderPage([WORKSPACE_PERMISSION.FILE_TRASH_READ]);
 
     expect(
       screen.queryByRole('button', { name: 'Restaurer contrat.pdf' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {
+        name: 'Supprimer définitivement contrat.pdf',
+      }),
     ).not.toBeInTheDocument();
   });
 
@@ -139,6 +164,41 @@ describe('WorkspaceFileTrashPage', () => {
     expect(toast).toHaveTextContent('contrat.pdf');
   });
 
+  it('confirme explicitement la suppression définitive avant l’appel backend', async () => {
+    const user = userEvent.setup();
+    const unwrap = vi.fn().mockResolvedValue(undefined);
+    mocks.permanentlyDeleteWorkspaceFile.mockReturnValue({ unwrap });
+
+    renderPage([
+      WORKSPACE_PERMISSION.FILE_TRASH_READ,
+      WORKSPACE_PERMISSION.FILE_DELETE_PERMANENTLY,
+    ]);
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Supprimer définitivement contrat.pdf',
+      }),
+    );
+
+    expect(
+      screen.getByRole('dialog', {
+        name: 'Supprimer définitivement ce fichier ?',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Cette action est irréversible/)).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Supprimer définitivement' }),
+    );
+
+    expect(mocks.permanentlyDeleteWorkspaceFile).toHaveBeenCalledWith({
+      workspaceId: 'workspace-1',
+      fileId: 'file-1',
+    });
+    const toast = await findToastByText('Fichier supprimé définitivement');
+    expect(toast).toHaveTextContent('contrat.pdf');
+  });
+
   it('affiche un état vide explicite', () => {
     mocks.useListWorkspaceFileTrashQuery.mockReturnValue({
       data: {
@@ -155,6 +215,7 @@ describe('WorkspaceFileTrashPage', () => {
 
     expect(screen.getByText('La corbeille est vide')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.getByText(/suppression définitive/)).toBeInTheDocument();
   });
 
   it('conserve le shell et affiche le skeleton pendant le chargement initial', () => {
@@ -176,7 +237,7 @@ describe('WorkspaceFileTrashPage', () => {
     const user = userEvent.setup();
     const unwrap = vi.fn().mockRejectedValue({
       status: 409,
-      data: { message: 'La purge du fichier a commencé.' },
+      data: { message: 'La suppression définitive du fichier a commencé.' },
     });
     mocks.restoreWorkspaceFile.mockReturnValue({ unwrap });
 
@@ -190,6 +251,8 @@ describe('WorkspaceFileTrashPage', () => {
     );
 
     const toast = await findToastByText('Restauration impossible');
-    expect(toast).toHaveTextContent('La purge du fichier a commencé.');
+    expect(toast).toHaveTextContent(
+      'La suppression définitive du fichier a commencé.',
+    );
   });
 });
