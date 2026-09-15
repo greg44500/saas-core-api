@@ -14,6 +14,7 @@ import {
   DialogRoot,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import { useUploadWorkspaceFileMutation } from '@/features/files/api/files-api';
 import {
   FILE_INPUT_ACCEPT,
@@ -165,6 +166,16 @@ function FileUploadDialog({ onClose, onUploaded, open }) {
               </p>
             )}
 
+            {uploadState.isLoading ? (
+              <p
+                aria-live="polite"
+                className="text-sm text-muted-foreground"
+                role="status"
+              >
+                Le serveur vérifie le fichier avant de l’ajouter au workspace. Cette étape peut prendre quelques instants.
+              </p>
+            ) : null}
+
             <DialogFooter className="pt-2">
               <DialogClose
                 disabled={uploadState.isLoading}
@@ -173,8 +184,14 @@ function FileUploadDialog({ onClose, onUploaded, open }) {
                 Annuler
               </DialogClose>
               <Button disabled={uploadState.isLoading} type="submit">
-                <Upload aria-hidden="true" className="size-4" />
-                {uploadState.isLoading ? 'Téléversement…' : 'Téléverser'}
+                {uploadState.isLoading ? (
+                  <Spinner />
+                ) : (
+                  <Upload aria-hidden="true" className="size-4" />
+                )}
+                {uploadState.isLoading
+                  ? 'Vérification et enregistrement…'
+                  : 'Téléverser'}
               </Button>
             </DialogFooter>
           </form>
