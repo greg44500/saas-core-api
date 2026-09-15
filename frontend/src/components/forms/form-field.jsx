@@ -1,6 +1,12 @@
 import { cloneElement, isValidElement } from 'react';
 
 import { InfoTooltip } from '@/components/shared/info-tooltip';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@/components/ui/field';
 
 function mergeAriaIds(...values) {
   const ids = values
@@ -10,7 +16,7 @@ function mergeAriaIds(...values) {
   return [...new Set(ids)].join(' ') || undefined;
 }
 
-function FormField({ id, label, error, hint, info, children }) {
+function FormField({ className, id, label, error, hint, info, children }) {
   const messageId = `${id}-message`;
   const hasMessage = Boolean(error || hint);
   const field = isValidElement(children)
@@ -26,28 +32,26 @@ function FormField({ id, label, error, hint, info, children }) {
     : children;
 
   return (
-    <div className="space-y-2">
+    <Field className={className}>
       <div className="flex items-center gap-1.5">
-        <label htmlFor={id} className="text-sm font-medium text-foreground">
+        <FieldLabel htmlFor={id}>
           {label}
-        </label>
+        </FieldLabel>
         <InfoTooltip
           className="size-5"
           content={info}
           label={`À propos de ${label}`}
         />
       </div>
+
       {field}
-      {hasMessage && (
-        <p
-          id={messageId}
-          className={error ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}
-          role={error ? 'alert' : undefined}
-        >
-          {error ?? hint}
-        </p>
-      )}
-    </div>
+
+      {error ? (
+        <FieldError id={messageId}>{error}</FieldError>
+      ) : hint ? (
+        <FieldDescription id={messageId}>{hint}</FieldDescription>
+      ) : null}
+    </Field>
   );
 }
 
