@@ -51,6 +51,7 @@ import {
     list,
     listTrash,
     remove,
+    removePermanently,
     restore,
     upload,
 } from './file.controller.js';
@@ -129,8 +130,9 @@ router.get(
 
 /**
  * Restaurer ne crée pas de nouvelle consommation : le fichier supprimé reste
- * comptabilisé jusqu'à sa purge. L'action reste donc autorisée en remédiation,
- * sous réserve de la permission dédiée et de l'absence de purge en cours.
+ * comptabilisé jusqu'à sa suppression définitive. L'action reste donc autorisée
+ * en remédiation, sous réserve de la permission dédiée et de l'absence d'une
+ * suppression définitive déjà engagée.
  */
 router.post(
     '/:fileId/restore',
@@ -146,6 +148,25 @@ router.post(
     restore,
 );
 
+/**
+ * L'effacement immédiat libère réellement le stockage et détruit le contenu.
+ * Cette action irréversible possède donc sa permission propre. Elle reste
+ * autorisée en remédiation car elle réduit la consommation du workspace.
+ */
+router.delete(
+    '/:fileId/permanent',
+    authenticate,
+    validateRequest({
+        params: workspaceFileParamsSchema,
+    }),
+    loadWorkspaceContext,
+    authorizePermission(CORE_PERMISSION.FILE_DELETE_PERMANENTLY),
+    enforceWorkspaceAccessMode({
+        allowDuringRemediation: true,
+    }),
+    removePermanently,
+);
+
 router.get(
     '/:fileId',
     authenticate,
@@ -159,8 +180,9 @@ router.get(
 
 /**
  * La suppression logique libère l'accès fonctionnel mais pas encore le stockage :
- * le contenu physique reste conservé jusqu'à la purge différée. L'action reste
- * néanmoins corrective en remédiation puisqu'elle prépare cette libération.
+ * le contenu physique reste conservé jusqu'à la suppression définitive différée.
+ * L'action reste néanmoins corrective en remédiation puisqu'elle prépare cette
+ * libération.
  */
 router.delete(
     '/:fileId',
