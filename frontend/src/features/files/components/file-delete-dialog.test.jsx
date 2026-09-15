@@ -30,6 +30,8 @@ describe('FileDeleteDialog', () => {
     expect(screen.getByText('contrat.pdf')).toBeInTheDocument();
     expect(screen.getByText(/au maximum 30 jours/i)).toBeInTheDocument();
     expect(screen.getByText(/restaurer depuis la Corbeille/i)).toBeInTheDocument();
+    expect(screen.getByText(/suppression définitive/i)).toBeInTheDocument();
+    expect(screen.queryByText(/purge/i)).not.toBeInTheDocument();
   });
 
   it('délègue explicitement confirmation et annulation', async () => {
