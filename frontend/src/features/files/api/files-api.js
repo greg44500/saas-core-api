@@ -50,6 +50,15 @@ const workspaceFilesApi = baseApi.injectEndpoints({
         { type: 'WorkspaceFileTrash', id: workspaceId },
       ],
     }),
+    getWorkspaceFileStorage: build.query({
+      query: (workspaceId) => ({
+        url: `/workspaces/${workspaceId}/files/storage`,
+      }),
+      transformResponse: (response) => response?.data?.storage ?? null,
+      providesTags: (_result, _error, workspaceId) => [
+        { type: 'WorkspaceFileStorage', id: workspaceId },
+      ],
+    }),
     uploadWorkspaceFile: build.mutation({
       query: ({ workspaceId, file, category }) => ({
         url: `/workspaces/${workspaceId}/files`,
@@ -59,6 +68,7 @@ const workspaceFilesApi = baseApi.injectEndpoints({
       transformResponse: (response) => response?.data?.file ?? null,
       invalidatesTags: (_result, _error, { workspaceId }) => [
         { type: 'WorkspaceFiles', id: workspaceId },
+        { type: 'WorkspaceFileStorage', id: workspaceId },
       ],
     }),
     downloadWorkspaceFile: build.mutation({
@@ -77,7 +87,7 @@ const workspaceFilesApi = baseApi.injectEndpoints({
         responseHandler: 'text',
       }),
       // Le fichier quitte le listing actif et entre immédiatement dans la
-      // corbeille ; les deux caches représentent donc la même transition.
+      // corbeille ; le stockage reste volontairement inchangé jusqu'à la purge.
       invalidatesTags: (_result, _error, { workspaceId }) => [
         { type: 'WorkspaceFiles', id: workspaceId },
         { type: 'WorkspaceFileTrash', id: workspaceId },
@@ -89,8 +99,8 @@ const workspaceFilesApi = baseApi.injectEndpoints({
         method: 'POST',
       }),
       transformResponse: (response) => response?.data?.file ?? null,
-      // La restauration effectue la transition inverse : la ligne disparaît de
-      // la corbeille et redevient immédiatement visible dans les fichiers actifs.
+      // La restauration effectue la transition inverse sans réserver une
+      // seconde fois le stockage déjà comptabilisé pendant la rétention.
       invalidatesTags: (_result, _error, { workspaceId }) => [
         { type: 'WorkspaceFiles', id: workspaceId },
         { type: 'WorkspaceFileTrash', id: workspaceId },
@@ -102,6 +112,7 @@ const workspaceFilesApi = baseApi.injectEndpoints({
 export const {
   useDeleteWorkspaceFileMutation,
   useDownloadWorkspaceFileMutation,
+  useGetWorkspaceFileStorageQuery,
   useListWorkspaceFilesQuery,
   useListWorkspaceFileTrashQuery,
   useRestoreWorkspaceFileMutation,
