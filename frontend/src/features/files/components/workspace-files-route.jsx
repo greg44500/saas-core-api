@@ -1,4 +1,4 @@
-import { WorkspaceFilesPage } from '@/features/files/pages/workspace-files-page';
+import { WorkspaceFileManagementPage } from '@/features/files/pages/workspace-file-management-page';
 import { WorkspacePermissionGate } from '@/features/workspace/components/workspace-permission-gate';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
@@ -19,7 +19,7 @@ function WorkspaceFilesRoute() {
       fallback={<WorkspaceFilesAccessDenied />}
       permission={WORKSPACE_PERMISSION.FILE_READ}
     >
-      <WorkspaceFilesPage />
+      <WorkspaceFileManagementPage />
     </WorkspacePermissionGate>
   );
 }
