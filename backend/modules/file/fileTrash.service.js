@@ -90,12 +90,12 @@ const listWorkspaceTrashFiles = async ({
 };
 
 /**
- * Restaure un fichier supprimé tant que sa purge physique n'a pas commencé.
+ * Restaure un fichier supprimé tant que sa suppression physique n'a pas commencé.
  *
  * Le stockage reste comptabilisé pendant toute la rétention D-019. La
  * restauration ne réserve donc aucun quota supplémentaire et ne modifie jamais
  * UsageMetric. Le compare-and-set final protège la course avec le worker de
- * purge : un seul des deux peut gagner la transition DELETED.
+ * suppression définitive : un seul des deux peut gagner la transition DELETED.
  */
 const restoreWorkspaceFile = async ({
     workspaceId,
@@ -122,7 +122,8 @@ const restoreWorkspaceFile = async ({
 
     /*
      * Le même 404 couvre identifiant inexistant, autre workspace, fichier actif
-     * et fichier déjà purgé afin de ne révéler aucune ressource hors corbeille.
+     * et fichier déjà supprimé définitivement afin de ne révéler aucune
+     * ressource hors corbeille.
      */
     if (!candidate) {
         throw new AppError('Fichier introuvable dans la corbeille', 404);
@@ -134,7 +135,7 @@ const restoreWorkspaceFile = async ({
         || candidate.purgeClaimExpiresAt != null
     ) {
         throw new AppError(
-            'La restauration est impossible car la purge du fichier a commencé',
+            'La restauration est impossible car la suppression définitive du fichier a commencé',
             409,
         );
     }
