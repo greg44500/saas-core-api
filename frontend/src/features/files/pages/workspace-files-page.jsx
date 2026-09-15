@@ -32,7 +32,7 @@ function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
 }
 
-function WorkspaceFilesPage() {
+function WorkspaceFilesPage({ embedded = false }) {
   const { workspace, can, hasFeature } = useWorkspaceContext();
   const { toast } = useToast();
   const {
@@ -152,27 +152,36 @@ function WorkspaceFilesPage() {
     setPage(1);
   }
 
+  const uploadButton = canUpload ? (
+    <Button
+      onClick={() => setUploadDialogOpen(true)}
+      type="button"
+    >
+      <Upload aria-hidden="true" className="size-4" />
+      Ajouter un fichier
+    </Button>
+  ) : null;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-center gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Fichiers</h1>
-          <InfoTooltip
-            content={`Consultez, prévisualisez et téléchargez les fichiers actifs de ${workspace.name}.`}
-            label="À propos des fichiers"
-          />
+      {embedded ? (
+        uploadButton ? (
+          <div className="flex justify-end">
+            {uploadButton}
+          </div>
+        ) : null
+      ) : (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-semibold tracking-tight">Fichiers</h1>
+            <InfoTooltip
+              content={`Consultez, prévisualisez et téléchargez les fichiers actifs de ${workspace.name}.`}
+              label="À propos des fichiers"
+            />
+          </div>
+          {uploadButton}
         </div>
-
-        {canUpload && (
-          <Button
-            onClick={() => setUploadDialogOpen(true)}
-            type="button"
-          >
-            <Upload aria-hidden="true" className="size-4" />
-            Ajouter un fichier
-          </Button>
-        )}
-      </div>
+      )}
 
       <section className="rounded-xl border border-border bg-card">
         <div className="flex items-center justify-between gap-4 border-b border-border p-5">
