@@ -22,7 +22,7 @@ function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
 }
 
-function WorkspaceFileTrashPage({ embedded = false }) {
+function WorkspaceFileTrashPage({ embedded = false, hideSectionTitle = false }) {
   const { workspace, can } = useWorkspaceContext();
   const { toast } = useToast();
   const {
@@ -89,14 +89,16 @@ function WorkspaceFileTrashPage({ embedded = false }) {
       ) : null}
 
       <section className="rounded-xl border border-border bg-card">
-        <div className="border-b border-border p-5">
-          <h2 className="text-lg font-semibold">Fichiers supprimés</h2>
-          {!trashQuery.isLoading && !trashQuery.error && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {totalFiles} fichier{totalFiles === 1 ? '' : 's'} — purge automatique à l’échéance indiquée
-            </p>
-          )}
-        </div>
+        {!hideSectionTitle ? (
+          <div className="border-b border-border p-5">
+            <h2 className="text-lg font-semibold">Fichiers supprimés</h2>
+            {!trashQuery.isLoading && !trashQuery.error && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {totalFiles} fichier{totalFiles === 1 ? '' : 's'} — purge automatique à l’échéance indiquée
+              </p>
+            )}
+          </div>
+        ) : null}
 
         {trashQuery.isLoading ? (
           <DataTableSkeleton columns={6} rows={6} />
