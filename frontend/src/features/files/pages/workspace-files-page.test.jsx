@@ -236,6 +236,7 @@ describe('WorkspaceFilesPage', () => {
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText(/au maximum 30 jours/i)).toBeInTheDocument();
+    expect(screen.queryByText(/purge/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Retirer le fichier' }));
 
@@ -245,6 +246,8 @@ describe('WorkspaceFilesPage', () => {
     });
     const toast = await findToastByText('Fichier retiré');
     expect(toast).toHaveTextContent('contrat.pdf');
+    expect(toast).toHaveTextContent('suppression définitive');
+    expect(toast).not.toHaveTextContent(/purge/i);
   });
 
   it('conserve le dialogue ouvert et affiche le refus backend', async () => {
