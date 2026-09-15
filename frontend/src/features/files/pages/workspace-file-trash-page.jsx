@@ -9,8 +9,10 @@ import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { useToast } from '@/components/shared/toast-provider';
 import {
   useListWorkspaceFileTrashQuery,
+  usePermanentlyDeleteWorkspaceFileMutation,
   useRestoreWorkspaceFileMutation,
 } from '@/features/files/api/files-api';
+import { FilePermanentDeleteDialog } from '@/features/files/components/file-permanent-delete-dialog';
 import { FileTrashTable } from '@/features/files/components/file-trash-table';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
@@ -32,6 +34,8 @@ function WorkspaceFileTrashPage({ embedded = false, hideSectionTitle = false }) 
     setPageSize,
   } = useDataPagination({ initialPageSize: PAGE_SIZE });
   const [restoringFileId, setRestoringFileId] = useState(null);
+  const [filePendingPermanentDeletion, setFilePendingPermanentDeletion] = useState(null);
+  const [permanentDeleteError, setPermanentDeleteError] = useState(null);
 
   const trashQuery = useListWorkspaceFileTrashQuery({
     workspaceId: workspace.id,
@@ -39,11 +43,18 @@ function WorkspaceFileTrashPage({ embedded = false, hideSectionTitle = false }) 
     limit: pageSize,
   });
   const [restoreWorkspaceFile] = useRestoreWorkspaceFileMutation();
+  const [
+    permanentlyDeleteWorkspaceFile,
+    permanentDeleteState,
+  ] = usePermanentlyDeleteWorkspaceFileMutation();
 
   const files = trashQuery.data?.files ?? [];
   const pagination = trashQuery.data?.pagination;
   const totalFiles = pagination?.total ?? files.length;
   const canRestore = can(WORKSPACE_PERMISSION.FILE_RESTORE);
+  const canDeletePermanently = can(
+    WORKSPACE_PERMISSION.FILE_DELETE_PERMANENTLY,
+  );
 
   async function handleRestore(file) {
     setRestoringFileId(file.id);
@@ -76,13 +87,50 @@ function WorkspaceFileTrashPage({ embedded = false, hideSectionTitle = false }) 
     }
   }
 
+  function openPermanentDeleteDialog(file) {
+    setPermanentDeleteError(null);
+    setFilePendingPermanentDeletion(file);
+  }
+
+  function closePermanentDeleteDialog() {
+    if (permanentDeleteState.isLoading) return;
+    setPermanentDeleteError(null);
+    setFilePendingPermanentDeletion(null);
+  }
+
+  async function confirmPermanentDelete() {
+    if (!filePendingPermanentDeletion) return;
+
+    setPermanentDeleteError(null);
+
+    try {
+      await permanentlyDeleteWorkspaceFile({
+        workspaceId: workspace.id,
+        fileId: filePendingPermanentDeletion.id,
+      }).unwrap();
+
+      const deletedFileName = filePendingPermanentDeletion.originalName;
+      setFilePendingPermanentDeletion(null);
+      setPage(1);
+      toast({
+        title: 'Fichier supprimé définitivement',
+        description: `${deletedFileName} a été supprimé définitivement et son espace de stockage a été libéré.`,
+        variant: 'success',
+      });
+    } catch (error) {
+      setPermanentDeleteError(
+        getApiMessage(error, 'Le fichier n’a pas pu être supprimé définitivement.'),
+      );
+    }
+  }
+
   return (
     <div className="space-y-6">
       {!embedded ? (
         <div className="flex items-center gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Corbeille</h1>
           <InfoTooltip
-            content={`Consultez les fichiers supprimés de ${workspace.name} avant leur purge définitive.`}
+            content={`Consultez les fichiers supprimés de ${workspace.name} avant leur suppression définitive.`}
             label="À propos de la corbeille"
           />
         </div>
@@ -94,7 +142,7 @@ function WorkspaceFileTrashPage({ embedded = false, hideSectionTitle = false }) 
             <h2 className="text-lg font-semibold">Fichiers supprimés</h2>
             {!trashQuery.isLoading && !trashQuery.error && (
               <p className="mt-1 text-xs text-muted-foreground">
-                {totalFiles} fichier{totalFiles === 1 ? '' : 's'} — purge automatique à l’échéance indiquée
+                {totalFiles} fichier{totalFiles === 1 ? '' : 's'} — suppression définitive automatique à l’échéance indiquée
               </p>
             )}
           </div>
@@ -110,14 +158,17 @@ function WorkspaceFileTrashPage({ embedded = false, hideSectionTitle = false }) 
           />
         ) : files.length === 0 ? (
           <EmptyState
-            description="Les fichiers supprimés apparaîtront ici jusqu’à leur purge définitive."
+            description="Les fichiers supprimés apparaîtront ici jusqu’à leur suppression définitive."
             title="La corbeille est vide"
           />
         ) : (
           <>
             <FileTrashTable
+              canDeletePermanently={canDeletePermanently}
               canRestore={canRestore}
+              deletingFileId={filePendingPermanentDeletion?.id ?? null}
               files={files}
+              onDeletePermanently={openPermanentDeleteDialog}
               onRestore={handleRestore}
               restoringFileId={restoringFileId}
             />
@@ -136,6 +187,17 @@ function WorkspaceFileTrashPage({ embedded = false, hideSectionTitle = false }) 
           </>
         )}
       </section>
+
+      {canDeletePermanently ? (
+        <FilePermanentDeleteDialog
+          errorMessage={permanentDeleteError}
+          file={filePendingPermanentDeletion}
+          onCancel={closePermanentDeleteDialog}
+          onConfirm={confirmPermanentDelete}
+          open={Boolean(filePendingPermanentDeletion)}
+          pending={permanentDeleteState.isLoading}
+        />
+      ) : null}
     </div>
   );
 }
