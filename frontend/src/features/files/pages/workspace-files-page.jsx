@@ -164,13 +164,7 @@ function WorkspaceFilesPage({ embedded = false }) {
 
   return (
     <div className="space-y-6">
-      {embedded ? (
-        uploadButton ? (
-          <div className="flex justify-end">
-            {uploadButton}
-          </div>
-        ) : null
-      ) : (
+      {!embedded ? (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-1">
             <h1 className="text-2xl font-semibold tracking-tight">Fichiers</h1>
@@ -181,10 +175,10 @@ function WorkspaceFilesPage({ embedded = false }) {
           </div>
           {uploadButton}
         </div>
-      )}
+      ) : null}
 
       <section className="rounded-xl border border-border bg-card">
-        <div className="flex items-center justify-between gap-4 border-b border-border p-5">
+        <div className="flex flex-col gap-4 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold">Fichiers actifs</h2>
             {!filesQuery.isLoading && !hasLoadError && (
@@ -193,6 +187,7 @@ function WorkspaceFilesPage({ embedded = false }) {
               </p>
             )}
           </div>
+          {embedded ? uploadButton : null}
         </div>
 
         {filesQuery.isLoading ? (
