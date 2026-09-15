@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état réel du Core au **2026-09-15** après la fusion et la validation complète du lot Drawer / Sheet / panneaux latéraux basé sur Base UI.
+> Cette synthèse sert d’amorce autoritative de reprise pour la fin de stabilisation du Core avant versionnement puis dérivation métier.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
@@ -28,359 +28,80 @@ Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présent
 
 ---
 
-## 2. État Git de référence
+## 2. État Git au moment de cette synthèse
 
 ### `main`
 
-Branche de référence :
+HEAD vérifié avant fusion de FORM-2 :
 
 ```text
-main
+5cf9e9ea4237a987e06ac611000ef56574a365ef
+merge(forms): harmonize shared field architecture
 ```
 
-HEAD fonctionnel distant vérifié après fusion du lot Drawer / Sheet et avant la présente mise à jour documentaire :
+### Branche FORM-2
 
 ```text
-24eb5ae0c4d773fa370821746acef19fb2f9e31e
-merge(ui): migrate entity details drawers to Base UI Sheet
+feature/form-control-primitives-alignment
 ```
 
-Parents du merge :
+FORM-2 a été entièrement validé sur cette branche :
 
 ```text
-a77b6fc9e44af1b7b46e8b981fa19462cb54a8f6
-1ff5c4733e30c871ced18b329a95ae84901f69c9
+tests ciblés          → VERT
+frontend npm test     → VERT
+frontend npm run lint → VERT
+frontend npm run build→ VERT
+validation visuelle / clavier → CONFORME
 ```
 
-Le second parent correspond au HEAD fonctionnel Drawer / Sheet entièrement validé avant fusion.
+Le backend n’a pas été modifié par FORM-2 et n’a pas été rejoué spécifiquement pour ce lot.
 
-Ce `main` contient notamment :
+La fusion de FORM-2 dans `main` a été explicitement autorisée par l’utilisateur le 2026-09-15.
 
-- Design System / D-011 validé ;
-- Sidebar/navigation et Topbars existantes consolidées ;
-- DataTable partagé ;
-- DataPagination partagé ;
-- DLG-1 : primitive `components/ui/dialog.jsx` Base UI ;
-- `ConfirmationDialog` migré sur la primitive canonique ;
-- DLG-2 : `FileUploadDialog` migré sur Dialog Base UI ;
-- Select Base UI harmonisé ;
-- Toast Base UI canonique avec maintien de l’API applicative `useToast()` ;
-- Drawer / Sheet : `EntityDetailsDrawer` migré sur la primitive `components/ui/sheet.jsx` basée sur Base UI Dialog ;
-- UX pédagogique Platform/Workspace harmonisée via `InfoTooltip` ;
-- projection `featureAvailability` des fonctionnalités Workspace ;
-- statuts de souscription Platform alignés sur les tons sémantiques.
-
-### Branche de travail
-
-Le lot Drawer / Sheet est fusionné. Il n’existe plus de branche fonctionnelle active à considérer comme source de vérité supérieure à `main`.
-
-La branche historique :
-
-```text
-feature/sheet-entity-details-drawer-base-ui
-```
-
-peut rester temporairement présente jusqu’à nettoyage Git, mais elle ne doit plus servir de base à un nouveau chantier.
-
-Toute nouvelle conversation doit commencer par vérifier le HEAD réel de `main` avant toute conclusion ou création de branche.
+**Important pour toute nouvelle conversation :** vérifier le HEAD réel de `main` avant toute conclusion. Si FORM-2 a été fusionné après la génération de ce document, Git et le code priment sur les SHA ci-dessus.
 
 ---
 
-## 3. Validations réellement constatées
+## 3. Lots UI / Design System déjà stabilisés
 
-### 3.1 DLG-1 — VALIDÉ et fusionné
-
-Le lot Dialog DLG-1 a été validé localement par l’utilisateur puis fusionné dans `main`.
-
-Ne pas rouvrir DLG-1 sans régression concrète.
-
-### 3.2 Lot Select / UX — VALIDÉ et fusionné
-
-La primitive canonique est :
+Les lots suivants sont validés et déjà fusionnés dans `main` avant FORM-2 :
 
 ```text
-frontend/src/components/ui/select.jsx
-→ @base-ui/react/select
+D-011.A Design System Core
+D-011.B Préférences de confort
+D-011.C Préférences d’affichage métier
+DLG-1 Dialog / ConfirmationDialog Base UI
+Select Base UI / UX
+DLG-2 FileUploadDialog Base UI
+Toast Base UI
+Drawer / Sheet / EntityDetailsDrawer Base UI
+FORM-1 architecture partagée des champs
 ```
 
-Le wrapper partagé canonique est :
+FORM-2 est validé et autorisé à fusionner :
 
 ```text
-frontend/src/components/shared/select-field.jsx
+Input     → primitive native partagée conservée
+Textarea  → primitive native partagée conservée
+Checkbox  → primitive native partagée conservée
+Switch    → moteur migré vers @base-ui/react/switch
 ```
 
-L’ancien wrapper a été supprimé et ESLint interdit désormais les régressions principales :
+FORM-2 a également :
 
-```text
-<select> natif dans frontend/src
-import depuis @/components/forms/select-field
-```
+- harmonisé `data-slot` et états invalides des contrôles ;
+- ajouté les tests de contrat des quatre primitives ;
+- fait réutiliser `Input` par `DatePicker` et `DateTimePicker` ;
+- remplacé les contrôles HTML directs audités dans les formulaires Platform/Workspace par les primitives partagées ;
+- réaligné les acceptations d’invitations Workspace et Platform sur le contrat ARIA de FORM-1 ;
+- conservé volontairement le file input technique de `FileUploadDialog` comme contrôle natif spécifique.
 
-Les tests Base UI utilisent des interactions accessibles de type :
-
-```text
-combobox
-→ ouverture
-→ attente éventuelle du contenu portallé
-→ option
-→ assertion métier
-```
-
-Avant fusion, l’utilisateur a réellement exécuté et communiqué comme vertes les gates suivantes :
-
-```text
-frontend npm run lint   → VERT
-frontend npm test       → VERT
-frontend npm run build  → VERT
-backend npm run lint    → VERT
-backend npm test        → VERT
-```
-
-La validation manuelle/visuelle a également été déclarée conforme.
-
-### 3.3 DLG-2 — VALIDÉ et fusionné
-
-Migration réalisée :
-
-```text
-FileUploadDialog
-→ components/ui/dialog.jsx
-→ @base-ui/react/dialog
-```
-
-Base UI porte désormais pour cette modale :
-
-```text
-modalité
-focus initial
-boucle Tab / Shift+Tab
-Escape
-restauration du focus
-verrouillage du scroll
-portal / overlay
-```
-
-Le contrôle visible `Choisir un fichier` est un vrai bouton clavier déclenchant l’input fichier caché.
-
-L’utilisateur a réellement exécuté et communiqué comme vertes les gates DLG-2 :
-
-```text
-frontend npm run lint   → VERT
-frontend npm test       → VERT
-frontend npm run build  → VERT
-```
-
-Aucun fichier backend n’avait été modifié dans ce lot ; le backend n’a donc pas été relancé pour cette gate.
-
-La validation manuelle/clavier a été déclarée conforme : ouverture, focus initial, Tab / Shift+Tab, Escape, blocage de fermeture pendant upload, Select au-dessus de la modale et restauration du focus.
-
-DLG-2 a ensuite été fusionné dans `main`.
-
-### 3.4 Toast Base UI — VALIDÉ et fusionné
-
-Architecture canonique :
-
-```text
-features
-→ useToast()
-→ components/shared/toast-provider.jsx
-→ components/ui/toast.jsx
-→ @base-ui/react/toast
-```
-
-L’API applicative reste :
-
-```text
-toast({ title, description, variant, duration })
-dismissToast(id)
-```
-
-Contrat conservé :
-
-```text
-success
-error / destructive
-warning
-info
-```
-
-`error` est normalisé vers le type Base UI `destructive`.
-
-Comportements conservés : durée par défaut `5000 ms`, notification persistante pour `duration <= 0`, fermeture manuelle et programmatique, stack sans nouvelle limite produit implicite.
-
-Helper de test partagé :
-
-```text
-frontend/src/test/toast-assertions.js
-→ findToastByText(...)
-→ cible la surface applicative [data-slot="toast"]
-```
-
-Après correction globale par cause racine, l’utilisateur a réellement exécuté et communiqué comme vertes les gates finales :
-
-```text
-frontend npm test       → VERT — 760 tests
-frontend npm run lint   → VERT
-frontend npm run build  → VERT
-```
-
-Le backend n’a pas été relancé car le lot Toast n’a modifié aucun fichier backend.
-
-La validation manuelle/visuelle a également été déclarée conforme.
-
-HEAD fonctionnel Toast validé avant fusion :
-
-```text
-1170b3027558bd5ae07646bc45d9453e118ed5c8
-```
-
-Merge dans `main` :
-
-```text
-7058d368fcb362267c9f6c8fc0cdb8f9ffe40e83
-Merge branch 'feature/toast-base-ui-harmonization'
-```
-
-Ne pas rouvrir ce lot sans régression concrète.
-
-### 3.5 Drawer / Sheet / panneaux latéraux — VALIDÉ et fusionné
-
-Audit réalisé avant implémentation :
-
-- `frontend/src/components/ui/sheet.jsx` existait déjà et reposait sur `@base-ui/react/dialog` ;
-- `EntityDetailsDrawer` constituait un wrapper partagé légitime mais réimplémentait manuellement Portal, overlay, focus trap, Escape, verrouillage du scroll et restauration du focus ;
-- les wrappers métier `MemberDetailsDrawer`, `RoleFormDrawer` et `RolePermissionsDrawer` conservaient une responsabilité métier réelle et ne devaient pas être aplatis ;
-- la Sidebar a été explicitement maintenue hors périmètre.
-
-Architecture désormais canonique :
-
-```text
-features/*/components
-→ EntityDetailsDrawer
-→ components/ui/sheet.jsx
-→ @base-ui/react/dialog
-```
-
-Base UI porte désormais :
-
-```text
-Portal
-modalité
-focus initial
-boucle Tab / Shift+Tab
-Escape
-restauration du focus
-verrouillage du scroll
-fermeture via Close / backdrop
-sémantique dialog
-```
-
-Le contrat UI historique a été conservé :
-
-```text
-panneau sous la topbar : top-16
-largeur : w-full / max-w-xl
-transition : 300 ms
-backdrop sous la topbar
-contenu métier conservé pendant toute la transition de sortie
-```
-
-`EntityDetailsDrawer` conserve uniquement le cycle de présence nécessaire aux `300 ms` de fermeture. Il ne réimplémente plus Portal, focus trap, Escape ou restauration du focus.
-
-`components/ui/sheet.jsx` accepte un `overlayClassName` optionnel et transmet la présence contrôlée au Portal afin de permettre au wrapper partagé de préserver ce contrat de sortie sans introduire de comportement métier dans la primitive générique.
-
-Le bouton de fermeture compose `TooltipTrigger → SheetClose → Button` avec les primitives Base UI plutôt qu’un `onClick` modal custom.
-
-Les tests métier ont été découplés des anciennes classes internes `translate-x-0` / `translate-x-full`. Ils vérifient désormais le contrat applicatif : données retenues pendant la fermeture puis démontage final.
-
-La gate a également révélé un test `AuditLogFilters` déjà trop synchrone sur `main`. Le helper attend maintenant l’option portallée avec `findByRole` avant interaction.
-
-L’utilisateur a réellement exécuté et communiqué comme vertes les validations finales :
-
-```text
-tests ciblés Drawer / Select   → VERT
-frontend npm test              → VERT
-frontend npm run lint          → VERT
-frontend npm run build         → VERT
-validation visuelle/manuelle   → CONFORME
-```
-
-Le backend n’a pas été relancé : le lot n’a modifié aucun fichier backend.
-
-HEAD fonctionnel validé avant fusion :
-
-```text
-1ff5c4733e30c871ced18b329a95ae84901f69c9
-```
-
-Merge dans `main` :
-
-```text
-24eb5ae0c4d773fa370821746acef19fb2f9e31e
-merge(ui): migrate entity details drawers to Base UI Sheet
-```
-
-Ne pas rouvrir ce lot sans régression concrète.
-
-### 3.6 Warnings React Hooks connus — hors périmètre
-
-Les warnings `react-hooks/exhaustive-deps` déjà identifiés restent hors de ces migrations sauf régression concrète :
-
-```text
-platform-entitlement-override-form.jsx
-platform-retention-policy-form.jsx
-platform-role-form-drawer.jsx
-platform-roles-section.jsx
-workspace-ownership-section.jsx
-```
-
-Leur nettoyage ne doit pas être mélangé silencieusement à une autre migration UI.
+Aucune logique métier, validation Zod, mutation RTK Query, contrat API, RBAC ou Sidebar n’a été modifié par FORM-2.
 
 ---
 
-## 4. Méthode de correction des tests — règle à conserver
-
-Décision de travail confirmée pendant les migrations Base UI :
-
-```text
-plusieurs FAILS
-→ récupérer la sortie complète
-→ analyser toute la famille
-→ regrouper par cause racine
-→ corriger en un bloc cohérent
-→ relancer une gate globale
-```
-
-À éviter :
-
-```text
-FAIL 1 → patch isolé
-FAIL 2 → patch isolé
-FAIL 3 → patch isolé
-```
-
-Ne jamais annoncer une gate verte sans résultat réellement exécuté.
-
-Pour les composants Base UI portallés, ne pas supposer que le contenu du popup est disponible de façon synchrone immédiatement après le clic.
-
-Règle de test :
-
-```text
-interaction d’ouverture
-→ await findByRole(...) si contenu portallé
-→ interaction
-→ assertion métier
-```
-
-Les tests de features doivent viser le contrat applicatif stable et non les classes ou le DOM interne d’une primitive tierce.
-
-Une différence de comportement JSDOM/CSS ne doit pas conduire à supprimer un invariant produit réel : le lot Drawer a confirmé que la rétention du contenu pendant la fermeture faisait partie du contrat partagé et devait rester garantie par le composant.
-
----
-
-## 5. Architecture frontend à préserver
-
-Architecture de référence :
+## 4. Architecture frontend à préserver
 
 ```text
 Design tokens
@@ -391,206 +112,31 @@ Design tokens
 → pages = assemblage
 ```
 
-Principes obligatoires :
+Règles :
 
 - JavaScript uniquement ;
 - Tailwind CSS v4 CSS-first ;
-- shadcn/ui + Base UI pour les primitives génériques lorsque pertinent ;
-- composants partagés pour les comportements transversaux ;
-- composants feature pour le métier ;
-- pages sans logique métier lourde ;
+- shadcn/ui + Base UI lorsque la primitive interactive le justifie ;
+- HTML natif conservé lorsqu’il est déjà le meilleur contrat ;
+- composants réutilisables obligatoires ;
+- `DataTable` partagé pour les tableaux applicatifs ;
 - RTK Query pour l’état serveur ;
 - Redux Toolkit pour l’état global client ;
 - `useState` pour l’état local ;
-- composants réutilisables obligatoires ;
-- aucune primitive générique concurrente recréée localement sans justification.
+- aucune primitive générique concurrente sans justification ;
+- les pages assemblent, elles ne portent pas de logique métier lourde ;
+- validation stricte des données ;
+- informations pédagogiques secondaires via `InfoTooltip` ;
+- erreurs, blocages et conséquences sensibles restent visibles ;
+- accessibilité structurelle toujours active, indépendamment du profil renforcé.
 
-Le `DataTable` partagé reste l’abstraction unique pour les tableaux applicatifs génériques.
-
----
-
-## 6. Dialog / Sheet — primitives canoniques fusionnées
-
-### Dialog
-
-Architecture validée :
-
-```text
-features
-→ wrappers métier
-→ ConfirmationDialog / dialog métier
-→ components/ui/dialog.jsx
-→ @base-ui/react/dialog
-```
-
-DLG-1 a migré `ConfirmationDialog`.
-
-DLG-2 a migré `FileUploadDialog`.
-
-Les wrappers métier utilisant déjà `ConfirmationDialog` restent légitimes lorsqu’ils apportent une responsabilité réelle.
-
-### Sheet / Drawer
-
-Architecture validée :
-
-```text
-features
-→ wrappers métier Drawer
-→ EntityDetailsDrawer
-→ components/ui/sheet.jsx
-→ @base-ui/react/dialog
-```
-
-`EntityDetailsDrawer` ne dépend plus de `use-dialog-focus.js`.
-
-Le fichier `use-dialog-focus.js` ne doit toutefois pas être supprimé sans preuve qu’aucun autre consommateur ne subsiste. Faire un audit de consommateurs avant toute suppression.
-
-La Sidebar reste un chantier distinct : aucune réécriture de Sidebar ne doit être introduite implicitement dans un autre lot.
+Règle de test Base UI : les composants portallés peuvent nécessiter `findByRole` après l’interaction d’ouverture. Les tests métier doivent viser le contrat applicatif stable, pas le DOM interne d’une bibliothèque tierce.
 
 ---
 
-## 7. Toast — architecture canonique fusionnée
+## 5. État canonique des dettes Core
 
-Primitive générique :
-
-```text
-frontend/src/components/ui/toast.jsx
-```
-
-Adapter applicatif :
-
-```text
-frontend/src/components/shared/toast-provider.jsx
-```
-
-Helper de test partagé :
-
-```text
-frontend/src/test/toast-assertions.js
-```
-
-Règle : les features continuent d’appeler `useToast()` et ne doivent pas importer directement Base UI Toast.
-
-Les erreurs de validation de champs restent inline.
-
-Ne pas ajouter Sonner ou une seconde infrastructure de toast sans besoin produit démontré.
-
----
-
-## 8. UX des informations pédagogiques — règle transversale validée
-
-Règle à appliquer sur Platform comme dans les Workspaces :
-
-```text
-information secondaire / pédagogique
-→ InfoTooltip `(i)`
-
-conséquence importante d’une action
-→ reste visible
-
-information critique / erreur / blocage
-→ reste visible
-
-opération sensible / destructive
-→ explication visible obligatoire
-```
-
-`FormField` et `SelectField` savent porter une aide `info` via `InfoTooltip`, tandis que `hint` reste réservé aux consignes qui doivent rester visibles.
-
----
-
-## 9. Disponibilité temporelle des fonctionnalités d’un Workspace
-
-Le DTO utilisateur expose la projection assainie :
-
-```text
-featureAvailability
-```
-
-Formes principales :
-
-```text
-open_ended
-→ aucune extinction actuellement programmée
-→ affichage utilisateur : "Sans échéance"
-
-bounded
-→ fin de droit réellement programmée
-→ affichage utilisateur : "Jusqu’au <date> · <durée restante>"
-```
-
-La résolution est effectuée côté backend et tient compte notamment de la baseline, du trial, de la souscription active, de `cancelAtPeriodEnd`, des changements programmés et des overrides.
-
-Lorsque plusieurs mécanismes accordent la même fonctionnalité, l’horizon affiché correspond à la continuité réelle la plus longue.
-
-Le frontend ne reconstruit pas cette logique commercialement sensible.
-
-Les métadonnées internes des overrides restent masquées.
-
-Le contrat canonique `docs/contracts/COMMERCIAL.md` est aligné avec cette projection.
-
----
-
-## 10. Statuts de souscription Platform — contrat visuel
-
-Le tableau Platform des souscriptions utilise :
-
-```text
-PlatformSubscriptionStatusBadge
-→ StatusBadge partagé
-→ tokens sémantiques du Design System
-```
-
-Mapping actuel :
-
-```text
-active    → Actif                → success
-trialing  → Trial                → warning
-past_due  → Paiement en retard   → destructive
-canceled  → Annulé               → neutral / archive
-expired   → Expiré               → neutral / archive
-```
-
----
-
-## 11. Ownership transfer et D-023
-
-Le transfert de propriété reste une capacité exceptionnelle gouvernée.
-
-Mécanisme actuel :
-
-```text
-Super administrateur Platform
-→ permission réservée
-→ autorisation temporaire d’un workspace
-→ TTL serveur
-→ révocation possible
-
-owner courant
-→ workflow disponible uniquement si autorisation active
-→ cible + rôle de remplacement
-→ confirmation + mot de passe
-→ validation backend
-→ transfert transactionnel
-→ single-use
-→ audit
-```
-
-D-023 reste :
-
-```text
-Statut : DIFFÉRÉ
-Cible : Core 1.1
-Blocage Core 1.0 : non
-```
-
-Ne pas ajouter d’UI de demande de transfert côté owner avant D-023.
-
----
-
-## 12. Dettes et roadmap Core 1.0
-
-État canonique vérifié dans `docs/DEBT.md` :
+Selon `docs/DEBT.md` :
 
 ```text
 D-020  EN COURS
@@ -604,143 +150,347 @@ D-017  PLANIFIÉ
 D-023  DIFFÉRÉ — Core 1.1
 ```
 
-D-020 doit être clôturée ou explicitement reclassifiée avant D-015.
-
-Roadmap Core :
+Dettes non bloquantes pour Core 1.0 mais potentiellement bloquantes pour un produit réel :
 
 ```text
-D-020 → clôturer ou reclassifier
-D-015 → versionnement / provenance / releases / migrations
-D-016 → Playwright E2E Core
-D-002 → corbeille / restauration Files
-→ audit final architecture / sécurité / qualité
-D-017 → dérivation + upgrade pilote
+D-003 conformité / RGPD
+D-004 Billing / Payment
+D-005 observabilité
+D-006 rétention / anonymisation réglementaire
+D-007 stockage fichiers production
+D-012 E2E du produit dérivé
+D-013 configuration / déploiement production
+```
+
+Dettes conditionnelles / différées :
+
+```text
+D-008 notifications étendues
+D-009 API Keys / Webhooks
+D-010 authentification avancée / Google SSO
+D-023 demande gouvernée de transfert de propriété — Core 1.1
+```
+
+Google SSO ne bloque pas Core 1.0.
+
+---
+
+## 6. Point complet : ce qu’il reste AVANT le versionnement D-015
+
+Cette section distingue :
+
+```text
+blockers canoniques
++
+travaux de stabilisation que nous avons volontairement choisi de terminer avant de figer le Core
+```
+
+### 6.1 Finaliser et fusionner FORM-2
+
+FORM-2 est validé et autorisé à fusionner.
+
+Après merge/push :
+
+- vérifier le nouveau HEAD réel de `main` ;
+- ne pas supprimer immédiatement la branche tant que la reprise n’est pas confirmée ;
+- considérer FORM-2 comme clos sauf régression concrète.
+
+### 6.2 Terminer l’audit transversal UI avant gel d’architecture
+
+Ce chantier n’est pas listé comme dette bloquante autonome dans `DEBT.md`, mais il fait partie de notre objectif explicite de disposer d’un Core clonable, professionnel et maintenable avant versionnement.
+
+Familles restant à auditer :
+
+```text
+1. Dropdown menus
+2. Tooltip / Popover / Accordion / Tabs
+3. Badge / StatusBadge
+4. primitives HTML / React directes restantes
+5. Sidebar — revue dédiée d’alignement shadcn/ui
+```
+
+Règle : **audit avant migration**. Pour chaque famille :
+
+```text
+inventaire réel
+→ duplications
+→ clavier / focus / ARIA
+→ tokens / Design System
+→ API du composant
+→ responsabilité shared vs feature
+→ tests
+→ décision : conserver / harmoniser / migrer
+```
+
+Ne pas réécrire un composant fonctionnel uniquement parce qu’une primitive Base UI existe.
+
+### 6.3 Contrôler les reliquats techniques UI
+
+À vérifier explicitement pendant la fin de l’audit :
+
+- consommateurs résiduels éventuels de `use-dialog-focus.js` avant suppression ;
+- primitives HTML directes restantes réellement justifiées ;
+- warnings React Hooks connus, sans les mélanger silencieusement à un autre lot :
+
+```text
+platform-entitlement-override-form.jsx
+platform-retention-policy-form.jsx
+platform-role-form-drawer.jsx
+platform-roles-section.jsx
+workspace-ownership-section.jsx
+```
+
+Ces warnings doivent être requalifiés : corriger si dette réelle, documenter/différer si choix intentionnel.
+
+### 6.4 Clôturer D-020 — invitation commerciale
+
+D-020 reste le **seul blocker métier/documentaire explicitement EN COURS avant D-015**.
+
+Le contrat, la sécurité, le backend, le frontend et les tests sont déjà très avancés ; le critère de clôture restant déclaré dans `DEBT.md` est notamment la validation fonctionnelle manuelle finale.
+
+Avant D-015 :
+
+```text
+validation fonctionnelle D-020
+→ éventuels correctifs ciblés
+→ tests applicables
+→ mise à jour DEBT.md
+→ D-020 VALIDÉ ou reclassification explicite et justifiée
+```
+
+D-020 doit être clôturée ou explicitement reclassifiée avant l’ouverture de la release candidate D-015.
+
+### 6.5 Faire une gate globale pré-versionnement
+
+Après les derniers lots UI et D-020, exécuter une gate complète avant de commencer D-015 :
+
+```text
+backend npm run lint
+backend npm test
+frontend npm run lint
+frontend npm test
+frontend npm run build
+validation manuelle des parcours critiques touchés
+```
+
+Ne pas annoncer le Core stabilisé si une gate n’a pas été réellement exécutée.
+
+### 6.6 Revue globale pré-D-015
+
+Avant d’ouvrir D-015, faire un point explicite sur :
+
+- dettes actives réelles ;
+- documentation obsolète à supprimer ou archiver ;
+- contrats canoniques ;
+- README global du Core ;
+- scripts de setup/dev/test/migration ;
+- cohérence des `.env.example` et variables requises ;
+- migrations DB existantes et discipline future ;
+- séparation claire Core générique / futur métier ;
+- absence de secrets, données locales ou artefacts de développement dans le dépôt ;
+- structure des tests et commandes reproductibles ;
+- liste des éléments volontairement différés après Core 1.0.
+
+Cette revue doit produire une décision claire :
+
+```text
+PRÊT POUR D-015
+ou
+LISTE FERMÉE DES BLOQUANTS RESTANTS
+```
+
+---
+
+## 7. D-015 — versionnement du Core
+
+D-015 est la prochaine grande gate une fois la stabilisation précédente terminée.
+
+À finaliser avant `v1.0.0` :
+
+```text
+SemVer
+provenance Core
+stratégie tags / releases
+CHANGELOG / release notes
+contrats et changements de configuration
+migrations DB
+ordre pre-deploy / post-deploy
+reprise / rollback
+provenance machine-readable
+gate de release reproductible
+```
+
+D-015 ne signifie pas que le produit dérivé est prêt pour la production. Il stabilise la distribution et l’évolution du Core.
+
+---
+
+## 8. Ce qu’il reste APRÈS D-015 avant le premier vrai clone métier
+
+Le registre canonique impose encore des étapes avant la première dérivation réelle.
+
+### 8.1 D-016 — Playwright E2E Core
+
+**Bloquant Core 1.0.**
+
+Couvrir les parcours transversaux critiques :
+
+```text
+auth / session / refresh / logout
+lifecycle Account / Workspace
+isolation tenant
+RBAC
+subscription / entitlement / quota
+administration Platform
+Files
+principaux états interdits
+```
+
+### 8.2 D-002 — corbeille / restauration Files
+
+**Bloquant avant D-017 ET avant toute première dérivation métier.**
+
+À implémenter :
+
+- listing de corbeille ;
+- restauration sécurisée ;
+- permissions dédiées ;
+- isolation Workspace ;
+- restauration simple/multiple si pertinente ;
+- cohérence existence physique / purge ;
+- quotas ;
+- audit ;
+- UI `Ressources > Corbeille` avec `DataTable` partagé ;
+- tests sécurité/concurrence.
+
+Invariant : un fichier soft-deleted dont le contenu physique existe consomme toujours `storage_bytes`; une restauration avant purge ne réserve pas le stockage une seconde fois.
+
+### 8.3 Audit final Core
+
+Après D-015, D-016 et D-002, réaliser un audit final :
+
+```text
+architecture
+sécurité
+qualité
+contrats
+migrations
+documentation
+DX de clonage
+séparation Core / métier
+```
+
+### 8.4 D-017 — vraie validation de dérivation + upgrade
+
+D-017 ne consiste pas simplement à copier le dépôt.
+
+Exercice canonique :
+
+```text
+release candidate Core
+→ dépôt pilote dérivé
+→ petit module métier réel
+→ évolution Core compatible
+→ upgrade réel du dérivé
+→ migrations/configuration
+→ tests Core + métier + E2E
+→ analyse des conflits et de la provenance
+```
+
+Le premier clone métier doit donc devenir le **pilote de D-017** plutôt qu’un simple fork sans stratégie d’upgrade.
+
+---
+
+## 9. Séquence recommandée consolidée
+
+```text
+FORM-2 merge
+→ audit UI restant
+→ revue Sidebar dédiée
+→ requalification des reliquats techniques UI
+→ validation / clôture D-020
+→ gate globale pré-versionnement
+→ revue globale pré-D-015
+→ D-015 versionnement / provenance / releases / migrations
+→ D-016 Playwright E2E Core
+→ D-002 corbeille / restauration Files
+→ audit final Core
+→ D-017 clone pilote + premier module métier + test d’upgrade
 → tag Core stable
-
-post-Core 1.0 :
-D-023 → workflow gouverné de demande de transfert
 ```
 
-D-002 doit être `VALIDÉ` avant D-017 et avant toute première dérivation métier.
+Ne pas inverser D-002 et D-017 : `DEBT.md` rend D-002 bloquante avant toute première dérivation métier.
 
 ---
 
-## 13. Audit transversal UI — état et ordre de poursuite
+## 10. Préparation du futur SaaS métier
 
-Lots consolidés dans `main` :
-
-```text
-Design Tokens / D-011
-Sidebar / navigation existante
-Topbars
-DataTable
-DataPagination
-Dialog DLG-1 / ConfirmationDialog
-Dialog DLG-2 / FileUploadDialog
-Select Base UI
-Toast Base UI
-Drawer / Sheet / EntityDetailsDrawer Base UI
-```
-
-Ordre recommandé pour poursuivre l’audit UI :
+Avant de coder le métier dans le dérivé, cadrer séparément :
 
 ```text
-1. formulaires partagés
-2. Input / Textarea / Checkbox / Switch
-3. Dropdown menus
-4. Tooltip / Popover / Accordion / Tabs
-5. Badge / StatusBadge
-6. primitives HTML/React directes restantes
+périmètre fonctionnel
+personas et rôles métier
+workflows
+modèle de données métier
+permissions métier
+entitlements / plans
+composants réutilisables obligatoires
+routes / services / validations
+intégrations externes
+sécurité et données sensibles
+KPI / dashboards
+notifications
+fichiers
+rétention / conformité
+stratégie de tests
 ```
 
-Pour chaque famille : inventorier avant de coder, détecter les duplications, vérifier clavier/focus/ARIA, tokens, API, responsabilité du composant et testabilité, puis décider si une migration est réellement nécessaire.
+Le dérivé doit ajouter des modules métier sans casser les invariants du Core.
 
-### Sidebar
+Les pages métier assemblent des composants ; les appels serveur restent via RTK Query ; la logique métier backend reste dans les services ; validation Zod stricte ; audit, soft delete, rôles et permissions sont réutilisés lorsque pertinents.
 
-La Sidebar existante est fonctionnelle mais doit faire l’objet d’une revue dédiée d’alignement avec shadcn/ui avant de considérer son architecture définitivement stabilisée.
-
-Ne pas lancer une réécriture de Sidebar implicitement dans un autre lot UI. Auditer d’abord l’existant et proposer une décision explicite avant toute implémentation.
+Les sujets production spécifiques du dérivé devront ensuite traiter D-003 à D-007, D-012 et D-013 selon le produit réel.
 
 ---
 
-## 14. Chantiers à garder séparés
+## 11. Prochaine conversation — première action obligatoire
 
-Ne pas mélanger au chantier UI :
+La prochaine conversation ne doit pas démarrer directement par un nouveau lot de code.
+
+Commencer par :
 
 ```text
-D-023 workflow ownership Core 1.1
-gouvernance juridique de conservation des données
-reset reproductible de la base de développement
-validation négative finale / clôture D-020
-D-015 versionnement / provenance / releases
-D-016 Playwright E2E Core
-D-002 corbeille / restauration Files
-D-017 dérivation + upgrade pilote
-nettoyage des warnings React Hooks connus
+1. vérifier la branche active et le HEAD réel de main ;
+2. confirmer que FORM-2 est bien fusionné ;
+3. lire docs/REPRISE-CURRENT.md ;
+4. lire docs/DEBT.md et vérifier D-020 / D-015 / D-016 / D-002 / D-017 ;
+5. inspecter l’état réel du dépôt ;
+6. faire un point exhaustif de tout ce qui reste avant D-015 ;
+7. classer chaque élément : BLOQUANT / À TERMINER AVANT GEL / DIFFÉRABLE ;
+8. proposer l’ordre final de travail avant versionnement ;
+9. ne modifier aucun fichier avant validation de ce plan.
 ```
+
+Le premier audit UI restant connu est `Dropdown menus`, mais il ne doit être lancé qu’après le point global pré-versionnement demandé ci-dessus.
 
 ---
 
-## 15. Règles de travail à conserver
+## 12. Règles de travail à conserver
 
 - vérifier branche et HEAD avant modification ;
-- toujours repartir de `main` pour un nouveau lot, sauf décision explicite contraire ;
+- toujours repartir de `main` pour un nouveau lot sauf décision explicite contraire ;
 - code + DB + tests réellement exécutés priment sur la synthèse ;
-- JavaScript uniquement ;
-- validation stricte des données ;
-- composants réutilisables obligatoires ;
-- DataTable partagé obligatoire pour les tableaux applicatifs ;
-- shadcn/ui/Base UI comme primitives génériques lorsque pertinent ;
-- wrappers applicatifs conservés lorsqu’ils apportent une responsabilité réelle ;
-- aucune primitive concurrente sans justification ;
+- aucun merge implicite ;
 - aucun changement hors périmètre ;
-- expliquer avant d’implémenter ;
-- plusieurs FAILS d’une même famille = analyse globale + correction en bloc ;
+- JavaScript uniquement ;
+- validation stricte ;
+- composants réutilisables obligatoires ;
+- audit avant migration ;
+- plusieurs FAILS d’une même famille = analyse globale + correction par cause racine ;
 - gate globale après un bloc transversal ;
-- ne jamais annoncer une gate verte sans résultat réellement exécuté ;
-- une information pédagogique secondaire va dans un `InfoTooltip`, pas une information critique ;
-- ne pas adapter le code de production uniquement pour satisfaire un test dépendant du DOM interne d’une primitive tierce ;
-- ne pas supprimer un hook ou composant partagé sans audit de ses consommateurs.
+- ne jamais annoncer une gate verte sans exécution réelle ;
+- ne jamais supprimer un hook/composant partagé sans audit de consommateurs ;
+- ne pas confondre Core 1.0 stabilisé et produit dérivé production-ready.
 
 ---
 
-## 16. Prochaine action exacte
-
-Les lots suivants sont maintenant fusionnés et validés :
-
-```text
-DLG-1
-Select Base UI / UX
-DLG-2
-Toast Base UI
-Drawer / Sheet / panneaux latéraux
-```
-
-Le prochain lot UI recommandé est :
-
-```text
-formulaires partagés
-```
-
-Avant tout code :
-
-```text
-1. vérifier le HEAD réel de main ;
-2. lire docs/REPRISE-CURRENT.md ;
-3. vérifier l’état canonique utile dans docs/DEBT.md ;
-4. inventorier les formulaires partagés et wrappers de champs existants ;
-5. distinguer les primitives UI génériques des composants de formulaire partagés et des formulaires métier ;
-6. rechercher les duplications réelles avant toute migration ;
-7. vérifier validation, erreurs inline, aide pédagogique, accessibilité et testabilité ;
-8. identifier les primitives shadcn/Base UI déjà disponibles ;
-9. proposer un périmètre précis et un plan de migration ;
-10. ne modifier aucun fichier avant validation du périmètre.
-```
-
-Avant suppression éventuelle de `use-dialog-focus.js`, vérifier explicitement tous ses consommateurs réels.
-
-En parallèle, la roadmap Core métier reste gouvernée par `docs/DEBT.md` et notamment par la nécessité de clôturer ou reclassifier D-020 avant D-015.
-
-Ne pas fusionner implicitement une future branche.
-
-Le présent fichier est une synthèse de reprise et non une source supérieure au code, aux tests ou aux contrats canoniques.
+Le présent fichier est une synthèse de reprise. Il ne remplace ni Git, ni le code, ni les tests, ni les contrats canoniques, ni `docs/DEBT.md`.

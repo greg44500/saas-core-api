@@ -2,6 +2,7 @@ import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -377,11 +378,11 @@ function DatePicker({
       ref={rootRef}
     >
       <div className="relative">
-        <input
+        <Input
           aria-describedby={inputDescribedBy}
           aria-invalid={inputInvalid}
           aria-label={ariaLabel}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="pr-10"
           disabled={disabled}
           id={rootId}
           inputMode="numeric"

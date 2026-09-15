@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { EntityDetailsDrawer } from '@/components/shared/entity-details-drawer';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   CORE_PERMISSION_LABELS,
   DOMAIN_LABELS,
@@ -110,8 +112,7 @@ function RoleFormDrawer({ actorPermissions, mode, onClose, onSubmit, open, pendi
           <label className="text-sm font-medium" htmlFor="role-description">
             Description
           </label>
-          <textarea
-            className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <Textarea
             id="role-description"
             maxLength={500}
             onChange={(event) => setDescription(event.target.value)}
@@ -134,11 +135,10 @@ function RoleFormDrawer({ actorPermissions, mode, onClose, onSubmit, open, pendi
                     className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 text-sm"
                     key={permission}
                   >
-                    <input
+                    <Checkbox
                       checked={selectedPermissions.includes(permission)}
                       className="mt-1"
                       onChange={() => togglePermission(permission)}
-                      type="checkbox"
                     />
                     <span>
                       <span className="block font-medium">

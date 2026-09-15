@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { InfoTooltip } from '@/components/shared/info-tooltip';
 import { SelectField } from '@/components/shared/select-field';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { PlatformPlanCapabilitiesEditor } from '@/features/platform/components/platform-plan-capabilities-editor';
 import { buildPlatformCapabilityGroups } from '@/features/platform/lib/platform-capability-groups';
 import { isByteMetric } from '@/features/platform/lib/platform-plan-limit-utils';
@@ -207,12 +210,22 @@ function PlatformPlanForm({
 
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="platform-plan-name">Nom</label>
-          <input className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id="platform-plan-name" maxLength={120} onChange={(event) => setName(event.target.value)} value={name} />
+          <Input
+            id="platform-plan-name"
+            maxLength={120}
+            onChange={(event) => setName(event.target.value)}
+            value={name}
+          />
         </div>
 
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="platform-plan-description">Description</label>
-          <textarea className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" id="platform-plan-description" maxLength={1000} onChange={(event) => setDescription(event.target.value)} value={description} />
+          <Textarea
+            id="platform-plan-description"
+            maxLength={1000}
+            onChange={(event) => setDescription(event.target.value)}
+            value={description}
+          />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -226,12 +239,21 @@ function PlatformPlanForm({
           />
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="platform-plan-order">Ordre d’affichage</label>
-            <input className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id="platform-plan-order" min="0" onChange={(event) => setDisplayOrder(event.target.value)} type="number" value={displayOrder} />
+            <Input
+              id="platform-plan-order"
+              min="0"
+              onChange={(event) => setDisplayOrder(event.target.value)}
+              type="number"
+              value={displayOrder}
+            />
           </div>
         </div>
 
         <label className="flex items-center gap-2 text-sm font-medium">
-          <input checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} type="checkbox" />
+          <Checkbox
+            checked={isPublic}
+            onChange={(event) => setIsPublic(event.target.checked)}
+          />
           Visible dans le catalogue public
         </label>
       </section>
@@ -241,27 +263,52 @@ function PlatformPlanForm({
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="platform-plan-currency">Devise</label>
-            <input className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm uppercase" id="platform-plan-currency" maxLength={3} onChange={(event) => setCurrency(event.target.value)} value={currency} />
+            <Input
+              className="uppercase"
+              id="platform-plan-currency"
+              maxLength={3}
+              onChange={(event) => setCurrency(event.target.value)}
+              value={currency}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="platform-plan-monthly-price">Prix mensuel HT</label>
-            <input className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id="platform-plan-monthly-price" inputMode="decimal" onChange={(event) => setMonthlyPrice(event.target.value)} value={monthlyPrice} />
+            <Input
+              id="platform-plan-monthly-price"
+              inputMode="decimal"
+              onChange={(event) => setMonthlyPrice(event.target.value)}
+              value={monthlyPrice}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="platform-plan-yearly-price">Prix annuel HT</label>
-            <input className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id="platform-plan-yearly-price" inputMode="decimal" onChange={(event) => setYearlyPrice(event.target.value)} value={yearlyPrice} />
+            <Input
+              id="platform-plan-yearly-price"
+              inputMode="decimal"
+              onChange={(event) => setYearlyPrice(event.target.value)}
+              value={yearlyPrice}
+            />
           </div>
         </div>
 
         <label className="flex items-center gap-2 text-sm font-medium">
-          <input checked={trialEnabled} onChange={(event) => setTrialEnabled(event.target.checked)} type="checkbox" />
+          <Checkbox
+            checked={trialEnabled}
+            onChange={(event) => setTrialEnabled(event.target.checked)}
+          />
           Trial disponible
         </label>
 
         {trialEnabled && (
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="platform-plan-trial-duration">Durée du trial en jours</label>
-            <input className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id="platform-plan-trial-duration" min="1" onChange={(event) => setTrialDurationDays(event.target.value)} type="number" value={trialDurationDays} />
+            <Input
+              id="platform-plan-trial-duration"
+              min="1"
+              onChange={(event) => setTrialDurationDays(event.target.value)}
+              type="number"
+              value={trialDurationDays}
+            />
           </div>
         )}
       </section>

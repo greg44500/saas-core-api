@@ -246,8 +246,6 @@ function AcceptWorkspaceInvitationPage() {
               <Input
                 id="workspaceInvitationFirstName"
                 autoComplete="given-name"
-                aria-invalid={Boolean(errors.firstName) || undefined}
-                aria-describedby={errors.firstName ? 'workspaceInvitationFirstName-message' : undefined}
                 {...register('firstName')}
               />
             </FormField>
@@ -255,8 +253,6 @@ function AcceptWorkspaceInvitationPage() {
               <Input
                 id="workspaceInvitationLastName"
                 autoComplete="family-name"
-                aria-invalid={Boolean(errors.lastName) || undefined}
-                aria-describedby={errors.lastName ? 'workspaceInvitationLastName-message' : undefined}
                 {...register('lastName')}
               />
             </FormField>
@@ -265,10 +261,10 @@ function AcceptWorkspaceInvitationPage() {
           <FormField id="workspaceInvitationPassword" label="Mot de passe" error={errors.password?.message}>
             <div className="space-y-2">
               <PasswordField
+                aria-describedby={errors.password ? 'workspaceInvitationPassword-message' : undefined}
+                aria-invalid={Boolean(errors.password) || undefined}
                 id="workspaceInvitationPassword"
                 autoComplete="new-password"
-                invalid={Boolean(errors.password)}
-                describedBy={errors.password ? 'workspaceInvitationPassword-message' : undefined}
                 {...register('password')}
               />
               <PasswordPolicyFeedback password={password} policy={passwordPolicy} />
@@ -279,8 +275,6 @@ function AcceptWorkspaceInvitationPage() {
             <PasswordField
               id="workspaceInvitationConfirmPassword"
               autoComplete="new-password"
-              invalid={Boolean(errors.confirmPassword)}
-              describedBy={errors.confirmPassword ? 'workspaceInvitationConfirmPassword-message' : undefined}
               {...register('confirmPassword')}
             />
           </FormField>
@@ -288,6 +282,7 @@ function AcceptWorkspaceInvitationPage() {
           <div className="space-y-2">
             <label className="flex items-start gap-3 text-sm" htmlFor="workspaceInvitationLegalAccepted">
               <Checkbox
+                aria-describedby={errors.legalAccepted ? 'workspaceInvitationLegalAccepted-message' : undefined}
                 aria-invalid={Boolean(errors.legalAccepted) || undefined}
                 id="workspaceInvitationLegalAccepted"
                 {...register('legalAccepted')}
