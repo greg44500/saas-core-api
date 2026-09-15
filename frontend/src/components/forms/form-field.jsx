@@ -16,6 +16,13 @@ function mergeAriaIds(...values) {
   return [...new Set(ids)].join(' ') || undefined;
 }
 
+/**
+ * Compose le contrat de champ applicatif autour d'un contrôle direct.
+ *
+ * L'injection ARIA cible volontairement uniquement l'enfant React direct : un
+ * composant composite qui enveloppe plusieurs contrôles reste responsable de
+ * relayer lui-même l'erreur vers le contrôle réellement interactif.
+ */
 function FormField({ className, id, label, error, hint, info, children }) {
   const messageId = `${id}-message`;
   const hasMessage = Boolean(error || hint);
