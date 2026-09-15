@@ -12,6 +12,9 @@ import {
     openWorkspaceFileDownload,
 } from './fileRead.service.js';
 import {
+    getWorkspaceFileStorageUsage,
+} from './fileStorage.service.js';
+import {
     listWorkspaceTrashFiles,
     restoreWorkspaceFile,
 } from './fileTrash.service.js';
@@ -109,6 +112,17 @@ const listTrash = async (request, response) => {
     });
 };
 
+const getStorageUsage = async (request, response) => {
+    const storage = await getWorkspaceFileStorageUsage({
+        workspaceId: request.workspace._id,
+    });
+
+    response.status(200).json({
+        status: 'success',
+        data: { storage },
+    });
+};
+
 const getById = async (request, response) => {
     const file = await getWorkspaceFile({
         workspaceId: request.workspace._id,
@@ -177,6 +191,7 @@ const restore = async (request, response) => {
 export {
     download,
     getById,
+    getStorageUsage,
     list,
     listTrash,
     remove,
