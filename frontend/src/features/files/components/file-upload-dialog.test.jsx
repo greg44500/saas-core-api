@@ -83,13 +83,17 @@ describe('FileUploadDialog', () => {
       { isLoading: true },
     ]);
 
-    const { container } = renderDialog({ onClose });
+    renderDialog({ onClose });
 
     expect(screen.getByRole('button', { name: 'Annuler' })).toBeDisabled();
     expect(
       screen.getByRole('button', { name: 'Vérification et enregistrement…' }),
     ).toBeDisabled();
-    expect(container.querySelector('[data-slot="spinner"]')).toBeInTheDocument();
+
+    // Dialog et ses descendants sont rendus dans un Portal Base UI attaché au
+    // document. Le spinner doit donc être recherché au niveau du document et
+    // non dans le container React retourné par render().
+    expect(document.querySelector('[data-slot="spinner"]')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent(
       'Le serveur vérifie le fichier avant de l’ajouter au workspace.',
     );
@@ -128,7 +132,10 @@ describe('FileUploadDialog', () => {
 
     await user.upload(screen.getByLabelText('Fichier'), file);
     await user.click(screen.getByRole('combobox', { name: 'Catégorie' }));
-    await user.click(screen.getByRole('option', { name: 'Document' }));
+
+    // Les options du Select Base UI sont rendues dans un Portal et leur montage
+    // est asynchrone. findByRole attend donc le vrai état ouvert du listbox.
+    await user.click(await screen.findByRole('option', { name: 'Document' }));
     await user.click(screen.getByRole('button', { name: 'Téléverser' }));
 
     expect(mocks.uploadWorkspaceFile).toHaveBeenCalledWith({
