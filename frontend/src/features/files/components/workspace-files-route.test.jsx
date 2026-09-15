@@ -1,8 +1,8 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/features/files/pages/workspace-files-page', () => ({
-  WorkspaceFilesPage: () => <div>Files page allowed</div>,
+vi.mock('@/features/files/pages/workspace-file-management-page', () => ({
+  WorkspaceFileManagementPage: () => <div>Files page allowed</div>,
 }));
 
 import { WorkspaceFilesRoute } from '@/features/files/components/workspace-files-route';
