@@ -29,6 +29,9 @@ describe('StorageUsageCard', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Stockage' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'À propos du stockage' })).toBeInTheDocument();
+    expect(screen.queryByText('Capacité réellement consommée par les fichiers du workspace.'))
+      .not.toBeInTheDocument();
     expect(screen.getByText(/68 Mo/)).toBeInTheDocument();
     expect(screen.getByText(/sur 100 Mo/)).toBeInTheDocument();
     expect(screen.getByText('32 Mo disponibles')).toBeInTheDocument();
