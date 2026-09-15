@@ -132,6 +132,7 @@ vi.mock('../../modules/file/file.controller.js', () => ({
     getById: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
     download: vi.fn((req, res) => res.status(200).end()),
     remove: vi.fn((req, res) => res.status(204).send()),
+    removePermanently: vi.fn((req, res) => res.status(204).send()),
     restore: vi.fn((req, res) => res.status(200).json({ status: 'success' })),
 }));
 
