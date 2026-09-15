@@ -300,7 +300,7 @@ L’utilisateur a réellement exécuté et communiqué comme vertes les validati
 ```text
 tests ciblés Drawer / Select   → VERT
 frontend npm test              → VERT
-afrontend npm run lint         → VERT
+frontend npm run lint          → VERT
 frontend npm run build         → VERT
 validation visuelle/manuelle   → CONFORME
 ```
