@@ -20,7 +20,8 @@ const metadata = {
 
 async function chooseOption(user, label, optionName) {
   await user.click(screen.getByRole('combobox', { name: label }));
-  await user.click(screen.getByRole('option', { name: optionName }));
+  const option = await screen.findByRole('option', { name: optionName });
+  await user.click(option);
 }
 
 describe('AuditLogFilters', () => {
