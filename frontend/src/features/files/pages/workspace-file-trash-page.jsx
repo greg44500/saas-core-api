@@ -22,7 +22,7 @@ function getApiMessage(error, fallback) {
   return error?.data?.message ?? fallback;
 }
 
-function WorkspaceFileTrashPage() {
+function WorkspaceFileTrashPage({ embedded = false }) {
   const { workspace, can } = useWorkspaceContext();
   const { toast } = useToast();
   const {
@@ -78,13 +78,15 @@ function WorkspaceFileTrashPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Corbeille</h1>
-        <InfoTooltip
-          content={`Consultez les fichiers supprimés de ${workspace.name} avant leur purge définitive.`}
-          label="À propos de la corbeille"
-        />
-      </div>
+      {!embedded ? (
+        <div className="flex items-center gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Corbeille</h1>
+          <InfoTooltip
+            content={`Consultez les fichiers supprimés de ${workspace.name} avant leur purge définitive.`}
+            label="À propos de la corbeille"
+          />
+        </div>
+      ) : null}
 
       <section className="rounded-xl border border-border bg-card">
         <div className="border-b border-border p-5">
