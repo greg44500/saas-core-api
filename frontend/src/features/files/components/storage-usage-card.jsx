@@ -58,8 +58,6 @@ function resolveStoragePresentation(storage) {
 }
 
 function StorageUsageCard({
-  activeCount = null,
-  deletedCount = null,
   isError = false,
   isLoading = false,
   onRetry,
@@ -90,7 +88,7 @@ function StorageUsageCard({
             <span className="sr-only">Chargement de l’utilisation du stockage…</span>
             <Skeleton className="h-8 w-56" />
             <Skeleton className="h-2.5 w-full rounded-full" />
-            <Skeleton className="h-5 w-72" />
+            <Skeleton className="h-5 w-40" />
           </div>
         ) : isError ? (
           <div className="flex flex-col items-start gap-3" role="alert">
@@ -135,27 +133,9 @@ function StorageUsageCard({
               />
             ) : null}
 
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-              {!storage.unlimited ? (
-                <span>
-                  {formatFileSize(storage.remainingBytes)} disponibles
-                </span>
-              ) : null}
-              {activeCount !== null ? (
-                <span>
-                  {activeCount} fichier{activeCount === 1 ? '' : 's'} actif{activeCount === 1 ? '' : 's'}
-                </span>
-              ) : null}
-              {deletedCount !== null ? (
-                <span>
-                  {deletedCount} fichier{deletedCount === 1 ? '' : 's'} dans la corbeille
-                </span>
-              ) : null}
-            </div>
-
-            {deletedCount !== null ? (
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Les fichiers placés dans la corbeille continuent d’occuper leur espace jusqu’à leur suppression définitive.
+            {!storage.unlimited ? (
+              <p className="text-sm text-muted-foreground">
+                {formatFileSize(storage.remainingBytes)} disponibles
               </p>
             ) : null}
           </div>
