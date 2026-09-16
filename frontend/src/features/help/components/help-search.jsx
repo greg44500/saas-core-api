@@ -85,3 +85,5 @@ function HelpSearch({ entries, onSelect }) {
     </Autocomplete>
   );
 }
+
+export { HelpSearch };
