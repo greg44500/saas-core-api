@@ -27,15 +27,19 @@ function WorkspaceTopbar({ sidebarTrigger = null, workspace }) {
           <WorkspaceSwitcher currentWorkspace={workspace} />
         </div>
         <div className="ml-auto flex min-w-0 items-center gap-3">
-          <HelpCenterLink to={`/workspaces/${workspace.id}/help`} />
           <ExpandableSearch
             ariaLabel="Recherche globale"
             placeholder="Rechercher…"
           />
           <WorkspaceUserIdentity
-            actions={isDashboard ? (
-              <WorkspaceDashboardDisplayPreferences triggerVariant="icon" />
-            ) : null}
+            actions={(
+              <>
+                <HelpCenterLink to={`/workspaces/${workspace.id}/help`} />
+                {isDashboard ? (
+                  <WorkspaceDashboardDisplayPreferences triggerVariant="icon" />
+                ) : null}
+              </>
+            )}
             planName={planName}
           />
         </div>
