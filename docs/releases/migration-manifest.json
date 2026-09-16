@@ -71,7 +71,7 @@
       "id": "file-trash-permissions",
       "script": "migration:file-trash-permissions",
       "runner": "backend/migrations/runAddFileTrashPermissionsToSystemRolesMigration.js",
-      "dependsOn": ["file-read-permission", "file-delete-permission"]
+      "dependsOn": []
     },
     {
       "id": "file-storage-usage-reconcile",
