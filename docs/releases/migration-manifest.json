@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "id": "subscription-kind",
+      "script": "migration:subscription-kind",
+      "runner": "backend/migrations/runAddSubscriptionKindMigration.js",
+      "dependsOn": []
+    },
+    {
+      "id": "subscription-term-type",
+      "script": "migration:subscription-term-type",
+      "runner": "backend/migrations/runAddSubscriptionTermTypeMigration.js",
+      "dependsOn": ["subscription-kind"]
+    },
+    {
+      "id": "subscription-lifecycle-indexes",
+      "script": "migration:subscription-lifecycle-indexes",
+      "runner": "backend/migrations/runAddSubscriptionLifecycleIndexesMigration.js",
+      "dependsOn": []
+    },
+    {
+      "id": "operational-indexes",
+      "script": "migration:operational-indexes",
+      "runner": "backend/migrations/runHardenOperationalIndexesMigration.js",
+      "dependsOn": []
+    },
+    {
+      "id": "subscription-read-permission",
+      "script": "migration:subscription-read-permission",
+      "runner": "backend/migrations/runAddSubscriptionReadPermissionToSystemRolesMigration.js",
+      "dependsOn": []
+    },
+    {
+      "id": "audit-read-permission",
+      "script": "migration:audit-read-permission",
+      "runner": "backend/migrations/runAddAuditReadPermissionToSystemRolesMigration.js",
+      "dependsOn": []
+    },
+    {
+      "id": "workspace-member-usage",
+      "script": "migration:workspace-member-usage",
+      "runner": "backend/migrations/runBackfillWorkspaceMemberUsageMetricMigration.js",
+      "dependsOn": []
+    },
+    {
+      "id": "workspace-member-usage-reconcile",
+      "script": "migration:workspace-member-usage-reconcile",
+      "runner": "backend/migrations/runReconcileWorkspaceMemberUsageMetricMigration.js",
+      "dependsOn": ["workspace-member-usage"]
+    },
+    {
+      "id": "member-invite-permission",
+      "script": "migration:member-invite-permission",
+      "runner": "backend/migrations/runAddMemberInvitePermissionToSystemRolesMigration.js",
+      "dependsOn": []
+    },
+    {
+      "id": "file-read-permission",
+      "script": "migration:file-read-permission",
+      "runner": "backend/migrations/runAddFileReadPermissionToSystemRolesMigration.js",
+      "dependsOn": []
+    },
+    {
+      "id": "file-delete-permission",
+      "script": "migration:file-delete-permission",
+      "runner": "backend/migrations/runAddFileDeletePermissionToSystemRolesMigration.js",
+      "dependsOn": []
+    },
+    {
+      "id": "file-trash-permissions",
+      "script": "migration:file-trash-permissions",
+      "runner": "backend/migrations/runAddFileTrashPermissionsToSystemRolesMigration.js",
+      "dependsOn": ["file-read-permission", "file-delete-permission"]
+    },
+    {
+      "id": "file-storage-usage-reconcile",
+      "script": "migration:file-storage-usage-reconcile",
+      "runner": "backend/migrations/runReconcileDeletedFileStorageUsageMigration.js",
+      "dependsOn": []
+    },
+    {
+      "id": "workspace-ownership-transfer-permission",
+      "script": "migration:workspace-ownership-transfer-permission",
+      "runner": "backend/migrations/runAddWorkspaceOwnershipTransferPermissionToOwnerRolesMigration.js",
+      "dependsOn": []
+    },
+    {
+      "id": "baseline-plan-system-role",
+      "script": "migration:baseline-plan-system-role",
+      "runner": "backend/migrations/runBackfillBaselinePlanSystemRoleMigration.js",
+      "dependsOn": []
+    },
+    {
+      "id": "baseline-remove-file-upload",
+      "script": "migration:baseline-remove-file-upload",
+      "runner": "backend/migrations/runRemoveFileUploadFromBaselinePlanMigration.js",
+      "dependsOn": ["baseline-plan-system-role"]
+    }
+  ]
+}
