@@ -72,6 +72,14 @@ vi.mock('../../modules/help/help.service.js', () => ({
     },
 }));
 
+/*
+ * validateRequest(...) est exécuté au montage du routeur, pas à chaque requête.
+ * On capture donc la configuration déclarée avant de nettoyer les mocks runtime.
+ */
+const registeredParamSchemas = validateRequest.mock.calls
+    .map(([configuration]) => configuration.params)
+    .filter(Boolean);
+
 beforeEach(() => {
     vi.clearAllMocks();
 });
@@ -90,9 +98,9 @@ describe('help.routes', () => {
 
         expect(response.status).toBe(200);
         expect(authenticate).toHaveBeenCalledOnce();
-        expect(validateRequest).toHaveBeenCalledWith({
-            params: workspaceHelpParamsSchema,
-        });
+        expect(registeredParamSchemas).toContain(
+            workspaceHelpParamsSchema,
+        );
         expect(loadWorkspaceContext).toHaveBeenCalledOnce();
         expect(helpService.getWorkspaceCatalog).toHaveBeenCalledWith({
             workspace: { _id: '507f1f77bcf86cd799439011' },
@@ -112,9 +120,9 @@ describe('help.routes', () => {
             .get('/workspaces/507f1f77bcf86cd799439011/help/workspace.test.read');
 
         expect(response.status).toBe(200);
-        expect(validateRequest).toHaveBeenCalledWith({
-            params: workspaceHelpEntryParamsSchema,
-        });
+        expect(registeredParamSchemas).toContain(
+            workspaceHelpEntryParamsSchema,
+        );
         expect(helpService.getWorkspaceEntry).toHaveBeenCalledWith(
             expect.objectContaining({
                 entryId: 'workspace.test.read',
@@ -150,9 +158,9 @@ describe('help.routes', () => {
             .get('/platform/help/platform.users.read');
 
         expect(response.status).toBe(200);
-        expect(validateRequest).toHaveBeenCalledWith({
-            params: platformHelpEntryParamsSchema,
-        });
+        expect(registeredParamSchemas).toContain(
+            platformHelpEntryParamsSchema,
+        );
         expect(helpService.getPlatformEntry).toHaveBeenCalledWith({
             user: { _id: 'user-id' },
             entryId: 'platform.users.read',

@@ -16,8 +16,13 @@ const HELP_CONTEXT = Object.freeze({
     PLATFORM: 'platform',
 });
 
+/*
+ * Une fiche est toujours rattachée explicitement à son contexte puis à une ou
+ * plusieurs composantes sémantiques. Une action de premier niveau comme
+ * `workspace.archive` reste donc valide sans inventer un domaine artificiel.
+ */
 const HELP_ENTRY_ID_PATTERN =
-    /^(workspace|platform)\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/;
+    /^(workspace|platform)\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$/;
 const HELP_CATEGORY_ID_PATTERN =
     /^(workspace|platform)_[a-z][a-z0-9_]*$/;
 const HELP_MODULE_KEY_PATTERN = /^[a-z][a-z0-9_-]*$/;

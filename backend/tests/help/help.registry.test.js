@@ -56,6 +56,18 @@ describe('help.registry', () => {
         expect(Object.isFrozen(registry.entries[0].search)).toBe(true);
     });
 
+    it('accepte une action directement rattachée au contexte', () => {
+        const registry = createHelpRegistry({
+            categories: [category],
+            entries: [{
+                ...entry,
+                id: 'workspace.archive',
+            }],
+        });
+
+        expect(registry.entries[0].id).toBe('workspace.archive');
+    });
+
     it('refuse les identifiants de fiche dupliqués', () => {
         expect(() => createHelpRegistry({
             categories: [category],
