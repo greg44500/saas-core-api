@@ -69,10 +69,13 @@ function RoutedHelpPage({ entryError }) {
   );
 }
 
-function renderHelpRoute({ entryError } = {}) {
+function renderHelpRoute({
+  entryError,
+  initialEntry = '/platform/help/platform.users.read',
+} = {}) {
   return render(
     <TooltipProvider>
-      <MemoryRouter initialEntries={['/platform/help/platform.users.read']}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
           <Route
             element={<RoutedHelpPage entryError={entryError} />}
@@ -143,6 +146,33 @@ describe('HelpPage', () => {
 
     await user.hover(centerInfo);
     expect(await screen.findByText('Aide Platform')).toBeInTheDocument();
+  });
+
+  it('met le catalogue visuellement en retrait pendant les suggestions sans le rendre modal', async () => {
+    const user = userEvent.setup();
+    renderHelpRoute({ initialEntry: '/platform/help' });
+
+    const searchInput = screen.getByRole('combobox', {
+      name: 'Rechercher dans le centre d’aide',
+    });
+
+    await user.type(searchInput, 'utilisateur');
+
+    expect(await screen.findByText('Suggestions')).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-help-search-spotlight="active"]'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('tab', { name: 'Utilisateurs & workspaces' }),
+    ).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-help-search-spotlight="active"]'),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('conserve une réponse générique dans le drawer pour une fiche indisponible', () => {

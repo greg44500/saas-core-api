@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/autocomplete';
 import { searchHelpEntries } from '@/features/help/lib/help-search';
 
-function HelpSearch({ entries, onSelect }) {
+function HelpSearch({ entries, onOpenChange, onSelect }) {
   const [query, setQuery] = useState('');
   const suggestions = useMemo(
     () => searchHelpEntries(entries, query, 5),
@@ -30,6 +30,7 @@ function HelpSearch({ entries, onSelect }) {
       items={suggestions}
       itemToStringValue={(entry) => entry.title}
       limit={5}
+      onOpenChange={onOpenChange}
       onValueChange={setQuery}
       value={query}
     >

@@ -54,6 +54,7 @@ function HelpCatalog({ basePath, catalog }) {
   const [activeCategoryId, setActiveCategoryId] = useState(
     categories[0]?.id ?? '',
   );
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   useEffect(() => {
     if (!categories.some(({ id }) => id === activeCategoryId)) {
@@ -86,75 +87,91 @@ function HelpCatalog({ basePath, catalog }) {
     <div className="space-y-8">
       <HelpSearch
         entries={entries}
-        onSelect={(entry) => navigate(`${basePath}/${entry.id}`)}
+        onOpenChange={setIsSearchOpen}
+        onSelect={(entry) => {
+          setIsSearchOpen(false);
+          navigate(`${basePath}/${entry.id}`);
+        }}
       />
 
-      <Tabs onValueChange={setActiveCategoryId} value={activeCategoryId}>
-        <TabsList
-          aria-label="Catégories du centre d’aide"
-          className="overflow-x-auto"
-          variant="section"
-        >
+      <div
+        className="relative isolate"
+        data-help-search-spotlight={isSearchOpen ? 'active' : 'inactive'}
+      >
+        <Tabs onValueChange={setActiveCategoryId} value={activeCategoryId}>
+          <TabsList
+            aria-label="Catégories du centre d’aide"
+            className="overflow-x-auto"
+            variant="section"
+          >
+            {categories.map((category) => (
+              <TabsTrigger
+                key={category.id}
+                value={category.id}
+                variant="section"
+              >
+                {category.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
           {categories.map((category) => (
-            <TabsTrigger
+            <TabsContent
               key={category.id}
               value={category.id}
               variant="section"
             >
-              {category.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+              {category.id === activeCategory?.id ? (
+                <div className="space-y-5">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-semibold">{category.label}</h2>
+                    <InfoTooltip
+                      content={category.description}
+                      label={`À propos de ${category.label}`}
+                    />
+                  </div>
 
-        {categories.map((category) => (
-          <TabsContent
-            key={category.id}
-            value={category.id}
-            variant="section"
-          >
-            {category.id === activeCategory?.id ? (
-              <div className="space-y-5">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold">{category.label}</h2>
-                  <InfoTooltip
-                    content={category.description}
-                    label={`À propos de ${category.label}`}
-                  />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {activeEntries.map((entry) => (
-                    <Link
-                      className="group block h-40 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      key={entry.id}
-                      to={`${basePath}/${entry.id}`}
-                    >
-                      <Card className="h-full transition-[border-color,background-color,box-shadow] group-hover:border-primary/50 group-hover:bg-accent/25 group-hover:shadow-sm">
-                        <CardHeader className="h-full pb-5">
-                          <div className="flex h-full items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <CardTitle className="line-clamp-2 text-base transition-colors group-hover:text-primary">
-                                {entry.title}
-                              </CardTitle>
-                              <CardDescription className="mt-2 line-clamp-3">
-                                {entry.summary}
-                              </CardDescription>
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {activeEntries.map((entry) => (
+                      <Link
+                        className="group block h-40 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        key={entry.id}
+                        to={`${basePath}/${entry.id}`}
+                      >
+                        <Card className="h-full transition-[border-color,background-color,box-shadow] group-hover:border-primary/50 group-hover:bg-accent/25 group-hover:shadow-sm">
+                          <CardHeader className="h-full pb-5">
+                            <div className="flex h-full items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <CardTitle className="line-clamp-2 text-base transition-colors group-hover:text-primary">
+                                  {entry.title}
+                                </CardTitle>
+                                <CardDescription className="mt-2 line-clamp-3">
+                                  {entry.summary}
+                                </CardDescription>
+                              </div>
+                              <ArrowRight
+                                aria-hidden="true"
+                                className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-[transform,color] group-hover:translate-x-0.5 group-hover:text-primary"
+                              />
                             </div>
-                            <ArrowRight
-                              aria-hidden="true"
-                              className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-[transform,color] group-hover:translate-x-0.5 group-hover:text-primary"
-                            />
-                          </div>
-                        </CardHeader>
-                      </Card>
-                    </Link>
-                  ))}
+                          </CardHeader>
+                        </Card>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ) : null}
-          </TabsContent>
-        ))}
-      </Tabs>
+              ) : null}
+            </TabsContent>
+          ))}
+        </Tabs>
+
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 z-10 bg-overlay/30 backdrop-blur-[1.5px] transition-opacity duration-200 motion-reduce:transition-none ${
+            isSearchOpen ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+      </div>
     </div>
   );
 }
