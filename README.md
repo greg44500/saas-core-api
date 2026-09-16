@@ -8,7 +8,7 @@ Le dépôt est actuellement en développement (`0.1.0`).
 
 La documentation canonique du Core a été consolidée, mais le socle ne doit pas encore être présenté comme une release stable `v1.0.0` ni comme une application automatiquement prête pour la production.
 
-Avant une release Core 1.0, plusieurs blockers restent suivis dans [`docs/DEBT.md`](docs/DEBT.md), notamment la fermeture de compte / cycle de vie Workspace, les points d'extension métier, le versionnement et le release process, les E2E Playwright et la validation réelle d'un upgrade de SaaS dérivé.
+Avant une release Core 1.0, les blockers encore suivis dans [`docs/DEBT.md`](docs/DEBT.md) sont principalement D-015 — versionnement / provenance / release process / migrations, D-016 — E2E Core Playwright, et D-017 — validation réelle d’une dérivation puis d’un upgrade d’un SaaS pilote. D-020 — invitation commerciale — est différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0.
 
 ## Ce que fournit le Core
 
@@ -23,8 +23,11 @@ Le Core fournit des mécanismes génériques réutilisables :
 - Capability Registry extensible ;
 - entitlements effectifs, quotas et `UsageMetric` ;
 - `EntitlementOverride` administré depuis Platform ;
+- invitations commerciales et offres privées génériques ;
 - pipeline File sécurisé, soft delete et purge différée ;
 - AuditLog Workspace / Platform ;
+- moteur générique de rétention / purge ;
+- centre d’aide sécurisé et distinct Workspace / Platform, extensible par les SaaS dérivés ;
 - console Platform ;
 - frontend Core React avec composants et patterns réutilisables.
 
@@ -210,6 +213,7 @@ npm run format:check
 
 ```bash
 cd frontend
+npm run lint
 npm test
 npm run build
 ```
@@ -234,7 +238,10 @@ La porte d'entrée documentaire interne est [`docs/README.md`](docs/README.md).
 |---|---|
 | Contrat Core transversal | [`docs/contracts/CORE-CONTRACT.md`](docs/contracts/CORE-CONTRACT.md) |
 | Commercial / Subscription / entitlement | [`docs/contracts/COMMERCIAL.md`](docs/contracts/COMMERCIAL.md) |
+| Invitations commerciales / offres privées | [`docs/contracts/COMMERCIAL-INVITATIONS.md`](docs/contracts/COMMERCIAL-INVITATIONS.md) |
 | Capability Registry | [`docs/contracts/CAPABILITIES.md`](docs/contracts/CAPABILITIES.md) |
+| Équipe Platform / RBAC Platform | [`docs/contracts/PLATFORM-TEAM.md`](docs/contracts/PLATFORM-TEAM.md) |
+| Rétention / purge | [`docs/contracts/RETENTION.md`](docs/contracts/RETENTION.md) |
 | Architecture globale | [`docs/architecture/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) |
 | Architecture backend | [`docs/architecture/BACKEND.md`](docs/architecture/BACKEND.md) |
 | Architecture frontend | [`docs/architecture/FRONTEND.md`](docs/architecture/FRONTEND.md) |
