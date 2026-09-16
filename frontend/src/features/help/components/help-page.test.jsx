@@ -117,6 +117,34 @@ describe('HelpPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('place les descriptions contextuelles dans des info-tooltips nommés', async () => {
+    const user = userEvent.setup();
+    renderHelpRoute();
+
+    const drawer = screen.getByRole('dialog');
+    await user.click(within(drawer).getByRole('button', { name: 'Fermer' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    const centerInfo = screen.getByRole('button', {
+      name: 'À propos de Centre d’aide Platform',
+    });
+    expect(
+      screen.getByRole('button', {
+        name: 'À propos de Utilisateurs & workspaces',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Aide Platform')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Administrer les utilisateurs et les workspaces autorisés.'),
+    ).not.toBeInTheDocument();
+
+    await user.hover(centerInfo);
+    expect(await screen.findByText('Aide Platform')).toBeInTheDocument();
+  });
+
   it('conserve une réponse générique dans le drawer pour une fiche indisponible', () => {
     renderHelpRoute({ entryError: { status: 404 } });
 
