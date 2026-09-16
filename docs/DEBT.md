@@ -21,7 +21,7 @@ code + contraintes DB
 → REPRISE-CURRENT.md
 ```
 
-Les dettes clôturées sont conservées sous forme de synthèse ; leur historique détaillé reste dans Git et ne doit pas être recopié ici indéfiniment.
+Les dettes clôturées sont conservées sous forme de synthèse ; leur historique détaillé reste dans Git.
 
 Statuts autorisés :
 
@@ -58,23 +58,19 @@ produit dérivé automatiquement production-ready
 
 ## 3. Synthèse des dettes
 
-### 3.1 Blockers Core 1.0 / première dérivation
+### 3.1 Blockers restant dans la trajectoire Core 1.0
 
 | ID | Dette | Statut |
 |---|---|---|
-| D-020 | Invitation commerciale client et offres privées de découverte | EN COURS |
-| D-025 | Centre d’aide sécurisé Workspace / Platform | VALIDÉ — 2026-09-16 |
-| D-011 | Design System Core, préférences utilisateur et affichage métier | VALIDÉ |
-| D-021 | Gate sécurité Auth, invitations et tokens temporaires | VALIDÉ |
-| D-022 | Intégrité des Entitlement Override Groups | VALIDÉ |
 | D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
-| D-002 | Corbeille et restauration des fichiers | VALIDÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
-D-001, D-002, D-011, D-014, D-018, D-019, D-021, D-022 et D-025 sont clôturées.
+Les blockers applicatifs génériques décidés avant le gel sont levés : D-002, D-011, D-021, D-022 et D-025 sont validées.
 
-**Blocker applicatif immédiat restant avant D-015 : D-020**, qui doit encore être clôturée ou explicitement reclassifiée. Une fois ce point résolu, rejouer la gate globale pré-D-015 avant d’ouvrir la release candidate.
+**D-020 n’est plus bloquante pour Core 1.0.** Sa validation fonctionnelle terrain est explicitement différée au déploiement de l’application métier avec des bêta-testeurs réels.
+
+La prochaine étape est donc la **gate globale pré-D-015**, puis la revue finale pré-versionnement.
 
 ### 3.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -94,6 +90,7 @@ D-013 configuration / déploiement production
 D-008 notifications étendues
 D-009 API Keys / Webhooks
 D-010 authentification avancée — dont Google SSO
+D-020 validation terrain invitation commerciale / onboarding bêta
 D-023 demande gouvernée de capacité exceptionnelle de transfert de propriété — cible Core 1.1
 D-024 console d’administration Platform contextualisée du Workspace — cible Core 1.1
 ```
@@ -188,7 +185,7 @@ Variables/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrati
 **Statut :** PLANIFIÉ  
 **Périmètre :** Core / distribution  
 **Blocage Core 1.0 :** oui  
-**Dépendances :** D-025 est validée ; D-020 doit encore être clôturée ou explicitement reclassifiée avant ouverture de la release candidate.
+**Dépendances :** D-025 validée ; D-020 explicitement reclassifiée non bloquante le 2026-09-16 ; gate globale pré-D-015 et revue pré-versionnement à exécuter avant ouverture de la release candidate.
 
 À finaliser avant `v1.0.0` : SemVer, tags/releases, changelog/release notes, changements de contrats/configuration, migrations et ordre pre/post-deploy, reprise/rollback, provenance machine-readable et gate de release reproductible.
 
@@ -213,15 +210,17 @@ D-017 doit aussi vérifier que le mécanisme d’aide Core accepte un module d�
 
 ### D-020 — Invitation commerciale client et offres privées de découverte
 
-**Statut :** EN COURS  
+**Statut :** DIFFÉRÉ — validation terrain sur application dérivée / bêta  
 **Périmètre :** Core — onboarding commercial générique  
-**Blocage Core 1.0 :** oui
+**Blocage Core 1.0 :** non
 
 Contrat : `docs/contracts/COMMERCIAL-INVITATIONS.md`.
 
 `PlatformInvitation` reste réservé aux collaborateurs internes ; `CommercialInvitation` aux prospects/futurs clients/bêta-testeurs. Offre privée via Plan non public, snapshot serveur, dérive significative refusée, token aléatoire/hash SHA-256, rotation au resend, révocation, permissions Platform dédiées, acceptation authentifiée et atomique, audit. Les règles trial/open-ended restent celles du contrat canonique.
 
-**Critère de clôture restant :** validation fonctionnelle manuelle finale ou reclassification explicite. Le code, les contrats et les tests déjà validés ne doivent pas être redéveloppés sans écart démontré.
+Le code, les contrats et les tests automatisés déjà validés sont considérés suffisants pour ne plus bloquer le versionnement du Core. La validation fonctionnelle finale est volontairement reportée à des conditions réelles, lors du déploiement de l’application métier avec bêta-testeurs : un parcours d’intégration Platform et un parcours d’intégration Workspace/onboarding client seront alors vérifiés sur l’environnement réel applicable.
+
+Cette reclassification ne transforme pas une validation non exécutée en validation réussie. Toute anomalie découverte pendant la bêta devra être corrigée et, si nécessaire, rouvrir D-020 ou créer une dette dédiée.
 
 ### D-023 — Demande gouvernée de capacité exceptionnelle de transfert de propriété
 
@@ -293,25 +292,30 @@ Le détail historique de ces lots reste consultable dans Git et dans leurs docum
 
 ```text
 D-025 centre d’aide Workspace / Platform sécurisé           VALIDÉ — 2026-09-16
-→ clôturer ou reclassifier explicitement D-020              EN COURS
-→ gate globale pré-D-015 + revue finale pré-versionnement
-→ D-015 release/version/provenance/migrations               PLANIFIÉ
-→ D-016 Playwright E2E Core                                 PLANIFIÉ
+D-020 invitation commerciale / validation terrain           DIFFÉRÉ — non bloquant Core 1.0
+→ gate globale pré-D-015 sur main
+→ revue finale pré-versionnement
+→ D-015 release candidate / SemVer / provenance / migrations
+→ D-016 Playwright E2E Core
 → audit final architecture / sécurité / qualité
-→ D-017 dérivation + upgrade pilote                         PLANIFIÉ
-→ taguer uniquement ensuite la release Core stable
+→ D-017 dérivation + upgrade pilote
+→ corrections éventuelles
+→ nouvelle gate
+→ tag/release Core stable lorsque la stratégie est réellement validée
 --- évolution post-v1.0 ---
 → D-023 demande gouvernée de transfert de propriété         DIFFÉRÉ — cible Core 1.1
 → D-024 console Platform contextualisée du Workspace        DIFFÉRÉ — cible Core 1.1
+--- validation terrain du produit dérivé ---
+→ D-020 validation bêta des parcours d’invitation/onboarding dans l’environnement réel applicable
 ```
 
-Aucune release `v1.0.0` ni ouverture de D-015 avant résolution explicite de D-020 et nouvelle gate globale pré-D-015.
+D-015 ne doit pas être ouvert avant une gate globale pré-D-015 réellement verte et une revue finale de l’état de `main`.
 
 ---
 
 ## 8. Gate globale pré-D-015
 
-À rejouer après clôture/reclassification D-020 :
+À rejouer maintenant sur `main` :
 
 ```text
 backend npm run lint
@@ -319,7 +323,7 @@ backend npm test
 frontend npm run lint
 frontend npm test
 frontend npm run build
-validation manuelle des parcours critiques
+validation manuelle des parcours critiques retenus pour la gate
 ```
 
 Ne jamais présenter cette gate comme verte sans exécution réelle sur l’état de `main` concerné.
