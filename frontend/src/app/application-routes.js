@@ -1,3 +1,7 @@
+import {
+  CORE_HELP_FRONTEND_ROUTE_MODULE,
+} from '@/features/help/help-routes';
+
 const APPLICATION_ROUTE_COLLECTION_KEYS = Object.freeze([
   'publicRoutes',
   'authenticatedRoutes',
@@ -6,11 +10,11 @@ const APPLICATION_ROUTE_COLLECTION_KEYS = Object.freeze([
 ]);
 
 /**
- * Compose les routes déclarées par les modules métier réellement installés.
+ * Compose les routes déclarées par les modules réellement installés.
  *
- * Le fichier reste indépendant de React : les modules fournissent simplement
- * des objets de route compatibles avec React Router. Le Core ne découvre aucun
- * fichier automatiquement et ne connaît aucun domaine métier concret.
+ * Le fichier reste indépendant des composants React : chaque module fournit
+ * uniquement des objets de route compatibles avec React Router. Le Core ne
+ * découvre aucun fichier automatiquement.
  */
 function composeApplicationFrontendRoutes(modules = []) {
   if (!Array.isArray(modules)) {
@@ -56,29 +60,18 @@ function composeApplicationFrontendRoutes(modules = []) {
 }
 
 /**
- * Point de composition unique des routes frontend du produit dérivé.
+ * Point d'extension unique des routes du produit dérivé.
  *
- * Exemple de descriptor exporté par un module métier :
- *
- * {
- *   workspaceRoutes: [
- *     {
- *       path: 'catalog',
- *       lazy: async () => {
- *         const { CatalogRoute } = await import(
- *           '@/features/catalog/components/catalog-route'
- *         );
- *         return { Component: CatalogRoute };
- *       },
- *     },
- *   ],
- * }
+ * Le centre d'aide appartient au Core et est composé explicitement avant les
+ * modules métier. Les SaaS dérivés ajoutent ensuite leurs routes sans modifier
+ * le routeur principal ni découvrir des fichiers automatiquement.
  */
 const APPLICATION_FRONTEND_ROUTE_MODULES = Object.freeze([]);
 
-const APPLICATION_FRONTEND_ROUTES = composeApplicationFrontendRoutes(
-  APPLICATION_FRONTEND_ROUTE_MODULES,
-);
+const APPLICATION_FRONTEND_ROUTES = composeApplicationFrontendRoutes([
+  CORE_HELP_FRONTEND_ROUTE_MODULE,
+  ...APPLICATION_FRONTEND_ROUTE_MODULES,
+]);
 
 export {
   APPLICATION_FRONTEND_ROUTE_MODULES,

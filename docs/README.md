@@ -1,16 +1,16 @@
 # SAAS-CORE-API — Index documentaire
 
 **Statut :** index canonique de la documentation du projet  
-**Dernière consolidation :** 2026-09-05  
+**Dernière consolidation :** 2026-09-16  
 **Chantier documentaire DOC-0 → DOC-11 :** terminé
 
 ## 1. Objet
 
 Ce fichier est la porte d'entrée de la documentation interne de `saas-core-api`.
 
-Le README racine fournit désormais l'orientation générale du dépôt. Le présent index reste la référence pour naviguer dans les contrats, l'architecture, la sécurité, les guidelines, la conformité, les opérations, les SaaS dérivés et les dettes actives.
+Le README racine fournit l'orientation générale du dépôt. Le présent index reste la référence pour naviguer dans les contrats, l'architecture, la sécurité, les guidelines, la conformité, les opérations, les SaaS dérivés et les dettes actives.
 
-Le chantier documentaire DOC-0 à DOC-11 est terminé. La finalisation fonctionnelle du Core peut encore révéler des besoins génériques légitimes avant la préparation de la release 1.0. Le Bloc A « Équipe de la Plateforme & RBAC Platform » est actuellement cadré par `docs/contracts/PLATFORM-TEAM.md` avant implémentation.
+Le chantier documentaire DOC-0 à DOC-11 est terminé. La finalisation fonctionnelle du Core a depuis fait émerger des besoins génériques supplémentaires explicitement enregistrés dans `docs/DEBT.md`. Le prochain développement retenu avant le gel pré-versionnement est D-025 — Centre d’aide sécurisé Workspace / Platform.
 
 ---
 
@@ -66,6 +66,18 @@ docs/REPRISE-CURRENT.md
 → reprise temporaire unique pendant le développement
 ```
 
+Les spécifications détaillées de dettes complexes peuvent être placées dans `docs/debt/` lorsque `docs/DEBT.md` les référence explicitement. Elles détaillent le cadrage sans remplacer le statut porté par le registre canonique.
+
+Exemples actifs :
+
+```text
+docs/debt/D-024-platform-workspace-control-center.md
+→ évolution Core 1.1 différée
+
+docs/debt/D-025-secure-help-center.md
+→ prochain développement Core 1.0 avant D-015
+```
+
 ### Contrats
 
 ```text
@@ -79,7 +91,7 @@ docs/contracts/CAPABILITIES.md
 → Capability Registry et extension par les applications dérivées
 
 docs/contracts/PLATFORM-TEAM.md
-→ cible canonique Équipe de la Plateforme, Fondateur, RBAC Platform et invitations internes
+→ Équipe de la Plateforme, Fondateur, RBAC Platform et invitations internes
 ```
 
 Décisions structurantes :
@@ -116,6 +128,8 @@ docs/security/SECURITY.md
 
 Le backend reste l'autorité de sécurité. Les guards, masquages et contrôles frontend améliorent l'UX mais ne remplacent jamais les autorisations serveur.
 
+Cette règle s'applique également à D-025 : un corpus d'aide ou des suggestions non autorisées ne doivent pas être envoyés au frontend uniquement pour y être masqués.
+
 ### Guidelines frontend
 
 ```text
@@ -144,6 +158,8 @@ docs/derived-saas/DERIVED-SAAS.md
 ```
 
 Le produit dérivé conserve l'historique Git du Core, possède son propre `origin` et conserve le Core comme `upstream-core`. La stratégie devra être validée par un exercice réel de dérivation + upgrade avant la release 1.0.
+
+D-025 devra également fournir un mécanisme permettant au dérivé d'ajouter ses fiches d'aide métier sans dupliquer ni réécrire le corpus Core.
 
 ### Conformité / RGPD
 
@@ -181,18 +197,21 @@ Core 1.0 finalisé
 SaaS dérivé prêt pour la production
 ```
 
-Blockers Core 1.0 actuellement identifiés :
+Blockers Core 1.0 actuellement applicables :
 
 ```text
-D-018 Équipe de la Plateforme / RBAC Platform / invitations internes
+D-020 invitation commerciale — validation fonctionnelle/reclassification encore requise
+D-025 centre d’aide sécurisé Workspace / Platform — prochain développement
 D-015 versionnement / provenance / release process / migrations
 D-016 E2E Core Playwright
 D-017 dérivation + upgrade réel d'un SaaS pilote
 ```
 
-D-001 et D-014 sont déjà validées et ne sont plus des blockers actifs.
+D-001, D-002, D-011, D-014, D-018, D-019, D-021 et D-022 sont validées/clôturées selon le registre canonique.
 
-La finalisation fonctionnelle peut encore compléter ou reclasser cette liste lorsqu'un manque réellement générique du Core est démontré. Une fonctionnalité hypothétique ou purement métier ne doit pas retarder la release 1.0.
+D-023 et D-024 sont différées vers Core 1.1 et ne bloquent pas Core 1.0.
+
+La finalisation fonctionnelle peut encore reclasser une dette lorsqu'un constat réel le justifie, mais une fonctionnalité hypothétique ou purement métier ne doit pas retarder la release 1.0.
 
 ---
 
@@ -214,6 +233,10 @@ docs/
 │   ├── COMMERCIAL.md
 │   ├── CAPABILITIES.md
 │   └── PLATFORM-TEAM.md
+│
+├── debt/
+│   ├── D-024-platform-workspace-control-center.md
+│   └── D-025-secure-help-center.md
 │
 ├── frontend/
 │   └── FRONTEND-GUIDELINES.md
@@ -252,7 +275,7 @@ Ils sont conservés uniquement comme mémoire de progression et d'implémentatio
 
 Important : ces documents sont chronologiques. Ils peuvent donc contenir des intitulés de lots, des formulations ou des références vers d'anciens documents qui décrivent l'état du projet au moment de leur rédaction. Ces références historiques ne sont pas des dépendances documentaires actives.
 
-Pour tout contrat courant, utiliser les documents canoniques de la section 4.
+Pour tout contrat courant, utiliser les documents canoniques de la section 4 et le registre `docs/DEBT.md`.
 
 Ces cinq fichiers devront être réévalués lors d'un futur nettoyage : soit leur information utile sera absorbée dans les contrats/roadmap courants, soit leur suppression pourra être proposée avec validation explicite.
 
@@ -260,20 +283,18 @@ Ces cinq fichiers devront être réévalués lors d'un futur nettoyage : soit le
 
 ## 8. Audit DOC-11
 
-DOC-11 a vérifié notamment :
+DOC-11 avait vérifié notamment :
 
 - présence d'un README racine ;
 - mise à jour de `frontend/README.md`, anciennement figé au jalon F1 ;
-- cohérence des versions avec les `package.json` actuels ;
+- cohérence des versions avec les `package.json` ;
 - cohérence de la base API frontend `/api` et du proxy Vite ;
 - présence des chemins canoniques référencés par le README ;
 - absence de dépendance canonique vers l'ancien silo `frontend/docs/` supprimé en DOC-10 ;
-- absence de dépendance canonique vers les anciens contrats/fiches de dette supprimés ;
-- correction du vocabulaire `baseline Free` dans le guide de reset Trial ;
 - maintien explicite des documents historiques comme non canoniques ;
-- maintien de `0.1.0` comme état de développement : aucune déclaration prématurée de `v1.0.0` ou de production-readiness.
+- maintien de `0.1.0` comme état de développement.
 
-Aucun changement applicatif backend/frontend n'a été réalisé pendant DOC-11.
+Les développements et décisions intervenus après DOC-11 sont gouvernés par le code courant, les contrats et `docs/DEBT.md` ; l'historique DOC-11 ne constitue pas une photographie actuelle de la roadmap.
 
 ---
 
@@ -311,25 +332,28 @@ Toute future suppression documentaire suit la même règle : contenu utile véri
 Séquence courante de finalisation :
 
 ```text
-D-018 / Bloc A — Équipe de la Plateforme
-→ A1 cadrage fonctionnel
-→ A2 RBAC Platform
-→ A3 invitations Platform
-→ A4 cycle de vie des membres
-→ A5 frontend Équipe de la Plateforme
-→ A6 audit + tests + régression
-↓
-réévaluation des derniers besoins génériques démontrés du Core
-↓
-D-015 versionnement / provenance / releases / migrations
-↓
-D-016 E2E Core Playwright
-↓
-audit final architecture / sécurité / qualité
-↓
-D-017 dérivation + upgrade pilote
-↓
-release Core stable
+D-020 invitation commerciale
+→ clôture/reclassification explicite requise avant D-015
+
+D-025 centre d’aide sécurisé Workspace / Platform
+→ prochain développement fonctionnel
+→ audit réel avant code
+→ deux centres fonctionnels distincts
+→ composants communs réutilisables
+→ recherche prédictive
+→ sécurité contextuelle/permissions
+→ extensibilité SaaS dérivés
+
+puis
+→ gate globale pré-D-015
+→ revue finale pré-versionnement
+→ D-015 versionnement / provenance / releases / migrations
+→ D-016 E2E Core Playwright
+→ audit final architecture / sécurité / qualité
+→ D-017 dérivation + upgrade pilote
+→ release Core stable après validation réelle de la stratégie
 ```
+
+Le chatbot/assistant IA au-dessus de l'aide est explicitement différé et ne bloque pas Core 1.0.
 
 `REPRISE-CURRENT.md` reste l'unique document temporaire de reprise tant que le Core n'est pas finalisé.

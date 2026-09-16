@@ -4,6 +4,7 @@ import { authenticate } from '../../middlewares/authenticate.js';
 import {
     platformCommercialInvitationRouter,
 } from '../commercialInvitation/commercialInvitation.routes.js';
+import { platformHelpRouter } from '../help/help.routes.js';
 import {
     platformTeamInvitationRouter,
 } from '../platformInvitation/platformInvitation.routes.js';
@@ -47,6 +48,7 @@ const platformRouter = Router();
 platformRouter.use(authenticate);
 
 platformRouter.use('/me', platformCurrentContextRouter);
+platformRouter.use('/help', platformHelpRouter);
 platformRouter.use('/overview', platformOverviewRouter);
 platformRouter.use('/users', platformUsersRouter);
 platformRouter.use('/workspaces', platformWorkspacesRouter);

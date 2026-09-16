@@ -54,13 +54,13 @@ describe('PlatformLayout', () => {
       .toBeInTheDocument();
   });
 
-  it('conserve la recherche mais masque les préférences d’affichage hors vue d’ensemble', () => {
+  it('conserve les préférences d’affichage accessibles hors vue d’ensemble', () => {
     renderLayout('/platform/users');
 
     expect(screen.getByText('Utilisateurs Platform')).toBeInTheDocument();
     expect(screen.getByRole('search', { name: 'Recherche globale' }))
       .toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Préférences d’affichage' }))
-      .not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Préférences d’affichage' }))
+      .toBeInTheDocument();
   });
 });

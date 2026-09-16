@@ -12,6 +12,7 @@ import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
     auditLogRouter,
 } from '../auditLog/auditLog.routes.js';
+import { workspaceHelpRouter } from '../help/help.routes.js';
 import {
     CORE_PLAN_FEATURE,
 } from '../plan/planCapability.registry.js';
@@ -62,6 +63,11 @@ router.get(
     '/',
     authenticate,
     list,
+);
+
+router.use(
+    '/:workspaceId/help',
+    workspaceHelpRouter,
 );
 
 router.use(

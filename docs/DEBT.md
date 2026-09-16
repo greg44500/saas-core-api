@@ -6,24 +6,24 @@
 
 ---
 
-## 1. Objet
+## 1. Objet et hiérarchie
 
 Ce document est le registre unique des dettes fonctionnelles, techniques, de conformité, de distribution et de préparation à la production encore actives.
 
-Hiérarchie :
+En cas de contradiction :
 
 ```text
 code + contraintes DB
-→ tests validés
+→ tests réellement exécutés et validés
 → contrats / architecture / sécurité canoniques
-→ DEBT.md pour les écarts non résolus
+→ DEBT.md
+→ documentation opérationnelle
+→ REPRISE-CURRENT.md
 ```
 
-Les anciens fichiers historiques de dette ne portent plus de statut autoritatif.
+Les dettes clôturées sont conservées sous forme de synthèse ; leur historique détaillé reste dans Git et ne doit pas être recopié ici indéfiniment.
 
----
-
-## 2. Statuts autorisés
+Statuts autorisés :
 
 ```text
 À CADRER
@@ -38,13 +38,13 @@ NON APPLICABLE
 
 ---
 
-## 3. Gates
+## 2. Gates
 
-### 3.1 Core 1.0 finalisé
+### 2.1 Core 1.0 finalisé
 
 Le Core peut être considéré comme un socle générique stable lorsque ses responsabilités communes sont cohérentes, testées, documentées et suffisamment extensibles pour être dérivées puis mises à niveau.
 
-### 3.2 SaaS dérivé prêt pour la production
+### 2.2 SaaS dérivé prêt pour la production
 
 Un produit dérivé doit en plus résoudre les dettes dépendant de son modèle commercial, de ses traitements, providers et infrastructure.
 
@@ -56,13 +56,14 @@ produit dérivé automatiquement production-ready
 
 ---
 
-## 4. Synthèse des dettes
+## 3. Synthèse des dettes
 
-### 4.1 Blockers Core 1.0 / première dérivation
+### 3.1 Blockers Core 1.0 / première dérivation
 
 | ID | Dette | Statut |
 |---|---|---|
 | D-020 | Invitation commerciale client et offres privées de découverte | EN COURS |
+| D-025 | Centre d’aide sécurisé Workspace / Platform | VALIDÉ — 2026-09-16 |
 | D-011 | Design System Core, préférences utilisateur et affichage métier | VALIDÉ |
 | D-021 | Gate sécurité Auth, invitations et tokens temporaires | VALIDÉ |
 | D-022 | Intégrité des Entitlement Override Groups | VALIDÉ |
@@ -71,11 +72,11 @@ produit dérivé automatiquement production-ready
 | D-002 | Corbeille et restauration des fichiers | VALIDÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
-D-001, D-002, D-011, D-014, D-018, D-019, D-021 et D-022 sont clôturées.
+D-001, D-002, D-011, D-014, D-018, D-019, D-021, D-022 et D-025 sont clôturées.
 
-D-020 doit être clôturée ou explicitement reclassifiée avant D-015. La condition D-002 préalable à D-017 et à la première dérivation métier est levée depuis le 2026-09-15.
+**Blocker applicatif immédiat restant avant D-015 : D-020**, qui doit encore être clôturée ou explicitement reclassifiée. Une fois ce point résolu, rejouer la gate globale pré-D-015 avant d’ouvrir la release candidate.
 
-### 4.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
+### 3.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
 ```text
 D-003 conformité / RGPD
@@ -87,7 +88,7 @@ D-012 E2E du produit dérivé
 D-013 configuration / déploiement production
 ```
 
-### 4.3 Dettes différées ou conditionnelles
+### 3.3 Dettes différées ou conditionnelles
 
 ```text
 D-008 notifications étendues
@@ -99,58 +100,9 @@ D-024 console d’administration Platform contextualisée du Workspace — cible
 
 ---
 
-## 5. Règles de maintenance
+## 4. Dettes actives
 
-Pour chaque dette active : conserver un identifiant stable, un statut autorisé, son périmètre, son caractère bloquant ou non, ses dépendances/déclencheurs et un critère de clôture vérifiable. Ne pas dupliquer son statut dans d'autres documents. L'historique détaillé reste dans Git.
-
----
-
-## D-002 — Corbeille et restauration des fichiers
-
-**Statut :** VALIDÉ — 2026-09-15  
-**Périmètre :** Core Files  
-**Blocage :** levé pour D-017 et première dérivation métier
-
-Le cycle utilisateur complète le soft delete et le moteur d'effacement physique D-019 avec une corbeille sécurisée, restauration et suppression définitive volontaire.
-
-État validé :
-
-```text
-fichier actif
-→ suppression logique
-→ corbeille
-→ restauration possible tant que l'effacement physique n'a pas commencé
-ou
-→ suppression définitive volontaire
-ou
-→ suppression définitive automatique à l'échéance
-```
-
-Garanties implémentées :
-
-- permissions dédiées `file:trash:read`, `file:restore` et `file:delete:permanent` ;
-- isolation Workspace et contrôles RBAC côté backend ;
-- vérification de l'existence physique avant restauration ;
-- coordination restauration / suppression définitive avec le mécanisme de claim concurrent de D-019 ;
-- suppression définitive irréversible avec confirmation UI, suppression physique puis libération du quota ;
-- audit des transitions sensibles ;
-- migration idempotente `migration:file-trash-permissions` pour mettre à niveau les rôles système existants ;
-- listing Corbeille avec `DataTable` partagé ;
-- surface unifiée `Ressources > Fichiers` avec onglets `Fichiers actifs` / `Corbeille` ;
-- compteur de cycle de vie porté par les onglets et non dupliqué dans la carte de stockage ;
-- stockage affiché depuis la métrique autoritative `UsageMetric.storage_bytes` et la limite d'entitlement effective ;
-- prévisualisation authentifiée PDF/JPEG/PNG via le flux de téléchargement existant ;
-- tests sécurité, routes, services, concurrence et frontend associés.
-
-Invariant conservé : un fichier soft-deleted dont le contenu physique existe consomme encore `storage_bytes`; une restauration avant suppression physique ne réserve donc pas le stockage une seconde fois. La libération du stockage intervient lors de la suppression physique effective.
-
-Les validations locales finales du lot ont été confirmées le 2026-09-15 : tests, lint et build applicables verts, ainsi que validation fonctionnelle/visuelle du parcours Fichiers.
-
-**Critère de clôture atteint :** cycle suppression logique → corbeille → restauration ou suppression définitive cohérent avec D-019, sécurisé, testé et intégré à l'UX Files du Core.
-
----
-
-## D-003 — RGPD, cookies, confidentialité et obligations légales
+### D-003 — RGPD, cookies, confidentialité et obligations légales
 
 **Statut :** À CADRER  
 **Périmètre :** application dérivée + mécanismes Core nécessaires  
@@ -161,9 +113,7 @@ Références : `docs/compliance/COMPLIANCE.md` et `docs/compliance/rgpd-data-tra
 
 **Critère de clôture :** conformité technique/documentaire alignée sur les traitements réels.
 
----
-
-## D-004 — Billing / Payment réel
+### D-004 — Billing / Payment réel
 
 **Statut :** À CADRER  
 **Périmètre :** application dérivée payante  
@@ -171,18 +121,14 @@ Références : `docs/compliance/COMPLIANCE.md` et `docs/compliance/rgpd-data-tra
 
 `Subscription / entitlement ≠ encaissement / facture / autorité financière`. À cadrer selon le produit : provider, identité facturée, idempotence, échecs, remboursements, prorata/remises, fiscalité, factures et audit. Les données de carte ne sont jamais stockées par le Core.
 
----
-
-## D-005 — Observabilité technique de production
+### D-005 — Observabilité technique de production
 
 **Statut :** À CADRER  
 **Blocage Core 1.0 :** non
 
 `AuditLog` ne remplace pas le monitoring technique. Prévoir selon l'infrastructure : erreurs 5xx, latence, MongoDB, SMTP, jobs, Files/antivirus, frontend, `requestId`, métriques et alertes.
 
----
-
-## D-006 — Rétention, anonymisation et suppression réglementaire
+### D-006 — Rétention, anonymisation et suppression réglementaire
 
 **Statut :** À CADRER  
 **Blocage Core 1.0 :** non comme politique juridique universelle
@@ -192,325 +138,80 @@ D-006 = politique produit/juridique
 D-019 = moteur d'exécution générique validé
 ```
 
----
-
-## D-007 — Stockage et exploitation des fichiers en production
+### D-007 — Stockage et exploitation des fichiers en production
 
 **Statut :** À CADRER  
 **Blocage Core 1.0 :** non
 
 À valider selon le déploiement : provider/volume persistant, sauvegarde/restauration, chiffrement, disponibilité, suppression physique, rétention, antivirus, quotas/coûts et localisation des données.
 
----
-
-## D-008 — Notifications et communications transactionnelles étendues
+### D-008 — Notifications et communications transactionnelles étendues
 
 **Statut :** CONDITIONNEL  
 **Blocage Core 1.0 :** non
 
 À traiter seulement si un produit dépasse les emails transactionnels déjà fournis.
 
----
-
-## D-009 — API Keys et Webhooks
+### D-009 — API Keys et Webhooks
 
 **Statut :** CONDITIONNEL  
 **Blocage Core 1.0 :** non
 
 Si applicable : secrets jamais en clair, scopes, expiration/révocation, audit, rate limiting, signatures, retry, SSRF, validation stricte des URLs et idempotence.
 
----
-
-## D-010 — Authentification avancée
+### D-010 — Authentification avancée
 
 **Statut :** CONDITIONNEL  
 **Périmètre :** application dérivée / évolution Core motivée  
 **Blocage Core 1.0 :** non
 
-Google SSO reste volontairement ici et ne bloque pas D-015/v1.0. Son ajout futur devra traiter correctement OpenID Connect/OAuth, liaison d'identité avec un compte local existant, collisions d'email, révocation, coexistence de plusieurs méthodes de connexion et séparation stricte entre identité externe et autorisations internes.
+Google SSO reste volontairement ici et ne bloque pas Core 1.0. Son ajout futur devra traiter OpenID Connect/OAuth, liaison d'identité avec un compte local existant, collisions d'email, révocation, coexistence de plusieurs méthodes de connexion et séparation stricte entre identité externe et autorisations internes.
 
 MFA, passkeys, SSO entreprise ou autres providers ne sont pas ajoutés uniquement par anticipation.
 
-**Critère de clôture :** `NON APPLICABLE` ou mécanisme requis implémenté, sécurisé et testé.
-
----
-
-## D-011 — Design System Core, préférences utilisateur et affichage métier
-
-**Statut :** VALIDÉ — 2026-09-10  
-**Périmètre :** Core frontend clonable + préférences utilisateur + points d'extension des applications dérivées  
-**Blocage Core 1.0 :** levé  
-**Dépendances :** design system frontend existant, identité utilisateur, entitlement effectif et RBAC  
-**Déclencheur :** décisions produit du 2026-09-08 — stabiliser avant versionnement le langage visuel du Core, son accessibilité et le mécanisme générique de préférences.
-
-Ordre réalisé :
-
-```text
-D-011.A Design System Core                    VALIDÉ — 2026-09-09
-D-011.B Préférences de confort                VALIDÉ — 2026-09-09
-D-011.C Préférences d'affichage métier        VALIDÉ — 2026-09-10
-```
-
-Le système de préférences choisit uniquement parmi des possibilités autorisées par le Design System et les droits effectifs ; il ne crée ni styles arbitraires ni autorisations.
-
-### D-011.A — Stabilisation du Design System Core
-
-**Sous-phase : VALIDÉE le 2026-09-09.** Validation manuelle réalisée, puis gate frontend locale `npm run lint`, `npm test` (183 fichiers / 585 tests) et `npm run build` verte. Le lot n'a nécessité aucune modification backend ni nouvelle dépendance.
-
-Le frontend possède une base Tailwind CSS v4 CSS-first avec `@theme inline`, variables CSS sémantiques, thèmes light/dark et composants shadcn/ui. Cette base a été consolidée plutôt que remplacée.
-
-Le fichier global actuel (`frontend/src/index.css`) conserve son nom : son rôle importe davantage que le nom `global.css`. Il reste limité aux imports Tailwind, tokens/thèmes, styles HTML globaux, règles transversales d'accessibilité, typographie, `color-scheme` et resets réellement globaux. Il ne devient pas un stockage de styles métier ou de composants.
-
-Le contrat de tokens distingue lorsque pertinent :
-
-```text
-tokens primitifs
-→ valeurs physiques contrôlées : palettes, typographie, spacing, radius, shadows, motion...
-
-tokens sémantiques
-→ background, foreground, card/surface, primary, secondary, muted, accent,
-  border, input, ring, destructive, success, warning, info, disabled...
-
-composants UI
-→ consomment les tokens sémantiques plutôt que des couleurs arbitraires
-```
-
-Les tokens spécifiques à un composant ne sont ajoutés que lorsqu'ils apportent une vraie valeur ; éviter une explosion de variables dupliquant les variants gérés proprement par shadcn/CVA/Tailwind.
-
-Les couleurs, tailles, radius, ombres et autres valeurs codées en dur dans les composants ont été auditées avec le principe suivant : une valeur ponctuelle n'est pas automatiquement une dette ; la migration vers un token doit être justifiée par une responsabilité réellement transverse.
-
-Architecture validée :
-
-```text
-Design tokens
-→ components/ui : primitives du design system
-→ components/shared : compositions réutilisables transversales
-→ features/*/components : composants métier composés à partir des briques précédentes
-```
-
-Aucune page ou feature ne doit recréer localement une primitive générique déjà disponible.
-
-### Accessibilité structurelle obligatoire
-
-L'accessibilité de base n'est **pas une préférence désactivable** et ne dépend pas d'un thème. Le Core vise au minimum une conformité cohérente avec WCAG 2.2 AA pour ses composants et parcours concernés.
-
-Doivent notamment rester garantis :
-
-- HTML sémantique et accessible names ;
-- navigation clavier ;
-- focus visible et non masqué ;
-- contrastes minimums texte/UI ;
-- labels et descriptions de formulaires ;
-- association des erreurs aux champs et annonces pertinentes ;
-- gestion correcte du focus des Dialog/Drawer/menus ;
-- icônes décoratives ignorées par les technologies d'assistance ;
-- cibles interactives suffisamment utilisables ;
-- zoom/taille de texte sans rupture majeure ;
-- absence d'information portée uniquement par la couleur ;
-- respect de `prefers-reduced-motion` et des préférences système pertinentes ;
-- états loading/empty/error compréhensibles et non ambigus.
-
-Une exigence d'accessibilité structurelle ne doit jamais être retirée pour préserver l'esthétique. L'objectif est un design normal professionnel **et** accessible.
-
-### Mode accessibilité renforcée
-
-D-011.B expose une préférence contrôlée `accessibilityMode`. Elle constitue une **surcouche optionnelle** et non l'activation de l'accessibilité elle-même.
-
-Le profil renforcé peut augmenter de manière contrôlée le contraste de surfaces secondaires, la visibilité des bordures et du focus, et réduire certaines animations/transitions applicatives. Le respect global de `prefers-reduced-motion` reste toujours actif indépendamment de cette préférence.
-
-Il se combine avec le thème/palette choisi lorsque cela reste cohérent :
-
-```text
-thème/palette
-+
-préférences de confort
-+
-profil accessibilité renforcée
-```
-
-Une préférence applicative ne doit pas neutraliser un besoin système important sans décision explicite et justifiée.
-
-### États asynchrones et Skeletons
-
-Le Design System normalise les états des composants alimentés par des données serveur :
-
-```text
-LOADING   → Skeleton adapté lorsque pertinent
-SUCCESS   → contenu
-EMPTY     → EmptyState
-ERROR     → ErrorState + retry lorsque pertinent
-FORBIDDEN / non-entitled → généralement composant absent selon RBAC/entitlement
-```
-
-Les Skeletons sont une brique de perception de performance et de stabilité visuelle, pas une décoration. Ils approximent la structure finale sans créer de faux contenu, limitent les changements de layout et respectent `prefers-reduced-motion`.
-
-Règle RTK Query : un Skeleton est réservé au chargement initial lorsqu'aucune donnée n'est encore disponible. Lors d'un refetch avec donnée existante, le contenu réel reste affiché.
-
-Le socle partagé comprend notamment la primitive `Skeleton`, `DataTableSkeleton`, `PageLoader`, `FormSectionSkeleton`, `EntityDetailsSkeleton` et les compositions Platform/Subscription nécessaires. Une future feature accessible par Plan/entitlement ou délégation doit réutiliser la composition correspondant à sa géométrie ; l'entitlement décide l'accès, pas le type de Skeleton.
-
-`loading`, `empty`, `error`, `forbidden` et `disabled` restent des états distincts et ne doivent jamais être confondus.
-
-### D-011.B — Préférences de confort
-
-**Sous-phase : VALIDÉE le 2026-09-09.** Gate locale finale frontend et backend verte (`lint`, tests globaux et build frontend) et validation UI manuelle confirmée avant fusion fast-forward dans `main`.
-
-Le Core fournit un mécanisme contrôlé pour les préférences transversales :
-
-```text
-theme             → system | light | dark
-fontFamily        → inter | geist | manrope | system
-paletteId         → palette enregistrée dans le registre Core
-accessibilityMode → standard | enhanced
-```
-
-La persistance authentifiée repose sur `User.preferences.comfort`, avec endpoints `GET /api/users/me/preferences` et `PATCH /api/users/me/preferences`, validation Zod stricte, enums contrôlés, normalisation des comptes plus anciens et absence de migration destructive obligatoire.
-
-Une préférence ne stocke jamais une valeur CSS libre, une URL de police arbitraire, une palette utilisateur non validée ou un JSON libre. Elle stocke uniquement des identifiants contrôlés.
-
-Le frontend distingue :
-
-```text
-utilisateur anonyme     → stockage local contrôlé
-utilisateur authentifié → préférences serveur du compte
-```
-
-Le stockage local courant utilise `saas-core:comfort:<scope>`. L'ancienne clé `saas-core:theme:<scope>` reste uniquement lisible pour compatibilité ascendante.
-
-Polices intégrées : Inter par défaut, Geist, Manrope et System. Les dépendances Fontsource correspondantes sont verrouillées dans le lockfile.
-
-Palettes Core intégrées :
-
-```text
-Core Atlantique
-Refreshing Summer Fun
-Leafy Green Garden
-Golden Peachy Glow
-```
-
-Les mini-palettes utilisent des métadonnées frontend contrôlées. Les couleurs réelles restent traduites vers les tokens sémantiques du Design System. Les couleurs d'état restent indépendantes des palettes de marque.
-
-La page `/account/preferences` propose thème, police, palette et accessibilité renforcée. Le clic sur une palette ou une police produit un aperçu immédiat, mais seule la sauvegarde explicite persiste le choix serveur ; quitter sans enregistrer restaure la préférence sauvegardée.
-
-Les ajustements transversaux de shell réalisés dans le même lot sont factorisés : identité applicative `SaaS Core`, affichage statique du workspace lorsqu'un seul est accessible, bloc partagé d'identité authentifiée, qualité Platform issue du contexte réel, raccourci Déconnexion, tooltip `bottom-end`, sidebars Workspace/Platform liées au viewport avec scroll interne de navigation si nécessaire. Ces éléments ne créent aucune nouvelle source d'autorisation.
-
-### D-011.C — Préférences d'affichage métier
-
-**Sous-phase : VALIDÉE le 2026-09-10.** Validation fonctionnelle manuelle confirmée, tests ciblés et globaux locaux verts, lint vert et build frontend vert avant fusion fast-forward dans `main` au commit `084a0094dd5bdd16103476f9be67173e434faeb5`.
-
-Le Core fournit désormais un registre extensible permettant aux futurs modules métier de déclarer des widgets, cartes, indicateurs ou KPI sans coupler le Core à un domaine métier.
-
-Invariant de sécurité et d'UX :
-
-```text
-Plan / entitlement effectif
-+
-permissions utilisateur
-→ ensemble réellement accessible
-
-ensemble réellement accessible
-+
-préférences utilisateur
-→ ensemble visible
-```
-
-Conséquences validées :
-
-- une préférence ne crée jamais un droit ;
-- un widget non autorisé n'est jamais proposé dans les préférences ;
-- masquer un widget ne retire aucun droit ;
-- afficher un widget ne crée aucun droit ;
-- le frontend n'utilise jamais les préférences comme autorisation ;
-- les composants non accessibles sont absents plutôt qu'affichés comme « indisponibles » lorsque la convention produit le prévoit ;
-- les identifiants de widgets sont stables et strictement validés ;
-- les identifiants inconnus ou retirés peuvent être préservés sans coupler le backend au registre frontend ;
-- la prévisualisation des switches est immédiate mais la persistance n'a lieu qu'après `Enregistrer` ;
-- `Annuler` restaure l'état enregistré ;
-- les grilles rééquilibrent l'espace selon les widgets réellement visibles ;
-- le contrôle de personnalisation est contextualisé au Dashboard Workspace et au Dashboard Platform ;
-- les drawers partagés sont portallés dans `document.body` afin de rester attachés au viewport et indépendants des contextes de stacking du shell.
-
-Persistance :
-
-```text
-User.preferences.dashboard.hiddenWidgetIds
-```
-
-La validation backend impose une liste bornée d'identifiants syntaxiquement contrôlés, sans JSON libre et sans dépendance au registre frontend.
-
-Architecture Workspace :
-
-```text
-frontend/src/app/application-dashboard.js
-→ widgets Core
-→ modules Dashboard explicitement composés
-→ filtre features + permissions
-→ préférences utilisateur
-→ composition du Dashboard
-```
-
-Les cartes Workspace actuellement fournies par le Core (`Statut du workspace`, `Votre rôle`, `Abonnement`, etc.) servent principalement de surface générique avant dérivation. Elles ne définissent pas le contenu métier futur. Dans un SaaS dérivé, le registre est destiné à recevoir les KPI et données métier déclarés par les modules applicatifs.
-
-Le Dashboard Platform est différent : il constitue déjà une surface fonctionnelle d'administration de la plateforme. Ses domaines (`Utilisateurs`, `Workspaces`, `Plans`, `Abonnements`, `Dérogations`, `Usage/fichiers`, `Audit`, `Équipe Platform`) restent bornés par la projection backend des permissions Platform, puis éventuellement réduits par la préférence personnelle.
-
-La V1 est volontairement limitée à **afficher / masquer**. Aucun constructeur libre, drag-and-drop arbitraire, redimensionnement, personnalisation visuelle par widget ou logique métier n'est ajouté par anticipation.
-
-### Tests validés D-011
-
-D-011.A, D-011.B et D-011.C sont validés par leurs gates locales respectives, tests ciblés/globaux, lint/build applicables et validation manuelle. D-011.C couvre notamment validation backend stricte, non-escalade, filtrage entitlement/RBAC, fallback d'identifiants inconnus, persistance, prévisualisation, absence de requête pour certains widgets masqués et comportements de shell/drawer associés.
-
-**Critère de clôture atteint :** Design System Core stabilisé, accessibilité structurelle non désactivable intégrée, profil renforcé contrôlé, états asynchrones partagés, préférences de confort strictes, registre Dashboard extensible, filtrage entitlement+RBAC garanti, composants réutilisables et validation backend/frontend effectuée.
-
----
-
-## D-012 — Tests E2E de chaque application dérivée
+### D-012 — Tests E2E de chaque application dérivée
 
 **Statut :** À CADRER  
 **Blocage Core 1.0 :** non — voir D-016
 
 Chaque dérivé doit couvrir ses parcours métier/transversaux critiques.
 
----
-
-## D-013 — Configuration et déploiement de production
+### D-013 — Configuration et déploiement de production
 
 **Statut :** À CADRER  
 **Blocage Core 1.0 :** non
 
 Variables/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrations/indexes, SMTP, stockage, antivirus, jobs, health/readiness, monitoring et rollback. Référence : `docs/operations/OPERATIONS.md`.
 
----
-
-## D-015 — Versionnement, provenance, releases et discipline de migration du Core
+### D-015 — Versionnement, provenance, releases et discipline de migration du Core
 
 **Statut :** PLANIFIÉ  
 **Périmètre :** Core / distribution  
 **Blocage Core 1.0 :** oui  
-**Dépendances :** D-020 doit être clôturée ou explicitement reclassifiée avant ouverture de la release candidate ; D-021 et D-022 sont validées depuis le 2026-09-12
+**Dépendances :** D-025 est validée ; D-020 doit encore être clôturée ou explicitement reclassifiée avant ouverture de la release candidate.
 
 À finaliser avant `v1.0.0` : SemVer, tags/releases, changelog/release notes, changements de contrats/configuration, migrations et ordre pre/post-deploy, reprise/rollback, provenance machine-readable et gate de release reproductible.
 
----
-
-## D-016 — E2E du Core avec Playwright
+### D-016 — E2E du Core avec Playwright
 
 **Statut :** PLANIFIÉ  
 **Blocage Core 1.0 :** oui
 
-Couvrir les parcours transversaux critiques : auth/session/refresh/logout, lifecycle Account/Workspace, isolation tenant, RBAC, subscription/entitlement/quota, administration Platform, Files et principaux états interdits.
+Couvrir les parcours transversaux critiques : auth/session/refresh/logout, lifecycle Account/Workspace, isolation tenant, RBAC, subscription/entitlement/quota, administration Platform, Files, centre d’aide Workspace/Platform et principaux états interdits.
 
----
+D-025 doit notamment être couvert par au moins une recherche + ouverture de fiche dans chaque contexte ainsi que par la séparation Workspace / Platform.
 
-## D-017 — Validation réelle de la dérivation et de l'upgrade du Core
+### D-017 — Validation réelle de la dérivation et de l'upgrade du Core
 
 **Statut :** PLANIFIÉ  
 **Blocage Core 1.0 :** oui pour valider réellement la stratégie de distribution  
-**Dépendances :** D-014 et D-002 validées, puis D-015 et D-016
+**Dépendances :** D-014 et D-002 validées, puis D-015 et D-016.
 
 Exercice : release candidate Core → dépôt pilote dérivé → petit module métier → évolution Core compatible → upgrade réel → migrations/configuration → tests Core+métier+E2E → analyse des conflits/provenance.
 
----
+D-017 doit aussi vérifier que le mécanisme d’aide Core accepte un module d’aide métier additionnel sans modifier le corpus Core.
 
-## D-020 — Invitation commerciale client et offres privées de découverte
+### D-020 — Invitation commerciale client et offres privées de découverte
 
 **Statut :** EN COURS  
 **Périmètre :** Core — onboarding commercial générique  
@@ -520,324 +221,105 @@ Contrat : `docs/contracts/COMMERCIAL-INVITATIONS.md`.
 
 `PlatformInvitation` reste réservé aux collaborateurs internes ; `CommercialInvitation` aux prospects/futurs clients/bêta-testeurs. Offre privée via Plan non public, snapshot serveur, dérive significative refusée, token aléatoire/hash SHA-256, rotation au resend, révocation, permissions Platform dédiées, acceptation authentifiée et atomique, audit. Les règles trial/open-ended restent celles du contrat canonique.
 
-**Critère de clôture :** validation fonctionnelle manuelle restante + contrat, sécurité, backend/frontend et tests validés.
+**Critère de clôture restant :** validation fonctionnelle manuelle finale ou reclassification explicite. Le code, les contrats et les tests déjà validés ne doivent pas être redéveloppés sans écart démontré.
 
----
-
-## D-021 — Gate sécurité Auth, invitations et tokens temporaires
-
-**Statut :** VALIDÉ — 2026-09-12  
-**Périmètre :** Core Auth + WorkspaceInvitation + PlatformInvitation + CommercialInvitation et tout lien sensible temporaire  
-**Blocage Core 1.0 :** levé  
-**Dépendances :** Auth/session et domaines d'invitation existants  
-**Déclencheur :** décision sécurité du 2026-09-08 — auditer et homogénéiser les secrets temporaires avant de figer le versionnement du Core
-
-D-021 a été traitée comme une gate d'audit puis de durcissement ciblé : les mécanismes déjà corrects ont été conservés et seuls les écarts réellement démontrés ont été corrigés.
-
-### Invitations — état validé
-
-```text
-WorkspaceInvitation
-PlatformInvitation
-CommercialInvitation
-→ expiration par défaut : 7 jours
-```
-
-Les trois familles utilisent des secrets générés côté serveur à partir de 32 octets aléatoires, un hash SHA-256 en persistance, une expiration serveur, une acceptation single-use atomique, des protections replay/concurrence, la révocation et un resend avec rotation du secret et nouvelle expiration. Les opérations critiques sont auditées.
-
-Les liens temporaires utilisent `#token=...` plutôt qu'une query string. Le frontend capture le secret dans un vault runtime en mémoire puis nettoie l'URL ; aucun secret temporaire n'est persisté dans Redux, `localStorage`, `sessionStorage` ou `history.state`.
-
-### Forgot / reset password — état validé
-
-```text
-reset password token
-→ 32 octets cryptographiquement aléatoires
-→ hash SHA-256 persisté uniquement
-→ durée : 15 minutes
-→ usage unique atomique
-→ nouvelle demande requise après expiration
-```
-
-Une nouvelle demande révoque les tokens actifs précédents. `forgot-password` conserve une réponse générique et une compensation temporelle pour limiter l'énumération. En cas d'échec SMTP, le token non remis est révoqué sans modifier la réponse publique.
-
-Un reset réussi consomme le token atomiquement dans la transaction, met à jour le credential local, révoque toutes les sessions existantes, écrit l'audit `PASSWORD_RESET_COMPLETED`, puis envoie la notification de changement de mot de passe sans rollback du changement si SMTP échoue.
-
-### Rate limiting et anti-automation — état validé
-
-L'audit a confirmé ou ajouté des protections ciblées pour `register`, `login`, `forgot-password`, `reset-password`, les acceptations Workspace/Platform et les previews/acceptations Commercial. Les protections sensibles sont positionnées avant validation lorsque cela évite le contournement par bodies invalides.
-
-Le CAPTCHA/challenge anti-bot n'est pas imposé systématiquement dans le Core : aucun besoin démontré ne justifie cette friction à ce stade. Il reste une défense adaptative possible si un produit dérivé ou un contexte réel d'abus l'exige.
-
-### Google SSO hors D-021
-
-Google SSO reste dans D-010 et ne bloque pas Core 1.0.
-
-### Gates de clôture
-
-```text
-backend npm test          → VERT
-frontend npm run lint     → VERT
-frontend npm test         → VERT
-frontend npm run build    → VERT
-```
-
-**Critère de clôture atteint :** secrets temporaires audités, invitations 7 jours validées, reset 15 minutes, single-use/rotation/révocation/replay/concurrence sécurisés, anti-enumeration/rate limiting vérifiés, stratégie anti-bot décidée, tests globaux verts et documentation synchronisée avant D-015.
-
----
-
-## D-022 — Intégrité des Entitlement Override Groups
-
-**Statut :** VALIDÉ — 2026-09-12  
-**Périmètre :** Core entitlement resolver + administration Platform + intégration frontend RTK Query/UI  
-**Blocage Core 1.0 :** levé  
-**Déclencheur :** audit post-D-021 ayant identifié un risque de désynchronisation entre une décision commerciale groupée FEATURE + LIMIT et les mutations unitaires historiques.
-
-Invariants validés :
-
-```text
-groupe FEATURE + LIMIT
-→ création groupée transactionnelle
-→ modification groupée
-→ révocation groupée atomique
-→ même métadonnée de révocation pour tous les membres
-→ audit de chaque override
-```
-
-Une dérogation possédant `groupId` ne peut plus être modifiée ou révoquée via les services unitaires. L'invariant est défendu au niveau service afin qu'un appel interne ne puisse pas contourner la règle par une autre route ou un futur contrôleur.
-
-Le contrat de mise à jour groupée conserve une sémantique de patch partiel : les limites présentes dans `relatedLimits` sont créées ou mises à jour ; les limites omises restent inchangées. L'omission ne constitue jamais une suppression ou une révocation implicite.
-
-Le frontend dispose d'une mutation RTK Query dédiée à `PATCH /platform/entitlement-overrides/feature-groups/:overrideId/revoke`. La page Platform choisit automatiquement cette mutation pour un override groupé et conserve la mutation unitaire pour un override autonome.
-
-La précédence du resolver est déterministe et couverte explicitement :
-
-```text
-startsAt décroissant
-→ puis createdAt décroissant
-→ puis _id décroissant
-```
-
-Les enfants LIMIT groupés restent des détails techniques de résolution et d'audit ; ils ne deviennent pas des décisions commerciales indépendantes dans la vue principale.
-
-### Gates de clôture D-022
-
-Les tests ciblés backend/frontend, les suites globales, le lint et le build applicables ont été exécutés localement et confirmés verts le 2026-09-12.
-
-**Critère de clôture atteint :** invariants de groupe protégés dans les services, révocation groupée atomique exposée backend/frontend, mutation unitaire bloquée pour les groupes, précédence déterministe explicitement testée, tests globaux/lint/build verts et documentation synchronisée.
-
----
-
-## D-023 — Demande gouvernée de capacité exceptionnelle de transfert de propriété
+### D-023 — Demande gouvernée de capacité exceptionnelle de transfert de propriété
 
 **Statut :** DIFFÉRÉ — cible Core 1.1  
-**Périmètre :** Core Workspace ownership + sécurité Platform + audit + frontend Workspace/Platform  
-**Blocage Core 1.0 :** non, sous réserve de conserver le workflow fermé par défaut et de ne pas exposer avant D-023 de commande owner `Demander capacité de transfert`  
-**Dépendances :** gate de transfert exceptionnelle existante, permission Platform réservée, TTL serveur de l'autorisation et AuditLog  
-**Déclencheur :** décision produit/sécurité du 2026-09-12 — remplacer à terme l'ouverture manuelle d'une capacité sensible par un workflow gouverné, traçable et sans ressaisie d'identité/workspace.
+**Blocage Core 1.0 :** non
 
-### Positionnement v1.0
+Le mécanisme bas niveau v1 reste fermé par défaut, réservé à l’autorisation Platform prévue, borné dans le temps, révocable et single-use. Aucun bouton owner `Demander capacité de transfert` n’est ajouté avant D-023.
 
-Le mécanisme bas niveau déjà implémenté reste une capacité opérationnelle exceptionnelle : il est fermé par défaut, réservé au Super administrateur pour l'ouverture d'une fenêtre courte, révocable et single-use. L'owner ne voit le formulaire de transfert que lorsqu'une autorisation serveur active existe.
+Cible Core 1.1 : demande owner persistée et auditée, file Platform bornée par permission, revalidation d’éligibilité à chaque étape, refus structurés, création de l’autorisation temporaire existante sans ressaisie d’identité/workspace, audit complet et tests concurrence/E2E.
 
-Avant D-023, **aucun bouton ou parcours utilisateur `Demander capacité de transfert` n'est ajouté**. La fonctionnalité n'est pas commercialisée ni présentée comme un droit normal du propriétaire. Ce choix permet de finaliser/versionner Core 1.0 sans figer prématurément le workflow de demande.
-
-### Workflow cible Core 1.1
-
-Surface utilisateur envisagée : `Paramètres > Sécurité > Demander capacité de transfert`.
-
-```text
-owner courant
-→ crée une demande de transfert pour son workspace
-→ données d'identité/workspace résolues côté serveur par IDs
-→ éventuellement cible future + rôle de remplacement sélectionnés depuis des données serveur
-→ demande persistée et auditée
-→ compteur de demandes Platform à traiter
-→ signal visuel dans la Topbar Platform
-→ file de demandes Platform visible uniquement aux acteurs autorisés
-→ Super administrateur examine la demande
-→ backend recalcule l'éligibilité et les éventuels motifs de blocage
-→ Autoriser / Refuser sans ressaisir nom, email ou workspace
-→ Autoriser crée la fenêtre exceptionnelle existante
-→ owner voit temporairement le formulaire de transfert
-→ réauthentification owner + revalidation serveur
-→ transfert transactionnel
-→ autorisation consommée single-use
-→ demande clôturée + audit complet
-```
-
-Le Super administrateur ne doit jamais recopier manuellement un nom de workspace, un email ou un identifiant fourni en texte libre pour activer la capacité. L'action Platform part d'un `requestId` et le backend résout les références autoritatives.
-
-Une collection dédiée de type `WorkspaceOwnershipTransferRequest` est préférable au stockage de la demande dans le sous-document d'autorisation courant : la demande possède son propre cycle de vie, alimente une file Platform et doit rester traçable indépendamment de la fenêtre d'autorisation éphémère.
-
-États à cadrer autour d'une machine d'état explicite, par exemple :
-
-```text
-requested
-→ authorized
-→ completed
-
-ou
-→ rejected
-→ cancelled
-→ expired
-```
-
-L'autorisation temporaire créée après validation reste distincte de la demande et conserve son contrat existant : TTL serveur borné, révocation possible et consommation au premier transfert réussi.
-
-### Éligibilité et revalidation de sécurité
-
-Les conditions ne doivent pas être contrôlées uniquement lors de la création de la demande. Elles doivent être revalidées au minimum lors de la demande, lors de l'autorisation Super Admin et immédiatement avant le transfert.
-
-Invariants/candidats de blocage :
-
-- demandeur toujours owner actif du workspace ;
-- workspace `active`, ni suspendu, ni archivé, ni engagé dans une fermeture/suppression terminale ;
-- exactement un owner actif avant le transfert ;
-- absence d'autre demande de transfert encore active et absence d'autorisation exceptionnelle concurrente ;
-- cible, lorsqu'elle est pré-sélectionnée, toujours membre actif éligible et distincte de l'owner courant ;
-- comptes concernés toujours utilisables selon leurs statuts ;
-- aucune dette commerciale bloquante : au minimum une subscription commerciale `past_due` ou un futur état provider explicitement bloquant doit empêcher l'autorisation/le transfert ; une baseline gratuite n'est pas bloquée pour absence de paiement ;
-- confirmation du mot de passe courant de l'owner maintenue au moment du transfert ;
-- règles de permissions et d'isolation tenant revalidées côté backend ;
-- données affichées dans la file Platform résolues depuis les références serveur, sans faire confiance à un snapshot frontend.
-
-Une simple remédiation de quota ne doit pas être déclarée bloquante par défaut : elle peut être sans rapport avec la gouvernance du workspace. Toute nouvelle condition de blocage doit être justifiée par un risque métier, financier ou de sécurité réel.
-
-Une demande en attente doit elle-même avoir une durée de vie serveur bornée afin d'éviter les demandes anciennes devenues incohérentes. Le TTL exact et son éventuelle configuration `.env` seront décidés lors de l'implémentation ; il reste distinct du TTL maximal de l'autorisation exceptionnelle déjà existante.
-
-### Refus gouverné et nouvelle demande
-
-Les motifs de refus objectifs doivent être calculés côté backend et exposés comme des codes structurés, jamais fabriqués uniquement par le frontend. Exemples à cadrer :
-
-```text
-WORKSPACE_SUSPENDED
-WORKSPACE_NOT_ACTIVE
-SUBSCRIPTION_PAST_DUE
-OWNER_NOT_ACTIVE
-TARGET_NOT_ELIGIBLE
-TRANSFER_REQUEST_ALREADY_PENDING
-TRANSFER_AUTHORIZATION_ALREADY_ACTIVE
-```
-
-Le frontend traduit ces codes en explications actionnables, par exemple régulariser un paiement ou réactiver le workspace avant de renouveler la demande.
-
-Un refus automatique correspond à une règle objective non satisfaite. Un refus manuel du Super administrateur reste possible lorsqu'une appréciation humaine est nécessaire ; il doit alors utiliser un motif structuré et, si utile, un complément borné.
-
-Une demande `rejected` reste immuable dans l'historique : elle n'est pas réactivée. Après correction de la cause, l'owner crée une **nouvelle demande** avec un nouveau `requestId`. Cette règle évite les ambiguïtés d'audit et garantit que chaque décision s'applique à un état métier donné.
-
-### Topbar Platform, cloche et file de demandes
-
-D-023 introduira un signal visuel ciblé dans la Topbar Platform, sans construire par anticipation un système générique de notifications.
-
-La cloche est rendue uniquement lorsque le contexte Platform possède la permission réservée d'autorisation du transfert (`WORKSPACES_OWNERSHIP_TRANSFER_AUTHORIZE`). En pratique cette permission est réservée au Super administrateur, mais le frontend ne doit pas coder en dur `role === super_admin`.
-
-Comportement cible :
-
-```text
-Super administrateur
-→ cloche toujours disponible comme point d'entrée vers la file de demandes
-→ aucune pastille si aucune demande n'attend de décision
-→ pastille 1..9 puis 9+ si demandes `requested` à traiter
-→ accessible name indiquant le nombre de demandes en attente
-→ clic vers /platform/ownership-transfer-requests
-
-autre membre Platform
-→ permission réservée absente
-→ aucune cloche de transfert
-→ aucune route/API de traitement accessible
-```
-
-La pastille représente uniquement le **travail nécessitant une décision**. Les demandes `authorized`, `rejected`, `cancelled`, `expired` ou `completed` ne doivent pas gonfler le compteur d'attente.
-
-Le mécanisme de rafraîchissement du compteur (invalidation RTK Query, polling raisonnable ou futur événement temps réel) sera décidé à l'implémentation. D-023 ne doit pas introduire un bus temps réel ou un centre de notifications générique uniquement pour ce besoin.
-
-La page `/platform/ownership-transfer-requests` doit utiliser les composants partagés existants, notamment `DataTable`, `DataPagination` si nécessaire, états loading/empty/error, Drawer/Dialog et confirmations communes. Une ligne doit identifier sans ambiguïté le workspace, l'owner demandeur, la cible prévue lorsqu'elle existe, la date de demande, l'état et le résultat courant de l'éligibilité serveur.
-
-Les actions `Autoriser` et `Refuser` partent du `requestId`. `Autoriser` utilise les données référencées par la demande, déclenche une nouvelle revalidation serveur puis ouvre la fenêtre exceptionnelle existante. `Refuser` conserve les raisons structurées et informe l'owner de manière actionnable.
-
-Le retour vers l'owner peut être exposé dans `Paramètres > Sécurité` via l'état de sa demande et ses motifs de refus. Un email transactionnel peut compléter le parcours si pertinent, mais D-023 ne dépend pas du système de notifications étendues D-008.
-
-### Audit attendu
-
-Le journal doit permettre de reconstruire le cycle sans exposer de secret :
-
-```text
-demande créée
-refus automatique ou manuel / annulation / expiration
-autorisation accordée
-révocation éventuelle
-nouvelle demande après correction, avec nouveau requestId
-transfert exécuté
-```
-
-Les audits doivent référencer les IDs utiles (`requestId`, `workspaceId`, acteurs, memberships/cible lorsque pertinent), les codes de refus structurés et la relation avec l'autorisation temporaire, sans dupliquer inutilement des données personnelles en clair.
-
-**Critère de clôture :** demande owner disponible dans la zone Sécurité, modèle et machine d'état persistés, cloche Platform bornée par permission avec compteur des demandes réellement actionnables, page Super Admin utilisant les composants partagés, données serveur préremplies, activation sans ressaisie, refus structurés et actionnables, nouvelle demande possible après correction sans réactiver l'historique, règles d'éligibilité revalidées à chaque étape, authorization gate existante réutilisée, TTLs bornés, single-use/révocation conservés, audit complet, tests sécurité/concurrence et E2E du parcours validés.
-
----
-
-## D-024 — Console d’administration Platform contextualisée du Workspace
+### D-024 — Console d’administration Platform contextualisée du Workspace
 
 **Statut :** DIFFÉRÉ — cible Core 1.1  
-**Périmètre :** administration Platform du Workspace, principalement frontend avec extensions backend additives uniquement si nécessaires  
-**Blocage Core 1.0 :** non  
-**Dépendances :** Core 1.0 stabilisé et stratégie de distribution réellement validée par D-015, D-016 et D-017  
-**Déclencheur :** décision produit du 2026-09-16 — faire du Workspace l’unité de contexte principale de son administration Platform sans fusionner les responsabilités des domaines sous-jacents.
+**Blocage Core 1.0 :** non
 
-Spécification détaillée : `docs/debt/D-024-platform-workspace-control-center.md`.
+Spécification : `docs/debt/D-024-platform-workspace-control-center.md`.
 
-Le drawer Workspace doit évoluer après Core 1.0 vers une console contextualisée permettant de comprendre l’état global du workspace et d’accéder aux principales opérations Platform qui le concernent, organisées par domaines : vue d’ensemble, abonnement, dérogations, administration et alertes/activité.
-
-Invariants :
-
-- les pages Platform globales restent disponibles pour l’administration transverse ;
-- la console contextualisée réutilise les composants, services et endpoints existants au lieu de dupliquer leur logique ;
-- RTK Query reste la source d’état serveur ;
-- les permissions et validations backend restent les autorités ;
-- les données spécialisées sont chargées à la demande lorsque pertinent ;
-- le contexte URL fondé sur `workspaceId` est conservé ou proprement étendu ;
-- aucun domaine `Incident`, `Billing` ou autre n’est inventé uniquement pour servir l’interface ;
-- toute extension backend éventuelle doit être additive et justifiée par l’audit des contrats existants.
-
-**Critère de clôture :** un administrateur Platform peut ouvrir un workspace depuis la liste, obtenir une vision consolidée cohérente et accéder aux principales opérations Platform par sections clairement séparées, sans dupliquer la logique métier ni supprimer les pages globales, avec permissions, accessibilité, tests et E2E validés.
+Le drawer Workspace doit évoluer après Core 1.0 vers une console contextualisée : vue d’ensemble, abonnement, dérogations, administration et alertes/activité. Les pages Platform globales restent disponibles ; RTK Query, permissions et validations backend restent les autorités ; aucune logique métier ne doit être dupliquée.
 
 ---
 
-## 6. Éléments volontairement non intégrés comme dette active
+## 5. Dette clôturée récemment — D-025
 
-Ne sont pas ajoutés par anticipation : packages `@saas-core/*`, provider de paiement imposé au Core, CMP fictive sans traceurs applicables, limite universelle du nombre de Workspaces ou CAPTCHA/provider anti-bot imposé sans besoin démontré.
+### D-025 — Centre d’aide sécurisé Workspace / Platform
+
+**Statut :** VALIDÉ — 2026-09-16  
+**Blocage Core 1.0 :** levé pour D-025  
+**Spécification :** `docs/debt/D-025-secure-help-center.md`
+
+État validé :
+
+- centres d’aide Workspace et Platform distincts sur une infrastructure commune ;
+- registres Core strictement validés et point d’extension `APPLICATION_HELP_MODULES` ;
+- projection serveur obligatoire avant sérialisation ;
+- filtrage Workspace par permissions effectives, owner, plan/features et mode d’accès/remédiation ;
+- filtrage Platform à partir de l’autorisation Platform réelle ;
+- fiche absente ou non autorisée exposée avec le même comportement générique afin de limiter la divulgation ;
+- recherche frontend locale uniquement sur le catalogue déjà autorisé ;
+- catégories bornées, recherche prédictive, navigation clavier, tooltips accessibles, deep links et fiches en drawer ;
+- contenus versionnés avec le Core ; aucun CMS, LLM ou RAG ajouté ;
+- mécanisme prévu pour être étendu par un SaaS dérivé sans modifier le corpus Core.
+
+Les tests applicables, lint, build et validations fonctionnelles/visuelles ont été exécutés localement et confirmés verts le 2026-09-16. La couverture E2E de release reste volontairement portée par D-016.
+
+**Critère de clôture atteint.**
+
+---
+
+## 6. Dettes clôturées — références
+
+```text
+D-001 fermeture Account / Workspace                         VALIDÉ
+D-002 corbeille / restauration / suppression Files          VALIDÉ — 2026-09-15
+D-011 Design System + préférences                           VALIDÉ — 2026-09-10
+D-014 points d'extension métier                             VALIDÉ
+D-018 Équipe Platform / RBAC / invitations                  VALIDÉ
+D-019 moteur sécurisé de rétention / purge Core             VALIDÉ
+D-021 gate sécurité Auth / invitations / tokens             VALIDÉ — 2026-09-12
+D-022 intégrité Entitlement Override Groups                 VALIDÉ — 2026-09-12
+D-025 centre d’aide Workspace / Platform sécurisé           VALIDÉ — 2026-09-16
+DOC-CODE-1 documentation source                             VALIDÉ
+```
+
+Le détail historique de ces lots reste consultable dans Git et dans leurs documents canoniques dédiés lorsqu’ils existent.
 
 ---
 
 ## 7. Ordre de traitement recommandé
 
 ```text
-D-001 fermeture Account / Workspace                         VALIDÉ
-D-014 points d'extension métier                             VALIDÉ
-D-018 Équipe Platform / RBAC / invitations                  VALIDÉ
-D-019 moteur sécurisé de rétention / purge Core             VALIDÉ
-DOC-CODE-1 documentation source                             VALIDÉ
-→ D-020 invitation commerciale / offre privée découverte    EN COURS
-D-011.A stabilisation Design System Core                    VALIDÉ
-D-011.B préférences de confort                              VALIDÉ
-D-011.C préférences d'affichage métier                      VALIDÉ
-D-021 gate sécurité Auth / invitations / tokens             VALIDÉ — 2026-09-12
-D-022 intégrité Entitlement Override Groups                 VALIDÉ — 2026-09-12
-D-002 corbeille / restauration / suppression Files          VALIDÉ — 2026-09-15
+D-025 centre d’aide Workspace / Platform sécurisé           VALIDÉ — 2026-09-16
+→ clôturer ou reclassifier explicitement D-020              EN COURS
+→ gate globale pré-D-015 + revue finale pré-versionnement
 → D-015 release/version/provenance/migrations               PLANIFIÉ
 → D-016 Playwright E2E Core                                 PLANIFIÉ
 → audit final architecture / sécurité / qualité
 → D-017 dérivation + upgrade pilote                         PLANIFIÉ
 → taguer uniquement ensuite la release Core stable
 --- évolution post-v1.0 ---
-→ D-023 demande gouvernée de transfert de propriété        DIFFÉRÉ — cible Core 1.1
-→ D-024 console Platform contextualisée du Workspace       DIFFÉRÉ — cible Core 1.1
+→ D-023 demande gouvernée de transfert de propriété         DIFFÉRÉ — cible Core 1.1
+→ D-024 console Platform contextualisée du Workspace        DIFFÉRÉ — cible Core 1.1
 ```
 
-La condition D-002 avant première dérivation est désormais levée. Aucune release `v1.0.0` avant clôture/reclassification explicite des blockers Core applicables ; D-020 reste le blocker immédiat avant D-015. D-023 et D-024 ne bloquent pas Core 1.0 et doivent être repris sur le Core stabilisé après validation réelle de la stratégie de distribution.
+Aucune release `v1.0.0` ni ouverture de D-015 avant résolution explicite de D-020 et nouvelle gate globale pré-D-015.
 
 ---
 
-## 8. Gate finale d'un SaaS dérivé
+## 8. Gate globale pré-D-015
 
-Un produit dérivé n'est pas production-ready sans version Core compatible, modules métier validés, dettes applicables traitées, configuration/infrastructure, conformité, Billing si payant, E2E produit et procédures sauvegarde/rollback/monitoring adaptées.
+À rejouer après clôture/reclassification D-020 :
+
+```text
+backend npm run lint
+backend npm test
+frontend npm run lint
+frontend npm test
+frontend npm run build
+validation manuelle des parcours critiques
+```
+
+Ne jamais présenter cette gate comme verte sans exécution réelle sur l’état de `main` concerné.
