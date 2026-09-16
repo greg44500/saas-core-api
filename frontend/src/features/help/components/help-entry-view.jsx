@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, ArrowRight } from 'lucide-react';
+import { AlertTriangle, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router';
 
 import {
@@ -34,22 +34,7 @@ function HelpEntryView({ basePath, catalog, entry }) {
     .filter(Boolean);
 
   return (
-    <section className="mx-auto w-full max-w-4xl space-y-6">
-      <Link
-        className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-        to={basePath}
-      >
-        <ArrowLeft aria-hidden="true" className="size-4" />
-        Retour au centre d’aide
-      </Link>
-
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{entry.title}</h1>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {entry.summary}
-        </p>
-      </div>
-
+    <div className="space-y-5">
       <HelpEntrySection title="Qui peut effectuer cette action ?">
         <p>{entry.whoCanPerform}</p>
       </HelpEntrySection>
@@ -116,17 +101,19 @@ function HelpEntryView({ basePath, catalog, entry }) {
                 key={relatedEntry.id}
                 to={`${basePath}/${relatedEntry.id}`}
               >
-                <span>{relatedEntry.title}</span>
+                <span className="transition-colors group-hover:text-primary">
+                  {relatedEntry.title}
+                </span>
                 <ArrowRight
                   aria-hidden="true"
-                  className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                  className="size-4 shrink-0 text-muted-foreground transition-[transform,color] group-hover:translate-x-0.5 group-hover:text-primary"
                 />
               </Link>
             ))}
           </div>
         </div>
       ) : null}
-    </section>
+    </div>
   );
 }
 

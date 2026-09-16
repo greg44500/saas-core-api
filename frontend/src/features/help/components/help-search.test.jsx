@@ -28,7 +28,7 @@ const entries = [
 ];
 
 describe('HelpSearch', () => {
-  it('affiche les suggestions autorisées et permet une sélection clavier', async () => {
+  it('détache visuellement les suggestions autorisées et permet une sélection clavier', async () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
 
@@ -40,7 +40,8 @@ describe('HelpSearch', () => {
 
     await user.type(input, 'audit');
 
-    expect(await screen.findByText('Consulter l’activité du workspace')).toBeInTheDocument();
+    expect(await screen.findByText('Suggestions')).toBeInTheDocument();
+    expect(screen.getByText('Consulter l’activité du workspace')).toBeInTheDocument();
     expect(screen.queryByText('Téléverser un fichier')).not.toBeInTheDocument();
 
     await user.keyboard('{ArrowDown}{Enter}');

@@ -49,7 +49,12 @@ function HelpSearch({ entries, onSelect }) {
 
       <AutocompletePortal>
         <AutocompletePositioner>
-          <AutocompletePopup>
+          <AutocompletePopup className="border-primary/25 bg-popover/95 shadow-2xl ring-1 ring-foreground/5 backdrop-blur-md">
+            <div className="border-b border-border bg-muted/35 px-3 py-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Suggestions
+              </p>
+            </div>
             <AutocompleteStatus>
               {suggestions.length} résultat(s) proposé(s)
             </AutocompleteStatus>
@@ -61,6 +66,7 @@ function HelpSearch({ entries, onSelect }) {
             <AutocompleteList>
               {(entry, index) => (
                 <AutocompleteItem
+                  className="border-b border-border/50 last:border-b-0 data-highlighted:bg-accent/70"
                   index={index}
                   key={entry.id}
                   onClick={() => onSelect(entry)}
@@ -79,5 +85,3 @@ function HelpSearch({ entries, onSelect }) {
     </Autocomplete>
   );
 }
-
-export { HelpSearch };

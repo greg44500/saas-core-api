@@ -27,7 +27,8 @@ function HelpCenterSkeleton() {
         <Skeleton className="h-10 w-36" />
         <Skeleton className="h-10 w-32" />
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <Skeleton className="h-36 w-full" />
         <Skeleton className="h-36 w-full" />
         <Skeleton className="h-36 w-full" />
       </div>
@@ -126,15 +127,15 @@ function HelpCatalog({ basePath, catalog }) {
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {activeEntries.map((entry) => (
                     <Link
-                      className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="group block h-36 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       key={entry.id}
                       to={`${basePath}/${entry.id}`}
                     >
-                      <Card className="h-full transition-colors group-hover:border-primary/40 group-hover:bg-accent/20">
-                        <CardHeader>
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <CardTitle className="text-base">
+                      <Card className="h-full transition-[border-color,background-color,box-shadow] group-hover:border-primary/50 group-hover:bg-accent/25 group-hover:shadow-sm">
+                        <CardHeader className="h-full pb-5">
+                          <div className="flex h-full items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <CardTitle className="line-clamp-2 text-base transition-colors group-hover:text-primary">
                                 {entry.title}
                               </CardTitle>
                               <CardDescription className="mt-2 line-clamp-3">
@@ -143,7 +144,7 @@ function HelpCatalog({ basePath, catalog }) {
                             </div>
                             <ArrowRight
                               aria-hidden="true"
-                              className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                              className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-[transform,color] group-hover:translate-x-0.5 group-hover:text-primary"
                             />
                           </div>
                         </CardHeader>
