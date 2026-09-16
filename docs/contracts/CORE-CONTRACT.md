@@ -1,8 +1,8 @@
 # SAAS-CORE-API — Contrat Core canonique
 
 **Statut :** canonique — actif  
-**Dernière mise à jour :** 2026-09-05  
-**Périmètre :** frontière HTTP du Core, sécurité d’accès, multi-tenant, comptes, workspaces, membres, rôles, invitations, fichiers, audit et administration Platform  
+**Dernière mise à jour :** 2026-09-16  
+**Périmètre :** frontière HTTP du Core, sécurité d’accès, multi-tenant, comptes, workspaces, membres, rôles, invitations, fichiers, audit, aide sécurisée et administration Platform  
 **Sources d’autorité :** code et tests du dépôt `main`
 
 ---
@@ -13,7 +13,7 @@ Ce document est le contrat de référence du **Core générique** de `saas-core-
 
 Il remplace progressivement les anciens contrats frontend/backend dispersés. Tant que ces anciens fichiers n’ont pas été explicitement supprimés, ils restent des sources historiques de travail, mais **ils ne prévalent plus sur le présent contrat lorsqu’une règle y est consolidée et vérifiée contre le code courant**.
 
-Le contrat distingue trois niveaux :
+Le contrat s’appuie sur plusieurs documents canoniques complémentaires :
 
 ```text
 CORE-CONTRACT.md
@@ -22,8 +22,17 @@ CORE-CONTRACT.md
 COMMERCIAL.md
 → Plans, Subscription, Trial, entitlement, quotas et overrides
 
+COMMERCIAL-INVITATIONS.md
+→ invitations commerciales et offres privées D-020
+
 CAPABILITIES.md
 → registre des capabilities et extension par les SaaS dérivés
+
+PLATFORM-TEAM.md
+→ équipe interne, rôles, permissions et invitations Platform
+
+RETENTION.md
+→ moteur générique de rétention / purge
 ```
 
 Le présent document ne décrit pas les choix de design visuel ni les détails d’implémentation interne de chaque composant frontend.
@@ -62,7 +71,9 @@ Entitlement / UsageMetric
 EntitlementOverride
 Files
 AuditLog
-Platform Admin
+Retention / Purge
+Help Registry / Help Center
+Platform Admin / Platform Team
 Capability Registry
 ```
 
@@ -614,17 +625,23 @@ Endpoints :
 
 ```text
 GET    /
+GET    /storage
+GET    /trash
 GET    /:fileId
 GET    /:fileId/download
 POST   /
+POST   /:fileId/restore
 DELETE /:fileId
+DELETE /:fileId/permanent
 ```
 
 ### 13.1 Lectures
 
-Les lectures nécessitent `file:read`.
+Les fichiers actifs, leur détail, leur téléchargement et l’état de stockage courant utilisent `file:read`.
 
-Elles restent possibles en remédiation et **ne dépendent pas de `file_upload`** : un plan qui interdit de nouveaux dépôts ne doit pas masquer les fichiers actifs déjà détenus par le Workspace.
+Ces lectures restent possibles en remédiation et **ne dépendent pas de `file_upload`** : un plan qui interdit de nouveaux dépôts ne doit pas masquer les fichiers actifs déjà détenus par le Workspace.
+
+La consultation de la corbeille est une surface d’administration distincte et nécessite `file:trash:read`.
 
 ### 13.2 Upload
 
@@ -642,15 +659,31 @@ quotas applicables
 
 La validation et les contrôles serveur restent l’autorité. Masquer un bouton Upload côté frontend n’est jamais un contrôle de sécurité suffisant.
 
-### 13.3 Suppression
+### 13.3 Suppression logique
 
 La suppression logique nécessite `file:delete`.
 
-Elle peut être autorisée pendant une remédiation car elle peut réduire la consommation. La suppression logique ne signifie pas purge physique immédiate.
+Elle peut être autorisée pendant une remédiation car elle prépare la réduction de consommation. La suppression logique retire le fichier du listing actif mais ne signifie pas purge physique immédiate.
 
-### 13.4 Restauration
+### 13.4 Corbeille, restauration et suppression définitive
 
-Aucune route de restauration n’est actuellement exposée. La corbeille/restauration reste suivie comme dette distincte dans `DEBT.md`.
+```text
+GET    /api/workspaces/:workspaceId/files/trash
+POST   /api/workspaces/:workspaceId/files/:fileId/restore
+DELETE /api/workspaces/:workspaceId/files/:fileId/permanent
+```
+
+Permissions dédiées :
+
+```text
+file:trash:read
+file:restore
+file:delete:permanent
+```
+
+La restauration reste autorisée en remédiation lorsqu’elle ne crée pas de nouvelle consommation : le fichier supprimé reste comptabilisé jusqu’à sa suppression définitive.
+
+La suppression définitive détruit le contenu physique, libère réellement le stockage et constitue une action irréversible distincte du soft delete.
 
 ---
 
@@ -722,13 +755,21 @@ Préfixe :
 /api/platform
 ```
 
-Le routeur Platform racine exige l’authentification.
+Le routeur Platform racine exige l’authentification. Les sous-routeurs appliquent ensuite leurs autorisations Platform réelles et leurs validations propres.
 
-La politique Core V1 attribue toutes les permissions Platform au seul `super_admin`. Les rôles Platform `admin`, `support` et `user` n’en reçoivent aucune par défaut.
+Le RBAC Platform courant est défini par `PlatformTeamMember`, `PlatformRole` et les `PlatformPermission` effectives. Le rôle système `super_admin` possède toutes les permissions Platform connues ; les autres rôles reçoivent uniquement les permissions autorisées par leur rôle et par les règles de sensibilité/délégation définies dans `docs/contracts/PLATFORM-TEAM.md`.
 
-Certaines routes utilisent déjà les permissions granulaires Platform ; d’autres restent encore protégées directement par `super_admin`. Cette coexistence ne doit pas être interprétée comme un élargissement d’accès.
+Aucune route d’administration ne doit déduire une autorisation suffisante d’un simple rôle affiché côté frontend.
 
-### 17.1 Overview
+### 17.1 Contexte Platform courant
+
+```text
+GET /api/platform/me
+```
+
+Cette route décrit le contexte Platform du User authentifié. Elle peut notamment retourner l’absence d’accès Platform ou un état suspendu sans attribuer d’autorisation supplémentaire.
+
+### 17.2 Overview
 
 ```text
 GET /api/platform/overview
@@ -742,36 +783,57 @@ platform:overview:read
 
 Le cockpit est analytique. Il ne devient jamais une autorité transactionnelle.
 
-### 17.2 Users
+### 17.3 Users
 
 ```text
 GET    /api/platform/users
 GET    /api/platform/users/:userId
 PATCH  /api/platform/users/:userId/disable
 PATCH  /api/platform/users/:userId/enable
+PATCH  /api/platform/users/:userId/close
 POST   /api/platform/users/:userId/revoke-sessions
-PATCH  /api/platform/users/:userId/role
 ```
 
-Politique effective actuelle : `super_admin` uniquement.
+Permissions granulaires :
 
-La finalisation administrative historique d’un User `deletion_requested` reste un mécanisme de secours ; le parcours nominal self-service ferme désormais le compte de manière automatisée et transactionnelle.
+```text
+platform:users:read
+platform:users:disable
+platform:users:enable
+platform:users:close
+platform:users:revoke_sessions
+```
 
-### 17.3 Workspaces
+L’ancien endpoint de mutation directe `/:userId/role` n’appartient plus au contrat : les rôles d’administration sont gérés par `PlatformTeamMember` + `PlatformRole`.
+
+### 17.4 Workspaces
 
 ```text
 GET    /api/platform/workspaces
 GET    /api/platform/workspaces/:workspaceId
+GET    /api/platform/workspaces/:workspaceId/ownership-transfer-authorization
+POST   /api/platform/workspaces/:workspaceId/ownership-transfer-authorization
+DELETE /api/platform/workspaces/:workspaceId/ownership-transfer-authorization
 PATCH  /api/platform/workspaces/:workspaceId/suspend
 PATCH  /api/platform/workspaces/:workspaceId/reactivate
 PATCH  /api/platform/workspaces/:workspaceId/close
 ```
 
-Politique effective actuelle : `super_admin` uniquement.
+Permissions granulaires :
+
+```text
+platform:workspaces:read
+platform:workspaces:ownership_transfer_authorize
+platform:workspaces:suspend
+platform:workspaces:reactivate
+platform:workspaces:close
+```
 
 `close` représente la fermeture terminale Platform et reste distinct de l’archivage volontaire owner.
 
-### 17.4 Plans
+L’autorisation temporaire de transfert d’ownership Platform ne réalise pas elle-même le transfert : elle autorise le workflow Workspace concerné pendant sa fenêtre de validité.
+
+### 17.5 Plans
 
 ```text
 GET    /api/platform/plans/capabilities
@@ -791,7 +853,7 @@ platform:plans:update
 platform:plans:archive
 ```
 
-### 17.5 Subscriptions
+### 17.6 Subscriptions
 
 ```text
 GET    /api/platform/subscriptions
@@ -802,13 +864,25 @@ PATCH  /api/platform/subscriptions/:subscriptionId/cancel
 PATCH  /api/platform/subscriptions/:subscriptionId/resume
 ```
 
-Politique effective actuelle : `super_admin` uniquement.
+Permissions granulaires :
 
-### 17.6 Entitlement Overrides
+```text
+platform:subscriptions:read
+platform:subscriptions:grant_trial
+platform:subscriptions:update
+platform:subscriptions:cancel
+platform:subscriptions:resume
+```
+
+### 17.7 Entitlement Overrides
 
 ```text
 GET    /api/platform/entitlement-overrides
 GET    /api/platform/entitlement-overrides/workspaces/:workspaceId/context
+GET    /api/platform/entitlement-overrides/feature-groups/:overrideId
+POST   /api/platform/entitlement-overrides/feature-groups
+PATCH  /api/platform/entitlement-overrides/feature-groups/:overrideId
+PATCH  /api/platform/entitlement-overrides/feature-groups/:overrideId/revoke
 GET    /api/platform/entitlement-overrides/:overrideId
 POST   /api/platform/entitlement-overrides
 PATCH  /api/platform/entitlement-overrides/:overrideId
@@ -824,17 +898,120 @@ platform:entitlement_overrides:update
 platform:entitlement_overrides:revoke
 ```
 
-### 17.7 Audit Logs Platform
+Les groupes FEATURE + LIMIT(s) possèdent un lifecycle groupé protégé ; les mutations unitaires ne doivent pas contourner ce contrat.
+
+### 17.8 Audit Logs Platform
 
 ```text
 GET /api/platform/audit-logs
+GET /api/platform/audit-logs/metadata
 ```
 
-Politique effective actuelle : `super_admin` uniquement.
+Permission :
+
+```text
+platform:audit_logs:read
+```
+
+### 17.9 Rétention / purge
+
+Préfixe :
+
+```text
+/api/platform/retention
+```
+
+Endpoints actuels :
+
+```text
+GET  /api/platform/retention
+GET  /api/platform/retention/:targetKey
+GET  /api/platform/retention/:targetKey/executions
+POST /api/platform/retention/:targetKey/preview
+POST /api/platform/retention/:targetKey/policy-versions
+POST /api/platform/retention/:targetKey/executions
+```
+
+Permissions :
+
+```text
+platform:retention:read
+platform:retention:preview
+platform:retention:update
+platform:retention:execute
+```
+
+Le contrat détaillé est `docs/contracts/RETENTION.md`.
+
+### 17.10 Invitations commerciales
+
+Le domaine D-020 est exposé sous :
+
+```text
+/api/platform/commercial-invitations
+```
+
+Il utilise ses permissions `platform:commercial_invitations:*` et reste distinct des invitations de l’équipe Platform. Le contrat détaillé est `docs/contracts/COMMERCIAL-INVITATIONS.md`.
+
+### 17.11 Équipe et rôles Platform
+
+Les routes d’équipe, invitations internes et rôles Platform sont exposées sous les préfixes :
+
+```text
+/api/platform/team
+/api/platform/team/roles
+```
+
+Leur modèle d’autorité, leurs protections Fondateur / Super administrateur et leurs règles de délégation sont définis dans `docs/contracts/PLATFORM-TEAM.md`.
 
 ---
 
-## 18. Sécurité : ordre conceptuel des contrôles
+## 18. Centre d’aide sécurisé Workspace / Platform
+
+Le Core expose deux corpus d’aide fonctionnellement distincts.
+
+### 18.1 Workspace
+
+```text
+GET /api/workspaces/:workspaceId/help
+GET /api/workspaces/:workspaceId/help/:entryId
+```
+
+Les routes sont authentifiées, validées et chargent le contexte Workspace réel avant projection du corpus.
+
+### 18.2 Platform
+
+```text
+GET /api/platform/help
+GET /api/platform/help/:entryId
+```
+
+Le routeur parent impose l’authentification Platform ; le domaine Help applique ensuite son autorité et son filtrage propres.
+
+### 18.3 Invariant de sécurité
+
+Le backend **projette et filtre avant sérialisation**. Il ne doit jamais envoyer au frontend un corpus ou une fiche non autorisée uniquement pour la masquer ensuite côté client.
+
+Selon le contexte, la projection peut tenir compte notamment :
+
+```text
+contexte Workspace ou Platform
+permissions effectives
+ownership
+entitlements / capabilities
+état ou mode d’accès
+remédiation
+```
+
+La recherche frontend s’exécute uniquement sur le corpus déjà autorisé reçu du serveur.
+
+Une fiche absente et une fiche non autorisée ne doivent pas permettre au client de déduire l’existence d’un contenu protégé.
+
+Le registre Help du Core est extensible par composition afin qu’un SaaS dérivé puisse ajouter ses fiches métier sans réécrire le corpus Core.
+
+---
+
+## 19. Sécurité : ordre conceptuel des contrôles
 
 Selon le domaine, une mutation tenant-scoped peut nécessiter :
 
@@ -857,7 +1034,7 @@ Le document `docs/security/SECURITY.md` détaille ces mécanismes.
 
 ---
 
-## 19. Responsabilités frontend
+## 20. Responsabilités frontend
 
 Le frontend doit :
 
@@ -875,13 +1052,12 @@ Les règles de composants réutilisables, DataTable, Drawer, formulaires, toasts
 
 ---
 
-## 20. Hors périmètre actuel du contrat Core
+## 21. Hors périmètre actuel du contrat Core
 
 Ne sont pas encore des contrats Core complets :
 
 ```text
 changement d’email avec vérification
-corbeille/restauration File
 MFA / passkeys / SSO
 Billing / Payment réel
 facturation / TVA / remboursements
@@ -894,7 +1070,7 @@ Les sujets actifs sont suivis dans `docs/DEBT.md` lorsque nécessaire.
 
 ---
 
-## 21. Documents historiques absorbés progressivement
+## 22. Documents historiques absorbés progressivement
 
 Ce contrat absorbe les règles encore valides de plusieurs documents existants, notamment :
 
@@ -905,13 +1081,13 @@ frontend-backend-roles-permissions-contract.md
 frontend-platform-admin-contract.md
 ```
 
-Les détails commerciaux sont absorbés par `COMMERCIAL.md` et les règles de registre par `CAPABILITIES.md`.
+Les détails spécialisés sont consolidés par `COMMERCIAL.md`, `COMMERCIAL-INVITATIONS.md`, `CAPABILITIES.md`, `PLATFORM-TEAM.md` et `RETENTION.md`.
 
 Aucun de ces anciens fichiers ne doit être supprimé avant validation explicite du lot de nettoyage correspondant.
 
 ---
 
-## 22. Règle de maintenance
+## 23. Règle de maintenance
 
 Toute évolution qui modifie une surface HTTP observable, une règle d’autorisation, une frontière tenant, un DTO public ou un invariant transversal doit vérifier dans le même lot si ce contrat doit être mis à jour.
 
