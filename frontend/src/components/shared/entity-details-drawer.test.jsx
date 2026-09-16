@@ -139,7 +139,10 @@ describe('EntityDetailsDrawer', () => {
     await waitFor(() => expect(closeButton).toHaveFocus());
 
     await user.tab({ shift: true });
-    expect(actionButton).toHaveFocus();
+
+    // Base UI fait transiter brièvement le focus par son guard interne avant
+    // de boucler vers le dernier élément interactif du drawer.
+    await waitFor(() => expect(actionButton).toHaveFocus());
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
