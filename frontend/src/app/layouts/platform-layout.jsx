@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router';
+import { Outlet } from 'react-router';
 
 import { DashboardDisplayPreviewProvider } from '@/components/shared/dashboard-display-preview-context';
 import { ExpandableSearch } from '@/components/shared/expandable-search';
@@ -12,9 +12,6 @@ import { PlatformSidebar } from '@/features/platform/components/platform-sidebar
 import { PlatformUserIdentity } from '@/features/platform/components/platform-user-identity';
 
 function PlatformLayout() {
-  const location = useLocation();
-  const isOverview = location.pathname === '/platform/overview';
-
   return (
     <DashboardDisplayPreviewProvider>
       <SidebarProvider>
@@ -40,9 +37,7 @@ function PlatformLayout() {
                   actions={(
                     <>
                       <HelpCenterLink to="/platform/help" />
-                      {isOverview ? (
-                        <PlatformDashboardDisplayPreferences triggerVariant="icon" />
-                      ) : null}
+                      <PlatformDashboardDisplayPreferences triggerVariant="icon" />
                     </>
                   )}
                 />

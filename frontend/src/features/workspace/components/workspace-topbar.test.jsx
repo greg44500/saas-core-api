@@ -78,7 +78,7 @@ describe('WorkspaceTopbar', () => {
     expect(screen.getByText('Plan Free')).toBeInTheDocument();
   });
 
-  it('affiche la recherche partout et les préférences uniquement sur le Dashboard', () => {
+  it('affiche la recherche et les préférences sur le Dashboard comme sur les autres pages Workspace', () => {
     useWorkspaceContextMock.mockReturnValue({ can: () => true });
     useGetWorkspaceSubscriptionQueryMock.mockReturnValue({ data: undefined });
 
@@ -94,8 +94,8 @@ describe('WorkspaceTopbar', () => {
 
     expect(screen.getByRole('search', { name: 'Recherche globale' }))
       .toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Préférences d’affichage' }))
-      .not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Préférences d’affichage' }))
+      .toBeInTheDocument();
   });
 
   it('skip la lecture commerciale lorsque la permission manque', () => {

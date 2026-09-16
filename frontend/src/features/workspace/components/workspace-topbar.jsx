@@ -1,5 +1,3 @@
-import { useLocation } from 'react-router';
-
 import { ExpandableSearch } from '@/components/shared/expandable-search';
 import { HelpCenterLink } from '@/features/help/components/help-center-link';
 import { useGetWorkspaceSubscriptionQuery } from '@/features/subscription/api/subscription-api';
@@ -11,13 +9,11 @@ import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-p
 
 function WorkspaceTopbar({ sidebarTrigger = null, workspace }) {
   const { can } = useWorkspaceContext();
-  const location = useLocation();
   const canReadSubscription = can(WORKSPACE_PERMISSION.SUBSCRIPTION_READ);
   const { data: subscription } = useGetWorkspaceSubscriptionQuery(workspace.id, {
     skip: !canReadSubscription,
   });
   const planName = subscription?.effectiveEntitlement?.plan?.name ?? null;
-  const isDashboard = location.pathname === `/workspaces/${workspace.id}/dashboard`;
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
@@ -35,9 +31,7 @@ function WorkspaceTopbar({ sidebarTrigger = null, workspace }) {
             actions={(
               <>
                 <HelpCenterLink to={`/workspaces/${workspace.id}/help`} />
-                {isDashboard ? (
-                  <WorkspaceDashboardDisplayPreferences triggerVariant="icon" />
-                ) : null}
+                <WorkspaceDashboardDisplayPreferences triggerVariant="icon" />
               </>
             )}
             planName={planName}
