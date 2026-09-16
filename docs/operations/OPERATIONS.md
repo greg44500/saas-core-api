@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Guide canonique d’exploitation
 
 **Statut :** document canonique d’opérations  
-**Dernière mise à jour :** 2026-09-08  
+**Dernière mise à jour :** 2026-09-16  
 **Périmètre :** installation, configuration, démarrage, seeds, migrations, jobs, stockage, antivirus, health checks, déploiement et rollback
 
 ---
@@ -118,6 +118,7 @@ JWT_ACCESS_AUDIENCE
 
 REFRESH_TOKEN_EXPIRES_IN_DAYS
 PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES
+WORKSPACE_OWNERSHIP_TRANSFER_AUTHORIZATION_TTL_HOURS
 
 SMTP_HOST
 SMTP_PORT
@@ -263,6 +264,12 @@ Depuis `frontend/` :
 npm run dev
 ```
 
+### Lint
+
+```bash
+npm run lint
+```
+
 ### Tests
 
 ```bash
@@ -275,7 +282,7 @@ npm test
 npm run build
 ```
 
-Un déploiement frontend ne doit pas être considéré valide uniquement parce que le serveur de développement Vite fonctionne : le build production doit être exécuté dans la gate de release.
+Un déploiement frontend ne doit pas être considéré valide uniquement parce que le serveur de développement Vite fonctionne : le lint, les tests et le build production doivent être exécutés dans la gate de release.
 
 ---
 
@@ -296,6 +303,7 @@ npm run format:check
 Depuis `frontend/` :
 
 ```bash
+npm run lint
 npm test
 npm run build
 ```
@@ -412,6 +420,7 @@ migration:workspace-member-usage-reconcile
 migration:member-invite-permission
 migration:file-read-permission
 migration:file-delete-permission
+migration:file-trash-permissions
 migration:file-storage-usage-reconcile
 migration:workspace-ownership-transfer-permission
 migration:baseline-plan-system-role
@@ -427,7 +436,7 @@ fixed
 open_ended
 ```
 
-Les documents historiques ne possèdent pas ce champ en base. Avant de rendre le code D-020 autoritatif, exécuter :
+Pour un environnement historique qui n’a pas encore reçu cette migration, exécuter :
 
 ```bash
 npm run migration:subscription-term-type
@@ -501,9 +510,12 @@ npm run job:expire-trials
 npm run job:finalize-subscription-cancellations
 npm run job:apply-scheduled-downgrades
 npm run job:purge-files
+npm run job:retention
 ```
 
 Chaque runner possède sa propre connexion MongoDB puis termine le processus.
+
+`job:retention` exécute le moteur générique de rétention/purge défini par le contrat [`docs/contracts/RETENTION.md`](../contracts/RETENTION.md). Sa présence dans le dépôt n’implique pas qu’un scheduler de production soit déjà configuré.
 
 Cette architecture permet de les exécuter depuis :
 
@@ -1005,7 +1017,7 @@ La mise à niveau d’un SaaS dérivé n’est donc pas uniquement une fusion Gi
 
 ## 28. Limites opérationnelles actuelles à ne pas masquer
 
-Au 2026-09-08, les points suivants ne sont pas finalisés comme contrat de production générique :
+Au 2026-09-16, les points suivants ne sont pas finalisés comme contrat de production générique :
 
 ```text
 provider de stockage distant / production
