@@ -62,7 +62,7 @@ produit dérivé automatiquement production-ready
 
 | ID | Dette | Statut |
 |---|---|---|
-| D-015 | Versionnement, provenance, releases et discipline de migration du Core | PLANIFIÉ |
+| D-015 | Versionnement, provenance, releases et discipline de migration du Core | EN COURS |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
@@ -70,7 +70,7 @@ Les blockers applicatifs génériques décidés avant le gel sont levés : D-002
 
 **D-020 n’est plus bloquante pour Core 1.0.** Sa validation fonctionnelle terrain est explicitement différée au déploiement de l’application métier avec des bêta-testeurs réels.
 
-La prochaine étape est donc la **gate globale pré-D-015**, puis la revue finale pré-versionnement.
+La gate globale pré-D-015, les parcours critiques manuels, la revue finale pré-versionnement et le nettoyage des branches distantes ont été validés le 2026-09-16. D-015 est donc ouverte.
 
 ### 3.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -182,12 +182,14 @@ Variables/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrati
 
 ### D-015 — Versionnement, provenance, releases et discipline de migration du Core
 
-**Statut :** PLANIFIÉ  
+**Statut :** EN COURS — ouvert le 2026-09-16  
 **Périmètre :** Core / distribution  
 **Blocage Core 1.0 :** oui  
-**Dépendances :** D-025 validée ; D-020 explicitement reclassifiée non bloquante le 2026-09-16 ; gate globale pré-D-015 et revue pré-versionnement à exécuter avant ouverture de la release candidate.
+**Dépendances :** D-025 validée ; D-020 explicitement reclassifiée non bloquante ; gate globale pré-D-015 et parcours critiques manuels validés ; revue pré-versionnement et synchronisation documentaire terminées ; branches distantes historiques nettoyées avant ouverture.
 
 À finaliser avant `v1.0.0` : SemVer, tags/releases, changelog/release notes, changements de contrats/configuration, migrations et ordre pre/post-deploy, reprise/rollback, provenance machine-readable et gate de release reproductible.
+
+L’ouverture de D-015 ne vaut aucune décision anticipée sur la protection de branche, la CI, le format exact de provenance ou l’éventuel registre de migrations : ces choix doivent être audités et décidés dans D-015 à partir du dépôt réel.
 
 ### D-016 — E2E du Core avec Playwright
 
@@ -293,9 +295,9 @@ Le détail historique de ces lots reste consultable dans Git et dans leurs docum
 ```text
 D-025 centre d’aide Workspace / Platform sécurisé           VALIDÉ — 2026-09-16
 D-020 invitation commerciale / validation terrain           DIFFÉRÉ — non bloquant Core 1.0
-→ gate globale pré-D-015 sur main
-→ revue finale pré-versionnement
-→ D-015 release candidate / SemVer / provenance / migrations
+→ gate globale pré-D-015                                    VALIDÉE — 2026-09-16
+→ revue finale pré-versionnement + branches + documentation VALIDÉE — 2026-09-16
+→ D-015 release candidate / SemVer / provenance / migrations EN COURS
 → D-016 Playwright E2E Core
 → audit final architecture / sécurité / qualité
 → D-017 dérivation + upgrade pilote
@@ -309,21 +311,29 @@ D-020 invitation commerciale / validation terrain           DIFFÉRÉ — non bl
 → D-020 validation bêta des parcours d’invitation/onboarding dans l’environnement réel applicable
 ```
 
-D-015 ne doit pas être ouvert avant une gate globale pré-D-015 réellement verte et une revue finale de l’état de `main`.
+Les conditions documentées d’ouverture de D-015 sont satisfaites. D-015 est ouverte ; elle reste bloquante pour Core 1.0 jusqu’à validation de ses propres critères.
 
 ---
 
-## 8. Gate globale pré-D-015
+## 8. Gate globale pré-D-015 — VALIDÉE
 
-À rejouer maintenant sur `main` :
+Exécutée réellement par l’utilisateur sur `main` au HEAD applicatif :
 
 ```text
-backend npm run lint
-backend npm test
-frontend npm run lint
-frontend npm test
-frontend npm run build
-validation manuelle des parcours critiques retenus pour la gate
+3f645b231ea6c80e77275dfd8b838d2ecba479fa
 ```
 
-Ne jamais présenter cette gate comme verte sans exécution réelle sur l’état de `main` concerné.
+Résultats communiqués :
+
+```text
+backend npm run lint    → VERT
+backend npm test        → VERT
+frontend npm run lint   → VERT
+frontend npm test       → VERT
+frontend npm run build  → VERT
+parcours critiques manuels → VALIDÉS
+```
+
+La revue finale a ensuite confirmé l’absence de branche isolée à fusionner ; les branches historiques distantes ont été supprimées et `main` est restée l’unique branche distante. Les écarts restants identifiés étaient documentaires et ont été synchronisés avant l’ouverture de D-015.
+
+Les commits postérieurs à cette gate jusqu’à l’ouverture de D-015 ne modifient que la documentation Markdown ; aucune correction applicative n’a été introduite. Il n’est donc pas affirmé qu’une nouvelle gate applicative aurait été exécutée sur ces commits documentaires.
