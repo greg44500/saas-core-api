@@ -8,9 +8,12 @@ import { HelpPage } from '@/features/help/components/help-page';
 
 function PlatformHelpPage() {
   const { entryId } = useParams();
-  const catalogQuery = useGetPlatformHelpCatalogQuery();
+  const catalogQuery = useGetPlatformHelpCatalogQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
   const entryQuery = useGetPlatformHelpEntryQuery(entryId, {
     skip: !entryId,
+    refetchOnMountOrArgChange: true,
   });
 
   return (

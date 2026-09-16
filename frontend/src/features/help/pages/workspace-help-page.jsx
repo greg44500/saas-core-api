@@ -8,10 +8,15 @@ import { HelpPage } from '@/features/help/components/help-page';
 
 function WorkspaceHelpPage() {
   const { workspaceId, entryId } = useParams();
-  const catalogQuery = useGetWorkspaceHelpCatalogQuery(workspaceId);
+  const catalogQuery = useGetWorkspaceHelpCatalogQuery(workspaceId, {
+    refetchOnMountOrArgChange: true,
+  });
   const entryQuery = useGetWorkspaceHelpEntryQuery(
     { workspaceId, entryId },
-    { skip: !entryId },
+    {
+      skip: !entryId,
+      refetchOnMountOrArgChange: true,
+    },
   );
 
   return (
