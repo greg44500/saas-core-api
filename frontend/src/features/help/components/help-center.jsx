@@ -28,9 +28,9 @@ function HelpCenterSkeleton() {
         <Skeleton className="h-10 w-32" />
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Skeleton className="h-36 w-full" />
-        <Skeleton className="h-36 w-full" />
-        <Skeleton className="h-36 w-full" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full" />
       </div>
     </div>
   );
@@ -127,7 +127,7 @@ function HelpCatalog({ basePath, catalog }) {
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {activeEntries.map((entry) => (
                     <Link
-                      className="group block h-36 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="group block h-40 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       key={entry.id}
                       to={`${basePath}/${entry.id}`}
                     >
