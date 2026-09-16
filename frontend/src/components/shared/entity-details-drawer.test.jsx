@@ -7,6 +7,7 @@ import { EntityDetailsDrawer } from './entity-details-drawer';
 
 afterEach(() => {
   document.body.style.overflow = '';
+  vi.unstubAllGlobals();
 });
 
 describe('EntityDetailsDrawer', () => {
@@ -31,6 +32,38 @@ describe('EntityDetailsDrawer', () => {
       'data-ending-style:translate-x-full',
       'data-starting-style:translate-x-full',
     );
+  });
+
+  it('monte le drawer fermé avant de déclencher son ouverture au frame suivant', () => {
+    const requestAnimationFrameMock = vi.fn(() => 1);
+    vi.stubGlobal('requestAnimationFrame', requestAnimationFrameMock);
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    function DrawerHarness() {
+      const [open, setOpen] = useState(false);
+
+      return (
+        <>
+          <button onClick={() => setOpen(true)} type="button">
+            Ouvrir les détails
+          </button>
+          <EntityDetailsDrawer
+            onClose={() => setOpen(false)}
+            open={open}
+            title="Détails"
+          >
+            <p>Contenu</p>
+          </EntityDetailsDrawer>
+        </>
+      );
+    }
+
+    render(<DrawerHarness />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir les détails' }));
+
+    expect(requestAnimationFrameMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog', { name: 'Détails' })).not.toBeInTheDocument();
   });
 
   it('rend le drawer dans document.body pour rester attaché au viewport', () => {
