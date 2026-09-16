@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Registre canonique des dettes actives
 
 **Statut :** source de vérité documentaire pour les dettes non résolues  
-**Dernière mise à jour :** 2026-09-15  
+**Dernière mise à jour :** 2026-09-16  
 **Périmètre :** Core clonable et, lorsque précisé, applications dérivées
 
 ---
@@ -94,6 +94,7 @@ D-008 notifications étendues
 D-009 API Keys / Webhooks
 D-010 authentification avancée — dont Google SSO
 D-023 demande gouvernée de capacité exceptionnelle de transfert de propriété — cible Core 1.1
+D-024 console d’administration Platform contextualisée du Workspace — cible Core 1.1
 ```
 
 ---
@@ -775,6 +776,33 @@ Les audits doivent référencer les IDs utiles (`requestId`, `workspaceId`, acte
 
 ---
 
+## D-024 — Console d’administration Platform contextualisée du Workspace
+
+**Statut :** DIFFÉRÉ — cible Core 1.1  
+**Périmètre :** administration Platform du Workspace, principalement frontend avec extensions backend additives uniquement si nécessaires  
+**Blocage Core 1.0 :** non  
+**Dépendances :** Core 1.0 stabilisé et stratégie de distribution réellement validée par D-015, D-016 et D-017  
+**Déclencheur :** décision produit du 2026-09-16 — faire du Workspace l’unité de contexte principale de son administration Platform sans fusionner les responsabilités des domaines sous-jacents.
+
+Spécification détaillée : `docs/debt/D-024-platform-workspace-control-center.md`.
+
+Le drawer Workspace doit évoluer après Core 1.0 vers une console contextualisée permettant de comprendre l’état global du workspace et d’accéder aux principales opérations Platform qui le concernent, organisées par domaines : vue d’ensemble, abonnement, dérogations, administration et alertes/activité.
+
+Invariants :
+
+- les pages Platform globales restent disponibles pour l’administration transverse ;
+- la console contextualisée réutilise les composants, services et endpoints existants au lieu de dupliquer leur logique ;
+- RTK Query reste la source d’état serveur ;
+- les permissions et validations backend restent les autorités ;
+- les données spécialisées sont chargées à la demande lorsque pertinent ;
+- le contexte URL fondé sur `workspaceId` est conservé ou proprement étendu ;
+- aucun domaine `Incident`, `Billing` ou autre n’est inventé uniquement pour servir l’interface ;
+- toute extension backend éventuelle doit être additive et justifiée par l’audit des contrats existants.
+
+**Critère de clôture :** un administrateur Platform peut ouvrir un workspace depuis la liste, obtenir une vision consolidée cohérente et accéder aux principales opérations Platform par sections clairement séparées, sans dupliquer la logique métier ni supprimer les pages globales, avec permissions, accessibilité, tests et E2E validés.
+
+---
+
 ## 6. Éléments volontairement non intégrés comme dette active
 
 Ne sont pas ajoutés par anticipation : packages `@saas-core/*`, provider de paiement imposé au Core, CMP fictive sans traceurs applicables, limite universelle du nombre de Workspaces ou CAPTCHA/provider anti-bot imposé sans besoin démontré.
@@ -803,9 +831,10 @@ D-002 corbeille / restauration / suppression Files          VALIDÉ — 2026-09-
 → taguer uniquement ensuite la release Core stable
 --- évolution post-v1.0 ---
 → D-023 demande gouvernée de transfert de propriété        DIFFÉRÉ — cible Core 1.1
+→ D-024 console Platform contextualisée du Workspace       DIFFÉRÉ — cible Core 1.1
 ```
 
-La condition D-002 avant première dérivation est désormais levée. Aucune release `v1.0.0` avant clôture/reclassification explicite des blockers Core applicables ; D-020 reste le blocker immédiat avant D-015. D-023 ne bloque pas Core 1.0 tant que le workflow owner reste fermé par défaut et qu'aucune surface `Demander capacité de transfert` n'est exposée avant son traitement.
+La condition D-002 avant première dérivation est désormais levée. Aucune release `v1.0.0` avant clôture/reclassification explicite des blockers Core applicables ; D-020 reste le blocker immédiat avant D-015. D-023 et D-024 ne bloquent pas Core 1.0 et doivent être repris sur le Core stabilisé après validation réelle de la stratégie de distribution.
 
 ---
 
