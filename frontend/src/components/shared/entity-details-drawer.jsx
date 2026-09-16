@@ -36,17 +36,38 @@ const DRAWER_TRANSITION_MS = 300;
 function EntityDetailsDrawer({ children, description, onClose, open, title }) {
   const closeButtonRef = useRef(null);
   const [isMounted, setIsMounted] = useState(open);
+  const [isSheetOpen, setIsSheetOpen] = useState(open);
 
   useEffect(() => {
-    if (open) {
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+      ?? false;
+
+    if (open && !isMounted) {
+      // Monter d'abord le Sheet fermé permet à Base UI d'observer ensuite la
+      // transition closed -> open au lieu d'afficher directement le panneau.
       setIsMounted(true);
       return undefined;
     }
 
+    if (open) {
+      if (reduceMotion) {
+        setIsSheetOpen(true);
+        return undefined;
+      }
+
+      const frameId = window.requestAnimationFrame(() => {
+        setIsSheetOpen(true);
+      });
+
+      return () => {
+        window.cancelAnimationFrame(frameId);
+      };
+    }
+
+    setIsSheetOpen(false);
+
     if (!isMounted) return undefined;
 
-    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
-      ?? false;
     const timeoutId = window.setTimeout(() => {
       setIsMounted(false);
     }, reduceMotion ? 0 : DRAWER_TRANSITION_MS);
@@ -65,7 +86,7 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
           onClose();
         }
       }}
-      open={open}
+      open={isSheetOpen}
     >
       <SheetContent
         className="inset-y-auto bottom-0 top-16 h-auto w-full max-w-xl min-w-0 transform-gpu overflow-hidden p-0 shadow-lg transition-transform duration-300 ease-in-out will-change-transform data-ending-style:translate-x-full data-ending-style:opacity-100 data-starting-style:translate-x-full data-starting-style:opacity-100"
