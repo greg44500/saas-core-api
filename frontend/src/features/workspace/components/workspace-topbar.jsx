@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
 
 import { ExpandableSearch } from '@/components/shared/expandable-search';
+import { HelpCenterLink } from '@/features/help/components/help-center-link';
 import { useGetWorkspaceSubscriptionQuery } from '@/features/subscription/api/subscription-api';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 import { WorkspaceDashboardDisplayPreferences } from '@/features/workspace/components/workspace-dashboard-display-preferences';
@@ -26,6 +27,7 @@ function WorkspaceTopbar({ sidebarTrigger = null, workspace }) {
           <WorkspaceSwitcher currentWorkspace={workspace} />
         </div>
         <div className="ml-auto flex min-w-0 items-center gap-3">
+          <HelpCenterLink to={`/workspaces/${workspace.id}/help`} />
           <ExpandableSearch
             ariaLabel="Recherche globale"
             placeholder="Rechercher…"

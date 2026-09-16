@@ -5,6 +5,7 @@ import {
 } from 'vitest';
 
 import {
+  APPLICATION_FRONTEND_ROUTES,
   composeApplicationFrontendRoutes,
 } from '@/app/application-routes';
 import { createAppRoutes } from '@/app/router';
@@ -41,6 +42,19 @@ describe('application frontend route composition', () => {
     expect(routes.platformRoutes).toEqual([
       { path: 'catalog-admin' },
     ]);
+  });
+
+  it('compose explicitement les routes Core du centre d’aide', () => {
+    expect(APPLICATION_FRONTEND_ROUTES.workspaceRoutes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'help/:entryId?' }),
+      ]),
+    );
+    expect(APPLICATION_FRONTEND_ROUTES.platformRoutes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'help/:entryId?' }),
+      ]),
+    );
   });
 
   it('injecte chaque route métier sous la bonne frontière du Core', () => {

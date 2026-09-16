@@ -6,6 +6,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
+import { HelpCenterLink } from '@/features/help/components/help-center-link';
 import { PlatformDashboardDisplayPreferences } from '@/features/platform/components/platform-dashboard-display-preferences';
 import { PlatformSidebar } from '@/features/platform/components/platform-sidebar';
 import { PlatformUserIdentity } from '@/features/platform/components/platform-user-identity';
@@ -31,6 +32,7 @@ function PlatformLayout() {
               </div>
 
               <div className="flex min-w-0 items-center gap-3">
+                <HelpCenterLink to="/platform/help" />
                 <ExpandableSearch
                   ariaLabel="Recherche globale"
                   placeholder="Rechercher…"
