@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état courant après validation et fusion de D-025, puis reclassification de D-020 en validation terrain différée non bloquante pour Core 1.0.
+> Cette synthèse décrit l’état courant après validation de la gate pré-D-015, nettoyage des branches historiques, synchronisation documentaire et ouverture formelle de D-015.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
@@ -30,77 +30,105 @@ Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présent
 
 ## 2. État Git de référence
 
-D-025 a été fusionnée dans `main` via la PR #13.
+D-025 a été fusionnée dans `main` via la PR #13 puis D-020 a été reclassifiée en validation terrain différée non bloquante.
 
-HEAD de `main` immédiatement après cette fusion :
+HEAD applicatif sur lequel la gate globale pré-D-015 a été réellement exécutée et validée par l’utilisateur :
 
 ```text
-93ae51d831a4851a7540c01a5a07240b295a3e6a
-feat(help): secure Workspace and Platform help centers (#13)
+3f645b231ea6c80e77275dfd8b838d2ecba479fa
+docs(reprise): open pre-D-015 gate after D-020 reclassification
 ```
 
-Deux commits documentaires ont ensuite reclassifié D-020 et actualisé la présente reprise.
+Après cette gate, seules des modifications documentaires Markdown de synchronisation pré-D-015 ont été apportées. Aucun fichier applicatif n’a été modifié.
+
+HEAD de `main` immédiatement avant la présente mise à jour de reprise :
+
+```text
+fa6873bba818191872bd3a9f4ce8551cfa5ba85c
+docs(debt): open D-015 after validated pre-release gate
+```
+
+Les branches distantes historiques ont été nettoyées par l’utilisateur. Vérification finale communiquée :
+
+```text
+git branch -r
+→ origin/HEAD -> origin/main
+→ origin/main
+
+git ls-remote --heads origin
+→ refs/heads/main uniquement
+```
+
+Avant ce nettoyage, toutes les branches avaient été comparées à `main` ; aucune ne nécessitait une fusion.
 
 À toute nouvelle conversation, commencer par vérifier le HEAD distant réel de `main` : Git et le code restent prioritaires sur cette synthèse.
 
 ---
 
-## 3. D-025 — état validé
+## 3. Gate globale pré-D-015 — VALIDÉE
 
-D-025 est **VALIDÉE le 2026-09-16** et fusionnée dans `main`.
+La gate a été réellement exécutée par l’utilisateur sur le HEAD applicatif `3f645b231ea6c80e77275dfd8b838d2ecba479fa`.
 
-Le Core fournit désormais :
+Résultats communiqués :
 
 ```text
-Centre d’aide Workspace
-+
-Centre d’aide Platform
-→ infrastructure commune
-→ catalogue filtré côté serveur
-→ recherche prédictive locale sur le seul corpus autorisé
-→ fiches contextuelles en drawer
+backend npm run lint    → VERT
+backend npm test        → VERT
+frontend npm run lint   → VERT
+frontend npm test       → VERT
+frontend npm run build  → VERT
 ```
 
-Garanties principales :
+Les parcours critiques manuels retenus pour la pré-validation ont également été confirmés comme validés par l’utilisateur.
 
-- séparation stricte Workspace / Platform ;
-- projection backend obligatoire avant sérialisation ;
-- permissions, owner, plan/features et mode de remédiation pris en compte côté Workspace ;
-- autorisation Platform réelle réutilisée ;
-- absence et non-autorisation d’une fiche exposées avec le même comportement générique ;
-- point d’extension `APPLICATION_HELP_MODULES` pour les futurs SaaS dérivés ;
-- contenus versionnés avec le Core ;
-- aucun CMS, LLM, RAG ou chatbot requis ;
-- Base UI / Design System réutilisés pour Tabs, Autocomplete, Tooltip et Sheet ;
-- aide accessible depuis les topbars Workspace et Platform ;
-- recherche prédictive avec navigation clavier et spotlight visuel ;
-- deep links et fiches d’aide en drawer avec fermeture croix / backdrop / Escape.
-
-Les tests applicables, lint, build et validations fonctionnelles/visuelles ont été exécutés localement et confirmés verts avant fusion.
-
-D-016 portera la couverture Playwright E2E de release du centre d’aide.
+Les commits réalisés après cette gate jusqu’à l’ouverture de D-015 ne concernent que la documentation Markdown. Aucune nouvelle gate applicative n’est déclarée sur ces commits documentaires.
 
 ---
 
-## 4. Ajustements UI validés avec D-025
+## 4. Revue finale pré-versionnement — VALIDÉE
 
-Le contrôle de préférences d’affichage Dashboard est accessible sur toutes les routes du shell courant :
+La revue pré-D-015 a couvert notamment :
 
 ```text
-contexte Platform
-→ contrôle Platform disponible partout dans /platform/*
-
-contexte Workspace
-→ contrôle Workspace disponible partout dans le workspace courant
+architecture applicative
+sécurité et frontières d’autorisation
+contrats canoniques
+routes et état frontend
+migrations / scripts / jobs
+état Git et branches distantes
+documentation opérationnelle
+cohérence D-020 / D-025 / roadmap
 ```
 
-Il reste volontairement absent des shells sans contexte Dashboard pertinent, par exemple Auth, Onboarding ou compte personnel.
+Aucun nouveau défaut applicatif bloquant n’a été démontré.
 
-Le `EntityDetailsDrawer` partagé conserve désormais une ouverture et une fermeture fluides et cohérentes, avec gestion Base UI du focus et respect de `prefers-reduced-motion`.
+Les écarts restant avant D-015 étaient documentaires. Ils ont été synchronisés dans :
+
+```text
+README.md
+docs/README.md
+docs/operations/OPERATIONS.md
+docs/contracts/CORE-CONTRACT.md
+docs/contracts/COMMERCIAL-INVITATIONS.md
+docs/architecture/FRONTEND.md
+frontend/README.md
+```
+
+Corrections principales :
+
+- D-025 n’est plus présenté comme un développement futur ;
+- D-020 est partout alignée sur son statut différé non bloquant ;
+- blockers Core 1.0 recentrés sur D-015, D-016 et D-017 ;
+- index des contrats canoniques complété ;
+- commandes frontend réelles, migration File manquante et job Retention documentés ;
+- contrat Core aligné sur la corbeille/restauration/suppression définitive File réellement implémentées ;
+- contrat Platform aligné sur le RBAC Platform, les routes courantes, la rétention et les groupes d’overrides ;
+- endpoints et invariant de sécurité du centre d’aide D-025 ajoutés au contrat Core ;
+- architecture frontend alignée sur les routes réellement composées, les préférences, la corbeille File, la rétention, l’équipe Platform et l’aide Workspace/Platform.
 
 ---
 
-## 5. D-020 — décision de reclassification
+## 5. D-020 — statut à préserver
 
 D-020 correspond à l’onboarding commercial générique et au mécanisme `CommercialInvitation`. Il ne doit pas être confondu avec l’ensemble des invitations Workspace ou Platform.
 
@@ -112,19 +140,47 @@ D-020
 → non bloquant pour Core 1.0
 ```
 
-Motif : le code, le contrat canonique et les tests automatisés déjà validés sont considérés suffisants pour ne pas retarder le versionnement du Core. La validation fonctionnelle finale sera réalisée dans des conditions réelles lorsque l’application métier sera développée et déployée pour bêta-test.
+Le code, le contrat canonique et les tests automatisés déjà validés sont considérés suffisants pour ne pas retarder le versionnement du Core.
 
-Le scénario terrain prévu comprend notamment :
+La validation fonctionnelle finale sera réalisée en conditions réelles lorsque l’application métier sera développée et déployée pour bêta-test, avec des bêta-testeurs Platform et Workspace / onboarding client.
 
-- un bêta-testeur intégrant l’équipe Platform via le parcours approprié ;
-- un bêta-testeur intégrant un Workspace / onboarding client lorsque l’application métier sera disponible ;
-- la validation du parcours commercial D-020 dans l’environnement réel dès qu’il sera effectivement utilisé.
-
-Cette décision ne transforme pas une validation non exécutée en validation réussie. Toute anomalie découverte pendant la bêta devra être corrigée et pourra rouvrir D-020 ou créer une dette dédiée.
+Cette décision ne transforme pas une validation non exécutée en validation réussie. Toute anomalie découverte pendant la bêta pourra rouvrir D-020 ou créer une dette dédiée.
 
 ---
 
-## 6. État canonique avant versionnement
+## 6. D-025 — état validé à préserver
+
+D-025 est **VALIDÉE le 2026-09-16** et fusionnée dans `main`.
+
+Le Core fournit :
+
+```text
+Centre d’aide Workspace
++
+Centre d’aide Platform
+→ infrastructure commune
+→ catalogue filtré côté serveur avant sérialisation
+→ recherche locale sur le seul corpus autorisé
+→ fiches contextuelles en drawer
+→ point d’extension pour les SaaS dérivés
+```
+
+Garanties principales :
+
+- séparation stricte Workspace / Platform ;
+- projection backend obligatoire avant sérialisation ;
+- permissions, owner, plan/features et mode de remédiation pris en compte côté Workspace ;
+- autorisation Platform réelle réutilisée ;
+- absence et non-autorisation d’une fiche exposées avec le même comportement générique ;
+- point d’extension `APPLICATION_HELP_MODULES` ;
+- contenus versionnés avec le Core ;
+- aucun CMS, LLM, RAG ou chatbot requis.
+
+D-016 portera la couverture Playwright E2E de release du centre d’aide.
+
+---
+
+## 7. État canonique au démarrage de D-015
 
 ```text
 D-002  VALIDÉ
@@ -135,7 +191,7 @@ D-025  VALIDÉ — 2026-09-16
 
 D-020  DIFFÉRÉ — non bloquant Core 1.0
 
-D-015  PLANIFIÉ
+D-015  EN COURS — ouvert le 2026-09-16
 D-016  PLANIFIÉ
 D-017  PLANIFIÉ
 
@@ -143,76 +199,72 @@ D-023  DIFFÉRÉ — Core 1.1
 D-024  DIFFÉRÉ — Core 1.1
 ```
 
-Il n’existe donc plus de blocker fonctionnel générique identifié à traiter avant la **gate globale pré-D-015**.
+Il n’existe plus de blocker pré-D-015 identifié. D-015 devient le blocker Core 1.0 actif courant.
 
 ---
 
-## 7. Prochaine étape obligatoire
+## 8. D-015 — périmètre maintenant ouvert
 
-La prochaine étape n’est pas encore de modifier le versionnement.
-
-Ordre obligatoire :
+D-015 porte :
 
 ```text
-1. repartir de `main` à jour ;
-2. vérifier le HEAD distant réel de `main` ;
-3. lire intégralement `docs/REPRISE-CURRENT.md` ;
-4. relire D-015, D-016, D-017 et la reclassification D-020 dans `docs/DEBT.md` ;
-5. inspecter l’état réel du dépôt sans modification ;
-6. exécuter la gate globale pré-D-015 ;
-7. effectuer une revue finale pré-versionnement : architecture, sécurité, contrats, migrations, documentation, scripts et état Git ;
-8. classer tout écart découvert en BLOQUANT / À CORRIGER AVANT D-015 / DIFFÉRABLE ;
-9. corriger uniquement les écarts réellement démontrés ;
-10. rejouer la gate si une correction applicative intervient ;
-11. seulement lorsque cette revue est verte, ouvrir D-015.
+versionnement SemVer
+provenance du Core
+tags et releases
+changelog / release notes
+contrats et configuration par release
+discipline des migrations
+ordre pre-deploy / post-deploy
+rollback / reprise
+gate de release reproductible
+préparation de la release candidate
 ```
 
-Aucun changement SemVer, tag, release ou provenance ne doit être réalisé avant cette gate et cette revue.
-
----
-
-## 8. Gate globale pré-D-015
-
-À exécuter réellement sur `main` :
+L’ouverture de D-015 ne constitue pas encore une décision sur :
 
 ```text
-backend npm run lint
-backend npm test
-frontend npm run lint
-frontend npm test
-frontend npm run build
-validation manuelle des parcours critiques retenus pour la gate
+protection de branche
+GitHub Actions / CI
+format exact de provenance machine-readable
+registre central de migrations
+stratégie précise de tags / release candidate
 ```
 
-Ne jamais présenter cette gate comme verte sans exécution réelle sur le HEAD de `main` concerné.
-
-Si la gate est verte et la revue ne révèle aucun blocker : D-015 peut commencer.
+Ces choix doivent être audités et décidés à partir de l’état réel du dépôt dans D-015, et non ajoutés par anticipation.
 
 ---
 
-## 9. Roadmap restante vers Core stable
+## 9. Première étape obligatoire de D-015
+
+Avant toute modification de version, tag ou mécanisme de release :
 
 ```text
-ÉTAPE 0 — état actuel
-D-025 centre d’aide sécurisé                         VALIDÉ + FUSIONNÉ
-D-020 invitation commerciale                        DIFFÉRÉ — validation terrain, non bloquant
+1. vérifier le HEAD réel de main ;
+2. vérifier package.json racine et frontend/package.json ;
+3. inventorier les tags et releases Git existants ;
+4. inspecter CI/workflows et protections de branche réellement configurés ;
+5. inventorier toutes les migrations et leurs runners ;
+6. inspecter la stratégie actuelle de changelog/release notes/provenance ;
+7. lire les règles D-015 déjà présentes dans DEBT, OPERATIONS et DERIVED-SAAS ;
+8. classer les écarts D-015 par nécessité réelle ;
+9. définir seulement ensuite la stratégie de versionnement et de release candidate ;
+10. ne créer aucun tag stable v1.0.0 tant que D-016 et D-017 ne sont pas validées.
+```
 
-ÉTAPE 1 — gel pré-versionnement
-→ gate globale pré-D-015 sur main
-→ revue finale architecture / sécurité / contrats / migrations / documentation
-→ correction ciblée uniquement si écart réel
-→ nouvelle gate si nécessaire
+Aucun choix de D-015 ne doit être introduit uniquement parce qu’il est courant dans d’autres projets : il doit répondre à un besoin du Core et à sa stratégie réelle de dérivation / upgrade.
 
-ÉTAPE 2 — D-015
-→ définir la stratégie SemVer
-→ préparer la release candidate du Core
-→ provenance machine-readable
-→ changelog / release notes
-→ discipline de migrations et ordre de déploiement
-→ stratégie rollback / reprise
-→ scripts et gate de release reproductible
+---
 
-ÉTAPE 3 — D-016
+## 10. Roadmap restante vers Core stable
+
+```text
+ÉTAPE 1 — D-015 EN COURS
+→ audit versionnement / provenance / releases / migrations
+→ décisions documentées
+→ préparation release candidate
+→ gate de release reproductible
+
+ÉTAPE 2 — D-016
 → Playwright E2E du Core
 → auth/session
 → lifecycle Account/Workspace
@@ -224,14 +276,14 @@ D-020 invitation commerciale                        DIFFÉRÉ — validation ter
 → centre d’aide Workspace / Platform
 → principaux parcours interdits
 
-ÉTAPE 4 — audit final Core
+ÉTAPE 3 — audit final Core
 → architecture
 → sécurité
 → qualité
 → documentation
 → aucun blocker résiduel non traité
 
-ÉTAPE 5 — D-017
+ÉTAPE 4 — D-017
 → créer un SaaS dérivé pilote depuis la release candidate
 → ajouter un petit module métier réel
 → ajouter une extension d’aide métier
@@ -241,7 +293,7 @@ D-020 invitation commerciale                        DIFFÉRÉ — validation ter
 → tests Core + métier + E2E
 → analyser conflits et provenance
 
-ÉTAPE 6 — stabilisation finale
+ÉTAPE 5 — stabilisation finale
 → corrections éventuelles révélées par D-016 / D-017
 → nouvelle gate globale
 → tag/release Core stable uniquement lorsque la stratégie de distribution est réellement validée
@@ -265,7 +317,7 @@ produit dérivé production-ready
 
 ---
 
-## 10. Points à conserver pour D-017
+## 11. Points à conserver pour D-017
 
 D-017 devra vérifier réellement :
 
@@ -279,7 +331,7 @@ D-017 devra vérifier réellement :
 
 ---
 
-## 11. Rappel de méthode
+## 12. Rappel de méthode
 
 À chaque reprise :
 
