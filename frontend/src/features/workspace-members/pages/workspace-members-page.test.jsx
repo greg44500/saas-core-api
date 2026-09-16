@@ -77,7 +77,7 @@ function renderPage(permissions) {
 
 async function chooseOption(user, label, optionName) {
   await user.click(screen.getByRole('combobox', { name: label }));
-  await user.click(screen.getByRole('option', { name: optionName }));
+  await user.click(await screen.findByRole('option', { name: optionName }));
 }
 
 describe('WorkspaceMembersPage', () => {
