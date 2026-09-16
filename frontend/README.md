@@ -68,6 +68,7 @@ npm run dev
 npm run build
 npm run test
 npm run test:watch
+npm run lint
 npm run preview
 ```
 
@@ -120,6 +121,7 @@ Le frontend améliore l'expérience utilisateur, mais le backend reste l'autorit
 ## Tests
 
 ```bash
+npm run lint
 npm test
 npm run build
 ```
