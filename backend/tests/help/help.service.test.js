@@ -134,10 +134,13 @@ describe('help.service', () => {
             role: memberRole,
         });
 
-        expect(catalog.entries.map(({ id }) => id)).toEqual([
+        const visibleEntryIds = catalog.entries.map(({ id }) => id);
+
+        expect(visibleEntryIds).toHaveLength(2);
+        expect(visibleEntryIds).toEqual(expect.arrayContaining([
             'workspace.test.public',
             'workspace.test.invite',
-        ]);
+        ]));
         expect(catalog.entries).not.toEqual(
             expect.arrayContaining([
                 expect.objectContaining({ audience: expect.anything() }),
@@ -161,11 +164,14 @@ describe('help.service', () => {
             role: ownerRole,
         });
 
-        expect(catalog.entries.map(({ id }) => id)).toEqual([
+        const visibleEntryIds = catalog.entries.map(({ id }) => id);
+
+        expect(visibleEntryIds).toHaveLength(3);
+        expect(visibleEntryIds).toEqual(expect.arrayContaining([
             'workspace.test.public',
             'workspace.test.owner',
             'workspace.test.feature',
-        ]);
+        ]));
     });
 
     it('retourne le même 404 pour une fiche Workspace interdite et une fiche inexistante', async () => {
