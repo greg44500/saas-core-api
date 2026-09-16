@@ -89,12 +89,17 @@ function renderHelpRoute({ entryError } = {}) {
 }
 
 describe('HelpPage', () => {
-  it('conserve le catalogue visible derrière la fiche ouverte en drawer', async () => {
+  it('conserve le catalogue monté derrière la fiche ouverte en drawer', async () => {
     const user = userEvent.setup();
     renderHelpRoute();
 
+    // Le Drawer est modal : Base UI masque temporairement le catalogue de
+    // l’arbre d’accessibilité tout en le conservant visuellement derrière.
     expect(
-      screen.getByRole('heading', { name: 'Centre d’aide Platform' }),
+      screen.getByRole('heading', {
+        name: 'Centre d’aide Platform',
+        hidden: true,
+      }),
     ).toBeInTheDocument();
 
     const drawer = screen.getByRole('dialog');
