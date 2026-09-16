@@ -44,6 +44,7 @@ const SHEET_SIDE_CLASS = Object.freeze({
 function SheetContent({
   children,
   className,
+  closeButtonClassName,
   keepMounted = false,
   overlayClassName,
   side = 'right',
@@ -70,7 +71,7 @@ function SheetContent({
           <SheetPrimitive.Close
             render={(
               <Button
-                className="absolute right-3 top-3"
+                className={cn('absolute right-3 top-3', closeButtonClassName)}
                 size="icon"
                 variant="ghost"
               />
