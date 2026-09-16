@@ -2,11 +2,11 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse sert d’amorce de reprise pour la fin de stabilisation du Core, le cadrage du versionnement puis la future dérivation métier.
+> Cette synthèse sert d’amorce de reprise pour D-025 — Centre d’aide sécurisé Workspace / Platform, dernier développement fonctionnel générique décidé avant le gel pré-versionnement du Core.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
-> **Dernière mise à jour : 2026-09-15**
+> **Dernière mise à jour : 2026-09-16**
 
 ---
 
@@ -28,131 +28,241 @@ Le dépôt reste en développement `0.1.0`. Il ne doit pas encore être présent
 
 ---
 
-## 2. État Git et validation de référence
+## 2. État Git de référence
 
-### Baseline applicative validée et fusionnée dans `main`
-
-```text
-79c52c1ac922b0c6a5beb8475b003c1b00b62b44
-refactor(ui): preserve responsive section tab overflow
-```
-
-Ce commit contient les deux branches finalisées puis intégrées par fast-forward :
+### `main` vérifié avant ouverture de D-025
 
 ```text
-feature/d-002-file-trash-restore
-→ feature/file-management-ux-storage
-→ main
+5a48859b415ebd5d56bfed0f2a0fe75eec4476fc
+docs(debt): register D-024 workspace control center
 ```
 
-La relation Git avait été vérifiée avant fusion :
+Ce HEAD de `main` intègre la dette différée D-024 et constitue la base de la branche D-025.
+
+### Branche de travail ouverte
 
 ```text
-main historique
-→ D-002
-→ File Management UX / Storage
+feature/d-025-help-center
 ```
 
-Il n’y a donc pas eu de merge conflict ni de commit de merge artificiel.
+Elle a été créée directement depuis `main` au SHA `5a48859b415ebd5d56bfed0f2a0fe75eec4476fc`.
 
-Après cette baseline applicative, `main` avance uniquement par les commits documentaires de synchronisation de `docs/DEBT.md` puis du présent fichier. Toute nouvelle conversation doit vérifier le HEAD distant réel de `main` avant de travailler.
+Avant tout nouveau travail, vérifier le HEAD distant réel de cette branche : Git et le code restent prioritaires sur cette synthèse.
 
-### Validation réellement déclarée
+### État applicatif
 
-Avant fusion des deux branches :
+Aucun code backend ou frontend D-025 n’a encore été écrit au moment de cette synthèse.
+
+Les modifications déjà présentes sur la branche sont documentaires :
 
 ```text
-tests applicables → VERT
-lint               → VERT
-build frontend     → VERT
-validation fonctionnelle / visuelle → OK
+docs/debt/D-025-secure-help-center.md
+docs/DEBT.md
+docs/REPRISE-CURRENT.md
 ```
 
-Cette validation porte sur la baseline applicative `79c52c1…`. Les commits documentaires suivants ne modifient pas le code exécutable.
-
-Ne jamais inventer de nouvelle gate : si une future étape exige une gate globale, elle devra être réellement rejouée.
+Aucune nouvelle gate applicative n’a donc été exécutée pour D-025. Ne jamais annoncer de tests/lint/build verts pour cette branche sans les exécuter réellement.
 
 ---
 
-## 3. D-002 — Files : VALIDÉE et fusionnée
+## 3. Décision produit : D-025 avant le gel Core
 
-`docs/DEBT.md` porte désormais D-002 au statut :
+Le Core possède une documentation technique/interne importante, mais aucune aide fonctionnelle directement utilisable par un membre Workspace ou un membre Platform.
 
-```text
-VALIDÉ — 2026-09-15
-```
+Cette absence est désormais considérée comme un manque générique du Core avant versionnement.
 
-Le blocage D-002 avant D-017 et avant la première dérivation métier est levé.
-
-### Cycle de vie Files validé
+D-025 est donc :
 
 ```text
-fichier actif
-→ suppression logique
-→ corbeille
-→ restauration
-ou
-→ suppression définitive volontaire
-ou
-→ suppression définitive automatique à l’échéance
+PLANIFIÉ
+Blocage Core 1.0 : OUI
+Position : dernier développement fonctionnel générique avant gate pré-D-015
 ```
 
-Invariants importants :
-
-- un fichier placé dans la corbeille continue de consommer `storage_bytes` tant que son contenu physique existe ;
-- une restauration avant suppression physique ne réserve jamais le stockage une seconde fois ;
-- la libération du quota intervient lors de la suppression physique effective ;
-- restauration et suppression définitive sont protégées contre les concurrences par le mécanisme de claim existant ;
-- les permissions restent séparées selon le niveau de pouvoir.
-
-Permissions ajoutées :
+Spécification détaillée :
 
 ```text
-file:trash:read
-file:restore
-file:delete:permanent
+docs/debt/D-025-secure-help-center.md
 ```
 
-La migration idempotente existante reste :
-
-```text
-npm run migration:file-trash-permissions
-```
-
-Elle doit faire partie de la discipline de déploiement/versionnement pour tout environnement possédant déjà des rôles système persistés.
-
-### UX Files validée
-
-La surface utilisateur est désormais concentrée sous :
-
-```text
-Ressources
-└── Fichiers
-```
-
-La page comporte :
-
-- titre `Fichiers` avec aide contextuelle ;
-- carte `Stockage` uniquement consacrée à capacité utilisée / limite / restant / pourcentage ;
-- métrique de stockage fondée sur `UsageMetric.storage_bytes` et la limite d’entitlement effective, pas sur une somme frontend des fichiers actifs ;
-- onglets `Fichiers actifs <nombre>` et `Corbeille <nombre>` ;
-- style d’onglets harmonisé avec la navigation secondaire de `Équipe de la Plateforme` ;
-- `DataTable` partagé ;
-- upload avec état d’attente explicite et spinner pendant validations backend / antivirus / persistance ;
-- prévisualisation authentifiée PDF/JPEG/PNG via le flux de téléchargement existant ;
-- téléchargement ;
-- suppression logique ;
-- restauration ;
-- suppression définitive avec confirmation irréversible ;
-- surbrillance de ligne au hover/focus dans la Corbeille.
-
-Le vocabulaire utilisateur privilégie `suppression définitive` / `effacement` plutôt que le terme technique historique `purge`. Les identifiants internes historiques (`purgeScheduledAt`, services/jobs, etc.) n’ont pas été renommés sans nécessité.
-
-Le widget Workspace Dashboard `Fichiers actifs` a été retiré : le Dashboard utilisateur est destiné à recevoir prioritairement les futurs KPI métier, tandis que stockage et gestion documentaire appartiennent à `Ressources > Fichiers`.
+Le chatbot / assistant IA n’est pas un blocker Core 1.0 et n’appartient pas au MVP D-025.
 
 ---
 
-## 4. Architecture frontend à préserver
+## 4. Vision fonctionnelle validée D-025
+
+### Deux centres d’aide fonctionnels distincts
+
+Le système doit distinguer clairement :
+
+```text
+contexte Workspace
+→ Centre d’aide Workspace
+
+contexte Platform
+→ Centre d’aide Platform
+```
+
+Un utilisateur Workspace ne doit pas recevoir les procédures réservées aux membres Platform.
+
+Un utilisateur disposant des deux contextes accède au centre correspondant à la surface dans laquelle il travaille.
+
+### Une seule infrastructure technique
+
+Il ne faut pas créer deux systèmes parallèles.
+
+```text
+Aide Workspace ─┐
+                ├→ composants partagés + modèle d’aide commun
+Aide Platform ──┘
+```
+
+La séparation des audiences est fonctionnelle et sécuritaire ; la composition technique reste réutilisable.
+
+---
+
+## 5. UX déjà décidée
+
+### 5.1 Catégories
+
+Chaque centre doit comporter **4 ou 5 catégories maximum**.
+
+Les intitulés définitifs doivent être définis après inventaire des workflows réels. Les catégories doivent utiliser le vocabulaire utilisateur, pas les noms de modèles backend.
+
+Exemples de cadrage non contractuels :
+
+```text
+Workspace
+- Mon compte
+- Workspace & équipe
+- Ressources
+- Offre & accès
+- Sécurité & dépannage
+
+Platform
+- Utilisateurs & Workspaces
+- Plans & abonnements
+- Accès & dérogations
+- Administration
+- Sécurité & exploitation
+```
+
+### 5.2 Tooltips
+
+Chaque catégorie peut disposer d’un tooltip très bref indiquant son contenu.
+
+Le tooltip doit :
+
+- rester léger et succinct ;
+- orienter l’utilisateur ;
+- ne jamais remplacer la fiche d’aide ;
+- rester accessible clavier/lecteur d’écran.
+
+### 5.3 Recherche prédictive
+
+La recherche doit permettre de commencer à écrire puis de voir les résultats se préciser au fil de la saisie.
+
+Règle UX retenue :
+
+```text
+saisie progressive
+→ 3 à 5 suggestions maximum
+→ classement de plus en plus précis
+→ sélection clavier ou souris
+→ ouverture de la fiche
+```
+
+La recherche doit pouvoir exploiter au minimum :
+
+```text
+titre
+mots-clés
+questions/formulations prédéfinies
+contenu si nécessaire
+```
+
+Exemple :
+
+```text
+fiche : Inviter un membre dans un workspace
+mots-clés : invitation, membre, utilisateur, équipe, ajouter
+questions :
+- Comment inviter un membre ?
+- Comment ajouter un utilisateur ?
+- Ajouter quelqu’un à mon workspace
+```
+
+Le classement doit privilégier les correspondances fortes avant le simple plein texte.
+
+---
+
+## 6. Sécurité D-025 — exigence prioritaire
+
+Le principe de sécurité retenu est strict :
+
+```text
+authentification
++
+contexte réel
++
+permissions effectives
+→ corpus d’aide autorisé
+```
+
+Le frontend ne doit pas recevoir l’intégralité des fiches Platform pour ensuite masquer ce qui ne concerne pas un utilisateur Workspace.
+
+Les restrictions doivent couvrir :
+
+- listing des fiches ;
+- catégories ;
+- suggestions de recherche ;
+- mots-clés ;
+- accès direct à une fiche ;
+- permissions fines à l’intérieur d’un même contexte.
+
+Un membre Workspace ne doit donc pas voir apparaître dans l’autocomplétion une procédure Platform telle que `Créer un plan` ou `Inviter un membre de la Platform`.
+
+Le masquage frontend reste une règle UX, jamais l’autorité de sécurité.
+
+L’audit D-025 devra décider le contrat backend exact nécessaire à l’exposition du catalogue autorisé. Aucun endpoint ou modèle ne doit être inventé avant cet audit.
+
+---
+
+## 7. Modèle de fiche d’aide
+
+Le format cible doit rester cohérent pour toutes les procédures.
+
+Structure de référence :
+
+```text
+Titre
+Résumé / objectif
+Qui peut réaliser cette action ?
+Prérequis
+Procédure
+Résultat attendu / ce qui se passe ensuite
+Cas particuliers / erreurs fréquentes
+Conséquences sensibles ou irréversibles lorsque pertinent
+Voir aussi
+```
+
+Chaque entrée doit posséder un identifiant stable permettant sa réutilisation par la recherche, l’URL, l’aide contextuelle, les tests et plus tard éventuellement un assistant conversationnel.
+
+Exemple conceptuel :
+
+```text
+workspace.members.invite
+platform.plans.create
+files.restore
+```
+
+Le format technique définitif sera décidé après audit.
+
+---
+
+## 8. Architecture frontend existante à réutiliser
+
+Architecture générale :
 
 ```text
 Design tokens
@@ -163,192 +273,173 @@ Design tokens
 → pages = assemblage
 ```
 
-Règles :
+Règles constantes :
 
 - JavaScript uniquement ;
 - Tailwind CSS v4 CSS-first ;
-- shadcn/ui + Base UI lorsque la primitive interactive le justifie ;
-- HTML natif conservé lorsqu’il est déjà le meilleur contrat ;
+- shadcn/ui + Base UI ;
 - composants réutilisables obligatoires ;
-- `DataTable` partagé pour les tableaux applicatifs ;
+- aucune primitive concurrente sans justification ;
 - RTK Query pour l’état serveur ;
-- Redux Toolkit pour l’état global client ;
-- `useState` pour l’état local ;
-- aucune primitive générique concurrente sans justification ;
-- les pages assemblent, elles ne portent pas de logique métier lourde ;
-- validation stricte des données ;
-- informations pédagogiques secondaires via `InfoTooltip` ;
-- erreurs, blocages et conséquences sensibles restent visibles ;
-- accessibilité structurelle toujours active, indépendamment du profil renforcé.
+- Redux Toolkit pour le global client si nécessaire ;
+- `useState` pour le local ;
+- validation stricte ;
+- accessibilité structurelle toujours active.
 
-### Navigation secondaire / Tabs
+### Composants déjà vérifiés avant D-025
 
-Le Core possède désormais deux responsabilités distinctes mais visuellement harmonisées :
+Le frontend possède déjà :
 
 ```text
-SectionTabs
-→ navigation URL avec NavLink
-→ ex. Équipe de la Plateforme
+frontend/src/components/ui/tabs.jsx
+→ Base UI Tabs
+→ variante `section`
 
-components/ui/Tabs — variante section
-→ changement de panneau Base UI dans une même surface
-→ ex. Fichiers actifs / Corbeille
+frontend/src/components/ui/tooltip.jsx
+→ Base UI Tooltip
+
+frontend/src/components/ui/input.jsx
+frontend/src/components/ui/popover.jsx
+frontend/src/components/ui/card.jsx
 ```
 
-Les styles de navigation secondaire sont centralisés afin d’éviter leur divergence.
+Il ne faut donc pas recréer des Tabs, Tooltip, Input ou Popover spécifiques à l’aide.
 
-Règle de test Base UI : les composants portallés peuvent nécessiter `findByRole` après l’interaction d’ouverture. Les tests métier doivent viser le contrat applicatif stable, pas le DOM interne d’une bibliothèque tierce.
+### Recherche/autocomplétion
+
+Aucun composant partagé évident `Autocomplete` / `Combobox` / `SearchSuggestions` n’a été trouvé lors du premier contrôle documentaire.
+
+Avant création :
+
+1. auditer la version réelle de Base UI installée ;
+2. rechercher à nouveau les composants existants et leurs consommateurs ;
+3. vérifier si Base UI fournit une primitive adaptée ;
+4. créer une composition générique partagée uniquement si le besoin est réellement transversal ;
+5. ne pas enfermer une primitive générique dans `features/help` par facilité.
 
 ---
 
-## 5. État canonique des dettes Core
+## 9. Contenus versionnés avec le Core
 
-Après synchronisation de D-002 :
+Pour Core 1.0, les fiches d’aide doivent être versionnées avec le code.
+
+Ne pas créer par anticipation :
+
+```text
+CMS d’aide
+collection MongoDB éditable librement
+éditeur WYSIWYG
+base vectorielle
+RAG
+LLM obligatoire
+```
+
+Une release du Core doit contenir l’aide correspondant réellement à cette release.
+
+---
+
+## 10. Extensibilité des SaaS dérivés
+
+Le mécanisme d’aide doit permettre aux futurs modules métier d’ajouter leurs propres fiches sans modifier le corpus Core.
+
+Cible conceptuelle :
+
+```text
+catalogue Core
++
+modules d’aide applicatifs
+→ catalogue du SaaS dérivé
+```
+
+Le contrat exact du futur registre doit être explicite et versionné, comme les autres points d’extension du Core.
+
+D-017 devra vérifier que le dérivé pilote peut conserver l’aide Core et ajouter au moins une aide métier sans casser la frontière Core / métier.
+
+---
+
+## 11. État canonique des dettes
+
+Sur la branche D-025, `docs/DEBT.md` porte désormais :
 
 ```text
 D-020  EN COURS
+D-025  PLANIFIÉ — blocker Core 1.0 avant D-015
 D-011  VALIDÉ
 D-021  VALIDÉ
 D-022  VALIDÉ
-D-002  VALIDÉ — 2026-09-15
+D-002  VALIDÉ
 D-015  PLANIFIÉ
 D-016  PLANIFIÉ
 D-017  PLANIFIÉ
 D-023  DIFFÉRÉ — Core 1.1
+D-024  DIFFÉRÉ — Core 1.1
 ```
 
-Dettes non bloquantes pour Core 1.0 mais potentiellement bloquantes pour un produit réel :
+D-020 reste `EN COURS` tant que sa validation fonctionnelle manuelle restante n’a pas été constatée ou qu’une reclassification explicite n’a pas été décidée.
 
-```text
-D-003 conformité / RGPD
-D-004 Billing / Payment
-D-005 observabilité
-D-006 rétention / anonymisation réglementaire
-D-007 stockage fichiers production
-D-012 E2E du produit dérivé
-D-013 configuration / déploiement production
-```
-
-Dettes conditionnelles :
-
-```text
-D-008 notifications étendues
-D-009 API Keys / Webhooks
-D-010 authentification avancée / Google SSO
-```
-
-Google SSO ne bloque pas Core 1.0.
-
-### Point documentaire à ne pas oublier
-
-`docs/DEBT.md` maintient actuellement D-020 en `EN COURS` et la considère comme le blocker immédiat avant D-015.
-
-Ne pas la déclarer implicitement clôturée dans une nouvelle conversation. Avant D-015, il faudra soit :
-
-```text
-constater que son critère de clôture est réellement atteint
-→ la passer VALIDÉE
-
-ou
-justifier explicitement une reclassification
-```
+Cela ne change pas la décision que D-025 est le **prochain développement**. D-020 reste néanmoins une condition de clôture obligatoire avant D-015.
 
 ---
 
-## 6. Questions utilisateur à traiter AVANT tout nouveau code
+## 12. Ordre de travail D-025 obligatoire
 
-La prochaine conversation doit commencer par une phase de discussion et de décision.
+La prochaine conversation doit commencer par un audit, pas par du code.
 
-L’utilisateur souhaite poser plusieurs questions autour du **versioning du Core** et du **clonage / dérivation du SaaS**.
-
-Ne pas lancer automatiquement D-015, D-016, un audit UI ou un nouveau module avant d’avoir répondu à ces questions.
-
-Les sujets à clarifier pourront notamment couvrir :
+Ordre :
 
 ```text
-version release candidate vs version stable
-SemVer et signification réelle de v1.0.0
-tag Git vs GitHub Release vs branche
-moment où le Core doit être considéré comme gelé
-clone Git vs fork vs template repository vs nouveau dépôt dérivé
-nommage des dépôts dérivés
-conservation ou non de l’historique Git
-relation future avec le dépôt Core d’origine
-stratégie d’upgrade d’un SaaS dérivé quand le Core évolue
-remote upstream éventuel
-risques de conflits Core / métier
-provenance du Core dans chaque dérivé
-migrations DB et configuration lors d’un clone puis d’un upgrade
-README, docs et tests à conserver dans les dérivés
-moment exact du premier clone pilote
-place de D-016 et D-017 dans cette séquence
-moment où créer le premier tag réellement immuable
+1. vérifier la branche `feature/d-025-help-center` et son HEAD réel ;
+2. vérifier que `main` n’a pas divergé de manière pertinente ;
+3. lire intégralement `docs/REPRISE-CURRENT.md` ;
+4. lire D-025 dans `docs/DEBT.md` ;
+5. lire intégralement `docs/debt/D-025-secure-help-center.md` ;
+6. inspecter le frontend et le backend réels sans modification ;
+7. inventorier les workflows Workspace et Platform réellement disponibles ;
+8. relier chaque workflow à ses permissions réelles ;
+9. auditer les composants UI/shared déjà disponibles ;
+10. auditer Base UI réellement installée pour la recherche prédictive ;
+11. auditer routing, shells, topbars/sidebars et points d’entrée possibles vers l’aide ;
+12. proposer l’architecture finale, le modèle d’entrée d’aide, la stratégie backend de filtrage et les catégories ;
+13. faire valider ce cadrage avant le premier changement applicatif ;
+14. implémenter ensuite par lots cohérents avec tests ciblés puis gate globale.
 ```
 
-Ce sont des sujets d’architecture de distribution : les réponses doivent précéder l’implémentation de D-015.
-
-### Principe déjà retenu
-
-D-015 doit être compris comme la construction d’une **release candidate reproductible du Core et de sa discipline de versionnement**, pas comme l’affirmation automatique que la première version produite est déjà le tag stable final immuable.
-
-D-017 doit réellement tester :
-
-```text
-Core release candidate
-→ dérivé pilote
-→ ajout métier réel
-→ évolution Core compatible
-→ upgrade du dérivé
-→ migrations/configuration
-→ tests Core + métier + E2E
-→ analyse des conflits et de la provenance
-```
-
-Le premier dérivé utile doit donc servir de validation réelle de la stratégie de clonage/upgrade, pas seulement de copie ponctuelle du dépôt.
+Ne pas rédiger massivement les fiches avant validation du modèle et des catégories.
 
 ---
 
-## 7. Ce qui reste à décider / vérifier avant D-015
+## 13. Tests attendus D-025
 
-Après la phase de questions versioning/clonage, faire une revue bornée de ce qui reste réellement avant le gel de release candidate.
+### Backend / sécurité
 
-### 7.1 D-020
+Si un catalogue/endpoint serveur est nécessaire :
 
-Statut canonique actuel : `EN COURS`.
+- authentification ;
+- séparation Workspace / Platform ;
+- permissions fines ;
+- non-divulgation via listing, recherche et slug ;
+- accès direct protégé ;
+- validation stricte ;
+- tests Supertest d’isolation et de non-escalade.
 
-Vérifier son critère de clôture réel et mettre le registre à jour avant D-015.
+### Frontend
 
-### 7.2 Audit transversal frontend restant
+- centre correct selon contexte ;
+- 4/5 catégories maximum ;
+- tooltip accessible ;
+- recherche progressive ;
+- 3 à 5 suggestions maximum ;
+- pertinence des suggestions ;
+- navigation clavier ;
+- ARIA/accessibilité ;
+- aucune suggestion non autorisée ;
+- responsive ;
+- réutilisation des composants existants ;
+- non-régression des shells.
 
-Une ancienne reprise listait encore :
+### Gate globale avant D-015
 
-```text
-Dropdown menus
-Tooltip / Popover / Accordion / Tabs
-Badge / StatusBadge
-primitives HTML / React directes restantes
-Sidebar — revue dédiée d’alignement shadcn/ui
-```
-
-Cette liste ne doit pas être appliquée aveuglément : plusieurs composants ont évolué depuis. Il faut **réauditer l’état réel du code**, supprimer les points devenus obsolètes et ne conserver que les écarts démontrés.
-
-Règle : audit avant migration ; ne pas réécrire un composant fonctionnel uniquement parce qu’une primitive Base UI existe.
-
-La Sidebar reste un sujet de revue shadcn/ui connu, mais aucune réécriture globale ne doit être lancée sans décision explicite.
-
-### 7.3 Reliquats techniques
-
-Vérifier à partir du code réel :
-
-- consommateurs éventuels de `use-dialog-focus.js` avant toute suppression ;
-- contrôles HTML directs encore réellement justifiés ;
-- warnings React Hooks précédemment connus ;
-- documentation devenue obsolète ;
-- cohérence des scripts, migrations, `.env.example` et opérations de setup.
-
-### 7.4 Gate globale pré-D-015
-
-Une fois la liste des derniers blockers fermée :
+Après validation complète de D-025 et clôture/reclassification de D-020 :
 
 ```text
 backend npm run lint
@@ -356,56 +447,29 @@ backend npm test
 frontend npm run lint
 frontend npm test
 frontend npm run build
-validation manuelle des parcours critiques touchés
+validation manuelle des parcours critiques
 ```
 
 Cette gate doit être réellement exécutée avant de déclarer le Core prêt pour D-015.
 
-### 7.5 Revue pré-versionnement
-
-Faire un point explicite sur :
-
-- dettes actives réelles ;
-- README global du Core ;
-- documentation historique à supprimer/archiver ;
-- contrats canoniques ;
-- migrations DB existantes et leur ordre ;
-- scripts setup/dev/test/release ;
-- `.env.example` ;
-- absence de secrets/artefacts locaux ;
-- séparation Core générique / futur métier ;
-- stratégie de provenance ;
-- stratégie de clonage et d’upgrade décidée avec l’utilisateur ;
-- éléments volontairement différés après Core 1.0.
-
-Résultat attendu :
-
-```text
-PRÊT POUR D-015
-ou
-LISTE FERMÉE DES BLOQUANTS RESTANTS
-```
-
 ---
 
-## 8. Roadmap actuelle proposée
-
-Sous réserve des décisions prises lors des questions versioning/clonage :
+## 14. Roadmap actuelle
 
 ```text
-D-002 Files                                  VALIDÉ
-→ questions / décisions versioning + clonage
-→ clôture ou reclassification explicite D-020
-→ audit final des reliquats pré-gel réellement encore applicables
+D-002 Files                                             VALIDÉ
+D-020 invitation commerciale                           EN COURS — clôture manuelle/reclassification encore requise
+→ D-025 centre d’aide Workspace / Platform sécurisé    PROCHAIN DÉVELOPPEMENT
+→ clôture effective des derniers blockers pré-gel
 → gate globale pré-D-015
 → revue globale pré-versionnement
 → D-015 release candidate / SemVer / provenance / releases / migrations
-→ D-016 Playwright E2E Core
+→ D-016 Playwright E2E Core, incluant l’aide D-025
 → audit final Core
-→ D-017 dérivé pilote + premier module métier + test réel d’upgrade
+→ D-017 dérivé pilote + module métier + test réel d’upgrade + extension de l’aide
 → corrections éventuelles
 → nouvelle gate
-→ tag/release Core stable immuable lorsque la stratégie est réellement validée
+→ tag/release Core stable lorsque la stratégie est réellement validée
 ```
 
 Ne pas confondre :
@@ -418,76 +482,46 @@ tag stable final
 produit dérivé production-ready
 ```
 
----
-
-## 9. Préparation du futur SaaS métier
-
-Avant de coder le métier dans le dérivé, cadrer séparément :
+Évolutions explicitement différées après Core 1.0 :
 
 ```text
-périmètre fonctionnel
-personas et rôles métier
-workflows
-modèle de données métier
-permissions métier
-entitlements / plans
-composants réutilisables obligatoires
-routes / services / validations
-intégrations externes
-sécurité et données sensibles
-KPI / dashboards
-notifications
-fichiers
-rétention / conformité
-stratégie de tests
+D-023 demande gouvernée de transfert de propriété
+D-024 console Platform contextualisée du Workspace
+assistant conversationnel / IA au-dessus du centre d’aide
 ```
-
-Le dérivé doit ajouter des modules métier sans casser les invariants du Core.
-
-Les pages métier assemblent des composants ; les appels serveur restent via RTK Query ; la logique métier backend reste dans les services ; validation Zod stricte ; audit, soft delete, rôles et permissions sont réutilisés lorsque pertinent.
-
-Les sujets production spécifiques du dérivé devront ensuite traiter D-003 à D-007, D-012 et D-013 selon le produit réel.
 
 ---
 
-## 10. Prochaine conversation — ordre obligatoire
+## 15. Principes de versionnement/clonage déjà discutés
 
-La prochaine conversation ne doit pas commencer par du code.
+Les décisions détaillées restent à matérialiser dans D-015, mais plusieurs principes de travail ont déjà été retenus :
 
-Ordre demandé :
+- D-015 construit une release candidate reproductible, pas automatiquement le tag stable final ;
+- un produit dérivé doit conserver une provenance claire vers le Core ;
+- l’upgrade du dérivé doit être explicite, testé et fondé sur une release/tag du Core plutôt que sur un suivi aveugle de `main` ;
+- D-017 doit réellement tester dérivation, ajout métier, évolution Core compatible, upgrade, migrations/configuration, conflits et provenance ;
+- `v1.0.0` stable ne doit être taguée qu’après validation réelle de cette stratégie.
 
-```text
-1. vérifier que la branche réelle est main ;
-2. vérifier le HEAD distant réel de main ;
-3. lire intégralement docs/REPRISE-CURRENT.md ;
-4. lire dans docs/DEBT.md D-002, D-015, D-016, D-017 et D-020 ;
-5. confirmer que D-002 est bien VALIDÉE et que les deux branches Files sont intégrées ;
-6. répondre d’abord aux questions de l’utilisateur sur le versioning et le clonage du SaaS ;
-7. challenger les options : avantages, risques, maintenabilité, upgrades, provenance et migrations ;
-8. aboutir à une stratégie explicite avant tout code ;
-9. seulement ensuite réévaluer les derniers blockers pré-D-015 ;
-10. ne modifier aucun fichier tant que l’utilisateur n’a pas validé cette stratégie.
-```
-
-La discussion doit être pédagogique et concrète : expliquer la différence entre copie, clone, fork, template, release, tag, branche et mécanisme d’upgrade, puis relier ces choix au fonctionnement réel de `saas-core-api`.
+D-025 doit être terminé avant l’ouverture de D-015 afin que le contrat utilisateur du Core soit inclus dans la discipline de release.
 
 ---
 
-## 11. Règles de travail à conserver
+## 16. Règles de travail à conserver
 
 - vérifier branche et HEAD avant modification ;
-- toujours repartir de `main` pour un nouveau lot sauf décision explicite contraire ;
 - code + DB + tests réellement exécutés priment sur la synthèse ;
 - aucun merge implicite ;
 - aucun changement hors périmètre ;
 - JavaScript uniquement ;
 - validation stricte ;
 - composants réutilisables obligatoires ;
-- audit avant migration ;
+- audit avant migration/création d’une primitive ;
 - plusieurs FAILS d’une même famille = analyse globale + correction par cause racine ;
 - gate globale après un bloc transversal ;
 - ne jamais annoncer une gate verte sans exécution réelle ;
 - ne jamais supprimer un hook/composant partagé sans audit de consommateurs ;
+- sécurité backend autoritative ;
+- aucun contenu d’aide non autorisé simplement caché côté frontend ;
 - ne pas confondre Core 1.0 stabilisé et produit dérivé production-ready.
 
 ---
