@@ -39,6 +39,7 @@ function HelpEntryDrawer({
     >
       <SheetContent
         className="w-[min(46rem,100vw)] overflow-y-auto"
+        closeButtonClassName="z-20"
         overlayClassName="bg-overlay/30 backdrop-blur-[1px]"
       >
         {isLoading ? (
