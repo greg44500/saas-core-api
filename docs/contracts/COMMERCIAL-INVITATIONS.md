@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Contrat D-020 : invitations commerciales et offres privées
 
-**Statut :** EN COURS — intégré dans `main`, gate automatisée verte, parcours nominal validé manuellement  
-**Dernière mise à jour :** 2026-09-10  
+**Statut :** DIFFÉRÉ — validation terrain sur application dérivée / bêta ; non bloquant Core 1.0  
+**Dernière mise à jour :** 2026-09-16  
 **Périmètre :** Core clonable
 
 ## 1. Objet
@@ -350,6 +350,6 @@ frontend build     OK
 
 Le parcours nominal a également été validé manuellement jusqu’à l’acceptation réussie et la création du premier workspace avec le Plan privé attendu.
 
-D-020 reste toutefois `EN COURS` dans `docs/DEBT.md` tant que la validation manuelle finale n’a pas été explicitement clôturée pour les scénarios négatifs/restants du parcours, notamment vérification post-correctif de la mauvaise identité et du refus bénéficiaire.
+La validation terrain finale est volontairement différée jusqu’à l’exploitation d’une application dérivée déployée avec des bêta-testeurs Platform et Workspace. Elle doit notamment confronter le parcours à des usages et identités réels, sans transformer cette vérification terrain en blocker de Core 1.0.
 
-Une fois ces contrôles explicitement validés, D-020 pourra passer formellement à `VALIDÉ` dans `docs/DEBT.md` avant D-021/D-015.
+D-020 est donc classée `DIFFÉRÉ — validation terrain sur application dérivée / bêta` dans `docs/DEBT.md` et ne bloque pas D-015 ni Core 1.0. Si la bêta révèle une anomalie réelle, D-020 pourra être rouverte ou une dette ciblée pourra être créée à partir du défaut observé.
