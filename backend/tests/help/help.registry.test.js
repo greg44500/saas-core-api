@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { CORE_PERMISSION } from '../../constants/permissions.constants.js';
 import {
+    WORKSPACE_ACCESS_MODE,
+} from '../../constants/workspaceAccess.constants.js';
+import {
     HELP_CONTEXT,
     composeHelpModuleExtensions,
     createHelpRegistry,
@@ -45,7 +48,7 @@ const entry = {
 
 
 describe('help.registry', () => {
-    it('construit un registre immuable et valide', () => {
+    it('construit un registre immuable et limite Workspace au mode normal par défaut', () => {
         const registry = createHelpRegistry({
             categories: [category],
             entries: [entry],
@@ -54,6 +57,22 @@ describe('help.registry', () => {
         expect(registry.entries).toHaveLength(1);
         expect(Object.isFrozen(registry.entries)).toBe(true);
         expect(Object.isFrozen(registry.entries[0].search)).toBe(true);
+        expect(registry.entries[0].requirements.workspaceAccessModes).toEqual([
+            WORKSPACE_ACCESS_MODE.NORMAL,
+        ]);
+    });
+
+    it('déclare explicitement une fiche Workspace utilisable en remédiation', () => {
+        const registry = createHelpRegistry({
+            categories: [category],
+            entries: [entry],
+            workspaceRemediationEntryIds: [entry.id],
+        });
+
+        expect(registry.entries[0].requirements.workspaceAccessModes).toEqual([
+            WORKSPACE_ACCESS_MODE.NORMAL,
+            WORKSPACE_ACCESS_MODE.REMEDIATION,
+        ]);
     });
 
     it('accepte une action directement rattachée au contexte', () => {
@@ -98,6 +117,14 @@ describe('help.registry', () => {
         })).toThrow(/invalid related entry/);
     });
 
+    it('refuse une déclaration de remédiation qui ne cible pas une fiche Workspace existante', () => {
+        expect(() => createHelpRegistry({
+            categories: [category],
+            entries: [entry],
+            workspaceRemediationEntryIds: ['workspace.test.missing'],
+        })).toThrow(/Workspace remediation help entry is invalid/);
+    });
+
     it('refuse plus de cinq catégories dans un même contexte', () => {
         const categories = Array.from({ length: 6 }, (_, index) => ({
             ...category,
@@ -111,16 +138,18 @@ describe('help.registry', () => {
         })).toThrow(/more than 5 categories/);
     });
 
-    it('compose explicitement les modules métier', () => {
+    it('compose explicitement les modules métier et leur politique de remédiation', () => {
         const extensions = composeHelpModuleExtensions([
             {
                 key: 'catalog',
                 categories: [category],
                 entries: [entry],
+                workspaceRemediationEntryIds: [entry.id],
             },
         ]);
 
         expect(extensions.categories).toHaveLength(1);
         expect(extensions.entries).toHaveLength(1);
+        expect(extensions.workspaceRemediationEntryIds).toEqual([entry.id]);
     });
 });
