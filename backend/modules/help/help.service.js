@@ -7,7 +7,7 @@ import {
 } from '../../constants/platformTeam.constants.js';
 import { AppError } from '../../utils/appError.js';
 import {
-    getWorkspaceEffectiveEntitlement,
+    getWorkspaceAccessEntitlement,
 } from '../subscriptions/subscription.service.js';
 import {
     resolvePlatformAuthorization,
@@ -75,7 +75,7 @@ const buildCatalog = ({ registry, context, entries }) => {
 
 const createHelpService = ({
     registry = ACTIVE_HELP_REGISTRY,
-    resolveWorkspaceEntitlement = getWorkspaceEffectiveEntitlement,
+    resolveWorkspaceAccess = getWorkspaceAccessEntitlement,
     resolvePlatformAccess = resolvePlatformAuthorization,
 } = {}) => {
     const getWorkspaceVisibleEntries = async ({
@@ -89,11 +89,11 @@ const createHelpService = ({
             );
         }
 
-        const entitlement = await resolveWorkspaceEntitlement({
+        const workspaceAccess = await resolveWorkspaceAccess({
             workspaceId: workspace._id,
         });
         const effectiveFeatures =
-            entitlement?.effectiveCapabilities?.features ?? [];
+            workspaceAccess?.effectiveCapabilities?.features ?? [];
 
         return registry.entries.filter((entry) => {
             if (entry.context !== HELP_CONTEXT.WORKSPACE) {
@@ -108,9 +108,15 @@ const createHelpService = ({
                 return false;
             }
 
-            return hasAll(
+            if (!hasAll(
                 effectiveFeatures,
                 entry.requirements.features,
+            )) {
+                return false;
+            }
+
+            return entry.requirements.workspaceAccessModes.includes(
+                workspaceAccess.accessMode,
             );
         });
     };
