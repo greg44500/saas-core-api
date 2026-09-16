@@ -10,7 +10,7 @@ Ce fichier est la porte d'entrée de la documentation interne de `saas-core-api`
 
 Le README racine fournit l'orientation générale du dépôt. Le présent index reste la référence pour naviguer dans les contrats, l'architecture, la sécurité, les guidelines, la conformité, les opérations, les SaaS dérivés et les dettes actives.
 
-Le chantier documentaire DOC-0 à DOC-11 est terminé. La finalisation fonctionnelle du Core a depuis fait émerger des besoins génériques supplémentaires explicitement enregistrés dans `docs/DEBT.md`. Le prochain développement retenu avant le gel pré-versionnement est D-025 — Centre d’aide sécurisé Workspace / Platform.
+Le chantier documentaire DOC-0 à DOC-11 est terminé. La finalisation fonctionnelle du Core a depuis fait émerger des besoins génériques supplémentaires explicitement enregistrés dans `docs/DEBT.md`. D-025 — Centre d’aide sécurisé Workspace / Platform — est désormais validée et intégrée dans `main`. D-020 — invitation commerciale — est explicitement différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0. La séquence courante est la gate pré-D-015 puis D-015 — versionnement / provenance / release process / migrations.
 
 ---
 
@@ -68,14 +68,14 @@ docs/REPRISE-CURRENT.md
 
 Les spécifications détaillées de dettes complexes peuvent être placées dans `docs/debt/` lorsque `docs/DEBT.md` les référence explicitement. Elles détaillent le cadrage sans remplacer le statut porté par le registre canonique.
 
-Exemples actifs :
+Spécifications conservées :
 
 ```text
 docs/debt/D-024-platform-workspace-control-center.md
 → évolution Core 1.1 différée
 
 docs/debt/D-025-secure-help-center.md
-→ prochain développement Core 1.0 avant D-015
+→ spécification validée du centre d’aide sécurisé Workspace / Platform
 ```
 
 ### Contrats
@@ -87,11 +87,17 @@ docs/contracts/CORE-CONTRACT.md
 docs/contracts/COMMERCIAL.md
 → Plan, baseline, Subscription, trial, entitlement, quotas et overrides
 
+docs/contracts/COMMERCIAL-INVITATIONS.md
+→ invitations commerciales et offres privées D-020
+
 docs/contracts/CAPABILITIES.md
 → Capability Registry et extension par les applications dérivées
 
 docs/contracts/PLATFORM-TEAM.md
 → Équipe de la Plateforme, Fondateur, RBAC Platform et invitations internes
+
+docs/contracts/RETENTION.md
+→ moteur générique de rétention / purge et administration Platform associée
 ```
 
 Décisions structurantes :
@@ -128,7 +134,7 @@ docs/security/SECURITY.md
 
 Le backend reste l'autorité de sécurité. Les guards, masquages et contrôles frontend améliorent l'UX mais ne remplacent jamais les autorisations serveur.
 
-Cette règle s'applique également à D-025 : un corpus d'aide ou des suggestions non autorisées ne doivent pas être envoyés au frontend uniquement pour y être masqués.
+Cette règle s'applique également au centre d’aide D-025 : un corpus d'aide ou des suggestions non autorisées ne doivent pas être envoyés au frontend uniquement pour y être masqués.
 
 ### Guidelines frontend
 
@@ -159,7 +165,7 @@ docs/derived-saas/DERIVED-SAAS.md
 
 Le produit dérivé conserve l'historique Git du Core, possède son propre `origin` et conserve le Core comme `upstream-core`. La stratégie devra être validée par un exercice réel de dérivation + upgrade avant la release 1.0.
 
-D-025 devra également fournir un mécanisme permettant au dérivé d'ajouter ses fiches d'aide métier sans dupliquer ni réécrire le corpus Core.
+D-025 fournit désormais un mécanisme d’extension permettant à un dérivé d’ajouter ses fiches d’aide métier sans dupliquer ni réécrire le corpus Core.
 
 ### Conformité / RGPD
 
@@ -200,16 +206,14 @@ SaaS dérivé prêt pour la production
 Blockers Core 1.0 actuellement applicables :
 
 ```text
-D-020 invitation commerciale — validation fonctionnelle/reclassification encore requise
-D-025 centre d’aide sécurisé Workspace / Platform — prochain développement
 D-015 versionnement / provenance / release process / migrations
 D-016 E2E Core Playwright
 D-017 dérivation + upgrade réel d'un SaaS pilote
 ```
 
-D-001, D-002, D-011, D-014, D-018, D-019, D-021 et D-022 sont validées/clôturées selon le registre canonique.
+D-001, D-002, D-011, D-014, D-018, D-019, D-021, D-022 et D-025 sont validées/clôturées selon le registre canonique.
 
-D-023 et D-024 sont différées vers Core 1.1 et ne bloquent pas Core 1.0.
+D-020 est différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0. D-023 et D-024 sont différées vers Core 1.1 et ne bloquent pas Core 1.0.
 
 La finalisation fonctionnelle peut encore reclasser une dette lorsqu'un constat réel le justifie, mais une fonctionnalité hypothétique ou purement métier ne doit pas retarder la release 1.0.
 
@@ -231,8 +235,10 @@ docs/
 ├── contracts/
 │   ├── CORE-CONTRACT.md
 │   ├── COMMERCIAL.md
+│   ├── COMMERCIAL-INVITATIONS.md
 │   ├── CAPABILITIES.md
-│   └── PLATFORM-TEAM.md
+│   ├── PLATFORM-TEAM.md
+│   └── RETENTION.md
 │
 ├── debt/
 │   ├── D-024-platform-workspace-control-center.md
@@ -332,27 +338,21 @@ Toute future suppression documentaire suit la même règle : contenu utile véri
 Séquence courante de finalisation :
 
 ```text
-D-020 invitation commerciale
-→ clôture/reclassification explicite requise avant D-015
-
-D-025 centre d’aide sécurisé Workspace / Platform
-→ prochain développement fonctionnel
-→ audit réel avant code
-→ deux centres fonctionnels distincts
-→ composants communs réutilisables
-→ recherche prédictive
-→ sécurité contextuelle/permissions
-→ extensibilité SaaS dérivés
+gate globale pré-D-015
+→ tests/lint/build globaux validés
+→ parcours critiques validés manuellement
+→ audit des branches distantes effectué ; aucune branche restante à fusionner
+→ synchronisation documentaire pré-D-015
 
 puis
-→ gate globale pré-D-015
-→ revue finale pré-versionnement
 → D-015 versionnement / provenance / releases / migrations
 → D-016 E2E Core Playwright
 → audit final architecture / sécurité / qualité
 → D-017 dérivation + upgrade pilote
 → release Core stable après validation réelle de la stratégie
 ```
+
+D-020 reste différée à la validation terrain avec des bêta-testeurs Platform et Workspace sur une application dérivée déployée. Cette validation n’est pas bloquante pour Core 1.0.
 
 Le chatbot/assistant IA au-dessus de l'aide est explicitement différé et ne bloque pas Core 1.0.
 
