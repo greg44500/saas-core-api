@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Architecture frontend
 
 **Statut :** document canonique d’architecture frontend  
-**Dernière mise à jour :** 2026-09-05  
+**Dernière mise à jour :** 2026-09-16  
 **Périmètre :** frontend React / Vite du Core et futures applications dérivées
 
 ## 1. Objet
@@ -21,7 +21,7 @@ tests
 extension par les futurs modules métier
 ```
 
-Les règles détaillées de design system, UX, formulaires, feedbacks, accessibilité et composants seront consolidées dans `docs/frontend/FRONTEND-GUIDELINES.md` au lot DOC-5.
+Les règles détaillées de design system, UX, formulaires, feedbacks, accessibilité et composants sont consolidées dans `docs/frontend/FRONTEND-GUIDELINES.md`.
 
 ---
 
@@ -47,7 +47,7 @@ React Testing Library
 user-event
 ```
 
-Les composants shadcn/ui sont intégrés comme code de design system adapté au projet ; ils ne constituent pas nécessairement une dépendance npm unique.
+Les composants shadcn/ui sont intégrés comme code de design system adapté au projet ; ils ne constituent pas nécessairement une dépendance npm unique. Les primitives interactives du design system peuvent s’appuyer sur Base UI lorsque le composant canonique du projet l’exige.
 
 TypeScript n’est pas utilisé.
 
@@ -95,6 +95,7 @@ providers globaux
 routing
 layouts applicatifs
 navigation transverse
+composition explicite des modules de routes Core / dérivés
 ```
 
 Exemples :
@@ -102,6 +103,7 @@ Exemples :
 ```text
 app/providers.jsx
 app/router.jsx
+app/application-routes.js
 app/layouts/
 app/workspace-navigation.js
 ```
@@ -110,26 +112,34 @@ app/workspace-navigation.js
 
 Une règle spécifique à Files, Subscription, Platform Plans ou un futur module métier doit vivre dans la feature correspondante lorsque possible.
 
+`application-routes.js` constitue le point de composition explicite des routes installées. Le Core y compose notamment le module Help avant les futurs modules du produit dérivé ; aucune découverte automatique de fichiers ne remplace cette composition contrôlée.
+
 ---
 
 ## 5. Contextes de routing
 
 Le routing actuel distingue clairement plusieurs espaces.
 
-### Public
+### Public / authentification / invitations
 
 ```text
 /
+/legal/terms
+/legal/privacy
 /login
 /register
 /forgot-password
 /reset-password
+/platform-invitations/accept
+/invitations/accept
+/commercial-invitations/accept
 ```
 
 ### Account
 
 ```text
 /account/profile
+/account/preferences
 /account/security
 ```
 
@@ -149,10 +159,15 @@ Le contexte Account appartient à la personne, pas au Workspace.
 /workspaces/:workspaceId/members
 /workspaces/:workspaceId/roles
 /workspaces/:workspaceId/files
+/workspaces/:workspaceId/files/trash
 /workspaces/:workspaceId/subscription
 /workspaces/:workspaceId/activity
 /workspaces/:workspaceId/settings
+/workspaces/:workspaceId/help
+/workspaces/:workspaceId/help/:entryId
 ```
+
+Les routes Help Workspace sont composées par le module Core Help dans `application-routes.js`.
 
 ### Platform
 
@@ -162,9 +177,16 @@ Le contexte Account appartient à la personne, pas au Workspace.
 /platform/workspaces
 /platform/plans
 /platform/subscriptions
+/platform/commercial-invitations
 /platform/entitlement-overrides
+/platform/team/:section?
 /platform/audit-logs
+/platform/retention
+/platform/help
+/platform/help/:entryId
 ```
+
+Les routes Help Platform sont également composées par le module Core Help.
 
 Ces contextes doivent rester distincts dans les layouts, guards et navigations.
 
@@ -222,21 +244,28 @@ Le lazy loading est une optimisation de chargement ; il ne doit pas être utilis
 
 `frontend/src/features/` contient les domaines fonctionnels.
 
-Exemples actuels :
+Exemples actuels représentatifs :
 
 ```text
 account
 auth
 audit-log
+commercial-invitation
 files
+help
+legal
 plan
 platform
+platform-invitation
+preferences
 subscription
 workspace
 workspace-invitation
 workspace-members
 workspace-roles
 ```
+
+Cette liste illustre l’organisation courante ; le contenu réel de `features/` reste l’autorité.
 
 Une future application dérivée ajoute ses domaines de la même manière :
 
@@ -406,8 +435,10 @@ plans
 subscriptions
 files
 audit logs
+help autorisée
 Platform resources
 entitlements
+retention
 ```
 
 ### URL / Router
@@ -605,6 +636,8 @@ Les composants génériques peuvent être partagés entre les deux contextes, ma
 
 Exemple : le même `DataTable` peut afficher des Users Platform ou des Members Workspace sans fusionner leurs règles métier.
 
+Le centre d’aide suit la même séparation : Workspace et Platform possèdent des projections serveur distinctes ; le frontend ne fusionne pas leurs corpus avant contrôle d’autorisation.
+
 ---
 
 ## 23. Réutilisation par composition
@@ -765,10 +798,12 @@ Le module :
 ```text
 consomme baseApi
 réutilise les composants partagés
-ajoute ses routes
+ajoute ses routes par composition explicite
 branche ses capabilities
 respecte Workspace / Platform selon son scope
 ```
+
+Les routes d’un produit dérivé doivent être ajoutées via le mécanisme de composition `APPLICATION_FRONTEND_ROUTE_MODULES` / `composeApplicationFrontendRoutes` plutôt qu’en dupliquant le routeur Core.
 
 Il ne doit pas dupliquer la session Auth, le store global, le système de table ou les layouts Core pour fonctionner.
 
@@ -781,13 +816,17 @@ Core :
 ```text
 auth
 account
+preferences
 workspace
 members
 roles
 subscription
+commercial invitations génériques
 files génériques
 audit
-platform
+retention
+help sécurisé
+platform / platform team
 composants transverses
 infrastructure API/store/router
 ```
@@ -853,7 +892,10 @@ docs/architecture/ARCHITECTURE.md
 docs/architecture/BACKEND.md
 docs/contracts/CORE-CONTRACT.md
 docs/contracts/COMMERCIAL.md
+docs/contracts/COMMERCIAL-INVITATIONS.md
 docs/contracts/CAPABILITIES.md
+docs/contracts/PLATFORM-TEAM.md
+docs/contracts/RETENTION.md
 docs/frontend/FRONTEND-GUIDELINES.md
 docs/security/SECURITY.md
 ```
