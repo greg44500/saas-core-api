@@ -9,6 +9,9 @@ import {
 import {
     ACTIVE_APPLICATION_ROLE_PERMISSION_REGISTRY,
 } from '../../config/applicationRolePermission.registry.js';
+import {
+    WORKSPACE_ACCESS_MODE,
+} from '../../constants/workspaceAccess.constants.js';
 
 
 const HELP_CONTEXT = Object.freeze({
@@ -74,31 +77,49 @@ const helpModuleSchema = z.strictObject({
     key: z.string().regex(HELP_MODULE_KEY_PATTERN),
     categories: z.array(helpCategorySchema).default([]),
     entries: z.array(helpEntrySchema).default([]),
+    workspaceRemediationEntryIds: z
+        .array(z.string().regex(HELP_ENTRY_ID_PATTERN))
+        .default([]),
 });
 
 const freezeCategory = (category) => Object.freeze({ ...category });
 
-const freezeEntry = (entry) => Object.freeze({
-    ...entry,
-    search: Object.freeze({
-        keywords: Object.freeze([...entry.search.keywords]),
-        questions: Object.freeze([...entry.search.questions]),
-    }),
-    audience: Object.freeze({
-        permissions: Object.freeze([...entry.audience.permissions]),
-        ownerOnly: entry.audience.ownerOnly,
-    }),
-    requirements: Object.freeze({
-        features: Object.freeze([...entry.requirements.features]),
-    }),
-    prerequisites: Object.freeze([...entry.prerequisites]),
-    steps: Object.freeze([...entry.steps]),
-    edgeCases: Object.freeze([...entry.edgeCases]),
-    sensitiveConsequences: Object.freeze([
-        ...entry.sensitiveConsequences,
-    ]),
-    relatedEntryIds: Object.freeze([...entry.relatedEntryIds]),
-});
+const freezeEntry = ({
+    entry,
+    workspaceRemediationEntryIds,
+}) => {
+    const workspaceAccessModes = entry.context === HELP_CONTEXT.WORKSPACE
+        ? workspaceRemediationEntryIds.has(entry.id)
+            ? [
+                WORKSPACE_ACCESS_MODE.NORMAL,
+                WORKSPACE_ACCESS_MODE.REMEDIATION,
+            ]
+            : [WORKSPACE_ACCESS_MODE.NORMAL]
+        : [];
+
+    return Object.freeze({
+        ...entry,
+        search: Object.freeze({
+            keywords: Object.freeze([...entry.search.keywords]),
+            questions: Object.freeze([...entry.search.questions]),
+        }),
+        audience: Object.freeze({
+            permissions: Object.freeze([...entry.audience.permissions]),
+            ownerOnly: entry.audience.ownerOnly,
+        }),
+        requirements: Object.freeze({
+            features: Object.freeze([...entry.requirements.features]),
+            workspaceAccessModes: Object.freeze(workspaceAccessModes),
+        }),
+        prerequisites: Object.freeze([...entry.prerequisites]),
+        steps: Object.freeze([...entry.steps]),
+        edgeCases: Object.freeze([...entry.edgeCases]),
+        sensitiveConsequences: Object.freeze([
+            ...entry.sensitiveConsequences,
+        ]),
+        relatedEntryIds: Object.freeze([...entry.relatedEntryIds]),
+    });
+};
 
 /**
  * Compose explicitement les extensions d'aide embarquées dans un SaaS dérivé.
@@ -130,6 +151,12 @@ const composeHelpModuleExtensions = (modules = []) => {
         entries: Object.freeze(
             parsedModules.flatMap(({ entries }) => entries),
         ),
+        workspaceRemediationEntryIds: Object.freeze(
+            parsedModules.flatMap(
+                ({ workspaceRemediationEntryIds }) =>
+                    workspaceRemediationEntryIds,
+            ),
+        ),
     });
 };
 
@@ -139,10 +166,15 @@ const composeHelpModuleExtensions = (modules = []) => {
  * Les validations croisées sont faites au démarrage afin qu'une permission,
  * une feature, une catégorie ou un lien "Voir aussi" obsolète casse le build
  * plutôt que de créer une documentation trompeuse en production.
+ *
+ * Les fiches Workspace sont `normal` par défaut. Une fiche qui doit rester
+ * visible en remédiation doit être déclarée explicitement, ce qui reproduit le
+ * principe de sécurité du middleware `enforceWorkspaceAccessMode`.
  */
 const createHelpRegistry = ({
     categories = [],
     entries = [],
+    workspaceRemediationEntryIds = [],
     workspacePermissions =
         ACTIVE_APPLICATION_ROLE_PERMISSION_REGISTRY.permissions,
     platformPermissions =
@@ -151,6 +183,9 @@ const createHelpRegistry = ({
 } = {}) => {
     const parsedCategories = z.array(helpCategorySchema).parse(categories);
     const parsedEntries = z.array(helpEntrySchema).parse(entries);
+    const parsedWorkspaceRemediationEntryIds = z
+        .array(z.string().regex(HELP_ENTRY_ID_PATTERN))
+        .parse(workspaceRemediationEntryIds);
 
     const categoryIds = new Set();
     for (const category of parsedCategories) {
@@ -236,6 +271,24 @@ const createHelpRegistry = ({
         entriesById.set(entry.id, entry);
     }
 
+    const remediationEntryIds = new Set();
+    for (const entryId of parsedWorkspaceRemediationEntryIds) {
+        if (remediationEntryIds.has(entryId)) {
+            throw new TypeError(
+                `Duplicate Workspace remediation help entry id: ${entryId}`,
+            );
+        }
+
+        const entry = entriesById.get(entryId);
+        if (!entry || entry.context !== HELP_CONTEXT.WORKSPACE) {
+            throw new TypeError(
+                `Workspace remediation help entry is invalid: ${entryId}`,
+            );
+        }
+
+        remediationEntryIds.add(entryId);
+    }
+
     for (const entry of parsedEntries) {
         for (const relatedEntryId of entry.relatedEntryIds) {
             const relatedEntry = entriesById.get(relatedEntryId);
@@ -254,7 +307,10 @@ const createHelpRegistry = ({
     );
     const frozenEntries = Object.freeze(
         parsedEntries
-            .map(freezeEntry)
+            .map((entry) => freezeEntry({
+                entry,
+                workspaceRemediationEntryIds: remediationEntryIds,
+            }))
             .sort((left, right) =>
                 left.order - right.order
                 || left.title.localeCompare(right.title, 'fr')),
