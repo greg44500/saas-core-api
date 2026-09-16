@@ -263,18 +263,19 @@ La commande canonique du dépôt est :
 npm run release:check
 ```
 
-Elle doit couvrir au minimum :
+Elle couvre au minimum :
 
 ```text
 cohérence des métadonnées de release
 cohérence de l’inventaire des migrations
-formatage
 lint backend / tooling de release
 tests backend
 lint frontend
 tests frontend
 build frontend
 ```
+
+`npm run format:check` reste disponible comme contrôle qualité séparé. Il n’est pas ajouté comme blocker de `release:check` tant qu’une baseline globale du dépôt n’a pas été explicitement validée verte ; D-015 ne doit pas créer une nouvelle gate rouge uniquement par convention.
 
 D-016 étendra la gate de release avec les E2E Playwright avant la release stable.
 
