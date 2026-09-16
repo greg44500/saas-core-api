@@ -148,7 +148,7 @@ describe('HelpPage', () => {
     expect(await screen.findByText('Aide Platform')).toBeInTheDocument();
   });
 
-  it('met le catalogue visuellement en retrait pendant les suggestions sans le rendre modal', async () => {
+  it('met le catalogue visuellement en retrait pendant les suggestions puis restaure son accessibilité', async () => {
     const user = userEvent.setup();
     renderHelpRoute({ initialEntry: '/platform/help' });
 
@@ -163,7 +163,10 @@ describe('HelpPage', () => {
       document.querySelector('[data-help-search-spotlight="active"]'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('tab', { name: 'Utilisateurs & workspaces' }),
+      screen.getByRole('tab', {
+        name: 'Utilisateurs & workspaces',
+        hidden: true,
+      }),
     ).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
@@ -173,6 +176,9 @@ describe('HelpPage', () => {
         document.querySelector('[data-help-search-spotlight="active"]'),
       ).not.toBeInTheDocument();
     });
+    expect(
+      screen.getByRole('tab', { name: 'Utilisateurs & workspaces' }),
+    ).toBeInTheDocument();
   });
 
   it('conserve une réponse générique dans le drawer pour une fiche indisponible', () => {
