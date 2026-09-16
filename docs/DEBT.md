@@ -63,6 +63,7 @@ produit dérivé automatiquement production-ready
 | ID | Dette | Statut |
 |---|---|---|
 | D-020 | Invitation commerciale client et offres privées de découverte | EN COURS |
+| D-025 | Centre d’aide sécurisé Workspace / Platform | PLANIFIÉ |
 | D-011 | Design System Core, préférences utilisateur et affichage métier | VALIDÉ |
 | D-021 | Gate sécurité Auth, invitations et tokens temporaires | VALIDÉ |
 | D-022 | Intégrité des Entitlement Override Groups | VALIDÉ |
@@ -73,7 +74,7 @@ produit dérivé automatiquement production-ready
 
 D-001, D-002, D-011, D-014, D-018, D-019, D-021 et D-022 sont clôturées.
 
-D-020 doit être clôturée ou explicitement reclassifiée avant D-015. La condition D-002 préalable à D-017 et à la première dérivation métier est levée depuis le 2026-09-15.
+D-020 doit être clôturée ou explicitement reclassifiée, puis D-025 doit être validée avant D-015. La condition D-002 préalable à D-017 et à la première dérivation métier est levée depuis le 2026-09-15.
 
 ### 4.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -485,7 +486,7 @@ Variables/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrati
 **Statut :** PLANIFIÉ  
 **Périmètre :** Core / distribution  
 **Blocage Core 1.0 :** oui  
-**Dépendances :** D-020 doit être clôturée ou explicitement reclassifiée avant ouverture de la release candidate ; D-021 et D-022 sont validées depuis le 2026-09-12
+**Dépendances :** D-020 doit être clôturée ou explicitement reclassifiée et D-025 doit être validée avant ouverture de la release candidate ; D-021 et D-022 sont validées depuis le 2026-09-12
 
 À finaliser avant `v1.0.0` : SemVer, tags/releases, changelog/release notes, changements de contrats/configuration, migrations et ordre pre/post-deploy, reprise/rollback, provenance machine-readable et gate de release reproductible.
 
@@ -496,7 +497,7 @@ Variables/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrati
 **Statut :** PLANIFIÉ  
 **Blocage Core 1.0 :** oui
 
-Couvrir les parcours transversaux critiques : auth/session/refresh/logout, lifecycle Account/Workspace, isolation tenant, RBAC, subscription/entitlement/quota, administration Platform, Files et principaux états interdits.
+Couvrir les parcours transversaux critiques : auth/session/refresh/logout, lifecycle Account/Workspace, isolation tenant, RBAC, subscription/entitlement/quota, administration Platform, Files, centre d’aide Workspace/Platform et principaux états interdits.
 
 ---
 
@@ -803,9 +804,39 @@ Invariants :
 
 ---
 
+## D-025 — Centre d’aide sécurisé Workspace / Platform
+
+**Statut :** PLANIFIÉ  
+**Périmètre :** Core frontend + contrats backend d’exposition de l’aide + sécurité RBAC/contextuelle + extensibilité des SaaS dérivés  
+**Blocage Core 1.0 :** oui — dernier développement fonctionnel générique à traiter avant le gel pré-D-015  
+**Dépendances :** D-011 validée, RBAC Workspace/Platform existant, contextes Workspace/Platform existants  
+**Déclencheur :** décision produit du 2026-09-16 — fournir une aide fonctionnelle fiable et sécurisée avant de figer le Core pour versionnement.
+
+Spécification détaillée : `docs/debt/D-025-secure-help-center.md`.
+
+Décisions déjà retenues :
+
+- deux centres fonctionnels distincts : aide Workspace et aide Platform ;
+- une seule infrastructure technique et des composants réutilisables ;
+- 4 ou 5 catégories maximum par centre ;
+- tooltip bref d’orientation par catégorie lorsque pertinent ;
+- recherche prédictive centrale avec 3 à 5 suggestions maximum qui se précisent au fil de la saisie ;
+- corpus et suggestions filtrés selon authentification, contexte et permissions effectives ;
+- aucun envoi de l’intégralité du corpus Platform au frontend d’un utilisateur Workspace ;
+- accès direct à une fiche protégé ;
+- réutilisation obligatoire des primitives `Tabs`, `Tooltip`, `Input`, `Popover` et autres composants existants lorsqu’ils conviennent ;
+- audit Base UI avant création d’une primitive/composition Autocomplete/Combobox générique ;
+- contenus d’aide versionnés avec le Core pour la V1, sans CMS ou collection MongoDB ajoutés par anticipation ;
+- mécanisme extensible par les futurs modules métier ;
+- chatbot / LLM / RAG explicitement hors MVP D-025.
+
+**Critère de clôture :** centres Workspace et Platform utilisables, séparés et sécurisés, procédures principales documentées, recherche prédictive accessible et pertinente, composants partagés réutilisés, extensibilité prévue pour les SaaS dérivés, tests de sécurité/frontend applicables verts et validation fonctionnelle/visuelle confirmée ; la gate globale pré-D-015 est ensuite rejouée.
+
+---
+
 ## 6. Éléments volontairement non intégrés comme dette active
 
-Ne sont pas ajoutés par anticipation : packages `@saas-core/*`, provider de paiement imposé au Core, CMP fictive sans traceurs applicables, limite universelle du nombre de Workspaces ou CAPTCHA/provider anti-bot imposé sans besoin démontré.
+Ne sont pas ajoutés par anticipation : packages `@saas-core/*`, provider de paiement imposé au Core, CMP fictive sans traceurs applicables, limite universelle du nombre de Workspaces, CAPTCHA/provider anti-bot imposé sans besoin démontré ou chatbot/LLM nécessaire au fonctionnement du centre d’aide D-025.
 
 ---
 
@@ -824,6 +855,8 @@ D-011.C préférences d'affichage métier                      VALIDÉ
 D-021 gate sécurité Auth / invitations / tokens             VALIDÉ — 2026-09-12
 D-022 intégrité Entitlement Override Groups                 VALIDÉ — 2026-09-12
 D-002 corbeille / restauration / suppression Files          VALIDÉ — 2026-09-15
+→ D-025 centre d’aide Workspace / Platform sécurisé         PLANIFIÉ
+→ gate globale pré-D-015 + revue finale pré-versionnement
 → D-015 release/version/provenance/migrations               PLANIFIÉ
 → D-016 Playwright E2E Core                                 PLANIFIÉ
 → audit final architecture / sécurité / qualité
@@ -834,7 +867,7 @@ D-002 corbeille / restauration / suppression Files          VALIDÉ — 2026-09-
 → D-024 console Platform contextualisée du Workspace       DIFFÉRÉ — cible Core 1.1
 ```
 
-La condition D-002 avant première dérivation est désormais levée. Aucune release `v1.0.0` avant clôture/reclassification explicite des blockers Core applicables ; D-020 reste le blocker immédiat avant D-015. D-023 et D-024 ne bloquent pas Core 1.0 et doivent être repris sur le Core stabilisé après validation réelle de la stratégie de distribution.
+La condition D-002 avant première dérivation est levée. Aucune release `v1.0.0` ni ouverture de D-015 avant clôture/reclassification explicite des blockers applicables. D-020 reste le blocker immédiat déjà ouvert ; une fois D-020 clôturée ou reclassifiée, D-025 devient le dernier développement fonctionnel générique à valider avant la gate pré-D-015. D-023 et D-024 ne bloquent pas Core 1.0 et doivent être repris sur le Core stabilisé après validation réelle de la stratégie de distribution.
 
 ---
 
