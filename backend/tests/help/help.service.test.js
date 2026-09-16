@@ -9,6 +9,9 @@ import {
 } from '../../constants/platformTeam.constants.js';
 import { SYSTEM_ROLE_KEY } from '../../constants/role.constants.js';
 import {
+    WORKSPACE_ACCESS_MODE,
+} from '../../constants/workspaceAccess.constants.js';
+import {
     createHelpRegistry,
     HELP_CONTEXT,
 } from '../../modules/help/help.registry.js';
@@ -102,6 +105,7 @@ const registry = createHelpRegistry({
             permission: PLATFORM_PERMISSION.TEAM_INVITE,
         }),
     ],
+    workspaceRemediationEntryIds: ['workspace.test.public'],
 });
 
 const workspace = {
@@ -116,16 +120,21 @@ const ownerRole = {
     isSystem: true,
 };
 
+const createWorkspaceAccess = ({
+    features = [],
+    accessMode = WORKSPACE_ACCESS_MODE.NORMAL,
+} = {}) => ({
+    effectiveCapabilities: { features },
+    accessMode,
+});
+
 
 describe('help.service', () => {
     it('ne sérialise que les fiches Workspace compatibles avec les droits effectifs', async () => {
         const service = createHelpService({
             registry,
-            resolveWorkspaceEntitlement: vi.fn(async () => ({
-                effectiveCapabilities: {
-                    features: [],
-                },
-            })),
+            resolveWorkspaceAccess: vi.fn(async () =>
+                createWorkspaceAccess()),
         });
 
         const catalog = await service.getWorkspaceCatalog({
@@ -151,11 +160,10 @@ describe('help.service', () => {
     it('filtre ownerOnly et les features puis autorise le propriétaire lorsque les conditions sont remplies', async () => {
         const service = createHelpService({
             registry,
-            resolveWorkspaceEntitlement: vi.fn(async () => ({
-                effectiveCapabilities: {
+            resolveWorkspaceAccess: vi.fn(async () =>
+                createWorkspaceAccess({
                     features: ['team_management'],
-                },
-            })),
+                })),
         });
 
         const catalog = await service.getWorkspaceCatalog({
@@ -174,12 +182,31 @@ describe('help.service', () => {
         ]));
     });
 
+    it('masque en remédiation les procédures réservées au mode normal', async () => {
+        const service = createHelpService({
+            registry,
+            resolveWorkspaceAccess: vi.fn(async () =>
+                createWorkspaceAccess({
+                    accessMode: WORKSPACE_ACCESS_MODE.REMEDIATION,
+                })),
+        });
+
+        const catalog = await service.getWorkspaceCatalog({
+            workspace,
+            permissions: [CORE_PERMISSION.MEMBER_INVITE],
+            role: memberRole,
+        });
+
+        expect(catalog.entries.map(({ id }) => id)).toEqual([
+            'workspace.test.public',
+        ]);
+    });
+
     it('retourne le même 404 pour une fiche Workspace interdite et une fiche inexistante', async () => {
         const service = createHelpService({
             registry,
-            resolveWorkspaceEntitlement: vi.fn(async () => ({
-                effectiveCapabilities: { features: [] },
-            })),
+            resolveWorkspaceAccess: vi.fn(async () =>
+                createWorkspaceAccess()),
         });
 
         const readHidden = () => service.getWorkspaceEntry({
@@ -208,9 +235,8 @@ describe('help.service', () => {
     it('retire des "Voir aussi" les fiches non autorisées', async () => {
         const service = createHelpService({
             registry,
-            resolveWorkspaceEntitlement: vi.fn(async () => ({
-                effectiveCapabilities: { features: [] },
-            })),
+            resolveWorkspaceAccess: vi.fn(async () =>
+                createWorkspaceAccess()),
         });
 
         const entry = await service.getWorkspaceEntry({
