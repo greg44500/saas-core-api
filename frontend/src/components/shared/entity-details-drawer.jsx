@@ -55,6 +55,16 @@ function EntityDetailsDrawer({ children, description, onClose, open, title }) {
         return undefined;
       }
 
+      if (typeof window.requestAnimationFrame !== 'function') {
+        const timeoutId = window.setTimeout(() => {
+          setIsSheetOpen(true);
+        }, 0);
+
+        return () => {
+          window.clearTimeout(timeoutId);
+        };
+      }
+
       const frameId = window.requestAnimationFrame(() => {
         setIsSheetOpen(true);
       });
