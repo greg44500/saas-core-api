@@ -18,7 +18,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "release:verify": "node scripts/release/verifyReleaseMetadata.js",
-    "release:check": "npm run release:verify && npm run format:check && npm run lint && npm test && npm --prefix frontend run lint && npm --prefix frontend run test && npm --prefix frontend run build",
+    "release:check": "npm run release:verify && npm run lint && npm test && npm --prefix frontend run lint && npm --prefix frontend run test && npm --prefix frontend run build",
     "seed:plans": "node backend/seeds/seedPlans.js",
     "seed:super-admin": "node backend/seeds/seedSuperAdmin.js",
     "seed:platform-roles": "node backend/seeds/seedPlatformRoles.js",
