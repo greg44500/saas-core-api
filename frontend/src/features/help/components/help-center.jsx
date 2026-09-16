@@ -114,14 +114,12 @@ function HelpCatalog({ basePath, catalog }) {
           >
             {category.id === activeCategory?.id ? (
               <div className="space-y-5">
-                <div className="flex items-start gap-2">
-                  <div>
-                    <h2 className="text-lg font-semibold">{category.label}</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {category.description}
-                    </p>
-                  </div>
-                  <InfoTooltip content={category.description} />
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold">{category.label}</h2>
+                  <InfoTooltip
+                    content={category.description}
+                    label={`À propos de ${category.label}`}
+                  />
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -171,14 +169,13 @@ function HelpCenter({
 }) {
   return (
     <section className="mx-auto w-full max-w-6xl space-y-8">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <CircleHelp aria-hidden="true" className="size-6 text-primary" />
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        </div>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          {description}
-        </p>
+      <div className="flex items-center gap-2">
+        <CircleHelp aria-hidden="true" className="size-6 text-primary" />
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <InfoTooltip
+          content={description}
+          label={`À propos de ${title}`}
+        />
       </div>
 
       {isLoading ? <HelpCenterSkeleton /> : null}
