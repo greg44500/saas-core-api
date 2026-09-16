@@ -32,15 +32,19 @@ function PlatformLayout() {
               </div>
 
               <div className="flex min-w-0 items-center gap-3">
-                <HelpCenterLink to="/platform/help" />
                 <ExpandableSearch
                   ariaLabel="Recherche globale"
                   placeholder="Rechercher…"
                 />
                 <PlatformUserIdentity
-                  actions={isOverview ? (
-                    <PlatformDashboardDisplayPreferences triggerVariant="icon" />
-                  ) : null}
+                  actions={(
+                    <>
+                      <HelpCenterLink to="/platform/help" />
+                      {isOverview ? (
+                        <PlatformDashboardDisplayPreferences triggerVariant="icon" />
+                      ) : null}
+                    </>
+                  )}
                 />
               </div>
             </div>
