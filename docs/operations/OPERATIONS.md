@@ -548,7 +548,7 @@ release notes obligatoires
 gate de release
 ```
 
-Un registre persistant ou un orchestrateur automatique ne sera ajouté que si D-017 ou l’exploitation réelle démontre qu’il apporte une garantie nécessaire que ce modèle ne couvre pas.
+D-017 n’a pas démontré la nécessité d’un registre persistant ou d’un orchestrateur automatique. Un tel mécanisme ne sera ajouté que si l’exploitation réelle démontre qu’il apporte une garantie nécessaire que le modèle actuel ne couvre pas.
 
 Cette décision ne signifie pas qu’une migration peut être exécutée sans traçabilité opérationnelle : la release qui l’introduit doit toujours documenter son ordre, sa phase de déploiement, son comportement au rejeu et sa stratégie de reprise.
 

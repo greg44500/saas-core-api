@@ -243,7 +243,7 @@ D-015 versionnement / provenance / migrations
 → D-024 console Platform contextualisée du Workspace
 ```
 
-Si D-017 conduit à modifier les points d’extension ou la stratégie de distribution, D-024 doit être réalisée sur le Core stabilisé résultant de cette validation, et non anticipée sur une architecture de distribution encore non prouvée.
+D-017 n’a pas imposé de modification incompatible des points d’extension ou de la stratégie de distribution ; D-024 reste donc planifiée sur le Core 1.1 stabilisé.
 
 ---
 

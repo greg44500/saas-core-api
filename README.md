@@ -4,11 +4,9 @@ Socle SaaS fullstack générique et réutilisable, destiné à être dérivé en
 
 ## Statut du projet
 
-Le dépôt est actuellement en développement (`0.1.0`).
+Le Core suit désormais la ligne stable `1.0.0`. D-015 — versionnement / provenance / release process / migrations —, D-016 — E2E Core Playwright — et D-017 — dérivation et upgrade réel d’un SaaS pilote — sont validées. Aucun blocker Core 1.0 actif n’est démontré par le registre canonique.
 
-La documentation canonique du Core a été consolidée, mais le socle ne doit pas encore être présenté comme une release stable `v1.0.0` ni comme une application automatiquement prête pour la production.
-
-D-015 — versionnement / provenance / release process / migrations — et D-016 — E2E Core Playwright — sont validées. Le blocker Core 1.0 restant est D-017 — validation réelle d’une dérivation puis d’un upgrade d’un SaaS pilote. D-020 — invitation commerciale — est différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0.
+Une publication stable reste soumise à `docs/releases/RELEASE-POLICY.md` : PR de release validée, fusion dans `main`, Core Gate post-merge verte, puis création du tag immuable `v1.0.0` et de la GitHub Release. La stabilité du Core ne signifie pas qu’une application dérivée est automatiquement prête pour la production. D-020 — invitation commerciale — reste différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0.
 
 ## Ce que fournit le Core
 
@@ -321,7 +319,7 @@ Un produit destiné à recevoir les futures corrections du Core doit conserver l
 
 Le métier est ajouté par composition : modules backend, features frontend, permissions, capabilities, métriques et navigation propres au produit. Une mise à niveau du Core doit passer par une branche dédiée, revue des changements, migrations/configuration, tests puis intégration contrôlée.
 
-D-015 définit le contrat cible `core-origin.json` qui tracera dans chaque produit dérivé la version, le tag et le commit Core intégrés. D-017 doit encore valider ce mécanisme et la stratégie Git par un exercice réel de dérivation puis d'upgrade avant la release stable.
+D-015 définit le contrat `core-origin.json` qui trace dans chaque produit dérivé la version, le tag et le commit Core intégrés. D-017 a validé ce mécanisme et la stratégie Git par un exercice réel de dérivation puis d’upgrade du pilote `saas-core-derived-pilot`, sans adaptation fonctionnelle du module métier `catalog`.
 
 Voir [`docs/derived-saas/DERIVED-SAAS.md`](docs/derived-saas/DERIVED-SAAS.md) et [`docs/releases/RELEASE-POLICY.md`](docs/releases/RELEASE-POLICY.md).
 
