@@ -53,7 +53,17 @@ frontend/
 
 Il utilise notamment React, Vite, Tailwind CSS, Redux Toolkit / RTK Query, React Router, React Hook Form, Zod et Vitest.
 
-Le backend et le frontend doivent être installés séparément.
+### E2E Core
+
+Le package Playwright du Core possède son propre `package.json` sous :
+
+```text
+e2e/
+```
+
+La gate actuelle utilise Chromium.
+
+Le backend, le frontend et le package E2E doivent être installés séparément.
 
 ---
 
@@ -72,7 +82,15 @@ cd frontend
 npm install
 ```
 
-Revenir à la racine pour les commandes backend.
+Puis pour la couche E2E :
+
+```bash
+cd ../e2e
+npm install
+npm run install:browsers
+```
+
+Revenir à la racine pour les commandes globales et backend.
 
 Ne jamais committer :
 
@@ -299,7 +317,7 @@ npm run release:check
 
 `release:verify` contrôle la cohérence machine-readable des métadonnées de version et de l’inventaire des migrations.
 
-`release:check` est la gate canonique exécutée localement et en CI. Elle enchaîne la vérification de release, le lint backend/tooling, les tests backend, puis le lint, les tests et le build frontend.
+`release:check` est la gate canonique exécutée localement et en CI. Elle enchaîne la vérification de release, le lint backend/tooling/E2E, les tests backend, puis le lint, les tests et le build frontend, et enfin les parcours Playwright E2E du Core.
 
 `npm run format:check` reste un contrôle qualité séparé tant qu’une baseline globale n’a pas été explicitement validée comme blocker de release.
 
@@ -323,9 +341,19 @@ npm test
 npm run build
 ```
 
-Playwright reste la cible E2E du projet, mais n’est pas encore présenté comme disponible tant qu’il n’est pas réellement installé et configuré.
+### E2E Core
 
-Une release Core ne doit pas se contenter de tests unitaires ciblés : les tests globaux backend et frontend doivent être rejoués lorsque le lot touche plusieurs domaines.
+Depuis la racine :
+
+```bash
+npm run test:e2e
+```
+
+Le runner prépare un environnement déterministe avant Playwright. La base MongoDB utilisée pour ce nettoyage doit obligatoirement se terminer par `_e2e_test` ; cette garde interdit que la préparation destructive vise la base Vitest ou une base applicative ordinaire.
+
+La configuration Playwright actuelle exécute Chromium de manière séquentielle (`workers: 1`) et conserve traces, captures et vidéos sur échec selon sa configuration.
+
+Une release Core ne doit pas se contenter de tests unitaires ciblés : la commande canonique `npm run release:check` doit rester la définition commune de la gate locale et CI.
 
 ---
 
@@ -865,7 +893,7 @@ Séquence générique de référence :
 2. vérifier backup / snapshot adaptés
 3. vérifier nouvelles variables d’environnement et secrets
 4. installer les dépendances
-5. exécuter tests + lint + build frontend
+5. exécuter la gate de release applicable
 6. exécuter les migrations pre-deploy requises
 7. exécuter les seeds uniquement s’ils sont nécessaires et documentés
 8. déployer backend/frontend
@@ -1060,7 +1088,7 @@ provider SMTP production
 infrastructure ClamAV production / supervision / mise à jour des signatures
 ```
 
-La CI de validation du Core existe désormais via la gate canonique `npm run release:check`; elle ne doit pas être confondue avec un pipeline complet de déploiement production.
+La CI de validation du Core existe via la gate canonique `npm run release:check`, y compris les E2E Playwright du Core ; elle ne doit pas être confondue avec un pipeline complet de déploiement production.
 
 Ces limites sont compatibles avec le statut de développement actuel du Core mais doivent être traitées ou explicitement résolues par le produit avant go-live.
 
@@ -1084,6 +1112,7 @@ backend/services/storage/
 backend/services/malwareScan/
 health checks
 configuration SMTP
+e2e/
 ```
 
 doit vérifier si `OPERATIONS.md` doit être mis à jour dans le même lot.
