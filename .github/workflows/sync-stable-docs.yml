@@ -1,0 +1,208 @@
+name: Sync Stable Docs
+
+on:
+  push:
+    branches:
+      - release/1.0.0
+
+permissions:
+  contents: write
+
+jobs:
+  sync-stable-docs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/1.0.0
+
+      - name: Synchronize stable release documentation
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const read = (path) => fs.readFileSync(path, 'utf8');
+          const write = (path, content) => fs.writeFileSync(path, content);
+
+          const replaceExact = (path, from, to) => {
+            const content = read(path);
+            if (!content.includes(from)) {
+              throw new Error(`Expected text not found in ${path}: ${from.slice(0, 100)}`);
+            }
+            write(path, content.replace(from, to));
+          };
+
+          const replaceRegex = (path, pattern, to) => {
+            const content = read(path);
+            if (!pattern.test(content)) {
+              throw new Error(`Expected pattern not found in ${path}: ${pattern}`);
+            }
+            pattern.lastIndex = 0;
+            write(path, content.replace(pattern, to));
+          };
+
+          replaceExact(
+            'README.md',
+            'Le dépôt est actuellement en développement (`0.1.0`).\n\nLa documentation canonique du Core a été consolidée, mais le socle ne doit pas encore être présenté comme une release stable `v1.0.0` ni comme une application automatiquement prête pour la production.\n\nD-015 — versionnement / provenance / release process / migrations — et D-016 — E2E Core Playwright — sont validées. Le blocker Core 1.0 restant est D-017 — validation réelle d’une dérivation puis d’un upgrade d’un SaaS pilote. D-020 — invitation commerciale — est différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0.',
+            'Le Core suit désormais la ligne stable `1.0.0`. D-015 — versionnement / provenance / release process / migrations —, D-016 — E2E Core Playwright — et D-017 — dérivation et upgrade réel d’un SaaS pilote — sont validées. Aucun blocker Core 1.0 actif n’est démontré par le registre canonique.\n\nUne publication stable reste soumise à `docs/releases/RELEASE-POLICY.md` : PR de release validée, fusion dans `main`, Core Gate post-merge verte, puis création du tag immuable `v1.0.0` et de la GitHub Release. La stabilité du Core ne signifie pas qu’une application dérivée est automatiquement prête pour la production. D-020 — invitation commerciale — reste différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0.'
+          );
+
+          replaceExact(
+            'README.md',
+            'D-015 définit le contrat cible `core-origin.json` qui tracera dans chaque produit dérivé la version, le tag et le commit Core intégrés. D-017 doit encore valider ce mécanisme et la stratégie Git par un exercice réel de dérivation puis d\'upgrade avant la release stable.',
+            'D-015 définit le contrat `core-origin.json` qui trace dans chaque produit dérivé la version, le tag et le commit Core intégrés. D-017 a validé ce mécanisme et la stratégie Git par un exercice réel de dérivation puis d’upgrade du pilote `saas-core-derived-pilot`, sans adaptation fonctionnelle du module métier `catalog`.'
+          );
+
+          replaceExact(
+            'docs/README.md',
+            'Le chantier documentaire DOC-0 à DOC-11 est terminé. La finalisation fonctionnelle du Core a depuis fait émerger des besoins génériques supplémentaires explicitement enregistrés dans `docs/DEBT.md`. D-025 — Centre d’aide sécurisé Workspace / Platform — est validée et intégrée dans `main`. D-020 — invitation commerciale — est explicitement différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0. D-015 — versionnement / provenance / release process / migrations — et D-016 — E2E Core Playwright — sont validées. L’audit final architecture / sécurité / qualité n’a démontré aucun nouveau blocker applicatif ; D-017 reste le blocker Core 1.0 à exercer avant une release stable.',
+            'Le chantier documentaire DOC-0 à DOC-11 est terminé. La finalisation fonctionnelle du Core a depuis fait émerger des besoins génériques supplémentaires explicitement enregistrés dans `docs/DEBT.md`. D-025 — Centre d’aide sécurisé Workspace / Platform — est validée et intégrée dans `main`. D-020 — invitation commerciale — est explicitement différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0. D-015 — versionnement / provenance / release process / migrations —, D-016 — E2E Core Playwright — et D-017 — dérivation et upgrade réel d’un SaaS pilote — sont validées. L’audit final architecture / sécurité / qualité et l’exercice D-017 n’ont démontré aucun blocker Core 1.0 restant.'
+          );
+
+          replaceExact(
+            'docs/README.md',
+            '- aucun tag stable `v1.0.0` ne peut être créé tant que D-017 n’est pas validée.',
+            '- D-017 a validé la stratégie réelle de dérivation et d’upgrade ; le tag stable `v1.0.0` reste soumis aux gates et règles de publication de `RELEASE-POLICY.md`.'
+          );
+
+          replaceExact(
+            'docs/README.md',
+            'Le produit dérivé conserve l\'historique Git du Core, possède son propre `origin` et conserve le Core comme `upstream-core`. D-015 définit le contrat de provenance `core-origin.json`; la stratégie complète doit être validée par un exercice réel de dérivation + upgrade pendant D-017 avant la release stable.',
+            'Le produit dérivé conserve l\'historique Git du Core, possède son propre `origin` et conserve le Core comme `upstream-core`. D-015 définit le contrat de provenance `core-origin.json`; D-017 a validé cette stratégie par un exercice réel de dérivation + upgrade sur `saas-core-derived-pilot`.'
+          );
+
+          replaceRegex(
+            'docs/README.md',
+            /Blocker Core 1\.0 actuellement applicable :\n\n```text\nD-017 dérivation \+ upgrade réel d'un SaaS pilote\n```\n\nD-001, D-002, D-011, D-014, D-015, D-016, D-018, D-019, D-021, D-022 et D-025 sont validées\/clôturées selon le registre canonique\./,
+            'Aucun blocker Core 1.0 actif n’est actuellement démontré par le registre canonique.\n\nD-001, D-002, D-011, D-014, D-015, D-016, D-017, D-018, D-019, D-021, D-022 et D-025 sont validées/clôturées selon le registre canonique.'
+          );
+
+          replaceRegex(
+            'docs/README.md',
+            /→ D-017 dérivation \+ upgrade pilote\s+PROCHAINE ÉTAPE\n→ release Core stable après validation réelle de la stratégie/,
+            '→ D-017 dérivation + upgrade pilote                        VALIDÉE — 2026-09-17\n→ release Core stable                                           PROCHAINE ÉTAPE'
+          );
+
+          replaceExact(
+            'docs/releases/RELEASE-POLICY.md',
+            'D-015 — gouvernance de release — et D-016 — E2E Core Playwright — sont validées. Le Core reste en développement tant que D-017 — dérivation et upgrade réel d’un SaaS pilote — n’est pas validée.',
+            'D-015 — gouvernance de release —, D-016 — E2E Core Playwright — et D-017 — dérivation et upgrade réel d’un SaaS pilote — sont validées. La première release stable peut être préparée dès lors que les autres critères de la présente politique restent satisfaits.'
+          );
+
+          replaceExact(
+            'docs/releases/RELEASE-POLICY.md',
+            'Le dépôt est actuellement :\n\n```text\nversion = 0.1.0\nchannel = development\n```\n\nLa gouvernance de release ne crée jamais automatiquement `v1.0.0`.',
+            'La cible stable courante est :\n\n```text\nversion = 1.0.0\nchannel = stable\n```\n\nLa présence de ces métadonnées dans une branche ou un commit ne constitue pas à elle seule une publication. La gouvernance de release ne crée jamais automatiquement `v1.0.0` : le tag et la GitHub Release ne sont créés qu’après validation du commit `main` concerné.'
+          );
+
+          replaceExact(
+            'docs/releases/RELEASE-POLICY.md',
+            'Le tag stable `v1.0.0` reste interdit tant que D-017 n’est pas validée et qu’un blocker Core 1.0 subsiste.',
+            'D-017 étant validée, le tag stable `v1.0.0` peut être publié uniquement lorsqu’aucun blocker Core 1.0 ne subsiste et que le commit `main` cible a passé la gate de release requise.'
+          );
+
+          replaceExact(
+            'docs/releases/RELEASE-POLICY.md',
+            'D-017 doit valider ce mécanisme sur un dépôt dérivé réel.',
+            'D-017 a validé ce mécanisme sur le dépôt dérivé réel `saas-core-derived-pilot`, avec mise à niveau de `v1.0.0-rc.1` vers `v1.0.0-rc.2` et mise à jour de `core-origin.json`.'
+          );
+
+          replaceExact(
+            'docs/releases/MIGRATION-POLICY.md',
+            'D-017 doit vérifier ce cas lors de la dérivation pilote si des permissions métier sont ajoutées à des rôles système déjà persistés.',
+            'D-017 a vérifié ce cas sur le pilote dérivé : l’ajout des permissions métier `catalog` aux rôles système persistés est couvert par une migration métier dédiée dans le produit dérivé.'
+          );
+
+          replaceExact(
+            'docs/derived-saas/DERIVED-SAAS.md',
+            'D-017 doit valider la procédure complète sur un dépôt dérivé réel avant `v1.0.0` stable.',
+            'D-017 a validé la procédure complète sur le dépôt réel `saas-core-derived-pilot`, dérivé de `v1.0.0-rc.1` puis mis à niveau vers `v1.0.0-rc.2`.'
+          );
+
+          replaceExact(
+            'docs/derived-saas/DERIVED-SAAS.md',
+            'Le Core courant est encore en version `0.1.0`. Il n’est donc pas encore diffusé comme socle finalisé.',
+            'Le Core a achevé la trajectoire de validation nécessaire à `1.0.0`. La publication stable reste gouvernée par `docs/releases/RELEASE-POLICY.md` et n’est effective qu’avec son tag Git immuable et sa GitHub Release.'
+          );
+
+          replaceExact(
+            'docs/derived-saas/DERIVED-SAAS.md',
+            'D-017 doit valider ce mécanisme sur un dépôt dérivé réel ; le contrat n’est donc pas considéré éprouvé tant que cet exercice n’a pas été réalisé.',
+            'D-017 a validé ce mécanisme sur `saas-core-derived-pilot` : la provenance `core-origin.json` a été mise à jour après intégration validée de `v1.0.0-rc.2`.'
+          );
+
+          replaceExact(
+            'docs/derived-saas/DERIVED-SAAS.md',
+            '| CI de validation du Core | implémentée par D-015 | `npm run release:check` et workflow `Core Gate`; D-016 doit encore y intégrer les E2E |',
+            '| CI de validation du Core | validée par D-015 / D-016 | `npm run release:check` et workflow `Core Gate`, E2E Playwright inclus |'
+          );
+
+          replaceExact(
+            'docs/derived-saas/DERIVED-SAAS.md',
+            '| CI d’upgrade d’un SaaS dérivé | à valider dans D-017 | stratégie du produit dérivé non encore éprouvée sur un dépôt pilote |',
+            '| CI d’upgrade d’un SaaS dérivé | validée par D-017 | stratégie éprouvée sur `saas-core-derived-pilot`, avec gates avant/après provenance et post-merge |'
+          );
+
+          replaceExact(
+            'docs/debt/D-025-secure-help-center.md',
+            'D-017 devra valider ce contrat par un petit module métier réel puis un upgrade du Core.',
+            'D-017 a validé ce contrat avec le module métier réel `catalog`, dont les fiches d’aide sont composées via le point d’extension puis conservées après upgrade du Core.'
+          );
+
+          replaceExact(
+            'docs/operations/OPERATIONS.md',
+            'Un registre persistant ou un orchestrateur automatique ne sera ajouté que si D-017 ou l’exploitation réelle démontre qu’il apporte une garantie nécessaire que ce modèle ne couvre pas.',
+            'D-017 n’a pas démontré la nécessité d’un registre persistant ou d’un orchestrateur automatique. Un tel mécanisme ne sera ajouté que si l’exploitation réelle démontre qu’il apporte une garantie nécessaire que le modèle actuel ne couvre pas.'
+          );
+
+          replaceExact(
+            'docs/derived-saas/EXTENSION-POINTS.md',
+            'La validation d’une dérivation et d’un upgrade sur un dépôt pilote réel reste volontairement séparée : elle relève de D-017 et ne remet pas en cause la validation des contrats D-014/D-011.C.',
+            'D-017 a validé la dérivation et l’upgrade sur un dépôt pilote réel sans remettre en cause les contrats D-014/D-011.C ; les points de composition applicatifs prévus ont permis de conserver le module métier `catalog`.'
+          );
+
+          replaceRegex(
+            'docs/debt/D-024-platform-workspace-control-center.md',
+            /Si D-017 conduit à modifier les points d’extension ou la stratégie de distribution[^\n]*/,
+            'D-017 n’a pas imposé de modification incompatible des points d’extension ou de la stratégie de distribution ; D-024 reste donc planifiée sur le Core 1.1 stabilisé.'
+          );
+
+          replaceExact(
+            'CHANGELOG.md',
+            '## Unreleased\n\nD-017 reste en cours. Aucun changement Core postérieur à `v1.0.0-rc.1` n’est encore publié comme nouvelle version.',
+            '## Unreleased\n\nAucune modification non publiée après la préparation de `1.0.0`.'
+          );
+
+          replaceExact(
+            'CHANGELOG.md',
+            '---\n\n## 1.0.0-rc.1 — 2026-09-17',
+            `---\n\n## 1.0.0 — 2026-09-17\n\nPremière release stable du Core, préparée après validation de D-015, D-016 et D-017.\n\n### Validation stable\n\n- aucun blocker Core 1.0 actif démontré par \`docs/DEBT.md\` ;\n- D-017 a validé une dérivation réelle puis un upgrade réel du pilote \`saas-core-derived-pilot\` ;\n- le module métier \`catalog\` a été conservé sans adaptation fonctionnelle lors du passage de Core \`1.0.0-rc.1\` à \`1.0.0-rc.2\` ;\n- la Core Gate #36 (run \`35245765480\`) a validé le \`main\` post-clôture D-017 au commit \`5bf91252415e3e8f97b60c5aa1e165bd9829a3a2\` ;\n- la préparation stable ne modifie ni contrat DB, ni dépendance, ni variable d’environnement, ni migration applicative.\n\nLe tag immuable \`v1.0.0\` et la GitHub Release ne sont publiés qu’après fusion de la PR de release et validation de la Core Gate post-merge correspondante.\n\n---\n\n## 1.0.0-rc.2 — 2026-09-17\n\nSeconde Release Candidate du Core, utilisée pour valider l’upgrade réel du SaaS dérivé pilote.\n\nRéférence :\n\n\`\`\`text\ntag : v1.0.0-rc.2\ncommit : 5c61c7066eeb56460adb164ba39ae0a0462bef53\nchannel : rc\nCore Gate post-merge : #34\nrun : 35239618709\nconclusion : success\n\`\`\`\n\n### Changed\n\n- durcissement générique de la composition des routes frontend : un même chemin strict ne peut plus être déclaré deux fois dans une même surface ;\n- le même chemin reste autorisé sur des surfaces différentes.\n\n### Validation D-017\n\n- upgrade Git réel du pilote depuis \`v1.0.0-rc.1\` vers \`v1.0.0-rc.2\` ;\n- zéro conflit manuel ;\n- aucune adaptation fonctionnelle du module \`catalog\` ;\n- provenance \`core-origin.json\` mise à jour ;\n- gates pilote #9, #10 et #11 validées.\n\n---\n\n## 1.0.0-rc.1 — 2026-09-17`
+          );
+
+          const releaseNotes = `# Core 1.0.0 — Release stable\n\n**Version :** 1.0.0  \n**Canal :** stable  \n**Date :** 2026-09-17  \n**Tag cible :** \`v1.0.0\`\n\n## Objet\n\n\`1.0.0\` est la première release stable du Core générique après validation du versionnement/provenance/migrations (D-015), des E2E Core Playwright (D-016) et de la dérivation + upgrade réels d’un SaaS pilote (D-017).\n\nLa publication stable ne signifie pas qu’un SaaS dérivé est automatiquement production-ready : les dettes propres au produit, à l’infrastructure, au billing, à la conformité et à l’observabilité restent à traiter lorsqu’elles sont applicables.\n\n## Base validée avant préparation stable\n\n\`\`\`text\nmain : 5bf91252415e3e8f97b60c5aa1e165bd9829a3a2\nCore Gate : #36\nrun : 35245765480\nconclusion : success\n\`\`\`\n\nLe tag \`v1.0.0\` doit pointer vers le commit \`main\` de la PR de release après validation de sa Core Gate post-merge. Le tag publié est immuable.\n\n## Contenu fonctionnel\n\nLa stable reprend le périmètre fonctionnel validé du Core RC2, notamment :\n\n- Auth, sessions et lifecycle Account ;\n- Workspaces multi-tenant, memberships, invitations, RBAC et ownership ;\n- Plans, Subscription, trial, entitlements, quotas et overrides ;\n- Files sécurisés, corbeille/restauration/purge ;\n- AuditLog et moteur générique de rétention ;\n- administration Platform ;\n- Design System et préférences validés ;\n- centre d’aide Workspace / Platform sécurisé et extensible ;\n- E2E Playwright des parcours Core critiques ;\n- points d’extension métier et stratégie Git/provenance réellement éprouvés.\n\n## Validation de la stratégie de dérivation\n\nD-017 a exercé le dépôt \`greg44500/saas-core-derived-pilot\` avec le module métier \`catalog\` :\n\n- dérivation depuis \`v1.0.0-rc.1\` ;\n- évolution générique du Core ;\n- publication de \`v1.0.0-rc.2\` ;\n- merge réel de RC2 dans le pilote ;\n- \`MERGE_CONFLICT_COUNT=0\` ;\n- conservation des permissions, capability, migration, routes, RTK Query, navigation, dashboard et aide métier ;\n- mise à jour de \`core-origin.json\` ;\n- gates pilote #9, #10 et #11 vertes.\n\n## Migrations\n\nAucune migration Core nouvelle n’est introduite par la promotion RC2 → stable. Les migrations Core existantes restent inventoriées dans \`docs/releases/migration-manifest.json\` et doivent être évaluées selon la provenance réelle du produit dérivé.\n\nLes migrations métier d’un SaaS dérivé restent la responsabilité de ce produit ; la migration \`catalog\` du pilote n’est pas déplacée dans le Core.\n\n## Configuration et dépendances\n\nLa promotion RC2 → stable n’ajoute :\n\n- aucune variable d’environnement ;\n- aucune dépendance ;\n- aucun changement de contrat DB ;\n- aucun changement applicatif métier.\n\nLes changements de version concernent uniquement l’identité de release du Core et les métadonnées package/lock correspondantes, accompagnées de la synchronisation documentaire.\n\n## Upgrade d’un SaaS dérivé\n\nUn produit dérivé doit continuer à suivre la procédure contrôlée :\n\n\`\`\`text\ngit fetch upstream-core --tags\n→ branche core-update/<version>\n→ merge du tag Core\n→ revue migrations / configuration / dépendances\n→ tests Core + métier + E2E pertinents\n→ mise à jour core-origin.json\n→ Pull Request du produit\n\`\`\`\n\n## Rollback / reprise\n\nUn tag publié n’est jamais déplacé. Toute correction ultérieure doit produire une nouvelle version SemVer. En cas d’échec d’upgrade d’un produit dérivé, la branche d’upgrade est abandonnée ou corrigée avant intégration dans son \`main\`; le tag Core stable reste inchangé.\n\n## Contrôles post-publication\n\nAprès publication de \`v1.0.0\` :\n\n1. vérifier que le tag cible exactement le commit \`main\` validé post-merge ;\n2. vérifier que la GitHub Release est non-prerelease ;\n3. vérifier \`core-release.json\` = \`1.0.0\` / \`stable\` ;\n4. conserver les tags RC1/RC2 immuables ;\n5. utiliser \`core-origin.json\` pour tout futur dérivé ou upgrade.\n`;
+
+          write('docs/releases/1.0.0.md', releaseNotes);
+          NODE
+
+      - name: Ensure stale current-state statements are gone
+        shell: bash
+        run: |
+          ! grep -F "Le dépôt est actuellement en développement (\`0.1.0\`)" README.md
+          ! grep -F "D-017 doit encore valider" README.md
+          ! grep -F "D-017 reste le blocker Core 1.0" docs/README.md
+          ! grep -F "D-017 doit valider ce mécanisme" docs/releases/RELEASE-POLICY.md
+          ! grep -F "D-017 doit valider la procédure complète" docs/derived-saas/DERIVED-SAAS.md
+          ! grep -F "Le Core courant est encore en version \`0.1.0\`" docs/derived-saas/DERIVED-SAAS.md
+          ! grep -F "D-017 doit vérifier ce cas" docs/releases/MIGRATION-POLICY.md
+          ! grep -F "D-017 devra valider ce contrat" docs/debt/D-025-secure-help-center.md
+
+      - name: Commit documentation synchronization
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md CHANGELOG.md docs
+          git commit -m "docs(release): synchronize stable 1.0.0 documentation"
+          git push origin HEAD:release/1.0.0
