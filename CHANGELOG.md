@@ -6,7 +6,53 @@ La première release candidate formelle du Core est `v1.0.0-rc.1`, publiée le 2
 
 ## Unreleased
 
-D-017 reste en cours. Aucun changement Core postérieur à `v1.0.0-rc.1` n’est encore publié comme nouvelle version.
+Aucune modification non publiée après la préparation de `1.0.0`.
+
+---
+
+## 1.0.0 — 2026-09-17
+
+Première release stable du Core, préparée après validation de D-015, D-016 et D-017.
+
+### Validation stable
+
+- aucun blocker Core 1.0 actif démontré par `docs/DEBT.md` ;
+- D-017 a validé une dérivation réelle puis un upgrade réel du pilote `saas-core-derived-pilot` ;
+- le module métier `catalog` a été conservé sans adaptation fonctionnelle lors du passage de Core `1.0.0-rc.1` à `1.0.0-rc.2` ;
+- la Core Gate #36 (run `35245765480`) a validé le `main` post-clôture D-017 au commit `5bf91252415e3e8f97b60c5aa1e165bd9829a3a2` ;
+- la préparation stable ne modifie ni contrat DB, ni dépendance, ni variable d’environnement, ni migration applicative.
+
+Le tag immuable `v1.0.0` et la GitHub Release ne sont publiés qu’après fusion de la PR de release et validation de la Core Gate post-merge correspondante.
+
+---
+
+## 1.0.0-rc.2 — 2026-09-17
+
+Seconde Release Candidate du Core, utilisée pour valider l’upgrade réel du SaaS dérivé pilote.
+
+Référence :
+
+```text
+tag : v1.0.0-rc.2
+commit : 5c61c7066eeb56460adb164ba39ae0a0462bef53
+channel : rc
+Core Gate post-merge : #34
+run : 35239618709
+conclusion : success
+```
+
+### Changed
+
+- durcissement générique de la composition des routes frontend : un même chemin strict ne peut plus être déclaré deux fois dans une même surface ;
+- le même chemin reste autorisé sur des surfaces différentes.
+
+### Validation D-017
+
+- upgrade Git réel du pilote depuis `v1.0.0-rc.1` vers `v1.0.0-rc.2` ;
+- zéro conflit manuel ;
+- aucune adaptation fonctionnelle du module `catalog` ;
+- provenance `core-origin.json` mise à jour ;
+- gates pilote #9, #10 et #11 validées.
 
 ---
 

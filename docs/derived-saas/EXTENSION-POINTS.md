@@ -537,7 +537,7 @@ Les tests démontrent que les points de composition permettent à un module mét
 
 sans modifier les longues listes centrales du Core hors points de composition applicatifs explicitement prévus.
 
-La validation d’une dérivation et d’un upgrade sur un dépôt pilote réel reste volontairement séparée : elle relève de D-017 et ne remet pas en cause la validation des contrats D-014/D-011.C.
+D-017 a validé la dérivation et l’upgrade sur un dépôt pilote réel sans remettre en cause les contrats D-014/D-011.C ; les points de composition applicatifs prévus ont permis de conserver le module métier `catalog`.
 
 Le statut canonique des dettes est porté par `docs/DEBT.md`.
 

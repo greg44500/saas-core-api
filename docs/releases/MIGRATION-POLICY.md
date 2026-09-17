@@ -80,7 +80,7 @@ Ce fichier expose une fonction générique de backfill à partir du registre RBA
 
 Si un SaaS dérivé doit l’exécuter, il doit fournir un runner explicite adapté à sa composition applicative et documenter cette opération dans sa propre release.
 
-D-017 doit vérifier ce cas lors de la dérivation pilote si des permissions métier sont ajoutées à des rôles système déjà persistés.
+D-017 a vérifié ce cas sur le pilote dérivé : l’ajout des permissions métier `catalog` aux rôles système persistés est couvert par une migration métier dédiée dans le produit dérivé.
 
 ---
 

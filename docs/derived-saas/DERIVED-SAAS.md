@@ -367,7 +367,7 @@ Avant cette procédure :
 2. le nouveau dépôt GitHub du produit doit être créé ;
 3. les variables d’environnement et secrets seront configurés séparément.
 
-D-017 doit valider la procédure complète sur un dépôt dérivé réel avant `v1.0.0` stable.
+D-017 a validé la procédure complète sur le dépôt réel `saas-core-derived-pilot`, dérivé de `v1.0.0-rc.1` puis mis à niveau vers `v1.0.0-rc.2`.
 
 Exemple conceptuel :
 
@@ -427,7 +427,7 @@ création + maintenance future du Core
 
 ## 11. Versionnement du Core
 
-Le Core courant est encore en version `0.1.0`. Il n’est donc pas encore diffusé comme socle finalisé.
+Le Core a achevé la trajectoire de validation nécessaire à `1.0.0`. La publication stable reste gouvernée par `docs/releases/RELEASE-POLICY.md` et n’est effective qu’avec son tag Git immuable et sa GitHub Release.
 
 La première version considérée comme stable sera :
 
@@ -484,7 +484,7 @@ La version, le tag et le commit doivent identifier exactement la version du Core
 
 La version applicative du SaaS dérivé reste indépendante de la version du Core.
 
-D-017 doit valider ce mécanisme sur un dépôt dérivé réel ; le contrat n’est donc pas considéré éprouvé tant que cet exercice n’a pas été réalisé.
+D-017 a validé ce mécanisme sur `saas-core-derived-pilot` : la provenance `core-origin.json` a été mise à jour après intégration validée de `v1.0.0-rc.2`.
 
 Cette provenance permet de répondre immédiatement à :
 
@@ -798,8 +798,8 @@ L’ancien `core-deferred-work-for-derived-saas.md` est désormais absorbé sur 
 | Routes frontend métier | prêt | composition dans `app/application-routes.js`, tests locaux et build validés |
 | Traçabilité version Core par produit | contrat défini, validation réelle D-017 requise | `core-origin.json` défini par D-015 ; exercice réel non encore effectué |
 | Releases / changelog Core | gouvernance D-015 en cours de validation | `core-release.json`, SemVer, RC/stable, CHANGELOG et notes de release définis |
-| CI de validation du Core | implémentée par D-015 | `npm run release:check` et workflow `Core Gate`; D-016 doit encore y intégrer les E2E |
-| CI d’upgrade d’un SaaS dérivé | à valider dans D-017 | stratégie du produit dérivé non encore éprouvée sur un dépôt pilote |
+| CI de validation du Core | validée par D-015 / D-016 | `npm run release:check` et workflow `Core Gate`, E2E Playwright inclus |
+| CI d’upgrade d’un SaaS dérivé | validée par D-017 | stratégie éprouvée sur `saas-core-derived-pilot`, avec gates avant/après provenance et post-merge |
 | Packages Core séparés | non requis en V1 | à réévaluer après retour d’expérience réel |
 
 La validation locale des points d’extension a été effectuée le 2026-09-05 avec les suites ciblées, les suites globales et le build frontend verts. Le statut canonique de la dette associée reste porté uniquement par `docs/DEBT.md`.

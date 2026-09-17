@@ -165,7 +165,7 @@ Les procédures décrivent uniquement les parcours réellement disponibles dans 
 
 Un SaaS dérivé peut ajouter ses propres catégories/fiches par composition explicite sans modifier le corpus Core.
 
-D-017 devra valider ce contrat par un petit module métier réel puis un upgrade du Core.
+D-017 a validé ce contrat avec le module métier réel `catalog`, dont les fiches d’aide sont composées via le point d’extension puis conservées après upgrade du Core.
 
 ---
 

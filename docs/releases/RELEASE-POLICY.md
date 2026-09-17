@@ -18,7 +18,7 @@ version d’un SaaS dérivé
 version du Core intégrée dans un SaaS dérivé
 ```
 
-D-015 — gouvernance de release — et D-016 — E2E Core Playwright — sont validées. Le Core reste en développement tant que D-017 — dérivation et upgrade réel d’un SaaS pilote — n’est pas validée.
+D-015 — gouvernance de release —, D-016 — E2E Core Playwright — et D-017 — dérivation et upgrade réel d’un SaaS pilote — sont validées. La première release stable peut être préparée dès lors que les autres critères de la présente politique restent satisfaits.
 
 ---
 
@@ -126,14 +126,14 @@ stable
 → version SemVer sans suffixe prerelease
 ```
 
-Le dépôt est actuellement :
+La cible stable courante est :
 
 ```text
-version = 0.1.0
-channel = development
+version = 1.0.0
+channel = stable
 ```
 
-La gouvernance de release ne crée jamais automatiquement `v1.0.0`.
+La présence de ces métadonnées dans une branche ou un commit ne constitue pas à elle seule une publication. La gouvernance de release ne crée jamais automatiquement `v1.0.0` : le tag et la GitHub Release ne sont créés qu’après validation du commit `main` concerné.
 
 ---
 
@@ -151,7 +151,7 @@ v1.0.0-rc.1
 → v1.0.0-rc.2
 ```
 
-Le tag stable `v1.0.0` reste interdit tant que D-017 n’est pas validée et qu’un blocker Core 1.0 subsiste.
+D-017 étant validée, le tag stable `v1.0.0` peut être publié uniquement lorsqu’aucun blocker Core 1.0 ne subsiste et que le commit `main` cible a passé la gate de release requise.
 
 ---
 
@@ -233,7 +233,7 @@ Le SaaS dérivé met à jour ce fichier après intégration validée d’une nou
 
 La version applicative du produit dérivé reste indépendante de la version du Core.
 
-D-017 doit valider ce mécanisme sur un dépôt dérivé réel.
+D-017 a validé ce mécanisme sur le dépôt dérivé réel `saas-core-derived-pilot`, avec mise à niveau de `v1.0.0-rc.1` vers `v1.0.0-rc.2` et mise à jour de `core-origin.json`.
 
 ---
 
