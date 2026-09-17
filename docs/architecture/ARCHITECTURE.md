@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Architecture globale
 
 **Statut :** document canonique d’architecture  
-**Dernière mise à jour :** 2026-09-05  
+**Dernière mise à jour :** 2026-09-17  
 **Périmètre :** socle Core, frontend, backend et futures applications dérivées
 
 ## 1. Objet
@@ -199,7 +199,15 @@ Vitest
 React Testing Library
 ```
 
-Playwright fait partie de la stratégie E2E cible du projet, mais son absence éventuelle du package courant ne doit pas être masquée par la documentation. Son installation et ses scénarios critiques seront traités dans la finalisation du Core et des applications dérivées.
+### E2E Core
+
+```text
+Playwright 1.63.0
+Chromium dans la gate Core actuelle
+environnement backend/frontend/MongoDB dédié
+```
+
+Les parcours E2E critiques du Core sont intégrés à `npm run release:check` et au workflow `Core Gate`. Les applications dérivées conservent la responsabilité de leurs propres parcours E2E métier.
 
 Aucune migration TypeScript ne doit être introduite implicitement.
 
@@ -444,7 +452,7 @@ EntitlementOverride + AuditLog
 fichier + quotas / métadonnées
 ```
 
-Les détails de sécurité, d’atomicité et de transactions seront centralisés dans `docs/security/SECURITY.md` au lot DOC-4 afin de ne pas dupliquer leur contrat ici.
+Les détails de sécurité, d’atomicité et de transactions sont centralisés dans `docs/security/SECURITY.md` afin de ne pas dupliquer leur contrat ici.
 
 ---
 
@@ -465,9 +473,13 @@ Frontend
 → React Testing Library
 → user-event
 → tests majoritairement colocated avec composants/helpers
-```
 
-Les E2E Playwright couvriront les parcours critiques lorsqu’ils seront introduits dans la phase de finalisation.
+E2E Core
+→ Playwright
+→ Chromium
+→ scénarios sous e2e/tests
+→ intégré à la Core Gate
+```
 
 Les tests doivent vérifier les comportements et invariants observables, pas figer inutilement les détails internes d’implémentation.
 
@@ -501,15 +513,15 @@ APPLICATION DÉRIVÉE
 
 Une application dérivée peut naturellement intégrer ses modules au routing, à la navigation et aux Plans, mais elle doit éviter de réécrire les mécanismes Core uniquement pour ajouter une nouvelle fonctionnalité métier.
 
-Le workflow complet de création et de maintenance des applications dérivées sera documenté dans `docs/derived-saas/DERIVED-SAAS.md`.
+Le workflow complet de création et de maintenance des applications dérivées est documenté dans `docs/derived-saas/DERIVED-SAAS.md`.
 
 ---
 
 ## 17. Maintenabilité du Core
 
-L’objectif futur est de pouvoir faire évoluer le Core puis transférer de façon contrôlée les correctifs compatibles vers les applications dérivées.
+L’objectif est de pouvoir faire évoluer le Core puis transférer de façon contrôlée les correctifs compatibles vers les applications dérivées.
 
-Cette exigence impose dès maintenant :
+Cette exigence impose :
 
 - une séparation Core / métier claire ;
 - peu de modifications arbitraires du Core dans les applications dérivées ;
@@ -517,40 +529,3 @@ Cette exigence impose dès maintenant :
 - des migrations explicites ;
 - des tests de non-régression ;
 - un versionnement du Core avant sa diffusion comme socle finalisé.
-
-La stratégie Git et de versionnement sera cadrée dans `DERIVED-SAAS.md`, pas dans ce document d’architecture générale.
-
----
-
-## 18. Règle d’évolution
-
-Avant d’introduire une nouvelle abstraction ou un nouveau domaine dans le Core, poser successivement les questions suivantes :
-
-1. le besoin est-il réellement générique à plusieurs SaaS ?
-2. existe-t-il déjà une abstraction Core adaptée ?
-3. peut-il rester dans le module métier dérivé ?
-4. modifie-t-il un contrat HTTP ou une frontière de sécurité ?
-5. modifie-t-il le Capability Registry, RBAC ou le moteur commercial ?
-6. nécessite-t-il migration, audit ou transaction ?
-7. quels tests garantissent sa non-régression ?
-8. compromet-il la capacité à mettre à jour les futurs SaaS dérivés ?
-
-Une nouvelle convention transverse ne doit jamais apparaître accidentellement au détour d’une feature locale.
-
----
-
-## 19. Documents liés
-
-```text
-docs/contracts/CORE-CONTRACT.md
-docs/contracts/COMMERCIAL.md
-docs/contracts/CAPABILITIES.md
-docs/architecture/BACKEND.md
-docs/architecture/FRONTEND.md
-docs/security/SECURITY.md          # DOC-4
-docs/frontend/FRONTEND-GUIDELINES.md # DOC-5
-docs/derived-saas/DERIVED-SAAS.md # DOC-6
-docs/DEBT.md
-```
-
-En cas de contradiction, le code et les tests actuels restent prioritaires selon la hiérarchie définie dans `docs/README.md`.
