@@ -24,9 +24,11 @@ async function prepareE2eEnvironment() {
   await connectDB(process.env.MONGODB_URI);
 
   try {
-    for (const collection of Object.values(mongoose.connection.collections)) {
-      await collection.deleteMany({});
-    }
+    await Promise.all(
+      Object.values(mongoose.connection.collections).map((collection) =>
+        collection.deleteMany({}),
+      ),
+    );
 
     await seedPlans();
     await seedPlatformRoles();
