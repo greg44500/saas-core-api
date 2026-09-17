@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Création et maintenance des SaaS dérivés
 
 **Statut :** document canonique — actif  
-**Dernière mise à jour :** 2026-09-05  
+**Dernière mise à jour :** 2026-09-17  
 **Périmètre :** création d’un produit dérivé, séparation Core/métier, versionnement, mises à niveau du Core et préparation à la production
 
 ---
@@ -363,9 +363,11 @@ GitHub documente qu’un dépôt créé depuis un Template démarre avec un hist
 
 Avant cette procédure :
 
-1. le Core doit disposer d’une version stable publiée ;
+1. le Core doit disposer d’une version explicitement choisie et publiée pour la dérivation ;
 2. le nouveau dépôt GitHub du produit doit être créé ;
 3. les variables d’environnement et secrets seront configurés séparément.
+
+D-017 doit valider la procédure complète sur un dépôt dérivé réel avant `v1.0.0` stable.
 
 Exemple conceptuel :
 
@@ -433,7 +435,7 @@ La première version considérée comme stable sera :
 v1.0.0
 ```
 
-Le Core utilisera un versionnement sémantique :
+Le Core utilise un versionnement sémantique :
 
 ```text
 PATCH
@@ -449,44 +451,50 @@ MAJOR
 → changement incompatible nécessitant une migration explicite
 ```
 
-Le numéro de version doit être associé à un tag Git et à des notes de version.
+Les canaux, tags et critères de release sont définis dans `docs/releases/RELEASE-POLICY.md`.
 
-Le `package.json` du Core peut porter la version du Core avant dérivation. Après dérivation, le produit aura cependant sa propre version applicative ; il faut donc tracer séparément la version du Core intégrée.
+Le numéro de version d’une RC ou release doit être associé à un tag Git immuable et à des notes de version.
+
+Le `package.json` du Core porte la version du Core avant dérivation. Après dérivation, le produit possède sa propre version applicative ; la version du Core intégrée est donc tracée séparément.
 
 ---
 
 ## 12. Traçabilité de la version Core dans chaque produit
 
-Avant la distribution officielle, le Core devra introduire une convention simple et machine-readable permettant à chaque application dérivée d’indiquer son origine.
-
-Cible proposée :
+D-015 définit la convention machine-readable de provenance d’une application dérivée :
 
 ```text
 core-origin.json
 ```
 
-Exemple conceptuel :
+Contrat cible :
 
 ```json
 {
+  "schemaVersion": 1,
   "repository": "greg44500/saas-core-api",
-  "version": "1.2.0",
-  "lastIntegratedCommit": "<sha>",
-  "updatedAt": "<date ISO>"
+  "version": "1.0.0-rc.1",
+  "tag": "v1.0.0-rc.1",
+  "commit": "<sha du tag Core intégré>",
+  "integratedAt": "<date ISO>"
 }
 ```
 
-Cette convention n’est pas encore implémentée dans le dépôt au moment de DOC-6.
+La version, le tag et le commit doivent identifier exactement la version du Core intégrée. Le produit met à jour ce fichier seulement après intégration validée d’une nouvelle version Core.
 
-Elle devra être finalisée avant la diffusion du Core 1.0.
+La version applicative du SaaS dérivé reste indépendante de la version du Core.
 
-Elle permet de répondre immédiatement à :
+D-017 doit valider ce mécanisme sur un dépôt dérivé réel ; le contrat n’est donc pas considéré éprouvé tant que cet exercice n’a pas été réalisé.
+
+Cette provenance permet de répondre immédiatement à :
 
 ```text
 quelle version du Core utilise ce produit ?
 quel correctif de sécurité lui manque ?
 quel était le dernier commit Core intégré ?
 ```
+
+Référence : `docs/releases/RELEASE-POLICY.md`.
 
 ---
 
@@ -496,20 +504,25 @@ Une version Core destinée aux applications dérivées doit fournir au minimum :
 
 ```text
 numéro de version
+commit/tag source
 résumé des changements
 niveau PATCH / MINOR / MAJOR
 correctifs sécurité éventuels
 migrations MongoDB requises
+ordre pre-deploy / post-deploy
 changements de variables d’environnement
 changements de dépendances
 changements de contrats observables
 instructions particulières de mise à niveau
-tests ou vérifications spécifiques
+rollback / reprise
+contrôles post-déploiement
 ```
 
 Une application dérivée ne doit pas découvrir une migration ou une nouvelle variable d’environnement seulement après avoir fusionné le code.
 
-Un CHANGELOG ou des GitHub Releases structurées devront être adoptés avant le Core 1.0.
+Le dépôt utilise désormais `CHANGELOG.md` pour l’historique humain des releases formelles et exige des GitHub Releases structurées pour les RC/releases publiées. Avant la première RC, Git reste l’historique détaillé du développement.
+
+Référence : `docs/releases/RELEASE-POLICY.md`.
 
 ---
 
@@ -633,6 +646,8 @@ Pour chaque release concernée :
 
 Les migrations déjà exécutées par une application ne doivent pas être rejouées aveuglément sans vérifier leur idempotence et leur intention.
 
+Le manifest global et la discipline d’ajout d’une migration sont définis dans `docs/releases/MIGRATION-POLICY.md` et `docs/releases/migration-manifest.json`.
+
 ---
 
 ## 18. Tests de mise à niveau
@@ -709,7 +724,7 @@ déploiement
 
 Même en urgence, la modification ne doit pas être poussée aveuglément sur toutes les productions sans vérification.
 
-La future traçabilité `core-origin.json` facilitera l’identification des produits concernés.
+La traçabilité `core-origin.json` est le mécanisme prévu pour identifier les produits concernés ; D-017 doit encore en valider l’usage réel.
 
 ---
 
@@ -771,7 +786,7 @@ L’ancien `core-deferred-work-for-derived-saas.md` est désormais absorbé sur 
 
 ---
 
-## 22. État des points d’extension au 2026-09-05
+## 22. État des points d’extension au 2026-09-17
 
 | Zone | État | Commentaire |
 |---|---|---|
@@ -781,9 +796,10 @@ L’ancien `core-deferred-work-for-derived-saas.md` est désormais absorbé sur 
 | Permissions métier / rôles système | prêt | registre applicatif `applicationRolePermission.registry.js`, composition et tests locaux validés |
 | Routes backend métier | prêt | composition dans `applicationRoutes.registry.js`, tests locaux validés |
 | Routes frontend métier | prêt | composition dans `app/application-routes.js`, tests locaux et build validés |
-| Traçabilité version Core par produit | à implémenter avant diffusion | convention `core-origin.json` proposée |
-| Releases / changelog Core | à formaliser avant 1.0 | tags + notes de version requis |
-| CI de validation des upgrades | à formaliser | aucune stratégie GitHub Actions canonique n’est encore documentée |
+| Traçabilité version Core par produit | contrat défini, validation réelle D-017 requise | `core-origin.json` défini par D-015 ; exercice réel non encore effectué |
+| Releases / changelog Core | gouvernance D-015 en cours de validation | `core-release.json`, SemVer, RC/stable, CHANGELOG et notes de release définis |
+| CI de validation du Core | implémentée par D-015 | `npm run release:check` et workflow `Core Gate`; D-016 doit encore y intégrer les E2E |
+| CI d’upgrade d’un SaaS dérivé | à valider dans D-017 | stratégie du produit dérivé non encore éprouvée sur un dépôt pilote |
 | Packages Core séparés | non requis en V1 | à réévaluer après retour d’expérience réel |
 
 La validation locale des points d’extension a été effectuée le 2026-09-05 avec les suites ciblées, les suites globales et le build frontend verts. Le statut canonique de la dette associée reste porté uniquement par `docs/DEBT.md`.
@@ -836,11 +852,11 @@ Après deux ou trois SaaS dérivés réels, l’extraction de packages pourra ê
 
 Avant de commencer le métier :
 
-- [ ] partir d’une release Core stable ;
+- [ ] partir d’une release Core explicitement choisie pour la dérivation ;
 - [ ] conserver l’historique Git du Core ;
 - [ ] créer le dépôt produit et configurer `origin` / `upstream-core` ;
-- [ ] enregistrer la version Core d’origine selon la convention officielle lorsqu’elle sera implémentée ;
-- [ ] installer les dépendances et lancer les suites de tests Core ;
+- [ ] créer `core-origin.json` avec le repository, la version, le tag et le commit exacts du Core intégré ;
+- [ ] installer les dépendances et lancer la gate Core applicable ;
 - [ ] créer des variables d’environnement propres au produit ;
 - [ ] définir le périmètre métier et la tenancy ;
 - [ ] définir modèles, RBAC, capabilities, métriques et quotas métier ;
@@ -872,7 +888,7 @@ Pour chaque nouvelle version Core :
 - [ ] lancer tests frontend Core + métier ;
 - [ ] lancer le build production ;
 - [ ] lancer les E2E critiques lorsqu’ils existent ;
-- [ ] mettre à jour la trace de version Core ;
+- [ ] mettre à jour `core-origin.json` après validation de l’intégration ;
 - [ ] faire relire puis intégrer par Pull Request ;
 - [ ] exécuter les migrations nécessaires selon la procédure de déploiement.
 
@@ -883,19 +899,18 @@ Pour chaque nouvelle version Core :
 La politique de dérivation ne sera considérée opérationnelle que lorsque le Core aura au minimum :
 
 ```text
-version 1.0.0 stabilisée
 contrats canoniques finalisés
 points d’extension métier validés par les tests
-convention de traçabilité de version Core
+convention core-origin.json définie
 release notes / changelog
 migrations documentées
 suite de tests Core verte
-Playwright ou stratégie E2E finale définie
+E2E Playwright D-016 validés
 procédure de création d’un dépôt dérivé testée réellement
 procédure de mise à niveau Core testée sur au moins un dépôt dérivé pilote
 ```
 
-La procédure ne doit pas être considérée validée uniquement parce qu’elle est théoriquement correcte. Un exercice réel de dérivation puis de mise à niveau devra être effectué avant de déclarer la stratégie définitive.
+Le tag stable `v1.0.0` ne doit être créé qu’après validation de ces conditions, notamment D-016 et D-017. La procédure ne doit pas être considérée validée uniquement parce qu’elle est théoriquement correcte.
 
 ---
 
