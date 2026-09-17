@@ -1,0 +1,67 @@
+name: RC Lockfile Sync
+
+on:
+  push:
+    branches:
+      - release/1.0.0-rc.2
+    paths:
+      - core-release.json
+      - package.json
+      - frontend/package.json
+      - .github/workflows/rc-lockfile-sync.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync-lockfile-versions:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Synchronize lockfile root versions
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+
+          const pairs = [
+            ['package.json', 'package-lock.json'],
+            ['frontend/package.json', 'frontend/package-lock.json'],
+          ];
+
+          for (const [packagePath, lockPath] of pairs) {
+            const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+            const lockJson = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+
+            if (!lockJson.packages?.['']) {
+              throw new Error(`Missing root package entry in ${lockPath}`);
+            }
+
+            lockJson.version = packageJson.version;
+            lockJson.packages[''].version = packageJson.version;
+            fs.writeFileSync(lockPath, `${JSON.stringify(lockJson, null, 2)}\n`);
+          }
+          NODE
+
+      - name: Commit synchronized lockfiles
+        shell: bash
+        run: |
+          git add package-lock.json frontend/package-lock.json
+          if git diff --cached --quiet; then
+            echo "Lockfiles already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(release): sync rc2 lockfile versions"
+          git push
