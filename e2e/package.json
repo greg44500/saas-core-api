@@ -7,10 +7,10 @@
     "node": ">=24.7 <25"
   },
   "scripts": {
-    "prepare": "node ../scripts/e2e/prepareE2eEnvironment.js",
-    "test": "npm run prepare && playwright test",
-    "test:headed": "npm run prepare && playwright test --headed",
-    "test:ui": "npm run prepare && playwright test --ui",
+    "test:prepare": "node ../scripts/e2e/prepareE2eEnvironment.js",
+    "test": "npm run test:prepare && playwright test",
+    "test:headed": "npm run test:prepare && playwright test --headed",
+    "test:ui": "npm run test:prepare && playwright test --ui",
     "install:browsers": "playwright install chromium"
   },
   "devDependencies": {
