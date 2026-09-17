@@ -10,7 +10,7 @@ Ce fichier est la porte d'entrée de la documentation interne de `saas-core-api`
 
 Le README racine fournit l'orientation générale du dépôt. Le présent index reste la référence pour naviguer dans les contrats, l'architecture, la sécurité, les guidelines, la conformité, les opérations, les releases, les SaaS dérivés et les dettes actives.
 
-Le chantier documentaire DOC-0 à DOC-11 est terminé. La finalisation fonctionnelle du Core a depuis fait émerger des besoins génériques supplémentaires explicitement enregistrés dans `docs/DEBT.md`. D-025 — Centre d’aide sécurisé Workspace / Platform — est désormais validée et intégrée dans `main`. D-020 — invitation commerciale — est explicitement différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0. D-015 — versionnement / provenance / release process / migrations — est en cours et introduit la gouvernance de release canonique du Core.
+Le chantier documentaire DOC-0 à DOC-11 est terminé. La finalisation fonctionnelle du Core a depuis fait émerger des besoins génériques supplémentaires explicitement enregistrés dans `docs/DEBT.md`. D-025 — Centre d’aide sécurisé Workspace / Platform — est validée et intégrée dans `main`. D-020 — invitation commerciale — est explicitement différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0. D-015 — versionnement / provenance / release process / migrations — et D-016 — E2E Core Playwright — sont validées. L’audit final architecture / sécurité / qualité n’a démontré aucun nouveau blocker applicatif ; D-017 reste le blocker Core 1.0 à exercer avant une release stable.
 
 ---
 
@@ -83,7 +83,7 @@ docs/debt/D-025-secure-help-center.md
 ```text
 docs/releases/RELEASE-POLICY.md
 → versionnement SemVer, canaux development / rc / stable, tags, provenance,
-  release notes, gate canonique et cible de protection de main
+  release notes, gate canonique et protection de main
 
 docs/releases/MIGRATION-POLICY.md
 → discipline de migration, runners explicites, dépendances, phases de release,
@@ -100,7 +100,9 @@ Décisions D-015 structurantes :
 - `npm run release:check` est la gate canonique locale et CI ;
 - les migrations restent des runners explicites inventoriés par manifest tant qu'un besoin réel ne justifie pas un registre persistant ;
 - `core-origin.json` est le contrat cible de provenance d'un SaaS dérivé ;
-- aucun tag stable `v1.0.0` ne peut être créé tant que D-016 et D-017 ne sont pas validées.
+- aucun tag stable `v1.0.0` ne peut être créé tant que D-017 n’est pas validée.
+
+D-016 a étendu `npm run release:check` avec les E2E Playwright. La définition courante d’une Core Gate verte inclut donc la vérification de release, le lint et les tests backend, le lint/tests/build frontend puis Playwright.
 
 ### Contrats
 
@@ -177,7 +179,7 @@ Règles centrales :
 - les fonctionnalités absentes ne doivent pas polluer inutilement l'interface ;
 - masquer une action reste une règle UX, jamais une sécurité suffisante ;
 - dans l'interface française, le terme utilisateur est « Plateforme » ; `Platform` reste le terme technique du code ;
-- Playwright reste à intégrer pour les E2E Core avant la release 1.0.
+- les parcours E2E critiques du Core sont exercés par Playwright dans la gate canonique.
 
 ### SaaS dérivés et maintenance du Core
 
@@ -189,7 +191,7 @@ docs/derived-saas/DERIVED-SAAS.md
 
 Le produit dérivé conserve l'historique Git du Core, possède son propre `origin` et conserve le Core comme `upstream-core`. D-015 définit le contrat de provenance `core-origin.json`; la stratégie complète doit être validée par un exercice réel de dérivation + upgrade pendant D-017 avant la release stable.
 
-D-025 fournit désormais un mécanisme d’extension permettant à un dérivé d’ajouter ses fiches d’aide métier sans dupliquer ni réécrire le corpus Core.
+D-025 fournit un mécanisme d’extension permettant à un dérivé d’ajouter ses fiches d’aide métier sans dupliquer ni réécrire le corpus Core.
 
 ### Conformité / RGPD
 
@@ -227,15 +229,13 @@ Core 1.0 finalisé
 SaaS dérivé prêt pour la production
 ```
 
-Blockers Core 1.0 actuellement applicables :
+Blocker Core 1.0 actuellement applicable :
 
 ```text
-D-015 versionnement / provenance / release process / migrations
-D-016 E2E Core Playwright
 D-017 dérivation + upgrade réel d'un SaaS pilote
 ```
 
-D-001, D-002, D-011, D-014, D-018, D-019, D-021, D-022 et D-025 sont validées/clôturées selon le registre canonique.
+D-001, D-002, D-011, D-014, D-015, D-016, D-018, D-019, D-021, D-022 et D-025 sont validées/clôturées selon le registre canonique.
 
 D-020 est différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0. D-023 et D-024 sont différées vers Core 1.1 et ne bloquent pas Core 1.0.
 
@@ -367,15 +367,12 @@ Toute future suppression documentaire suit la même règle : contenu utile véri
 Séquence courante de finalisation :
 
 ```text
-D-015 versionnement / provenance / releases / migrations
-→ gate canonique Core Gate réellement verte
-→ finalisation documentaire et gouvernance distante
-→ clôture / fusion D-015
-
-puis
-→ D-016 E2E Core Playwright
-→ audit final architecture / sécurité / qualité
-→ D-017 dérivation + upgrade pilote
+D-015 release governance / provenance / migrations         VALIDÉE — 2026-09-17
+→ D-016 Playwright E2E Core                                VALIDÉE — 2026-09-17
+→ audit final architecture / sécurité / qualité            TERMINÉ — aucun nouveau blocker démontré
+→ synchronisation documentaire post-audit                  EN COURS
+→ nouvelle Core Gate
+→ D-017 dérivation + upgrade pilote                        PROCHAINE ÉTAPE
 → release Core stable après validation réelle de la stratégie
 ```
 
