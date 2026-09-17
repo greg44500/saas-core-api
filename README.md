@@ -8,7 +8,7 @@ Le dépôt est actuellement en développement (`0.1.0`).
 
 La documentation canonique du Core a été consolidée, mais le socle ne doit pas encore être présenté comme une release stable `v1.0.0` ni comme une application automatiquement prête pour la production.
 
-Avant une release Core 1.0, les blockers encore suivis dans [`docs/DEBT.md`](docs/DEBT.md) sont principalement D-015 — versionnement / provenance / release process / migrations, D-016 — E2E Core Playwright, et D-017 — validation réelle d’une dérivation puis d’un upgrade d’un SaaS pilote. D-020 — invitation commerciale — est différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0.
+D-015 — versionnement / provenance / release process / migrations — et D-016 — E2E Core Playwright — sont validées. Le blocker Core 1.0 restant est D-017 — validation réelle d’une dérivation puis d’un upgrade d’un SaaS pilote. D-020 — invitation commerciale — est différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0.
 
 ## Ce que fournit le Core
 
@@ -57,7 +57,13 @@ Le Core ne doit pas contenir les domaines propres à un produit métier : cours,
 - React Hook Form + Zod ;
 - Vitest + React Testing Library.
 
-Les versions réellement installées restent celles des `package.json` racine et `frontend/package.json`.
+### E2E Core
+
+- Playwright ;
+- Chromium dans la gate Core actuelle ;
+- environnement backend/frontend/MongoDB dédié aux parcours E2E.
+
+Les versions réellement installées restent celles des `package.json` racine, `frontend/package.json` et `e2e/package.json`.
 
 ## Architecture
 
@@ -85,6 +91,10 @@ saas-core-api/
 │       ├── services/api/
 │       ├── store/
 │       └── utils/
+│
+├── e2e/
+│   ├── support/
+│   └── tests/
 │
 └── docs/
 ```
@@ -166,6 +176,16 @@ La cible peut être remplacée via :
 VITE_API_PROXY_TARGET
 ```
 
+### 3. E2E Core
+
+```bash
+cd e2e
+npm install
+npm run install:browsers
+```
+
+La gate CI installe Chromium avant l’exécution Playwright.
+
 ## Démarrage en développement
 
 ### Backend
@@ -201,13 +221,13 @@ Le seed SUPER_ADMIN utilise les variables `SUPER_ADMIN_*` de l'environnement. Le
 
 ## Tests et qualité
 
-La commande canonique de validation du Core introduite par D-015 est :
+La commande canonique de validation du Core est :
 
 ```bash
 npm run release:check
 ```
 
-Elle exécute la vérification machine-readable de la release et des migrations, puis le lint et les tests backend, le lint et les tests frontend, et le build frontend. La CI `Core Gate` exécute cette même commande afin que le mot « vert » ait la même définition localement et sur GitHub.
+Elle exécute la vérification machine-readable de la release et des migrations, le lint et les tests backend, le lint et les tests frontend, le build frontend puis les parcours Playwright E2E. La CI `Core Gate` exécute cette même commande afin que le mot « vert » ait la même définition localement et sur GitHub.
 
 La vérification structurelle seule est disponible via :
 
@@ -232,9 +252,17 @@ npm test
 npm run build
 ```
 
-`npm run format:check` reste un contrôle qualité séparé tant qu'une baseline globale n'a pas été explicitement intégrée à la gate canonique.
+### E2E
 
-Playwright fait partie de la cible E2E du Core mais n'est pas encore installé/configuré dans l'état actuel du dépôt ; son intégration est suivie par D-016 et devra étendre la gate avant la release stable.
+Depuis la racine :
+
+```bash
+npm run test:e2e
+```
+
+L’environnement Playwright utilise une base MongoDB dédiée dont le nom doit se terminer par `_e2e_test` avant tout nettoyage destructif.
+
+`npm run format:check` reste un contrôle qualité séparé tant qu'une baseline globale n'a pas été explicitement intégrée à la gate canonique.
 
 ## Migrations et jobs
 
@@ -293,7 +321,7 @@ Un produit destiné à recevoir les futures corrections du Core doit conserver l
 
 Le métier est ajouté par composition : modules backend, features frontend, permissions, capabilities, métriques et navigation propres au produit. Une mise à niveau du Core doit passer par une branche dédiée, revue des changements, migrations/configuration, tests puis intégration contrôlée.
 
-D-015 définit désormais le contrat cible `core-origin.json` qui tracera dans chaque produit dérivé la version, le tag et le commit Core intégrés. D-017 doit encore valider ce mécanisme et la stratégie Git par un exercice réel de dérivation puis d'upgrade avant la release stable.
+D-015 définit le contrat cible `core-origin.json` qui tracera dans chaque produit dérivé la version, le tag et le commit Core intégrés. D-017 doit encore valider ce mécanisme et la stratégie Git par un exercice réel de dérivation puis d'upgrade avant la release stable.
 
 Voir [`docs/derived-saas/DERIVED-SAAS.md`](docs/derived-saas/DERIVED-SAAS.md) et [`docs/releases/RELEASE-POLICY.md`](docs/releases/RELEASE-POLICY.md).
 

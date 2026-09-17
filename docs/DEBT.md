@@ -66,7 +66,9 @@ produit dérivé automatiquement production-ready
 
 D-015 — versionnement, provenance, releases et discipline de migration du Core — est **VALIDÉE le 2026-09-17**.
 
-D-016 — E2E Core avec Playwright — est **VALIDÉE le 2026-09-17** après intégration des E2E à la gate canonique et validation réelle de la `Core Gate` #19 sur le commit `e0fac2aa8126bf49f7ffa8747d1d93e7e551040e`.
+D-016 — E2E Core avec Playwright — est **VALIDÉE le 2026-09-17** après intégration des E2E à la gate canonique, validation réelle de la `Core Gate` #19 sur le commit applicatif `e0fac2aa8126bf49f7ffa8747d1d93e7e551040e`, fusion de la PR #15 et validation post-merge de la `Core Gate` #22 sur `main` au commit `43f318d81c261c4c788f726b4ed4f83647a3c4d9`.
+
+L’audit final architecture / sécurité / qualité effectué sur ce `main` fusionné n’a démontré aucun nouveau blocker applicatif Core 1.0. Les écarts résiduels identifiés étaient documentaires et font l’objet d’une synchronisation strictement documentaire avant D-017.
 
 Les blockers applicatifs génériques décidés avant le gel sont levés : D-002, D-011, D-015, D-016, D-021, D-022 et D-025 sont validées.
 
@@ -248,11 +250,13 @@ Aucun tag `v1.0.0`, aucune RC et aucune release stable ne sont créés par D-015
 - base MongoDB E2E dédiée et garde stricte imposant le suffixe `_e2e_test` avant tout nettoyage ;
 - préparation déterministe de la base avant les scénarios ;
 - backend E2E et frontend E2E isolés ;
-- exécution séquentielle (`workers: 1`) pour préserver la déterminisme des parcours ;
+- exécution séquentielle (`workers: 1`) pour préserver le déterminisme des parcours ;
 - `npm run test:e2e` intégré à `npm run release:check` ;
 - installation Playwright et exécution de la gate intégrées au workflow `Core Gate` ;
 - parcours navigateur validés : inscription, connexion, restauration de session, logout et protection post-logout, création du premier workspace, modification persistée du workspace, modification persistée du profil, archivage réel d’un workspace jetable, fermeture réelle d’un compte jetable avec révocation de session ;
-- `Core Gate` #19 (`run 35210282566`) terminée avec succès sur `e0fac2aa8126bf49f7ffa8747d1d93e7e551040e`.
+- `Core Gate` #19 (`run 35210282566`) terminée avec succès sur `e0fac2aa8126bf49f7ffa8747d1d93e7e551040e` avant la clôture documentaire ;
+- PR #15 fusionnée dans `main` ;
+- `Core Gate` #22 (`run 35212998693`) terminée avec succès sur le merge commit `43f318d81c261c4c788f726b4ed4f83647a3c4d9`.
 
 Audit lifecycle final :
 
@@ -271,8 +275,6 @@ Ces opérations sont de vrais contrats Core consommés par le frontend. Les anci
 Le nettoyage de fixtures E2E est distinct des fonctionnalités utilisateur : le setup technique vide uniquement la base MongoDB explicitement dédiée E2E. Aucun helper de nettoyage n’est utilisé comme preuve d’un contrat d’archivage ou de fermeture.
 
 La couverture Playwright reste volontairement une couche de parcours navigateur, pas une duplication de tous les invariants déjà vérifiés par les tests backend/frontend spécialisés. Isolation multi-tenant, RBAC, entitlement/quota, administration Platform, Files, sécurité et centre d’aide conservent leurs tests dédiés ; un scénario navigateur n’est ajouté que lorsqu’il apporte une vérification d’intégration utilisateur réellement distincte.
-
-Le commit documentaire de clôture doit lui-même obtenir une `Core Gate` verte avant fusion de la PR D-016. En cas d’échec, D-016 n’est pas fusionnable jusqu’à correction.
 
 ### D-025 — Centre d’aide sécurisé Workspace / Platform
 
@@ -313,8 +315,10 @@ D-020 invitation commerciale / validation terrain           DIFFÉRÉ — non bl
 → gate globale pré-D-015                                    VALIDÉE — 2026-09-16
 → D-015 release governance / provenance / migrations        VALIDÉE — 2026-09-17
 → D-016 Playwright E2E Core                                 VALIDÉE — 2026-09-17
-→ audit final architecture / sécurité / qualité
-→ D-017 dérivation + upgrade pilote                         PROCHAINE ÉTAPE, après clôture Git complète de D-016
+→ audit final architecture / sécurité / qualité             TERMINÉ — aucun nouveau blocker démontré
+→ synchronisation documentaire post-audit                   EN COURS
+→ nouvelle Core Gate
+→ D-017 dérivation + upgrade pilote                         PROCHAINE ÉTAPE après fusion documentaire verte
 → corrections éventuelles
 → nouvelle gate
 → tag/release Core stable lorsque la stratégie est réellement validée
@@ -325,7 +329,7 @@ D-020 invitation commerciale / validation terrain           DIFFÉRÉ — non bl
 → D-020 validation bêta des parcours d’invitation/onboarding dans l’environnement réel applicable
 ```
 
-D-017 ne doit pas démarrer avant la fusion de la PR D-016 et la vérification de la `Core Gate` sur le nouveau HEAD de `main`.
+D-017 ne doit pas démarrer avant la validation et la fusion de la synchronisation documentaire post-audit actuellement ouverte.
 
 ---
 
@@ -360,4 +364,14 @@ run number : 19
 conclusion : success
 ```
 
-Le commit documentaire de clôture D-016 doit à son tour être validé par `Core Gate` avant fusion.
+### Gate D-016 post-merge sur `main`
+
+```text
+HEAD validé : 43f318d81c261c4c788f726b4ed4f83647a3c4d9
+workflow : Core Gate
+run : 35212998693
+run number : 22
+conclusion : success
+```
+
+La synchronisation documentaire post-audit doit obtenir sa propre `Core Gate` verte avant fusion, car elle modifie de nouveau le dépôt.

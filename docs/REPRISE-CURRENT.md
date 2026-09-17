@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état courant à la clôture de D-016, avant fusion définitive de la PR #15.
+> Cette synthèse décrit l’état courant après fusion de D-016 et après l’audit final architecture / sécurité / qualité du Core.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
@@ -28,41 +28,37 @@ Le dépôt reste en développement `0.1.0`. Aucun tag `v1.0.0`, aucune RC et auc
 
 ---
 
-## 2. D-016 — état de clôture
+## 2. État Git de référence
 
-D-016 — E2E du Core avec Playwright — est considérée fonctionnellement validée sur la branche `feature/d-016-playwright-e2e-core`.
+D-015 — gouvernance de release / provenance / migrations — est validée et fusionnée.
 
-Le dernier HEAD applicatif validé avant le commit documentaire de clôture est :
+D-016 — E2E du Core avec Playwright — est validée et fusionnée.
+
+État `main` vérifié après fusion de la PR #15 :
 
 ```text
-e0fac2aa8126bf49f7ffa8747d1d93e7e551040e
+HEAD main : 43f318d81c261c4c788f726b4ed4f83647a3c4d9
+PR #15    : fusionnée
+merge     : 43f318d81c261c4c788f726b4ed4f83647a3c4d9
 ```
 
-Validation CI réelle :
+Validation CI post-merge réellement observée :
 
 ```text
 workflow : Core Gate
-run      : 35210282566
-number   : 19
+run      : 35212998693
+number   : 22
 status   : completed
 result   : success
 ```
 
-La PR concernée est :
-
-```text
-PR #15 — D-016 — Playwright E2E Core
-base : main
-head : feature/d-016-playwright-e2e-core
-```
-
-Le commit documentaire qui porte la présente clôture doit lui-même obtenir une `Core Gate` verte avant fusion de la PR #15.
+Le ruleset distant `Main protection` est actif sur la branche par défaut et impose notamment une Pull Request ainsi que le status check `Core Gate`.
 
 ---
 
 ## 3. Infrastructure E2E validée
 
-Le Core dispose maintenant d’un package Playwright autonome :
+Le Core dispose d’un package Playwright autonome :
 
 ```text
 e2e/
@@ -114,9 +110,7 @@ Playwright reste une couche de validation des parcours navigateur critiques. Les
 
 ---
 
-## 5. Audit final du lifecycle Account / Workspace
-
-L’audit du code réel confirme que les opérations destructives existent comme contrats fonctionnels du Core.
+## 5. Lifecycle Account / Workspace validé
 
 ### Workspace
 
@@ -135,7 +129,7 @@ WorkspaceArchiveSection
 confirmation par nom exact du workspace + mot de passe courant
 ```
 
-L’archivage est donc une fonctionnalité utilisateur réelle. Il ne s’agit pas d’un helper de test.
+L’archivage est une fonctionnalité utilisateur réelle. Il ne s’agit pas d’un helper de test.
 
 ### Account
 
@@ -163,22 +157,32 @@ ACTIVE
 → révocation des AuthSession
 ```
 
-### Contrats historiques à ne pas réintroduire
-
-La notice initiale évoquait notamment :
-
-```text
-DELETE /api/workspaces/:workspaceId
-DELETE /api/users/me
-```
-
-Ces routes ne doivent pas être recréées pour satisfaire Playwright. Le code actuel fait autorité et utilise les contrats d’archivage / fermeture explicites ci-dessus.
-
-Aucune occurrence de helper `removeWorkspace` n’existe dans l’arbre actuel de la branche. Le nettoyage déterministe se fait au niveau de la base E2E dédiée, après validation de son nom, via la préparation de l’environnement de test.
+Les anciennes propositions de routes `DELETE /api/workspaces/:workspaceId` ou `DELETE /api/users/me` ne décrivent pas le contrat courant et ne doivent pas être réintroduites.
 
 ---
 
-## 6. État canonique des dettes
+## 6. Audit final architecture / sécurité / qualité
+
+L’audit final effectué sur le `main` fusionné n’a démontré aucun nouveau blocker applicatif Core 1.0.
+
+Constats principaux :
+
+- architecture backend modulaire cohérente ;
+- architecture frontend conforme à la séparation `features` / composants partagés / RTK Query / Redux Toolkit ;
+- authentification, rotation de session, multi-tenant, RBAC et fermeture de compte cohérents avec les contrats ;
+- quotas `UsageMetric` réservés atomiquement ;
+- pipeline File fail-closed sur l’inspection et l’antivirus ;
+- isolation Playwright destructive limitée à la base `_e2e_test` ;
+- gouvernance release et manifest de migrations cohérents ;
+- aucun défaut code/sécurité démontré nécessitant de rouvrir le Core avant D-017.
+
+Les écarts trouvés par l’audit sont documentaires : plusieurs documents décrivaient encore D-015, D-016 ou Playwright comme futurs alors que le code, Git et la CI avaient déjà avancé.
+
+La correction documentaire post-audit doit rester strictement limitée à cette synchronisation et obtenir une nouvelle `Core Gate` verte avant fusion.
+
+---
+
+## 7. État canonique des dettes
 
 ```text
 D-002  VALIDÉ
@@ -191,48 +195,27 @@ D-025  VALIDÉ — 2026-09-16
 
 D-020  DIFFÉRÉ — validation terrain, non bloquant Core 1.0
 
-D-017  PLANIFIÉ — prochain blocker après clôture Git complète de D-016
+D-017  PLANIFIÉ — prochain blocker Core 1.0 après synchronisation documentaire post-audit
 
 D-023  DIFFÉRÉ — Core 1.1
 D-024  DIFFÉRÉ — Core 1.1
 ```
 
-D-017 ne doit pas être ouvert tant que :
-
-```text
-Core Gate du commit documentaire D-016 ≠ success
-OU
-PR #15 non fusionnée
-OU
-Core Gate du nouveau HEAD main non vérifiée success
-```
+Les dettes de production dépendantes d’un produit réel — conformité finale, billing/payment, observabilité, stockage production, déploiement — restent distinctes de la validation du Core générique.
 
 ---
 
-## 7. Séquence de clôture D-016 restante
-
-À partir du présent commit documentaire :
+## 8. Séquence restante vers Core stable
 
 ```text
-1. exécuter / attendre la Core Gate finale de la PR #15 ;
-2. fusionner la PR #15 uniquement si la gate est verte ;
-3. récupérer le nouveau HEAD distant de main ;
-4. vérifier la Core Gate déclenchée sur ce HEAD ;
-5. seulement après ces quatre points, considérer la clôture Git de D-016 complète ;
-6. ne pas démarrer D-017 avant cette vérification.
-```
-
----
-
-## 8. Roadmap restante vers Core stable
-
-```text
-D-016 clôture Git complète
-→ audit final architecture / sécurité / qualité
+synchronisation documentaire post-D-016 / post-audit
+→ nouvelle Core Gate verte
+→ fusion de la PR documentaire
+→ vérifier le nouveau HEAD main
 → D-017 dérivation + upgrade pilote
 → corrections éventuelles révélées par D-017
 → nouvelle gate globale
-→ tag/release Core stable uniquement lorsque la stratégie de distribution est réellement validée
+→ release candidate / tag stable uniquement lorsque la stratégie de distribution est réellement validée
 ```
 
 Ne pas créer `v1.0.0` avant D-017.
