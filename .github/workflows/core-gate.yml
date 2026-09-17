@@ -61,12 +61,20 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             frontend/package-lock.json
+            e2e/package-lock.json
 
       - name: Install backend dependencies
         run: npm ci
 
       - name: Install frontend dependencies
         run: npm --prefix frontend ci
+
+      - name: Install E2E dependencies
+        run: npm --prefix e2e ci
+
+      - name: Install Playwright Chromium
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
 
       - name: Install ClamAV
         run: |

@@ -58,16 +58,17 @@ produit dérivé automatiquement production-ready
 
 ## 3. Synthèse des dettes
 
-### 3.1 Blockers restant dans la trajectoire Core 1.0
+### 3.1 Blocker restant dans la trajectoire Core 1.0
 
 | ID | Dette | Statut |
 |---|---|---|
-| D-016 | E2E Core avec Playwright | PLANIFIÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
-D-015 — versionnement, provenance, releases et discipline de migration du Core — est **VALIDÉE le 2026-09-17**. Sa clôture ne crée ni tag RC ni tag stable : D-016 et D-017 restent nécessaires avant `v1.0.0` stable.
+D-015 — versionnement, provenance, releases et discipline de migration du Core — est **VALIDÉE le 2026-09-17**.
 
-Les blockers applicatifs génériques décidés avant le gel sont levés : D-002, D-011, D-015, D-021, D-022 et D-025 sont validées.
+D-016 — E2E Core avec Playwright — est **VALIDÉE le 2026-09-17** après intégration des E2E à la gate canonique et validation réelle de la `Core Gate` #19 sur le commit `e0fac2aa8126bf49f7ffa8747d1d93e7e551040e`.
+
+Les blockers applicatifs génériques décidés avant le gel sont levés : D-002, D-011, D-015, D-016, D-021, D-022 et D-025 sont validées.
 
 **D-020 n’est plus bloquante pour Core 1.0.** Sa validation fonctionnelle terrain est explicitement différée au déploiement de l’application métier avec des bêta-testeurs réels.
 
@@ -168,9 +169,9 @@ MFA, passkeys, SSO entreprise ou autres providers ne sont pas ajoutés uniquemen
 ### D-012 — Tests E2E de chaque application dérivée
 
 **Statut :** À CADRER  
-**Blocage Core 1.0 :** non — voir D-016
+**Blocage Core 1.0 :** non — D-016 couvre uniquement le Core générique
 
-Chaque dérivé doit couvrir ses parcours métier/transversaux critiques.
+Chaque dérivé doit couvrir ses parcours métier/transversaux critiques propres.
 
 ### D-013 — Configuration et déploiement de production
 
@@ -179,20 +180,11 @@ Chaque dérivé doit couvrir ses parcours métier/transversaux critiques.
 
 Variables/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrations/indexes, SMTP, stockage, antivirus, jobs, health/readiness, monitoring et rollback. Référence : `docs/operations/OPERATIONS.md`.
 
-### D-016 — E2E du Core avec Playwright
-
-**Statut :** PLANIFIÉ  
-**Blocage Core 1.0 :** oui
-
-Couvrir les parcours transversaux critiques : auth/session/refresh/logout, lifecycle Account/Workspace, isolation tenant, RBAC, subscription/entitlement/quota, administration Platform, Files, centre d’aide Workspace/Platform et principaux états interdits.
-
-D-025 doit notamment être couvert par au moins une recherche + ouverture de fiche dans chaque contexte ainsi que par la séparation Workspace / Platform.
-
 ### D-017 — Validation réelle de la dérivation et de l'upgrade du Core
 
 **Statut :** PLANIFIÉ  
 **Blocage Core 1.0 :** oui pour valider réellement la stratégie de distribution  
-**Dépendances :** D-014 et D-002 validées, puis D-015 et D-016.
+**Dépendances :** D-014, D-002, D-015 et D-016 validées.
 
 Exercice : release candidate Core → dépôt pilote dérivé → petit module métier → évolution Core compatible → upgrade réel → migrations/configuration → tests Core+métier+E2E → analyse des conflits/provenance.
 
@@ -232,7 +224,7 @@ Le drawer Workspace doit évoluer après Core 1.0 vers une console contextualis�
 
 ---
 
-## 5. Dettes clôturées récemment — D-015 / D-025
+## 5. Dettes clôturées récemment — D-015 / D-016 / D-025
 
 ### D-015 — Versionnement, provenance, releases et discipline de migration du Core
 
@@ -240,34 +232,47 @@ Le drawer Workspace doit évoluer après Core 1.0 vers une console contextualis�
 **Périmètre :** Core / distribution  
 **Blocage Core 1.0 :** levé pour D-015
 
+État validé, résumé : identité machine-readable du Core, SemVer et canaux de release, provenance des dérivés, manifest et politique de migrations, vérifications `release:verify` / `release:check`, workflow GitHub Actions `Core Gate`, ruleset `Main protection`, PR obligatoire et status check obligatoire.
+
+Aucun tag `v1.0.0`, aucune RC et aucune release stable ne sont créés par D-015.
+
+### D-016 — E2E du Core avec Playwright
+
+**Statut :** VALIDÉ — 2026-09-17  
+**Périmètre :** parcours navigateur critiques du Core  
+**Blocage Core 1.0 :** levé pour D-016
+
 État validé :
 
-- identité machine-readable `core-release.json` avec version `0.1.0` et canal `development` ;
-- SemVer, canaux `development` / `rc` / `stable`, tags immuables et politique de release définis dans `docs/releases/RELEASE-POLICY.md` ;
-- `CHANGELOG.md` initialisé sans inventer d’historique de releases antérieures ;
-- contrat de provenance d’un dérivé défini via `core-origin.json`, à éprouver réellement dans D-017 ;
-- inventaire machine-readable des migrations dans `docs/releases/migration-manifest.json` ;
-- discipline des migrations définie dans `docs/releases/MIGRATION-POLICY.md` ;
-- stricte cohérence vérifiée entre 16 scripts `migration:*`, 16 runners `run*Migration.js` et 16 entrées du manifest ;
-- helper `backfillRegisteredSystemRolePermissions.migration.js` explicitement traité comme helper non autonome ;
-- choix confirmé de ne pas introduire de registre Mongo persistant des migrations uniquement par convention ;
-- `npm run release:verify` vérifie l’identité de release, les versions packages/locks et la cohérence des migrations ;
-- `npm run release:check` constitue la gate canonique locale et CI ;
-- workflow GitHub Actions `Core Gate` installé sur Pull Request et push vers `main` avec Node 24, ClamAV et MongoDB replica set ;
-- défaut de synchronisation des tests Base UI identifié puis corrigé au niveau du test, sans modifier le comportement du drawer ;
-- `Core Gate` confirmée verte sur le HEAD D-015 avant le commit documentaire de clôture ;
-- ruleset GitHub `Main protection` actif sur la branche par défaut ;
-- Pull Request obligatoire avant fusion ;
-- status check `Core Gate` obligatoire ;
-- bypass list vide ;
-- suppression de `main` et force-push bloqués ;
-- documentation racine, index, opérations et dérivation alignés sur cette gouvernance.
+- package `e2e/` autonome avec Playwright `1.63.0` et Chromium ;
+- base MongoDB E2E dédiée et garde stricte imposant le suffixe `_e2e_test` avant tout nettoyage ;
+- préparation déterministe de la base avant les scénarios ;
+- backend E2E et frontend E2E isolés ;
+- exécution séquentielle (`workers: 1`) pour préserver la déterminisme des parcours ;
+- `npm run test:e2e` intégré à `npm run release:check` ;
+- installation Playwright et exécution de la gate intégrées au workflow `Core Gate` ;
+- parcours navigateur validés : inscription, connexion, restauration de session, logout et protection post-logout, création du premier workspace, modification persistée du workspace, modification persistée du profil, archivage réel d’un workspace jetable, fermeture réelle d’un compte jetable avec révocation de session ;
+- `Core Gate` #19 (`run 35210282566`) terminée avec succès sur `e0fac2aa8126bf49f7ffa8747d1d93e7e551040e`.
 
-Aucun tag `v1.0.0`, aucune RC et aucune release stable ne sont créés par D-015. D-016 puis D-017 restent obligatoires avant la première release stable.
+Audit lifecycle final :
 
-Le commit documentaire qui porte le présent statut doit lui-même obtenir une `Core Gate` verte avant fusion de la PR D-015. En cas d’échec, D-015 doit être considérée non fusionnable jusqu’à correction.
+```text
+Workspace
+GET  /api/workspaces/:workspaceId/closure-impact
+POST /api/workspaces/:workspaceId/archive
 
-**Critère de clôture atteint sous réserve de la gate CI du commit de clôture.**
+Account
+GET  /api/users/me/closure-impact
+POST /api/users/me/closure
+```
+
+Ces opérations sont de vrais contrats Core consommés par le frontend. Les anciennes routes `DELETE` proposées dans la notice initiale ne décrivent pas le contrat courant lorsqu’elles sont contredites par le code.
+
+Le nettoyage de fixtures E2E est distinct des fonctionnalités utilisateur : le setup technique vide uniquement la base MongoDB explicitement dédiée E2E. Aucun helper de nettoyage n’est utilisé comme preuve d’un contrat d’archivage ou de fermeture.
+
+La couverture Playwright reste volontairement une couche de parcours navigateur, pas une duplication de tous les invariants déjà vérifiés par les tests backend/frontend spécialisés. Isolation multi-tenant, RBAC, entitlement/quota, administration Platform, Files, sécurité et centre d’aide conservent leurs tests dédiés ; un scénario navigateur n’est ajouté que lorsqu’il apporte une vérification d’intégration utilisateur réellement distincte.
+
+Le commit documentaire de clôture doit lui-même obtenir une `Core Gate` verte avant fusion de la PR D-016. En cas d’échec, D-016 n’est pas fusionnable jusqu’à correction.
 
 ### D-025 — Centre d’aide sécurisé Workspace / Platform
 
@@ -275,22 +280,7 @@ Le commit documentaire qui porte le présent statut doit lui-même obtenir une `
 **Blocage Core 1.0 :** levé pour D-025  
 **Spécification :** `docs/debt/D-025-secure-help-center.md`
 
-État validé :
-
-- centres d’aide Workspace et Platform distincts sur une infrastructure commune ;
-- registres Core strictement validés et point d’extension `APPLICATION_HELP_MODULES` ;
-- projection serveur obligatoire avant sérialisation ;
-- filtrage Workspace par permissions effectives, owner, plan/features et mode d’accès/remédiation ;
-- filtrage Platform à partir de l’autorisation Platform réelle ;
-- fiche absente ou non autorisée exposée avec le même comportement générique afin de limiter la divulgation ;
-- recherche frontend locale uniquement sur le catalogue déjà autorisé ;
-- catégories bornées, recherche prédictive, navigation clavier, tooltips accessibles, deep links et fiches en drawer ;
-- contenus versionnés avec le Core ; aucun CMS, LLM ou RAG ajouté ;
-- mécanisme prévu pour être étendu par un SaaS dérivé sans modifier le corpus Core.
-
-Les tests applicables, lint, build et validations fonctionnelles/visuelles ont été exécutés localement et confirmés verts le 2026-09-16. La couverture E2E de release reste volontairement portée par D-016.
-
-**Critère de clôture atteint.**
+État validé, résumé : centres d’aide Workspace et Platform distincts, projection serveur, filtrage par autorisations effectives, point d’extension métier, recherche locale sur catalogue autorisé, navigation accessible et contenus versionnés avec le Core.
 
 ---
 
@@ -302,6 +292,7 @@ D-002 corbeille / restauration / suppression Files          VALIDÉ — 2026-09-
 D-011 Design System + préférences                           VALIDÉ — 2026-09-10
 D-014 points d'extension métier                             VALIDÉ
 D-015 versionnement / provenance / release / migrations     VALIDÉ — 2026-09-17
+D-016 Playwright E2E Core                                   VALIDÉ — 2026-09-17
 D-018 Équipe Platform / RBAC / invitations                  VALIDÉ
 D-019 moteur sécurisé de rétention / purge Core             VALIDÉ
 D-021 gate sécurité Auth / invitations / tokens             VALIDÉ — 2026-09-12
@@ -320,11 +311,10 @@ Le détail historique de ces lots reste consultable dans Git et dans leurs docum
 D-025 centre d’aide Workspace / Platform sécurisé           VALIDÉ — 2026-09-16
 D-020 invitation commerciale / validation terrain           DIFFÉRÉ — non bloquant Core 1.0
 → gate globale pré-D-015                                    VALIDÉE — 2026-09-16
-→ revue finale pré-versionnement + branches + documentation VALIDÉE — 2026-09-16
 → D-015 release governance / provenance / migrations        VALIDÉE — 2026-09-17
-→ D-016 Playwright E2E Core                                 PROCHAINE ÉTAPE
+→ D-016 Playwright E2E Core                                 VALIDÉE — 2026-09-17
 → audit final architecture / sécurité / qualité
-→ D-017 dérivation + upgrade pilote
+→ D-017 dérivation + upgrade pilote                         PROCHAINE ÉTAPE, après clôture Git complète de D-016
 → corrections éventuelles
 → nouvelle gate
 → tag/release Core stable lorsque la stratégie est réellement validée
@@ -335,56 +325,39 @@ D-020 invitation commerciale / validation terrain           DIFFÉRÉ — non bl
 → D-020 validation bêta des parcours d’invitation/onboarding dans l’environnement réel applicable
 ```
 
-D-016 devient le blocker Core 1.0 actif suivant après fusion de D-015.
+D-017 ne doit pas démarrer avant la fusion de la PR D-016 et la vérification de la `Core Gate` sur le nouveau HEAD de `main`.
 
 ---
 
-## 8. Gate globale pré-D-015 — VALIDÉE
+## 8. Gates de référence
 
-Exécutée réellement par l’utilisateur sur `main` au HEAD applicatif :
+### Gate globale pré-D-015
+
+HEAD applicatif :
 
 ```text
 3f645b231ea6c80e77275dfd8b838d2ecba479fa
 ```
 
-Résultats communiqués :
+Résultats communiqués : backend lint/tests, frontend lint/tests/build et parcours critiques manuels verts.
+
+### Gate D-015
 
 ```text
-backend npm run lint    → VERT
-backend npm test        → VERT
-frontend npm run lint   → VERT
-frontend npm test       → VERT
-frontend npm run build  → VERT
-parcours critiques manuels → VALIDÉS
-```
-
-La revue finale a ensuite confirmé l’absence de branche isolée à fusionner ; les branches historiques distantes ont été supprimées et `main` est restée l’unique branche distante. Les écarts restants identifiés étaient documentaires et ont été synchronisés avant l’ouverture de D-015.
-
----
-
-## 9. Gate D-015 — éléments vérifiés
-
-Avant le commit documentaire de clôture :
-
-```text
-branche D-015 : feature/d-015-release-governance
-HEAD validé par Core Gate : 759cb9589d31ad083d78fbf5a892d432718ad526
+HEAD validé : 759cb9589d31ad083d78fbf5a892d432718ad526
 workflow : Core Gate
 run : 35192502978
 conclusion : success
 ```
 
-La configuration GitHub vérifiée le 2026-09-17 est :
+### Gate D-016 avant clôture documentaire
 
 ```text
-ruleset : Main protection
-enforcement : active
-target : default branch (main)
-PR obligatoire : oui
-required status check : Core Gate
-bypass : aucun
-suppression : bloquée
-force-push : bloqué
+HEAD validé : e0fac2aa8126bf49f7ffa8747d1d93e7e551040e
+workflow : Core Gate
+run : 35210282566
+run number : 19
+conclusion : success
 ```
 
-Le commit documentaire de clôture doit à son tour être validé par `Core Gate` avant fusion.
+Le commit documentaire de clôture D-016 doit à son tour être validé par `Core Gate` avant fusion.

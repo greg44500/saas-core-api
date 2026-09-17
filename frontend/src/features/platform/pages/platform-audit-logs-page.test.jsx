@@ -104,7 +104,9 @@ describe('PlatformAuditLogsPage', () => {
 
     await user.click(screen.getByRole('combobox', { name: 'Ressource' }));
 
-    expect(screen.getByRole('option', { name: 'Dérogation' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('option', { name: 'Dérogation' }),
+    ).toBeInTheDocument();
   });
 
   it('transmet pagination et filtres URL validés par metadata au endpoint Platform', () => {
