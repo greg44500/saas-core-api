@@ -2,9 +2,28 @@
 
 Ce fichier suit les releases formelles de `saas-core-api` à partir de D-015.
 
-Le dépôt reste actuellement en développement `0.1.0` et ne possède encore aucun tag de release. L’historique détaillé antérieur à la première release candidate reste disponible dans Git ; il n’est pas reconstruit artificiellement comme une succession de versions qui n’ont jamais été publiées.
+La première release candidate formelle du Core est `v1.0.0-rc.1`, publiée le 2026-09-17. L’historique détaillé antérieur à cette première candidate reste disponible dans Git ; il n’est pas reconstruit artificiellement comme une succession de versions qui n’ont jamais été publiées.
 
 ## Unreleased
+
+D-017 reste en cours. Aucun changement Core postérieur à `v1.0.0-rc.1` n’est encore publié comme nouvelle version.
+
+---
+
+## 1.0.0-rc.1 — 2026-09-17
+
+Première Release Candidate réelle du Core, utilisée comme base immuable de dérivation pour l’exercice D-017.
+
+Référence :
+
+```text
+tag : v1.0.0-rc.1
+commit : 432fcfd88cd185234e6317a27df0d3d458f93f28
+channel : rc
+Core Gate post-merge : #28
+run : 35224400758
+conclusion : success
+```
 
 ### Release governance
 
@@ -13,7 +32,9 @@ Le dépôt reste actuellement en développement `0.1.0` et ne possède encore au
 - inventaire machine-readable des migrations ;
 - gate de release reproductible ;
 - CI `Core Gate` alignée sur `npm run release:check` ;
-- ruleset `Main protection` actif avec Pull Request et status check `Core Gate` requis.
+- ruleset `Main protection` actif avec Pull Request et status check `Core Gate` requis ;
+- tag Git annoté `v1.0.0-rc.1` publié sur le SHA validé ;
+- GitHub Release publiée comme pre-release avec notes structurées.
 
 ### E2E Core
 
@@ -24,7 +45,11 @@ Le dépôt reste actuellement en développement `0.1.0` et ne possède encore au
 
 ### Core 1.0
 
-D-015 et D-016 sont validées. L’audit final architecture / sécurité / qualité n’a démontré aucun nouveau blocker applicatif. La première release stable visée reste `v1.0.0`, uniquement après validation réelle de D-017 — dérivation et upgrade d’un SaaS pilote.
+- D-015 et D-016 sont validées ;
+- l’audit final architecture / sécurité / qualité n’a démontré aucun nouveau blocker applicatif ;
+- la préparation de `1.0.0-rc.1` n’introduit pas de fonctionnalité métier supplémentaire ;
+- le module pilote `catalog` reste destiné au dépôt SaaS dérivé, pas au Core ;
+- la release stable `v1.0.0` reste interdite tant que D-017 n’a pas validé la dérivation et l’upgrade réels d’un SaaS pilote.
 
 ---
 
