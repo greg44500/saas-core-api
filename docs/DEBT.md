@@ -62,15 +62,15 @@ produit dérivé automatiquement production-ready
 
 | ID | Dette | Statut |
 |---|---|---|
-| D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
+| D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | EN COURS |
 
 D-015 — versionnement, provenance, releases et discipline de migration du Core — est **VALIDÉE le 2026-09-17**.
 
 D-016 — E2E Core avec Playwright — est **VALIDÉE le 2026-09-17** après intégration des E2E à la gate canonique, validation réelle de la `Core Gate` #19 sur le commit applicatif `e0fac2aa8126bf49f7ffa8747d1d93e7e551040e`, fusion de la PR #15 et validation post-merge de la `Core Gate` #22 sur `main` au commit `43f318d81c261c4c788f726b4ed4f83647a3c4d9`.
 
-L’audit final architecture / sécurité / qualité effectué sur ce `main` fusionné n’a démontré aucun nouveau blocker applicatif Core 1.0. Les écarts résiduels identifiés étaient documentaires et font l’objet d’une synchronisation strictement documentaire avant D-017.
+L’audit final architecture / sécurité / qualité n’a démontré aucun nouveau blocker applicatif Core 1.0. La synchronisation documentaire post-audit a été fusionnée via la PR #16 et le nouveau `main` `fe0c3821a7d2f9377066c98193df1e522131a0be` a été validé par la `Core Gate` #24 (`run 35217570669`).
 
-Les blockers applicatifs génériques décidés avant le gel sont levés : D-002, D-011, D-015, D-016, D-021, D-022 et D-025 sont validées.
+Les blockers applicatifs génériques décidés avant le gel sont levés : D-002, D-011, D-015, D-016, D-021, D-022 et D-025 sont validées. D-017 reste le dernier blocker actif de la trajectoire Core 1.0.
 
 **D-020 n’est plus bloquante pour Core 1.0.** Sa validation fonctionnelle terrain est explicitement différée au déploiement de l’application métier avec des bêta-testeurs réels.
 
@@ -184,13 +184,24 @@ Variables/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrati
 
 ### D-017 — Validation réelle de la dérivation et de l'upgrade du Core
 
-**Statut :** PLANIFIÉ  
+**Statut :** EN COURS — démarrée le 2026-09-17  
 **Blocage Core 1.0 :** oui pour valider réellement la stratégie de distribution  
-**Dépendances :** D-014, D-002, D-015 et D-016 validées.
+**Dépendances :** D-014, D-002, D-015 et D-016 validées.  
+**Spécification d’exécution :** `docs/debt/D-017-derived-saas-upgrade-validation.md`
+
+Branche de travail Core :
+
+```text
+feature/d-017-derived-saas-upgrade-validation
+```
+
+Point de départ : `main` `fe0c3821a7d2f9377066c98193df1e522131a0be`, validé par `Core Gate` #24 (`run 35217570669`, `success`).
 
 Exercice : release candidate Core → dépôt pilote dérivé → petit module métier → évolution Core compatible → upgrade réel → migrations/configuration → tests Core+métier+E2E → analyse des conflits/provenance.
 
 D-017 doit aussi vérifier que le mécanisme d’aide Core accepte un module d’aide métier additionnel sans modifier le corpus Core.
+
+La première phase prépare `1.0.0-rc.1` comme base immuable de dérivation. Le passage en RC ne clôt pas D-017 : la dette reste ouverte jusqu’à l’upgrade réel du dépôt pilote et au bilan final.
 
 ### D-020 — Invitation commerciale client et offres privées de découverte
 
@@ -316,11 +327,17 @@ D-020 invitation commerciale / validation terrain           DIFFÉRÉ — non bl
 → D-015 release governance / provenance / migrations        VALIDÉE — 2026-09-17
 → D-016 Playwright E2E Core                                 VALIDÉE — 2026-09-17
 → audit final architecture / sécurité / qualité             TERMINÉ — aucun nouveau blocker démontré
-→ synchronisation documentaire post-audit                   EN COURS
-→ nouvelle Core Gate
-→ D-017 dérivation + upgrade pilote                         PROCHAINE ÉTAPE après fusion documentaire verte
-→ corrections éventuelles
-→ nouvelle gate
+→ synchronisation documentaire post-audit                   VALIDÉE / fusionnée — PR #16
+→ Core Gate #24 sur main                                    VALIDÉE — 2026-09-17
+→ D-017 dérivation + upgrade pilote                         EN COURS
+    → phase A : première RC Core
+    → phase B : dépôt pilote dérivé
+    → phase C : module métier minimal
+    → phase D : évolution Core compatible
+    → phase E : upgrade réel du pilote
+    → phase F : bilan et décision de clôture
+→ corrections éventuelles révélées par D-017
+→ nouvelle gate globale
 → tag/release Core stable lorsque la stratégie est réellement validée
 --- évolution post-v1.0 ---
 → D-023 demande gouvernée de transfert de propriété         DIFFÉRÉ — cible Core 1.1
@@ -328,8 +345,6 @@ D-020 invitation commerciale / validation terrain           DIFFÉRÉ — non bl
 --- validation terrain du produit dérivé ---
 → D-020 validation bêta des parcours d’invitation/onboarding dans l’environnement réel applicable
 ```
-
-D-017 ne doit pas démarrer avant la validation et la fusion de la synchronisation documentaire post-audit actuellement ouverte.
 
 ---
 
@@ -374,4 +389,12 @@ run number : 22
 conclusion : success
 ```
 
-La synchronisation documentaire post-audit doit obtenir sa propre `Core Gate` verte avant fusion, car elle modifie de nouveau le dépôt.
+### Gate post-synchronisation documentaire / démarrage D-017
+
+```text
+HEAD validé : fe0c3821a7d2f9377066c98193df1e522131a0be
+workflow : Core Gate
+run : 35217570669
+run number : 24
+conclusion : success
+```
