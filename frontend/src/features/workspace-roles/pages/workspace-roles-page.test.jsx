@@ -116,22 +116,22 @@ describe('WorkspaceRolesPage', () => {
       .toBeInTheDocument();
   });
 
-  it('réutilise le drawer de permissions pour consulter un rôle personnalisé', () => {
+  it('réutilise le drawer de permissions pour consulter un rôle personnalisé', async () => {
     renderPage();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Voir' })[1]);
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('Rôle personnalisé')).toBeInTheDocument();
     expect(screen.getByText('Consulter les membres')).toBeInTheDocument();
   });
 
-  it('ne propose pas la permission ownership dans le formulaire de création', () => {
+  it('ne propose pas la permission ownership dans le formulaire de création', async () => {
     renderPage();
 
     fireEvent.click(screen.getByRole('button', { name: 'Créer un rôle' }));
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('Consulter le workspace')).toBeInTheDocument();
     expect(screen.getByText('Consulter les membres')).toBeInTheDocument();
     expect(
