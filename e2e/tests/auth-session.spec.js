@@ -21,7 +21,7 @@ test('inscription, connexion et restauration de session après rechargement', as
   await page.goto('/register');
 
   await page.getByLabel('Prénom').fill(identity.firstName);
-  await page.getByLabel('Nom').fill(identity.lastName);
+  await page.getByLabel('Nom', { exact: true }).fill(identity.lastName);
   await page.getByLabel('Email').fill(identity.email);
   await page.getByLabel('Mot de passe', { exact: true }).fill(identity.password);
   await page.getByLabel('Confirmer le mot de passe').fill(identity.password);
