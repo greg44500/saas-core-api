@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Guide canonique d’exploitation
 
 **Statut :** document canonique d’opérations  
-**Dernière mise à jour :** 2026-09-16  
+**Dernière mise à jour :** 2026-09-17  
 **Périmètre :** installation, configuration, démarrage, seeds, migrations, jobs, stockage, antivirus, health checks, déploiement et rollback
 
 ---
@@ -288,6 +288,21 @@ Un déploiement frontend ne doit pas être considéré valide uniquement parce q
 
 ## 9. Tests et contrôles qualité
 
+### Gate canonique de release
+
+Depuis la racine :
+
+```bash
+npm run release:verify
+npm run release:check
+```
+
+`release:verify` contrôle la cohérence machine-readable des métadonnées de version et de l’inventaire des migrations.
+
+`release:check` est la gate canonique exécutée localement et en CI. Elle enchaîne la vérification de release, le lint backend/tooling, les tests backend, puis le lint, les tests et le build frontend.
+
+`npm run format:check` reste un contrôle qualité séparé tant qu’une baseline globale n’a pas été explicitement validée comme blocker de release.
+
 ### Backend
 
 Depuis la racine :
@@ -406,6 +421,14 @@ ferme MongoDB
 
 Le `package.json` expose actuellement plusieurs commandes `migration:*`.
 
+L’inventaire machine-readable canonique est :
+
+```text
+docs/releases/migration-manifest.json
+```
+
+Sa cohérence structurelle avec les scripts npm et les runners est vérifiée par `npm run release:verify`.
+
 ### 11.2 Commandes actuellement exposées
 
 ```text
@@ -479,23 +502,27 @@ contrôle attendu après exécution
 stratégie de reprise en cas d’échec
 ```
 
-### 11.5 Limite actuelle
+La discipline complète est définie dans `docs/releases/MIGRATION-POLICY.md`.
 
-Le dépôt ne possède pas encore de moteur central de migrations avec historique automatique des migrations appliquées.
+### 11.5 Gouvernance retenue par D-015
 
-Cette absence n’empêche pas le développement actuel, mais elle impose une discipline forte de release tant que les runners restent individuels.
+D-015 ne crée pas de moteur central de migrations avec historique automatique des migrations appliquées dans MongoDB uniquement par convention.
 
-Avant `v1.0.0`, il faudra décider si :
-
-```text
-les runners explicites documentés suffisent
-```
-
-ou si :
+Le modèle retenu pour le Core 1.0 est :
 
 ```text
-un registre / orchestrateur de migration versionné devient nécessaire
+runners explicites
++
+manifest machine-readable vérifié
++
+release notes obligatoires
++
+gate de release
 ```
+
+Un registre persistant ou un orchestrateur automatique ne sera ajouté que si D-017 ou l’exploitation réelle démontre qu’il apporte une garantie nécessaire que ce modèle ne couvre pas.
+
+Cette décision ne signifie pas qu’une migration peut être exécutée sans traçabilité opérationnelle : la release qui l’introduit doit toujours documenter son ordre, sa phase de déploiement, son comportement au rejeu et sa stratégie de reprise.
 
 ---
 
@@ -1017,7 +1044,7 @@ La mise à niveau d’un SaaS dérivé n’est donc pas uniquement une fusion Gi
 
 ## 28. Limites opérationnelles actuelles à ne pas masquer
 
-Au 2026-09-16, les points suivants ne sont pas finalisés comme contrat de production générique :
+Au 2026-09-17, les points suivants ne sont pas finalisés comme contrat de production générique :
 
 ```text
 provider de stockage distant / production
@@ -1025,13 +1052,15 @@ backup et restauration
 readiness des dépendances
 observabilité centralisée
 ordonnancement réel des jobs
-pipeline CI/CD canonique
+pipeline CI/CD de déploiement production
 registre automatique des migrations appliquées
 rollback automatisé des migrations
 configuration reverse proxy / trust proxy
 provider SMTP production
 infrastructure ClamAV production / supervision / mise à jour des signatures
 ```
+
+La CI de validation du Core existe désormais via la gate canonique `npm run release:check`; elle ne doit pas être confondue avec un pipeline complet de déploiement production.
 
 Ces limites sont compatibles avec le statut de développement actuel du Core mais doivent être traitées ou explicitement résolues par le produit avant go-live.
 

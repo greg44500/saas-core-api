@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Registre canonique des dettes actives
 
 **Statut :** source de vérité documentaire pour les dettes non résolues  
-**Dernière mise à jour :** 2026-09-16  
+**Dernière mise à jour :** 2026-09-17  
 **Périmètre :** Core clonable et, lorsque précisé, applications dérivées
 
 ---
@@ -62,15 +62,14 @@ produit dérivé automatiquement production-ready
 
 | ID | Dette | Statut |
 |---|---|---|
-| D-015 | Versionnement, provenance, releases et discipline de migration du Core | EN COURS |
 | D-016 | E2E Core avec Playwright | PLANIFIÉ |
 | D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | PLANIFIÉ |
 
-Les blockers applicatifs génériques décidés avant le gel sont levés : D-002, D-011, D-021, D-022 et D-025 sont validées.
+D-015 — versionnement, provenance, releases et discipline de migration du Core — est **VALIDÉE le 2026-09-17**. Sa clôture ne crée ni tag RC ni tag stable : D-016 et D-017 restent nécessaires avant `v1.0.0` stable.
+
+Les blockers applicatifs génériques décidés avant le gel sont levés : D-002, D-011, D-015, D-021, D-022 et D-025 sont validées.
 
 **D-020 n’est plus bloquante pour Core 1.0.** Sa validation fonctionnelle terrain est explicitement différée au déploiement de l’application métier avec des bêta-testeurs réels.
-
-La gate globale pré-D-015, les parcours critiques manuels, la revue finale pré-versionnement et le nettoyage des branches distantes ont été validés le 2026-09-16. D-015 est donc ouverte.
 
 ### 3.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -180,17 +179,6 @@ Chaque dérivé doit couvrir ses parcours métier/transversaux critiques.
 
 Variables/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrations/indexes, SMTP, stockage, antivirus, jobs, health/readiness, monitoring et rollback. Référence : `docs/operations/OPERATIONS.md`.
 
-### D-015 — Versionnement, provenance, releases et discipline de migration du Core
-
-**Statut :** EN COURS — ouvert le 2026-09-16  
-**Périmètre :** Core / distribution  
-**Blocage Core 1.0 :** oui  
-**Dépendances :** D-025 validée ; D-020 explicitement reclassifiée non bloquante ; gate globale pré-D-015 et parcours critiques manuels validés ; revue pré-versionnement et synchronisation documentaire terminées ; branches distantes historiques nettoyées avant ouverture.
-
-À finaliser avant `v1.0.0` : SemVer, tags/releases, changelog/release notes, changements de contrats/configuration, migrations et ordre pre/post-deploy, reprise/rollback, provenance machine-readable et gate de release reproductible.
-
-L’ouverture de D-015 ne vaut aucune décision anticipée sur la protection de branche, la CI, le format exact de provenance ou l’éventuel registre de migrations : ces choix doivent être audités et décidés dans D-015 à partir du dépôt réel.
-
 ### D-016 — E2E du Core avec Playwright
 
 **Statut :** PLANIFIÉ  
@@ -244,7 +232,42 @@ Le drawer Workspace doit évoluer après Core 1.0 vers une console contextualis�
 
 ---
 
-## 5. Dette clôturée récemment — D-025
+## 5. Dettes clôturées récemment — D-015 / D-025
+
+### D-015 — Versionnement, provenance, releases et discipline de migration du Core
+
+**Statut :** VALIDÉ — 2026-09-17  
+**Périmètre :** Core / distribution  
+**Blocage Core 1.0 :** levé pour D-015
+
+État validé :
+
+- identité machine-readable `core-release.json` avec version `0.1.0` et canal `development` ;
+- SemVer, canaux `development` / `rc` / `stable`, tags immuables et politique de release définis dans `docs/releases/RELEASE-POLICY.md` ;
+- `CHANGELOG.md` initialisé sans inventer d’historique de releases antérieures ;
+- contrat de provenance d’un dérivé défini via `core-origin.json`, à éprouver réellement dans D-017 ;
+- inventaire machine-readable des migrations dans `docs/releases/migration-manifest.json` ;
+- discipline des migrations définie dans `docs/releases/MIGRATION-POLICY.md` ;
+- stricte cohérence vérifiée entre 16 scripts `migration:*`, 16 runners `run*Migration.js` et 16 entrées du manifest ;
+- helper `backfillRegisteredSystemRolePermissions.migration.js` explicitement traité comme helper non autonome ;
+- choix confirmé de ne pas introduire de registre Mongo persistant des migrations uniquement par convention ;
+- `npm run release:verify` vérifie l’identité de release, les versions packages/locks et la cohérence des migrations ;
+- `npm run release:check` constitue la gate canonique locale et CI ;
+- workflow GitHub Actions `Core Gate` installé sur Pull Request et push vers `main` avec Node 24, ClamAV et MongoDB replica set ;
+- défaut de synchronisation des tests Base UI identifié puis corrigé au niveau du test, sans modifier le comportement du drawer ;
+- `Core Gate` confirmée verte sur le HEAD D-015 avant le commit documentaire de clôture ;
+- ruleset GitHub `Main protection` actif sur la branche par défaut ;
+- Pull Request obligatoire avant fusion ;
+- status check `Core Gate` obligatoire ;
+- bypass list vide ;
+- suppression de `main` et force-push bloqués ;
+- documentation racine, index, opérations et dérivation alignés sur cette gouvernance.
+
+Aucun tag `v1.0.0`, aucune RC et aucune release stable ne sont créés par D-015. D-016 puis D-017 restent obligatoires avant la première release stable.
+
+Le commit documentaire qui porte le présent statut doit lui-même obtenir une `Core Gate` verte avant fusion de la PR D-015. En cas d’échec, D-015 doit être considérée non fusionnable jusqu’à correction.
+
+**Critère de clôture atteint sous réserve de la gate CI du commit de clôture.**
 
 ### D-025 — Centre d’aide sécurisé Workspace / Platform
 
@@ -278,6 +301,7 @@ D-001 fermeture Account / Workspace                         VALIDÉ
 D-002 corbeille / restauration / suppression Files          VALIDÉ — 2026-09-15
 D-011 Design System + préférences                           VALIDÉ — 2026-09-10
 D-014 points d'extension métier                             VALIDÉ
+D-015 versionnement / provenance / release / migrations     VALIDÉ — 2026-09-17
 D-018 Équipe Platform / RBAC / invitations                  VALIDÉ
 D-019 moteur sécurisé de rétention / purge Core             VALIDÉ
 D-021 gate sécurité Auth / invitations / tokens             VALIDÉ — 2026-09-12
@@ -297,8 +321,8 @@ D-025 centre d’aide Workspace / Platform sécurisé           VALIDÉ — 2026
 D-020 invitation commerciale / validation terrain           DIFFÉRÉ — non bloquant Core 1.0
 → gate globale pré-D-015                                    VALIDÉE — 2026-09-16
 → revue finale pré-versionnement + branches + documentation VALIDÉE — 2026-09-16
-→ D-015 release candidate / SemVer / provenance / migrations EN COURS
-→ D-016 Playwright E2E Core
+→ D-015 release governance / provenance / migrations        VALIDÉE — 2026-09-17
+→ D-016 Playwright E2E Core                                 PROCHAINE ÉTAPE
 → audit final architecture / sécurité / qualité
 → D-017 dérivation + upgrade pilote
 → corrections éventuelles
@@ -311,7 +335,7 @@ D-020 invitation commerciale / validation terrain           DIFFÉRÉ — non bl
 → D-020 validation bêta des parcours d’invitation/onboarding dans l’environnement réel applicable
 ```
 
-Les conditions documentées d’ouverture de D-015 sont satisfaites. D-015 est ouverte ; elle reste bloquante pour Core 1.0 jusqu’à validation de ses propres critères.
+D-016 devient le blocker Core 1.0 actif suivant après fusion de D-015.
 
 ---
 
@@ -336,4 +360,31 @@ parcours critiques manuels → VALIDÉS
 
 La revue finale a ensuite confirmé l’absence de branche isolée à fusionner ; les branches historiques distantes ont été supprimées et `main` est restée l’unique branche distante. Les écarts restants identifiés étaient documentaires et ont été synchronisés avant l’ouverture de D-015.
 
-Les commits postérieurs à cette gate jusqu’à l’ouverture de D-015 ne modifient que la documentation Markdown ; aucune correction applicative n’a été introduite. Il n’est donc pas affirmé qu’une nouvelle gate applicative aurait été exécutée sur ces commits documentaires.
+---
+
+## 9. Gate D-015 — éléments vérifiés
+
+Avant le commit documentaire de clôture :
+
+```text
+branche D-015 : feature/d-015-release-governance
+HEAD validé par Core Gate : 759cb9589d31ad083d78fbf5a892d432718ad526
+workflow : Core Gate
+run : 35192502978
+conclusion : success
+```
+
+La configuration GitHub vérifiée le 2026-09-17 est :
+
+```text
+ruleset : Main protection
+enforcement : active
+target : default branch (main)
+PR obligatoire : oui
+required status check : Core Gate
+bypass : aucun
+suppression : bloquée
+force-push : bloqué
+```
+
+Le commit documentaire de clôture doit à son tour être validé par `Core Gate` avant fusion.
