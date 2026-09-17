@@ -97,4 +97,29 @@ describe('application frontend route composition', () => {
       'modules[0].workspaceRoutes must be an array',
     );
   });
+
+  it('refuse deux chemins identiques dans une même surface de routing', () => {
+    expect(() => composeApplicationFrontendRoutes([
+      {
+        workspaceRoutes: [{ path: 'catalog' }],
+      },
+      {
+        workspaceRoutes: [{ path: 'catalog' }],
+      },
+    ])).toThrow(
+      'Duplicate frontend route path "catalog" in workspaceRoutes',
+    );
+  });
+
+  it('autorise un même chemin dans deux surfaces de routing différentes', () => {
+    const routes = composeApplicationFrontendRoutes([
+      {
+        workspaceRoutes: [{ path: 'help' }],
+        platformRoutes: [{ path: 'help' }],
+      },
+    ]);
+
+    expect(routes.workspaceRoutes).toEqual([{ path: 'help' }]);
+    expect(routes.platformRoutes).toEqual([{ path: 'help' }]);
+  });
 });

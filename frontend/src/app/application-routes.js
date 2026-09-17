@@ -9,6 +9,29 @@ const APPLICATION_ROUTE_COLLECTION_KEYS = Object.freeze([
   'platformRoutes',
 ]);
 
+function assertUniqueFrontendRoutePaths(routes, collectionKey) {
+  const registeredPaths = new Set();
+
+  routes.forEach((route) => {
+    if (
+      route === null
+      || Array.isArray(route)
+      || typeof route !== 'object'
+      || typeof route.path !== 'string'
+    ) {
+      return;
+    }
+
+    if (registeredPaths.has(route.path)) {
+      throw new TypeError(
+        `Duplicate frontend route path "${route.path}" in ${collectionKey}`,
+      );
+    }
+
+    registeredPaths.add(route.path);
+  });
+}
+
 /**
  * Compose les routes déclarées par les modules réellement installés.
  *
@@ -48,6 +71,13 @@ function composeApplicationFrontendRoutes(modules = []) {
       composedRoutes[collectionKey].push(...moduleRoutes);
     }
   });
+
+  for (const collectionKey of APPLICATION_ROUTE_COLLECTION_KEYS) {
+    assertUniqueFrontendRoutePaths(
+      composedRoutes[collectionKey],
+      collectionKey,
+    );
+  }
 
   return Object.freeze(
     Object.fromEntries(
