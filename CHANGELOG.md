@@ -12,11 +12,19 @@ Le dépôt reste actuellement en développement `0.1.0` et ne possède encore au
 - identité Core machine-readable via `core-release.json` ;
 - inventaire machine-readable des migrations ;
 - gate de release reproductible ;
-- CI et gouvernance de `main` à finaliser dans D-015.
+- CI `Core Gate` alignée sur `npm run release:check` ;
+- ruleset `Main protection` actif avec Pull Request et status check `Core Gate` requis.
+
+### E2E Core
+
+- package Playwright autonome sous `e2e/` ;
+- environnement E2E isolé avec garde MongoDB `_e2e_test` ;
+- parcours critiques Auth, Workspace et Account couverts ;
+- `npm run test:e2e` intégré à `npm run release:check` et à la CI `Core Gate`.
 
 ### Core 1.0
 
-La première release stable visée reste `v1.0.0`, uniquement après validation de D-016 et D-017.
+D-015 et D-016 sont validées. L’audit final architecture / sécurité / qualité n’a démontré aucun nouveau blocker applicatif. La première release stable visée reste `v1.0.0`, uniquement après validation réelle de D-017 — dérivation et upgrade d’un SaaS pilote.
 
 ---
 
