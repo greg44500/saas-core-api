@@ -1,16 +1,16 @@
 # SAAS-CORE-API — Index documentaire
 
 **Statut :** index canonique de la documentation du projet  
-**Dernière consolidation :** 2026-09-16  
+**Dernière consolidation :** 2026-09-17  
 **Chantier documentaire DOC-0 → DOC-11 :** terminé
 
 ## 1. Objet
 
 Ce fichier est la porte d'entrée de la documentation interne de `saas-core-api`.
 
-Le README racine fournit l'orientation générale du dépôt. Le présent index reste la référence pour naviguer dans les contrats, l'architecture, la sécurité, les guidelines, la conformité, les opérations, les SaaS dérivés et les dettes actives.
+Le README racine fournit l'orientation générale du dépôt. Le présent index reste la référence pour naviguer dans les contrats, l'architecture, la sécurité, les guidelines, la conformité, les opérations, les releases, les SaaS dérivés et les dettes actives.
 
-Le chantier documentaire DOC-0 à DOC-11 est terminé. La finalisation fonctionnelle du Core a depuis fait émerger des besoins génériques supplémentaires explicitement enregistrés dans `docs/DEBT.md`. D-025 — Centre d’aide sécurisé Workspace / Platform — est désormais validée et intégrée dans `main`. D-020 — invitation commerciale — est explicitement différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0. La séquence courante est la gate pré-D-015 puis D-015 — versionnement / provenance / release process / migrations.
+Le chantier documentaire DOC-0 à DOC-11 est terminé. La finalisation fonctionnelle du Core a depuis fait émerger des besoins génériques supplémentaires explicitement enregistrés dans `docs/DEBT.md`. D-025 — Centre d’aide sécurisé Workspace / Platform — est désormais validée et intégrée dans `main`. D-020 — invitation commerciale — est explicitement différée à une validation terrain sur application dérivée / bêta et ne bloque pas Core 1.0. D-015 — versionnement / provenance / release process / migrations — est en cours et introduit la gouvernance de release canonique du Core.
 
 ---
 
@@ -77,6 +77,30 @@ docs/debt/D-024-platform-workspace-control-center.md
 docs/debt/D-025-secure-help-center.md
 → spécification validée du centre d’aide sécurisé Workspace / Platform
 ```
+
+### Release et migrations
+
+```text
+docs/releases/RELEASE-POLICY.md
+→ versionnement SemVer, canaux development / rc / stable, tags, provenance,
+  release notes, gate canonique et cible de protection de main
+
+docs/releases/MIGRATION-POLICY.md
+→ discipline de migration, runners explicites, dépendances, phases de release,
+  idempotence et stratégie de reprise
+
+docs/releases/migration-manifest.json
+→ inventaire machine-readable des migrations de release exécutables
+```
+
+Décisions D-015 structurantes :
+
+- `core-release.json` porte l'identité versionnée du Core ;
+- `npm run release:verify` contrôle la cohérence version/packages/locks/migrations ;
+- `npm run release:check` est la gate canonique locale et CI ;
+- les migrations restent des runners explicites inventoriés par manifest tant qu'un besoin réel ne justifie pas un registre persistant ;
+- `core-origin.json` est le contrat cible de provenance d'un SaaS dérivé ;
+- aucun tag stable `v1.0.0` ne peut être créé tant que D-016 et D-017 ne sont pas validées.
 
 ### Contrats
 
@@ -163,7 +187,7 @@ docs/derived-saas/DERIVED-SAAS.md
   stratégie Git, upgrades, migrations, tests et points d'extension
 ```
 
-Le produit dérivé conserve l'historique Git du Core, possède son propre `origin` et conserve le Core comme `upstream-core`. La stratégie devra être validée par un exercice réel de dérivation + upgrade avant la release 1.0.
+Le produit dérivé conserve l'historique Git du Core, possède son propre `origin` et conserve le Core comme `upstream-core`. D-015 définit le contrat de provenance `core-origin.json`; la stratégie complète doit être validée par un exercice réel de dérivation + upgrade pendant D-017 avant la release stable.
 
 D-025 fournit désormais un mécanisme d’extension permettant à un dérivé d’ajouter ses fiches d’aide métier sans dupliquer ni réécrire le corpus Core.
 
@@ -239,6 +263,11 @@ docs/
 │   ├── CAPABILITIES.md
 │   ├── PLATFORM-TEAM.md
 │   └── RETENTION.md
+│
+├── releases/
+│   ├── RELEASE-POLICY.md
+│   ├── MIGRATION-POLICY.md
+│   └── migration-manifest.json
 │
 ├── debt/
 │   ├── D-024-platform-workspace-control-center.md
@@ -338,14 +367,12 @@ Toute future suppression documentaire suit la même règle : contenu utile véri
 Séquence courante de finalisation :
 
 ```text
-gate globale pré-D-015
-→ tests/lint/build globaux validés
-→ parcours critiques validés manuellement
-→ audit des branches distantes effectué ; aucune branche restante à fusionner
-→ synchronisation documentaire pré-D-015
+D-015 versionnement / provenance / releases / migrations
+→ gate canonique Core Gate réellement verte
+→ finalisation documentaire et gouvernance distante
+→ clôture / fusion D-015
 
 puis
-→ D-015 versionnement / provenance / releases / migrations
 → D-016 E2E Core Playwright
 → audit final architecture / sécurité / qualité
 → D-017 dérivation + upgrade pilote
