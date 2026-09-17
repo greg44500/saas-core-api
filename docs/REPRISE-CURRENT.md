@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état courant à la clôture de D-015 et avant ouverture de D-016.
+> Cette synthèse décrit l’état courant à la clôture de D-016, avant fusion définitive de la PR #15.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
@@ -28,294 +28,218 @@ Le dépôt reste en développement `0.1.0`. Aucun tag `v1.0.0`, aucune RC et auc
 
 ---
 
-## 2. État validé de D-015
+## 2. D-016 — état de clôture
 
-D-015 — versionnement, provenance, releases et discipline de migration du Core — est clôturée dans le présent lot documentaire, sous réserve de la `Core Gate` du commit de clôture avant fusion.
+D-016 — E2E du Core avec Playwright — est considérée fonctionnellement validée sur la branche `feature/d-016-playwright-e2e-core`.
 
-Éléments mis en place :
-
-```text
-core-release.json
-CHANGELOG.md
-docs/releases/RELEASE-POLICY.md
-docs/releases/MIGRATION-POLICY.md
-docs/releases/migration-manifest.json
-scripts/release/releaseMetadata.js
-scripts/release/verifyReleaseMetadata.js
-backend/tests/release/releaseMetadata.test.js
-.github/workflows/core-gate.yml
-```
-
-La commande canonique est :
-
-```bash
-npm run release:check
-```
-
-Elle enchaîne :
+Le dernier HEAD applicatif validé avant le commit documentaire de clôture est :
 
 ```text
-release:verify
-→ lint backend / tooling
-→ tests backend
-→ lint frontend
-→ tests frontend
-→ build frontend
+e0fac2aa8126bf49f7ffa8747d1d93e7e551040e
 ```
 
-D-016 doit ensuite intégrer la couverture E2E Playwright à la gate de release avant Core stable.
-
----
-
-## 3. Validation CI D-015
-
-Une première exécution de `Core Gate` avait révélé un test frontend trop synchrone vis-à-vis de l’ouverture asynchrone d’un drawer Base UI.
-
-Le comportement applicatif n’a pas été modifié. Le test a été corrigé pour attendre l’ouverture réelle du `dialog`.
-
-Validation locale ciblée communiquée par l’utilisateur :
-
-```text
-Test Files  2 passed (2)
-Tests       8 passed (8)
-```
-
-Le dernier HEAD D-015 précédant le commit documentaire de clôture est :
-
-```text
-759cb9589d31ad083d78fbf5a892d432718ad526
-```
-
-La `Core Gate` correspondante est réellement terminée avec :
+Validation CI réelle :
 
 ```text
 workflow : Core Gate
-run      : 35192502978
+run      : 35210282566
+number   : 19
 status   : completed
 result   : success
 ```
 
-Le commit documentaire de clôture qui porte `DEBT.md` et le présent fichier doit lui-même obtenir une `Core Gate` verte avant fusion de la PR #14.
+La PR concernée est :
+
+```text
+PR #15 — D-016 — Playwright E2E Core
+base : main
+head : feature/d-016-playwright-e2e-core
+```
+
+Le commit documentaire qui porte la présente clôture doit lui-même obtenir une `Core Gate` verte avant fusion de la PR #15.
 
 ---
 
-## 4. Gouvernance GitHub désormais active
+## 3. Infrastructure E2E validée
 
-Ruleset vérifié le 2026-09-17 :
-
-```text
-nom : Main protection
-enforcement : active
-target : branche par défaut (main)
-bypass list : vide
-```
-
-Règles effectives :
+Le Core dispose maintenant d’un package Playwright autonome :
 
 ```text
-Pull Request obligatoire avant fusion
-Core Gate obligatoire avant fusion
-suppression de main bloquée
-force-push bloqué
-Required approvals = 0
-branche à jour avec main non imposée
+e2e/
+├── package.json
+├── package-lock.json
+├── playwright.config.js
+├── support/
+└── tests/
 ```
 
-Cette configuration est adaptée au dépôt solo actuel : elle impose la revue par PR et la gate technique sans inventer une obligation de reviewers inexistants.
+Principes validés :
+
+- Playwright `1.63.0` ;
+- Chromium pour la gate Core actuelle ;
+- backend E2E sur `127.0.0.1:5100` ;
+- frontend E2E sur `127.0.0.1:5174` ;
+- MongoDB dédiée `saas_core_e2e_test` ;
+- garde stricte : toute base utilisée pour le nettoyage Playwright doit se terminer par `_e2e_test` ;
+- préparation déterministe avant exécution ;
+- exécution séquentielle (`workers: 1`) ;
+- traces, captures et vidéos conservées en cas d’échec ;
+- `npm run test:e2e` intégré à `npm run release:check` ;
+- installation des dépendances E2E, Chromium et exécution de la gate intégrées à `.github/workflows/core-gate.yml`.
+
+Le nettoyage global E2E est un mécanisme technique de fixtures. Il ne constitue jamais une preuve de fonctionnalité utilisateur.
 
 ---
 
-## 5. Versionnement et provenance
+## 4. Parcours navigateur couverts
 
-Le Core reste actuellement :
-
-```text
-version = 0.1.0
-channel = development
-```
-
-D-015 définit :
+Les scénarios Playwright présents couvrent les parcours navigateur suivants :
 
 ```text
-0.x.y          → development
-1.0.0-rc.N     → rc
-1.0.0          → stable
+inscription → connexion → session restaurée via refresh HttpOnly
+logout → reload → route protégée toujours inaccessible
+création du premier workspace → dashboard
+renommage workspace → persistance après reload
+modification profil → persistance après reload
+archivage workspace réel → retrait des espaces utilisables
+fermeture compte réelle → session révoquée → route protégée inaccessible
 ```
 
-Une RC ou release publiée doit utiliser un tag Git immuable `v<version>` et une GitHub Release avec notes structurées.
+Les ressources détruites par les deux derniers scénarios sont exclusivement jetables :
 
-Le tag stable `v1.0.0` reste interdit tant que D-016 et D-017 ne sont pas validées.
+- compte généré pour le test ;
+- workspace généré pour le test.
 
-La provenance d’un SaaS dérivé est définie via `core-origin.json` avec :
-
-```text
-schemaVersion
-repository
-version
-tag
-commit
-integratedAt
-```
-
-D-017 doit encore éprouver cette convention sur un dépôt dérivé réel.
+Playwright reste une couche de validation des parcours navigateur critiques. Les invariants de sécurité et de domaine déjà couverts par les suites backend/frontend spécialisées ne sont pas dupliqués mécaniquement en E2E lorsque cela n’apporte pas une vérification d’intégration distincte.
 
 ---
 
-## 6. Discipline des migrations
+## 5. Audit final du lifecycle Account / Workspace
 
-Le dépôt conserve des runners explicites et n’ajoute pas de registre Mongo persistant uniquement par convention.
+L’audit du code réel confirme que les opérations destructives existent comme contrats fonctionnels du Core.
 
-Le modèle validé est :
+### Workspace
 
-```text
-runner explicite
-+
-script npm migration:*
-+
-manifest machine-readable
-+
-release notes obligatoires
-+
-gate release:verify / release:check
-```
-
-Inventaire D-015 vérifié :
+Backend :
 
 ```text
-16 scripts migration:*
-16 runners run*Migration.js
-16 entrées migration-manifest.json
+GET  /api/workspaces/:workspaceId/closure-impact
+POST /api/workspaces/:workspaceId/archive
 ```
 
-Le helper :
+Frontend :
 
 ```text
-backend/migrations/backfillRegisteredSystemRolePermissions.migration.js
+RTK Query archiveWorkspace
+WorkspaceArchiveSection
+confirmation par nom exact du workspace + mot de passe courant
 ```
 
-reste volontairement hors manifest car il n’est pas un runner autonome.
+L’archivage est donc une fonctionnalité utilisateur réelle. Il ne s’agit pas d’un helper de test.
+
+### Account
+
+Backend :
+
+```text
+GET  /api/users/me/closure-impact
+POST /api/users/me/closure
+```
+
+Frontend :
+
+```text
+RTK Query getAccountClosureImpact / closeCurrentAccount
+AccountClosureSection / AccountClosureDialog
+confirmation email + mot de passe + confirmation explicite
+```
+
+Le service de fermeture traite transactionnellement le cycle :
+
+```text
+ACTIVE
+→ DELETION_REQUESTED
+→ CLOSED
+→ révocation des AuthSession
+```
+
+### Contrats historiques à ne pas réintroduire
+
+La notice initiale évoquait notamment :
+
+```text
+DELETE /api/workspaces/:workspaceId
+DELETE /api/users/me
+```
+
+Ces routes ne doivent pas être recréées pour satisfaire Playwright. Le code actuel fait autorité et utilise les contrats d’archivage / fermeture explicites ci-dessus.
+
+Aucune occurrence de helper `removeWorkspace` n’existe dans l’arbre actuel de la branche. Le nettoyage déterministe se fait au niveau de la base E2E dédiée, après validation de son nom, via la préparation de l’environnement de test.
 
 ---
 
-## 7. Documentation D-015 alignée
-
-Les documents suivants ont été alignés avec la gouvernance de release :
-
-```text
-README.md
-docs/README.md
-docs/operations/OPERATIONS.md
-docs/derived-saas/DERIVED-SAAS.md
-docs/releases/RELEASE-POLICY.md
-docs/releases/MIGRATION-POLICY.md
-CHANGELOG.md
-```
-
-Le contrat `core-origin.json` est défini mais ne sera considéré éprouvé qu’après D-017.
-
----
-
-## 8. État canonique des dettes après D-015
+## 6. État canonique des dettes
 
 ```text
 D-002  VALIDÉ
 D-011  VALIDÉ
 D-015  VALIDÉ — 2026-09-17
+D-016  VALIDÉ — 2026-09-17
 D-021  VALIDÉ
 D-022  VALIDÉ
 D-025  VALIDÉ — 2026-09-16
 
 D-020  DIFFÉRÉ — validation terrain, non bloquant Core 1.0
 
-D-016  PLANIFIÉ — prochain blocker Core 1.0
-D-017  PLANIFIÉ — après D-016
+D-017  PLANIFIÉ — prochain blocker après clôture Git complète de D-016
 
 D-023  DIFFÉRÉ — Core 1.1
 D-024  DIFFÉRÉ — Core 1.1
 ```
 
-D-016 devient donc le prochain chantier une fois D-015 fusionnée dans `main` et le HEAD distant revérifié.
+D-017 ne doit pas être ouvert tant que :
+
+```text
+Core Gate du commit documentaire D-016 ≠ success
+OU
+PR #15 non fusionnée
+OU
+Core Gate du nouveau HEAD main non vérifiée success
+```
 
 ---
 
-## 9. Roadmap restante vers Core stable
+## 7. Séquence de clôture D-016 restante
+
+À partir du présent commit documentaire :
 
 ```text
-ÉTAPE 1 — terminer la clôture D-015
-→ Core Gate verte sur le commit documentaire final
-→ fusion PR #14
-→ revérifier main
+1. exécuter / attendre la Core Gate finale de la PR #15 ;
+2. fusionner la PR #15 uniquement si la gate est verte ;
+3. récupérer le nouveau HEAD distant de main ;
+4. vérifier la Core Gate déclenchée sur ce HEAD ;
+5. seulement après ces quatre points, considérer la clôture Git de D-016 complète ;
+6. ne pas démarrer D-017 avant cette vérification.
+```
 
-ÉTAPE 2 — D-016
-→ installer/configurer Playwright
-→ couvrir les parcours E2E Core critiques
-→ intégrer les E2E à release:check / Core Gate
+---
 
-ÉTAPE 3 — audit final Core
-→ architecture
-→ sécurité
-→ qualité
-→ documentation
-→ aucun blocker résiduel non traité
+## 8. Roadmap restante vers Core stable
 
-ÉTAPE 4 — D-017
-→ sélectionner/créer une release candidate appropriée
-→ créer un SaaS dérivé pilote en conservant l’historique Git du Core
-→ origin = dépôt produit
-→ upstream-core = dépôt Core
-→ créer core-origin.json
-→ ajouter un petit module métier réel
-→ ajouter une extension d’aide métier
-→ faire évoluer le Core
-→ réaliser un upgrade réel du dérivé
-→ exécuter migrations/configuration
-→ tests Core + métier + E2E
-→ analyser conflits et provenance
-
-ÉTAPE 5 — stabilisation finale
-→ corrections éventuelles révélées par D-016 / D-017
+```text
+D-016 clôture Git complète
+→ audit final architecture / sécurité / qualité
+→ D-017 dérivation + upgrade pilote
+→ corrections éventuelles révélées par D-017
 → nouvelle gate globale
 → tag/release Core stable uniquement lorsque la stratégie de distribution est réellement validée
 ```
 
-Ne pas créer `v1.0.0` avant D-016 et D-017.
+Ne pas créer `v1.0.0` avant D-017.
 
 ---
 
-## 10. Ce qu’il ne faut pas faire maintenant
-
-Tant que la PR D-015 n’est pas fusionnée :
-
-```text
-ne pas ouvrir D-016 sur main
-ne pas créer de tag RC ou stable
-ne pas créer le dépôt métier définitif
-ne pas configurer de base BETA
-ne pas développer de module métier
-```
-
-Après fusion D-015, le prochain travail est uniquement D-016.
-
----
-
-## 11. Première étape de la prochaine reprise
-
-À la prochaine conversation ou après fusion de D-015 :
-
-```text
-1. vérifier le HEAD distant réel de main ;
-2. confirmer que la PR #14 est fusionnée ;
-3. confirmer que Core Gate est verte sur le commit fusionné applicable ;
-4. relire D-016 dans docs/DEBT.md ;
-5. inspecter les tests frontend/backend et l’infrastructure de test actuelle ;
-6. auditer l’absence/presence réelle de Playwright ;
-7. cadrer D-016 avant toute implémentation ;
-8. ne pas ouvrir D-017 avant validation de D-016.
-```
-
----
-
-## 12. Rappel de méthode
+## 9. Rappel de méthode
 
 À chaque reprise :
 
