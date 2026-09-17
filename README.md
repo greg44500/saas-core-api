@@ -201,6 +201,20 @@ Le seed SUPER_ADMIN utilise les variables `SUPER_ADMIN_*` de l'environnement. Le
 
 ## Tests et qualité
 
+La commande canonique de validation du Core introduite par D-015 est :
+
+```bash
+npm run release:check
+```
+
+Elle exécute la vérification machine-readable de la release et des migrations, puis le lint et les tests backend, le lint et les tests frontend, et le build frontend. La CI `Core Gate` exécute cette même commande afin que le mot « vert » ait la même définition localement et sur GitHub.
+
+La vérification structurelle seule est disponible via :
+
+```bash
+npm run release:verify
+```
+
 ### Backend
 
 ```bash
@@ -218,17 +232,21 @@ npm test
 npm run build
 ```
 
-Playwright fait partie de la cible E2E du Core mais n'est pas encore installé/configuré dans l'état actuel du dépôt ; son intégration est suivie par D-016.
+`npm run format:check` reste un contrôle qualité séparé tant qu'une baseline globale n'a pas été explicitement intégrée à la gate canonique.
+
+Playwright fait partie de la cible E2E du Core mais n'est pas encore installé/configuré dans l'état actuel du dépôt ; son intégration est suivie par D-016 et devra étendre la gate avant la release stable.
 
 ## Migrations et jobs
 
 Le dépôt expose des runners explicites via les scripts `migration:*` et `job:*` du `package.json` racine.
 
-Une migration ne doit jamais être exécutée en production uniquement parce qu'elle existe dans le dépôt : chaque release doit préciser son ordre, sa phase de déploiement, sa compatibilité et sa stratégie de reprise.
+Les migrations de release sont inventoriées dans [`docs/releases/migration-manifest.json`](docs/releases/migration-manifest.json). `npm run release:verify` contrôle la cohérence entre cet inventaire, les scripts `migration:*` et les runners exécutables.
+
+Une migration ne doit jamais être exécutée en production uniquement parce qu'elle existe dans le dépôt : chaque release doit préciser son ordre, sa phase de déploiement, sa compatibilité et sa stratégie de reprise. D-015 conserve volontairement les runners explicites et n'ajoute pas de registre MongoDB des migrations appliquées sans besoin démontré.
 
 Les jobs sont des processus autonomes. Leur présence dans le dépôt ne signifie pas qu'ils sont automatiquement planifiés ou supervisés en production.
 
-Voir [`docs/operations/OPERATIONS.md`](docs/operations/OPERATIONS.md).
+Voir [`docs/releases/MIGRATION-POLICY.md`](docs/releases/MIGRATION-POLICY.md) et [`docs/operations/OPERATIONS.md`](docs/operations/OPERATIONS.md).
 
 ## Documentation
 
@@ -236,6 +254,8 @@ La porte d'entrée documentaire interne est [`docs/README.md`](docs/README.md).
 
 | Sujet | Référence |
 |---|---|
+| Politique de versionnement / release / provenance | [`docs/releases/RELEASE-POLICY.md`](docs/releases/RELEASE-POLICY.md) |
+| Discipline et inventaire des migrations | [`docs/releases/MIGRATION-POLICY.md`](docs/releases/MIGRATION-POLICY.md) |
 | Contrat Core transversal | [`docs/contracts/CORE-CONTRACT.md`](docs/contracts/CORE-CONTRACT.md) |
 | Commercial / Subscription / entitlement | [`docs/contracts/COMMERCIAL.md`](docs/contracts/COMMERCIAL.md) |
 | Invitations commerciales / offres privées | [`docs/contracts/COMMERCIAL-INVITATIONS.md`](docs/contracts/COMMERCIAL-INVITATIONS.md) |
@@ -273,9 +293,9 @@ Un produit destiné à recevoir les futures corrections du Core doit conserver l
 
 Le métier est ajouté par composition : modules backend, features frontend, permissions, capabilities, métriques et navigation propres au produit. Une mise à niveau du Core doit passer par une branche dédiée, revue des changements, migrations/configuration, tests puis intégration contrôlée.
 
-Cette stratégie doit encore être validée par un exercice réel de dérivation + upgrade avant la release 1.0.
+D-015 définit désormais le contrat cible `core-origin.json` qui tracera dans chaque produit dérivé la version, le tag et le commit Core intégrés. D-017 doit encore valider ce mécanisme et la stratégie Git par un exercice réel de dérivation puis d'upgrade avant la release stable.
 
-Voir [`docs/derived-saas/DERIVED-SAAS.md`](docs/derived-saas/DERIVED-SAAS.md).
+Voir [`docs/derived-saas/DERIVED-SAAS.md`](docs/derived-saas/DERIVED-SAAS.md) et [`docs/releases/RELEASE-POLICY.md`](docs/releases/RELEASE-POLICY.md).
 
 ## Production
 
