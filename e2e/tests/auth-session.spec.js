@@ -35,7 +35,7 @@ test('inscription, connexion et restauration de session après rechargement', as
   );
 
   await page.getByLabel('Email').fill(identity.email);
-  await page.getByLabel('Mot de passe').fill(identity.password);
+  await page.getByLabel('Mot de passe', { exact: true }).fill(identity.password);
   await page.getByRole('button', { name: 'Se connecter' }).click();
 
   await expect(page).toHaveURL(/\/onboarding\/workspace$/);
