@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Politique de versionnement et de release
 
-**Statut :** canonique — D-015  
-**Dernière mise à jour :** 2026-09-16  
+**Statut :** canonique — D-015 validée  
+**Dernière mise à jour :** 2026-09-17  
 **Périmètre :** versionnement du Core, release candidate, tags, provenance et notes de version
 
 ---
@@ -18,7 +18,7 @@ version d’un SaaS dérivé
 version du Core intégrée dans un SaaS dérivé
 ```
 
-Le Core reste en développement tant que D-015, D-016 et D-017 ne sont pas toutes validées.
+D-015 — gouvernance de release — et D-016 — E2E Core Playwright — sont validées. Le Core reste en développement tant que D-017 — dérivation et upgrade réel d’un SaaS pilote — n’est pas validée.
 
 ---
 
@@ -133,17 +133,17 @@ version = 0.1.0
 channel = development
 ```
 
-D-015 ne crée pas automatiquement `v1.0.0`.
+La gouvernance de release ne crée jamais automatiquement `v1.0.0`.
 
 ---
 
 ## 5. Release candidate Core 1.0
 
-D-015 prépare le mécanisme de release candidate.
+D-015 a préparé le mécanisme de release candidate et D-016 a intégré les parcours E2E du Core à la gate canonique.
 
-Le premier tag `v1.0.0-rc.N` ne doit être créé que lorsqu’un HEAD précis a satisfait les gates requises pour la candidate concernée.
+Le premier tag `v1.0.0-rc.N` ne doit être créé que lorsqu’un HEAD précis a satisfait les gates requises pour la candidate concernée et que la stratégie de dérivation/upgrade attendue par D-017 est effectivement prête à être exercée.
 
-D-016 peut révéler des corrections E2E. Une correction après une RC produit une nouvelle candidate :
+Une correction après une RC produit une nouvelle candidate :
 
 ```text
 v1.0.0-rc.1
@@ -151,7 +151,7 @@ v1.0.0-rc.1
 → v1.0.0-rc.2
 ```
 
-Le tag stable `v1.0.0` reste interdit tant que D-016 et D-017 ne sont pas validées.
+Le tag stable `v1.0.0` reste interdit tant que D-017 n’est pas validée et qu’un blocker Core 1.0 subsiste.
 
 ---
 
@@ -263,21 +263,22 @@ La commande canonique du dépôt est :
 npm run release:check
 ```
 
-Elle couvre au minimum :
+Elle couvre actuellement :
 
 ```text
 cohérence des métadonnées de release
 cohérence de l’inventaire des migrations
-lint backend / tooling de release
+lint backend / tooling de release / E2E
 tests backend
 lint frontend
 tests frontend
 build frontend
+Playwright E2E Core
 ```
 
-`npm run format:check` reste disponible comme contrôle qualité séparé. Il n’est pas ajouté comme blocker de `release:check` tant qu’une baseline globale du dépôt n’a pas été explicitement validée verte ; D-015 ne doit pas créer une nouvelle gate rouge uniquement par convention.
+Les E2E Playwright sont installés sous `e2e/`, exécutés par `npm run test:e2e` et inclus dans la commande canonique depuis D-016.
 
-D-016 étendra la gate de release avec les E2E Playwright avant la release stable.
+`npm run format:check` reste disponible comme contrôle qualité séparé. Il n’est pas ajouté comme blocker de `release:check` tant qu’une baseline globale du dépôt n’a pas été explicitement validée verte ; la gouvernance de release ne doit pas créer une nouvelle gate rouge uniquement par convention.
 
 Une gate locale et une CI doivent exécuter la même commande canonique afin d’éviter deux définitions concurrentes du mot « vert ».
 
@@ -285,19 +286,21 @@ Une gate locale et une CI doivent exécuter la même commande canonique afin d�
 
 ## 12. Protection de `main`
 
-Au démarrage de D-015, `main` n’est pas protégée et aucun required status check n’est configuré.
+Le ruleset GitHub `Main protection` est actif sur la branche par défaut.
 
-La cible de gouvernance est :
+La gouvernance distante actuelle impose notamment :
 
 ```text
-Pull Request obligatoire pour les changements applicatifs/release
+Pull Request obligatoire
 +
-CI verte
+required status check : Core Gate
 +
-required status check correspondant à la gate Core
+suppression de la branche protégée interdite
++
+non-fast-forward interdit
 ```
 
-La configuration GitHub de protection/ruleset est une configuration distante et n’est pas représentée uniquement par le code du dépôt. Elle doit donc être vérifiée explicitement à la clôture de D-015.
+La configuration distante reste une donnée GitHub et ne peut pas être déduite uniquement des fichiers versionnés. Elle doit être vérifiée lorsque la gouvernance de release ou les règles du dépôt sont modifiées.
 
 ---
 
@@ -311,7 +314,6 @@ gate de release verte
 migrations documentées
 release notes prêtes
 tag cible inexistant avant publication
-D-016 validée
 D-017 validée
 aucun blocker Core 1.0 actif
 ```
