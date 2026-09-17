@@ -2,6 +2,6 @@
   "schemaVersion": 1,
   "name": "saas-core-api",
   "repository": "greg44500/saas-core-api",
-  "version": "0.1.0",
-  "channel": "development"
+  "version": "1.0.0-rc.1",
+  "channel": "rc"
 }
