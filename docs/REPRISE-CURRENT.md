@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état courant après fusion de D-016 et après l’audit final architecture / sécurité / qualité du Core.
+> Cette synthèse décrit l’état courant au démarrage de D-017 — validation réelle de la dérivation et de l’upgrade du Core.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
@@ -24,161 +24,139 @@ En cas de contradiction :
 
 Les anciennes synthèses de reprise ne sont pas autoritatives lorsqu’elles sont dépassées.
 
-Le dépôt reste en développement `0.1.0`. Aucun tag `v1.0.0`, aucune RC et aucune release stable ne sont encore créés.
-
 ---
 
 ## 2. État Git de référence
 
-D-015 — gouvernance de release / provenance / migrations — est validée et fusionnée.
+La synchronisation documentaire post-D-016 / post-audit a été fusionnée via la PR #16.
 
-D-016 — E2E du Core avec Playwright — est validée et fusionnée.
-
-État `main` vérifié après fusion de la PR #15 :
+État `main` validé :
 
 ```text
-HEAD main : 43f318d81c261c4c788f726b4ed4f83647a3c4d9
-PR #15    : fusionnée
-merge     : 43f318d81c261c4c788f726b4ed4f83647a3c4d9
+HEAD main : fe0c3821a7d2f9377066c98193df1e522131a0be
+PR #16    : fusionnée
+Core Gate : #24
+run       : 35217570669
+result    : success
 ```
 
-Validation CI post-merge réellement observée :
+Le ruleset distant `Main protection` reste actif et impose notamment une Pull Request ainsi que le status check `Core Gate`.
+
+D-017 est ouverte sur :
 
 ```text
-workflow : Core Gate
-run      : 35212998693
-number   : 22
-status   : completed
-result   : success
+feature/d-017-derived-saas-upgrade-validation
 ```
 
-Le ruleset distant `Main protection` est actif sur la branche par défaut et impose notamment une Pull Request ainsi que le status check `Core Gate`.
+La branche a été créée directement depuis le HEAD `main` ci-dessus.
 
 ---
 
-## 3. Infrastructure E2E validée
+## 3. État du Core avant D-017
 
-Le Core dispose d’un package Playwright autonome :
+D-015 — gouvernance de release / provenance / migrations — est validée.
+
+D-016 — E2E du Core avec Playwright — est validée.
+
+L’audit final architecture / sécurité / qualité n’a démontré aucun nouveau blocker applicatif Core 1.0.
+
+Le Core reste actuellement :
 
 ```text
-e2e/
-├── package.json
-├── package-lock.json
-├── playwright.config.js
-├── support/
-└── tests/
+version : 0.1.0
+channel : development
 ```
 
-Principes validés :
+Aucune GitHub Release n’existe au démarrage de D-017. Aucun tag stable `v1.0.0` ne doit être créé avant clôture de D-017.
 
-- Playwright `1.63.0` ;
-- Chromium pour la gate Core actuelle ;
-- backend E2E sur `127.0.0.1:5100` ;
-- frontend E2E sur `127.0.0.1:5174` ;
-- MongoDB dédiée `saas_core_e2e_test` ;
-- garde stricte : toute base utilisée pour le nettoyage Playwright doit se terminer par `_e2e_test` ;
-- préparation déterministe avant exécution ;
-- exécution séquentielle (`workers: 1`) ;
-- traces, captures et vidéos conservées en cas d’échec ;
-- `npm run test:e2e` intégré à `npm run release:check` ;
-- installation des dépendances E2E, Chromium et exécution de la gate intégrées à `.github/workflows/core-gate.yml`.
+La gate canonique reste :
 
-Le nettoyage global E2E est un mécanisme technique de fixtures. Il ne constitue jamais une preuve de fonctionnalité utilisateur.
+```bash
+npm run release:check
+```
+
+Elle couvre la cohérence de release/migrations, le lint et les tests backend, le lint/tests/build frontend ainsi que les E2E Playwright du Core.
 
 ---
 
-## 4. Parcours navigateur couverts
+## 4. D-017 — objectif réel
 
-Les scénarios Playwright présents couvrent les parcours navigateur suivants :
+D-017 doit valider la stratégie de distribution par un exercice réel et non une simulation documentaire.
+
+Séquence canonique :
 
 ```text
-inscription → connexion → session restaurée via refresh HttpOnly
-logout → reload → route protégée toujours inaccessible
-création du premier workspace → dashboard
-renommage workspace → persistance après reload
-modification profil → persistance après reload
-archivage workspace réel → retrait des espaces utilisables
-fermeture compte réelle → session révoquée → route protégée inaccessible
+release candidate Core
+→ dépôt pilote dérivé conservant l’historique Git
+→ provenance core-origin.json
+→ petit module métier
+→ évolution Core compatible
+→ branche d’upgrade du produit
+→ intégration réelle
+→ migrations/configuration
+→ tests Core + métier + E2E pertinents
+→ analyse des conflits et de la provenance
 ```
 
-Les ressources détruites par les deux derniers scénarios sont exclusivement jetables :
+D-017 doit également vérifier qu’un SaaS dérivé peut ajouter une fiche d’aide métier sans modifier le corpus d’aide Core.
 
-- compte généré pour le test ;
-- workspace généré pour le test.
+Spécification d’exécution :
 
-Playwright reste une couche de validation des parcours navigateur critiques. Les invariants de sécurité et de domaine déjà couverts par les suites backend/frontend spécialisées ne sont pas dupliqués mécaniquement en E2E lorsque cela n’apporte pas une vérification d’intégration distincte.
+```text
+docs/debt/D-017-derived-saas-upgrade-validation.md
+```
 
 ---
 
-## 5. Lifecycle Account / Workspace validé
+## 5. Pilote métier retenu
 
-### Workspace
-
-Backend :
+Le domaine pilote minimal retenu est :
 
 ```text
-GET  /api/workspaces/:workspaceId/closure-impact
-POST /api/workspaces/:workspaceId/archive
+catalog
 ```
 
-Frontend :
+Objectif : tester les points d’extension sans construire un nouveau produit complet.
+
+Le module doit démontrer au minimum :
 
 ```text
-RTK Query archiveWorkspace
-WorkspaceArchiveSection
-confirmation par nom exact du workspace + mot de passe courant
+backend module catalog
+validation Zod stricte
+RBAC métier
+capability métier
+route backend par composition
+RTK Query
+route frontend par composition
+navigation Workspace
+widget Dashboard métier
+fiche d’aide métier
 ```
 
-L’archivage est une fonctionnalité utilisateur réelle. Il ne s’agit pas d’un helper de test.
-
-### Account
-
-Backend :
-
-```text
-GET  /api/users/me/closure-impact
-POST /api/users/me/closure
-```
-
-Frontend :
-
-```text
-RTK Query getAccountClosureImpact / closeCurrentAccount
-AccountClosureSection / AccountClosureDialog
-confirmation email + mot de passe + confirmation explicite
-```
-
-Le service de fermeture traite transactionnellement le cycle :
-
-```text
-ACTIVE
-→ DELETION_REQUESTED
-→ CLOSED
-→ révocation des AuthSession
-```
-
-Les anciennes propositions de routes `DELETE /api/workspaces/:workspaceId` ou `DELETE /api/users/me` ne décrivent pas le contrat courant et ne doivent pas être réintroduites.
+Les points de jonction applicatifs existants doivent être privilégiés. Une modification inutile des longues listes Core est considérée comme un signal de défaut de dérivabilité.
 
 ---
 
-## 6. Audit final architecture / sécurité / qualité
+## 6. Première phase — RC Core
 
-L’audit final effectué sur le `main` fusionné n’a démontré aucun nouveau blocker applicatif Core 1.0.
+La première étape D-017 consiste à préparer une candidate :
 
-Constats principaux :
+```text
+version = 1.0.0-rc.1
+channel = rc
+```
 
-- architecture backend modulaire cohérente ;
-- architecture frontend conforme à la séparation `features` / composants partagés / RTK Query / Redux Toolkit ;
-- authentification, rotation de session, multi-tenant, RBAC et fermeture de compte cohérents avec les contrats ;
-- quotas `UsageMetric` réservés atomiquement ;
-- pipeline File fail-closed sur l’inspection et l’antivirus ;
-- isolation Playwright destructive limitée à la base `_e2e_test` ;
-- gouvernance release et manifest de migrations cohérents ;
-- aucun défaut code/sécurité démontré nécessitant de rouvrir le Core avant D-017.
+La RC doit respecter les règles D-015 :
 
-Les écarts trouvés par l’audit sont documentaires : plusieurs documents décrivaient encore D-015, D-016 ou Playwright comme futurs alors que le code, Git et la CI avaient déjà avancé.
+- versions cohérentes dans `core-release.json`, les packages et leurs lockfiles ;
+- notes de release structurées ;
+- inventaire des migrations cohérent ;
+- `npm run release:check` vert ;
+- PR Core ;
+- fusion uniquement avec `Core Gate` verte ;
+- tag/release immuable `v1.0.0-rc.1` sur le SHA réellement validé.
 
-La correction documentaire post-audit doit rester strictement limitée à cette synchronisation et obtenir une nouvelle `Core Gate` verte avant fusion.
+Le passage à `1.0.0-rc.1` n’est pas une validation de D-017 : il fournit seulement la base immuable de l’exercice de dérivation.
 
 ---
 
@@ -193,32 +171,33 @@ D-021  VALIDÉ
 D-022  VALIDÉ
 D-025  VALIDÉ — 2026-09-16
 
+D-017  EN COURS — validation réelle dérivation + upgrade pilote
 D-020  DIFFÉRÉ — validation terrain, non bloquant Core 1.0
-
-D-017  PLANIFIÉ — prochain blocker Core 1.0 après synchronisation documentaire post-audit
 
 D-023  DIFFÉRÉ — Core 1.1
 D-024  DIFFÉRÉ — Core 1.1
 ```
 
-Les dettes de production dépendantes d’un produit réel — conformité finale, billing/payment, observabilité, stockage production, déploiement — restent distinctes de la validation du Core générique.
+Les dettes de production dépendantes d’un produit réel — conformité finale, billing/payment, observabilité, stockage production et déploiement — restent distinctes de la validation du Core générique.
 
 ---
 
 ## 8. Séquence restante vers Core stable
 
 ```text
-synchronisation documentaire post-D-016 / post-audit
-→ nouvelle Core Gate verte
-→ fusion de la PR documentaire
-→ vérifier le nouveau HEAD main
-→ D-017 dérivation + upgrade pilote
-→ corrections éventuelles révélées par D-017
+D-017 phase A : préparer et publier v1.0.0-rc.1
+→ phase B : créer le dépôt pilote avec historique Core conservé
+→ phase C : ajouter le module métier catalog
+→ phase D : produire une évolution Core compatible
+→ phase E : upgrader réellement le pilote
+→ phase F : bilan conflits / provenance / tests
+→ corriger tout blocker révélé
 → nouvelle gate globale
-→ release candidate / tag stable uniquement lorsque la stratégie de distribution est réellement validée
+→ clôturer D-017 uniquement sur preuves réelles
+→ v1.0.0 stable seulement ensuite
 ```
 
-Ne pas créer `v1.0.0` avant D-017.
+Ne pas créer `v1.0.0` avant validation complète de D-017.
 
 ---
 
