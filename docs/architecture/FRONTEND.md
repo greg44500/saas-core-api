@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Architecture frontend
 
 **Statut :** document canonique d’architecture frontend  
-**Dernière mise à jour :** 2026-09-16  
+**Dernière mise à jour :** 2026-09-17  
 **Périmètre :** frontend React / Vite du Core et futures applications dérivées
 
 ## 1. Objet
@@ -51,7 +51,7 @@ Les composants shadcn/ui sont intégrés comme code de design system adapté au 
 
 TypeScript n’est pas utilisé.
 
-Playwright fait partie de la stratégie E2E cible, mais n’est pas présenté comme installé tant qu’il n’apparaît pas réellement dans le package courant.
+Les E2E du Core sont installés dans le package autonome `e2e/` avec Playwright `1.63.0`. Ils font partie de `npm run release:check` et du workflow `Core Gate`. Les applications dérivées doivent ajouter leurs propres scénarios E2E métier sans dupliquer inutilement les parcours Core déjà couverts.
 
 ---
 
@@ -738,7 +738,7 @@ React Testing Library
 user-event
 ```
 
-La stratégie cible reste hybride :
+La stratégie actuelle est hybride :
 
 ```text
 unit/component
@@ -747,9 +747,13 @@ unit/component
 cross-feature integration
 → dossier dédié lorsque le besoin apparaît
 
-E2E critique
-→ Playwright lorsque la couche E2E sera installée
+E2E Core critique
+→ Playwright sous e2e/tests
+→ exécuté par npm run test:e2e
+→ inclus dans npm run release:check
 ```
+
+Les applications dérivées ajoutent leurs propres E2E lorsque leurs parcours métier le nécessitent.
 
 Les tests doivent privilégier les sélecteurs accessibles et le comportement visible par l’utilisateur.
 
