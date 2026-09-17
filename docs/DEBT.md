@@ -58,11 +58,33 @@ produit dérivé automatiquement production-ready
 
 ## 3. Synthèse des dettes
 
-### 3.1 Blocker restant dans la trajectoire Core 1.0
+### 3.1 Trajectoire Core 1.0
 
-| ID | Dette | Statut |
-|---|---|---|
-| D-017 | Validation réelle création + upgrade d'un SaaS dérivé pilote | EN COURS |
+D-017 — validation réelle de la création et de l’upgrade d’un SaaS dérivé pilote — est **VALIDÉE le 2026-09-17**.
+
+La stratégie de distribution a été démontrée sur deux Release Candidates réelles et un dépôt pilote distinct :
+
+```text
+Core 1.0.0-rc.1
+→ saas-core-derived-pilot
+→ module métier catalog
+→ évolution Core générique
+→ Core 1.0.0-rc.2
+→ merge Git réel dans le pilote
+→ 0 conflit manuel
+→ provenance RC2
+→ Core Gate #11 post-merge : success
+```
+
+La dernière validation du pilote est :
+
+```text
+main pilote : fd7a31d6532898e951b02e75940c09de1eec63ea
+Core Gate #11
+run : 35243957546
+conclusion : success
+Run canonical Core gate : success
+```
 
 D-015 — versionnement, provenance, releases et discipline de migration du Core — est **VALIDÉE le 2026-09-17**.
 
@@ -70,9 +92,11 @@ D-016 — E2E Core avec Playwright — est **VALIDÉE le 2026-09-17** après int
 
 L’audit final architecture / sécurité / qualité n’a démontré aucun nouveau blocker applicatif Core 1.0. La synchronisation documentaire post-audit a été fusionnée via la PR #16 et le nouveau `main` `fe0c3821a7d2f9377066c98193df1e522131a0be` a été validé par la `Core Gate` #24 (`run 35217570669`).
 
-Les blockers applicatifs génériques décidés avant le gel sont levés : D-002, D-011, D-015, D-016, D-021, D-022 et D-025 sont validées. D-017 reste le dernier blocker actif de la trajectoire Core 1.0.
+Les blockers applicatifs génériques décidés avant le gel sont levés : D-002, D-011, D-015, D-016, D-017, D-021, D-022 et D-025 sont validées.
 
-**D-020 n’est plus bloquante pour Core 1.0.** Sa validation fonctionnelle terrain est explicitement différée au déploiement de l’application métier avec des bêta-testeurs réels.
+**D-020 n’est pas bloquante pour Core 1.0.** Sa validation fonctionnelle terrain est explicitement différée au déploiement de l’application métier avec des bêta-testeurs réels.
+
+La publication stable `v1.0.0` reste une opération de release distincte à exécuter selon D-015. La validation de D-017 autorise sa préparation ; elle ne crée pas automatiquement le tag stable.
 
 ### 3.2 Non-blockers Core 1.0 mais blockers possibles d'un produit réel
 
@@ -175,33 +199,14 @@ MFA, passkeys, SSO entreprise ou autres providers ne sont pas ajoutés uniquemen
 
 Chaque dérivé doit couvrir ses parcours métier/transversaux critiques propres.
 
+D-017 démontre que la gate canonique clonée continue d’exécuter les E2E Core après dérivation et upgrade. Cela ne remplace pas les E2E métier propres à chaque futur produit réel.
+
 ### D-013 — Configuration et déploiement de production
 
 **Statut :** À CADRER  
 **Blocage Core 1.0 :** non
 
 Variables/secrets, HTTPS, reverse proxy, CORS, cookies, MongoDB/backups, migrations/indexes, SMTP, stockage, antivirus, jobs, health/readiness, monitoring et rollback. Référence : `docs/operations/OPERATIONS.md`.
-
-### D-017 — Validation réelle de la dérivation et de l'upgrade du Core
-
-**Statut :** EN COURS — démarrée le 2026-09-17  
-**Blocage Core 1.0 :** oui pour valider réellement la stratégie de distribution  
-**Dépendances :** D-014, D-002, D-015 et D-016 validées.  
-**Spécification d’exécution :** `docs/debt/D-017-derived-saas-upgrade-validation.md`
-
-Branche de travail Core :
-
-```text
-feature/d-017-derived-saas-upgrade-validation
-```
-
-Point de départ : `main` `fe0c3821a7d2f9377066c98193df1e522131a0be`, validé par `Core Gate` #24 (`run 35217570669`, `success`).
-
-Exercice : release candidate Core → dépôt pilote dérivé → petit module métier → évolution Core compatible → upgrade réel → migrations/configuration → tests Core+métier+E2E → analyse des conflits/provenance.
-
-D-017 doit aussi vérifier que le mécanisme d’aide Core accepte un module d’aide métier additionnel sans modifier le corpus Core.
-
-La première phase prépare `1.0.0-rc.1` comme base immuable de dérivation. Le passage en RC ne clôt pas D-017 : la dette reste ouverte jusqu’à l’upgrade réel du dépôt pilote et au bilan final.
 
 ### D-020 — Invitation commerciale client et offres privées de découverte
 
@@ -237,7 +242,7 @@ Le drawer Workspace doit évoluer après Core 1.0 vers une console contextualis�
 
 ---
 
-## 5. Dettes clôturées récemment — D-015 / D-016 / D-025
+## 5. Dettes clôturées récemment — D-015 / D-016 / D-017 / D-025
 
 ### D-015 — Versionnement, provenance, releases et discipline de migration du Core
 
@@ -247,7 +252,7 @@ Le drawer Workspace doit évoluer après Core 1.0 vers une console contextualis�
 
 État validé, résumé : identité machine-readable du Core, SemVer et canaux de release, provenance des dérivés, manifest et politique de migrations, vérifications `release:verify` / `release:check`, workflow GitHub Actions `Core Gate`, ruleset `Main protection`, PR obligatoire et status check obligatoire.
 
-Aucun tag `v1.0.0`, aucune RC et aucune release stable ne sont créés par D-015.
+D-015 définit le processus utilisé ensuite pour publier les RC de D-017 et devra également être appliqué à la release stable.
 
 ### D-016 — E2E du Core avec Playwright
 
@@ -287,6 +292,37 @@ Le nettoyage de fixtures E2E est distinct des fonctionnalités utilisateur : le 
 
 La couverture Playwright reste volontairement une couche de parcours navigateur, pas une duplication de tous les invariants déjà vérifiés par les tests backend/frontend spécialisés. Isolation multi-tenant, RBAC, entitlement/quota, administration Platform, Files, sécurité et centre d’aide conservent leurs tests dédiés ; un scénario navigateur n’est ajouté que lorsqu’il apporte une vérification d’intégration utilisateur réellement distincte.
 
+### D-017 — Validation réelle de la dérivation et de l’upgrade du Core
+
+**Statut :** VALIDÉ — 2026-09-17  
+**Périmètre :** Core 1.0 / distribution / SaaS dérivé pilote  
+**Blocage Core 1.0 :** levé pour D-017  
+**Bilan détaillé :** `docs/debt/D-017-derived-saas-upgrade-validation.md`
+
+État validé, résumé :
+
+- RC1 réelle `v1.0.0-rc.1` sur `432fcfd88cd185234e6317a27df0d3d458f93f28` ;
+- dépôt `greg44500/saas-core-derived-pilot` créé avec historique Git commun ;
+- provenance initiale explicite ;
+- module métier `catalog` séparé avec backend, Zod, RBAC, capability, RTK Query, route/navigation/widget frontend et aide métier ;
+- migration métier de backfill des permissions des rôles système conservée dans le dérivé ;
+- évolution Core générique réelle fusionnée par la PR Core #20 ;
+- RC2 réelle `v1.0.0-rc.2` sur `5c61c7066eeb56460adb164ba39ae0a0462bef53` ;
+- upgrade réalisé par `git fetch upstream-core --tags` puis `git merge v1.0.0-rc.2` ;
+- merge Core → pilote `c654c3e4e3b3f4821b9bd210cb3b21e2afbe37ea` ;
+- `MERGE_CONFLICT_COUNT=0` ;
+- aucun changement fonctionnel du module `catalog` requis ;
+- revue explicite migrations/configuration/dépendances : aucune migration Core, variable d’environnement, dépendance ou évolution DB nouvelle dans RC2 ;
+- `core-origin.json` mis à jour seulement après validation de l’upgrade ;
+- Core Gate #9 `success` avant provenance finale ;
+- Core Gate #10 `success` après provenance RC2 ;
+- PR pilote #3 fusionnée ;
+- `main` pilote `fd7a31d6532898e951b02e75940c09de1eec63ea` validé par Core Gate #11, run `35243957546`, `success` ;
+- extension du centre d’aide métier validée sans réécriture du corpus Core ;
+- aucune anomalie découverte ne reste blocker Core 1.0.
+
+D-017 valide la stratégie de dérivation/upgrade. Elle ne rend pas un produit dérivé automatiquement production-ready.
+
 ### D-025 — Centre d’aide sécurisé Workspace / Platform
 
 **Statut :** VALIDÉ — 2026-09-16  
@@ -306,6 +342,7 @@ D-011 Design System + préférences                           VALIDÉ — 2026-0
 D-014 points d'extension métier                             VALIDÉ
 D-015 versionnement / provenance / release / migrations     VALIDÉ — 2026-09-17
 D-016 Playwright E2E Core                                   VALIDÉ — 2026-09-17
+D-017 dérivation + upgrade réel SaaS pilote                 VALIDÉ — 2026-09-17
 D-018 Équipe Platform / RBAC / invitations                  VALIDÉ
 D-019 moteur sécurisé de rétention / purge Core             VALIDÉ
 D-021 gate sécurité Auth / invitations / tokens             VALIDÉ — 2026-09-12
@@ -329,16 +366,17 @@ D-020 invitation commerciale / validation terrain           DIFFÉRÉ — non bl
 → audit final architecture / sécurité / qualité             TERMINÉ — aucun nouveau blocker démontré
 → synchronisation documentaire post-audit                   VALIDÉE / fusionnée — PR #16
 → Core Gate #24 sur main                                    VALIDÉE — 2026-09-17
-→ D-017 dérivation + upgrade pilote                         EN COURS
-    → phase A : première RC Core
-    → phase B : dépôt pilote dérivé
-    → phase C : module métier minimal
-    → phase D : évolution Core compatible
-    → phase E : upgrade réel du pilote
-    → phase F : bilan et décision de clôture
-→ corrections éventuelles révélées par D-017
-→ nouvelle gate globale
-→ tag/release Core stable lorsque la stratégie est réellement validée
+→ D-017 dérivation + upgrade pilote                         VALIDÉE — 2026-09-17
+    → phase A : première RC Core                             TERMINÉE
+    → phase B : dépôt pilote dérivé                         TERMINÉE
+    → phase C : module métier minimal                       TERMINÉE
+    → phase D : évolution Core compatible                   TERMINÉE
+    → phase E : upgrade réel du pilote                      TERMINÉE
+    → phase F : bilan et décision de clôture                TERMINÉE
+→ clôture documentaire D-017
+→ préparation release stable Core 1.0.0 selon D-015
+→ gate canonique de la release stable
+→ tag/release v1.0.0 uniquement sur le SHA validé
 --- évolution post-v1.0 ---
 → D-023 demande gouvernée de transfert de propriété         DIFFÉRÉ — cible Core 1.1
 → D-024 console Platform contextualisée du Workspace        DIFFÉRÉ — cible Core 1.1
@@ -397,4 +435,45 @@ workflow : Core Gate
 run : 35217570669
 run number : 24
 conclusion : success
+```
+
+### Core RC2 post-merge
+
+```text
+HEAD validé : 5c61c7066eeb56460adb164ba39ae0a0462bef53
+workflow : Core Gate
+run : 35239618709
+run number : 34
+conclusion : success
+```
+
+### Pilote après merge RC2, avant provenance finale
+
+```text
+HEAD validé : c654c3e4e3b3f4821b9bd210cb3b21e2afbe37ea
+workflow : Core Gate
+run : 35242233294
+run number : 9
+conclusion : success
+```
+
+### Pilote après provenance RC2
+
+```text
+HEAD validé : bbf8c79bd803b9f31dd504388f8c7e98068b8a2e
+workflow : Core Gate
+run : 35242912831
+run number : 10
+conclusion : success
+```
+
+### Pilote post-merge sur `main`
+
+```text
+HEAD validé : fd7a31d6532898e951b02e75940c09de1eec63ea
+workflow : Core Gate
+run : 35243957546
+run number : 11
+conclusion : success
+Run canonical Core gate : success
 ```
