@@ -1,0 +1,19 @@
+{
+  "name": "saas-core-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.7 <25"
+  },
+  "scripts": {
+    "prepare": "node ../scripts/e2e/prepareE2eEnvironment.js",
+    "test": "npm run prepare && playwright test",
+    "test:headed": "npm run prepare && playwright test --headed",
+    "test:ui": "npm run prepare && playwright test --ui",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
