@@ -282,9 +282,9 @@ PR #23 fusionnée
 → GitHub Release stable 390898671
 ```
 
-Il n’existe plus de publication Core 1.0 en attente.
+La publication `v1.0.0` est terminée. Un patch `v1.0.1` est désormais en préparation pour corriger la gouvernance d’identité/version des SaaS dérivés : `product-release.json` sépare l’identité applicative du produit de `core-release.json` et `core-origin.json`. La base fonctionnelle de ce patch est le merge `b08741c38a83f071440e0f49c9362c484ed15712`, validé par la Core Gate #44 (run `35336040383`).
 
-Le pilote `saas-core-derived-pilot` reste volontairement tracé sur `v1.0.0-rc.2` tant qu’une mise à niveau dédiée vers la stable n’a pas été exécutée et validée.
+Le pilote `saas-core-derived-pilot` reste volontairement tracé sur `v1.0.0-rc.2` tant qu’une mise à niveau dédiée n’a pas été exécutée et validée.
 
 Les trajectoires post-1.0 doivent rester distinctes :
 

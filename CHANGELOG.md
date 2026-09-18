@@ -6,7 +6,29 @@ La première release candidate formelle du Core est `v1.0.0-rc.1`, publiée le 2
 
 ## Unreleased
 
-Synchronisation documentaire post-release de l’état stable `1.0.0` ; aucun changement applicatif, DB, dépendance ou configuration.
+Aucun changement supplémentaire documenté.
+
+---
+
+## 1.0.1 — 2026-09-18
+
+Patch de gouvernance des SaaS dérivés corrigeant l’écart entre le contrat 1.0 — version applicative du produit indépendante du Core — et la gate de release héritée.
+
+### Changed
+
+- ajout du contrat machine-readable `product-release.json` pour l’identité et la version applicative propres au produit dérivé ;
+- `release:verify` exige ce fichier lorsqu’un `core-origin.json` est présent ;
+- `product-release.json` est refusé dans le dépôt Core lorsqu’aucun `core-origin.json` n’existe ;
+- validation SemVer et des canaux `development`, `rc` et `stable` pour la version produit ;
+- maintien de `core-release.json` et des package/lockfiles comme métadonnées techniques du Core afin de limiter les conflits d’upgrade.
+
+### Impact
+
+- aucune migration MongoDB ;
+- aucune variable d’environnement ;
+- aucune dépendance ajoutée ou mise à niveau ;
+- aucun changement de contrat DB ;
+- aucun changement métier ou runtime de l’API.
 
 ---
 
