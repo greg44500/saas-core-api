@@ -70,6 +70,7 @@ release id : 390898671
 Les tags publiés `v1.0.0-rc.1`, `v1.0.0-rc.2`, `v1.0.0` et `v1.0.1` ne doivent pas être déplacés ou réécrits.
 
 ---
+
 ## 3. D-017 — état final
 
 D-017 est **VALIDÉE le 2026-09-17**.
@@ -347,6 +348,7 @@ D-024 — console Platform contextualisée du Workspace
 Elles ne bloquent pas le démarrage du cadrage métier du produit après validation de son upgrade Core `v1.0.1`.
 
 ---
+
 ## 11. Rappel de méthode
 
 À chaque reprise :
