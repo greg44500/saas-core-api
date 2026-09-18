@@ -6,13 +6,13 @@ La première release candidate formelle du Core est `v1.0.0-rc.1`, publiée le 2
 
 ## Unreleased
 
-Aucune modification non publiée après la préparation de `1.0.0`.
+Synchronisation documentaire post-release de l’état stable `1.0.0` ; aucun changement applicatif, DB, dépendance ou configuration.
 
 ---
 
 ## 1.0.0 — 2026-09-17
 
-Première release stable du Core, préparée après validation de D-015, D-016 et D-017.
+Première release stable du Core, publiée après validation de D-015, D-016 et D-017.
 
 ### Validation stable
 
@@ -22,7 +22,18 @@ Première release stable du Core, préparée après validation de D-015, D-016 e
 - la Core Gate #36 (run `35245765480`) a validé le `main` post-clôture D-017 au commit `5bf91252415e3e8f97b60c5aa1e165bd9829a3a2` ;
 - la préparation stable ne modifie ni contrat DB, ni dépendance, ni variable d’environnement, ni migration applicative.
 
-Le tag immuable `v1.0.0` et la GitHub Release ne sont publiés qu’après fusion de la PR de release et validation de la Core Gate post-merge correspondante.
+Publication finale validée :
+
+```text
+commit : dfdd39a57c7fb1ec7e53ab7778a806fdc86f1dff
+Core Gate : #38
+run : 35248517242
+conclusion : success
+tag : v1.0.0
+GitHub Release : 390898671
+```
+
+Le tag `v1.0.0` est publié et immuable.
 
 ---
 

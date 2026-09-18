@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Politique de versionnement et de release
 
 **Statut :** canonique — D-015 validée  
-**Dernière mise à jour :** 2026-09-17  
+**Dernière mise à jour :** 2026-09-18  
 **Périmètre :** versionnement du Core, release candidate, tags, provenance et notes de version
 
 ---
@@ -18,7 +18,7 @@ version d’un SaaS dérivé
 version du Core intégrée dans un SaaS dérivé
 ```
 
-D-015 — gouvernance de release —, D-016 — E2E Core Playwright — et D-017 — dérivation et upgrade réel d’un SaaS pilote — sont validées. La première release stable peut être préparée dès lors que les autres critères de la présente politique restent satisfaits.
+D-015 — gouvernance de release —, D-016 — E2E Core Playwright — et D-017 — dérivation et upgrade réel d’un SaaS pilote — sont validées. La première release stable `v1.0.0` a été publiée le 2026-09-17 après validation des critères de la présente politique.
 
 ---
 
@@ -126,7 +126,7 @@ stable
 → version SemVer sans suffixe prerelease
 ```
 
-La cible stable courante est :
+La release stable courante publiée est :
 
 ```text
 version = 1.0.0
@@ -151,7 +151,7 @@ v1.0.0-rc.1
 → v1.0.0-rc.2
 ```
 
-D-017 étant validée, le tag stable `v1.0.0` peut être publié uniquement lorsqu’aucun blocker Core 1.0 ne subsiste et que le commit `main` cible a passé la gate de release requise.
+`v1.0.0` a été publiée après validation de D-017, absence de blocker Core 1.0 actif et Core Gate post-merge verte sur le commit `dfdd39a57c7fb1ec7e53ab7778a806fdc86f1dff`. Les releases ultérieures restent soumises aux mêmes principes de validation applicables à leur version.
 
 ---
 

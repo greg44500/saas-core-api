@@ -2,11 +2,11 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état courant après validation réelle de D-017 — dérivation et upgrade d’un SaaS pilote.
+> Cette synthèse décrit l’état courant après publication réelle de `v1.0.0` stable et validation post-release de ses preuves GitHub.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
-> **Dernière mise à jour : 2026-09-17**
+> **Dernière mise à jour : 2026-09-18**
 
 ---
 
@@ -28,31 +28,30 @@ Les anciennes synthèses de reprise ne sont pas autoritatives lorsqu’elles son
 
 ## 2. État Core de référence
 
-Le `main` Core ayant servi à la publication de RC2 est :
+La première release stable du Core est réellement publiée :
 
 ```text
-5c61c7066eeb56460adb164ba39ae0a0462bef53
+version : 1.0.0
+tag : v1.0.0
+commit : dfdd39a57c7fb1ec7e53ab7778a806fdc86f1dff
+GitHub Release : saas-core-api v1.0.0
+release id : 390898671
+statut : stable — non draft / non prerelease
 ```
 
-Release candidate actuelle :
+Validation Core stable post-merge :
 
 ```text
-version : 1.0.0-rc.2
-tag : v1.0.0-rc.2
-commit : 5c61c7066eeb56460adb164ba39ae0a0462bef53
-GitHub Release : Core 1.0.0-rc.2
-statut : pre-release
-```
-
-Validation Core RC2 post-merge :
-
-```text
-Core Gate #34
-run : 35239618709
+Core Gate #38
+run : 35248517242
+HEAD : dfdd39a57c7fb1ec7e53ab7778a806fdc86f1dff
 result : success
+Run canonical Core gate : success
 ```
 
-Le tag `v1.0.0-rc.2` est immuable et ne doit pas être déplacé ou réécrit.
+Le tag annoté `v1.0.0` cible exactement ce commit. Les tags `v1.0.0-rc.1`, `v1.0.0-rc.2` et `v1.0.0` sont des références publiées et ne doivent pas être déplacés ou réécrits.
+
+`core-release.json`, les packages et leurs lockfiles sont alignés sur `1.0.0` / `stable`.
 
 ---
 
@@ -271,29 +270,39 @@ Les obligations propres au produit, à son infrastructure et à son contexte lé
 
 ---
 
-## 10. Prochaine séquence vers `v1.0.0`
+## 10. État post-release et prochaine décision
 
-Le tag stable n’est pas encore créé.
-
-La prochaine séquence doit respecter D-015 :
+La séquence de publication de `v1.0.0` est terminée :
 
 ```text
-clôture documentaire D-017 fusionnée et validée
-→ préparer les métadonnées Core 1.0.0
-→ préparer les notes de release stable
-→ vérifier le manifest de migrations
-→ npm run release:check
-→ PR de release stable
-→ Core Gate verte
-→ fusion dans main
-→ Core Gate post-merge verte si le workflow la déclenche
-→ tag annoté v1.0.0 sur le SHA exact validé
-→ GitHub Release stable Core 1.0.0
+PR #23 fusionnée
+→ main dfdd39a57c7fb1ec7e53ab7778a806fdc86f1dff
+→ Core Gate #38 / run 35248517242 : success
+→ tag annoté v1.0.0
+→ GitHub Release stable 390898671
 ```
 
-Ne pas déplacer les tags `v1.0.0-rc.1` ou `v1.0.0-rc.2`.
+Il n’existe plus de publication Core 1.0 en attente.
 
-Ne pas créer `v1.0.0` avant la fin de cette séquence de release.
+Le pilote `saas-core-derived-pilot` reste volontairement tracé sur `v1.0.0-rc.2` tant qu’une mise à niveau dédiée vers la stable n’a pas été exécutée et validée.
+
+Les trajectoires post-1.0 doivent rester distinctes :
+
+```text
+documentation post-release
+→ synchroniser uniquement les formulations devenues obsolètes
+
+pilote dérivé
+→ upgrade contrôlé vers v1.0.0 si décidé
+
+Core 1.1
+→ D-023 / D-024 et autres évolutions génériques explicitement décidées
+
+premier SaaS métier réel
+→ repartir de la release stable et reclasser les dettes produit / production applicables
+```
+
+Aucune évolution fonctionnelle du Core ne doit être introduite uniquement pour nettoyer la documentation post-release.
 
 ---
 
