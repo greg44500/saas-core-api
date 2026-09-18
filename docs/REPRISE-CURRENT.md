@@ -2,7 +2,7 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état courant après publication réelle de `v1.0.0` stable et validation post-release de ses preuves GitHub.
+> Cette synthèse décrit l’état courant après publication réelle de `v1.0.1` stable et validation post-release de ses preuves GitHub.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
@@ -28,33 +28,48 @@ Les anciennes synthèses de reprise ne sont pas autoritatives lorsqu’elles son
 
 ## 2. État Core de référence
 
-La première release stable du Core est réellement publiée :
+La release stable courante du Core est réellement publiée :
 
 ```text
-version : 1.0.0
-tag : v1.0.0
-commit : dfdd39a57c7fb1ec7e53ab7778a806fdc86f1dff
-GitHub Release : saas-core-api v1.0.0
-release id : 390898671
+version : 1.0.1
+tag : v1.0.1
+commit : 9613bdb0c70ee1950dfa7da68e5cbefa704e88f1
+GitHub Release : Core 1.0.1 — Patch stable
+release id : 391556800
+publication : 2026-09-18T14:50:42Z
 statut : stable — non draft / non prerelease
 ```
 
-Validation Core stable post-merge :
+Validation de la release `1.0.1` :
 
 ```text
-Core Gate #38
-run : 35248517242
-HEAD : dfdd39a57c7fb1ec7e53ab7778a806fdc86f1dff
+PR #27 — Release — Core 1.0.1
+HEAD PR : 14d4745d8c24c80050f0fe3759f3d1b5cf3c5df1
+Core Gate #45
+run : 35356056148
 result : success
-Run canonical Core gate : success
+
+merge main : 9613bdb0c70ee1950dfa7da68e5cbefa704e88f1
+Core Gate #46
+run : 35356874737
+result : success
 ```
 
-Le tag annoté `v1.0.0` cible exactement ce commit. Les tags `v1.0.0-rc.1`, `v1.0.0-rc.2` et `v1.0.0` sont des références publiées et ne doivent pas être déplacés ou réécrits.
+Le tag annoté `v1.0.1` cible exactement le commit `9613bdb0c70ee1950dfa7da68e5cbefa704e88f1`.
 
-`core-release.json`, les packages et leurs lockfiles sont alignés sur `1.0.0` / `stable`.
+`core-release.json`, le package racine et le package frontend sont alignés sur `1.0.1` / `stable`.
+
+La release stable initiale `v1.0.0` reste une référence publiée immuable :
+
+```text
+tag : v1.0.0
+commit : dfdd39a57c7fb1ec7e53ab7778a806fdc86f1dff
+release id : 390898671
+```
+
+Les tags publiés `v1.0.0-rc.1`, `v1.0.0-rc.2`, `v1.0.0` et `v1.0.1` ne doivent pas être déplacés ou réécrits.
 
 ---
-
 ## 3. D-017 — état final
 
 D-017 est **VALIDÉE le 2026-09-17**.
@@ -272,44 +287,66 @@ Les obligations propres au produit, à son infrastructure et à son contexte lé
 
 ## 10. État post-release et prochaine décision
 
-La séquence de publication de `v1.0.0` est terminée :
+La publication de `v1.0.1` est terminée et vérifiée :
 
 ```text
-PR #23 fusionnée
-→ main dfdd39a57c7fb1ec7e53ab7778a806fdc86f1dff
-→ Core Gate #38 / run 35248517242 : success
-→ tag annoté v1.0.0
-→ GitHub Release stable 390898671
+PR #27 fusionnée
+→ main 9613bdb0c70ee1950dfa7da68e5cbefa704e88f1
+→ Core Gate #46 / run 35356874737 : success
+→ tag annoté v1.0.1
+→ tag cible exactement 9613bdb0c70ee1950dfa7da68e5cbefa704e88f1
+→ GitHub Release 391556800
+→ stable / non draft / non prerelease
+→ core-release.json : 1.0.1 / stable
+→ package racine : 1.0.1
+→ package frontend : 1.0.1
 ```
 
-La publication `v1.0.0` est terminée. Un patch `v1.0.1` est désormais en préparation pour corriger la gouvernance d’identité/version des SaaS dérivés : `product-release.json` sépare l’identité applicative du produit de `core-release.json` et `core-origin.json`. La base fonctionnelle de ce patch est le merge `b08741c38a83f071440e0f49c9362c484ed15712`, validé par la Core Gate #44 (run `35336040383`).
-
-Le pilote `saas-core-derived-pilot` reste volontairement tracé sur `v1.0.0-rc.2` tant qu’une mise à niveau dédiée n’a pas été exécutée et validée.
-
-Les trajectoires post-1.0 doivent rester distinctes :
+Le patch `1.0.1` formalise la séparation suivante pour les SaaS dérivés :
 
 ```text
-documentation post-release
-→ synchroniser uniquement les formulations devenues obsolètes
+core-release.json
+→ identité/version du Core
 
-pilote dérivé
-→ upgrade contrôlé vers v1.0.0 si décidé
+core-origin.json
+→ provenance exacte du Core intégré
 
-Core 1.1
-→ D-023 / D-024 et autres évolutions génériques explicitement décidées
-
-identité/version d’un SaaS dérivé réel
-→ contrat générique product-release.json séparé de core-release.json / core-origin.json
-→ validation par release:verify avant intégration dans une prochaine release Core
-
-premier SaaS métier réel
-→ repartir de la release stable et reclasser les dettes produit / production applicables
+product-release.json
+→ identité/version applicative propre au produit dérivé
 ```
 
-Aucune évolution fonctionnelle du Core ne doit être introduite uniquement pour nettoyer la documentation post-release.
+Le prochain travail prioritaire n’est pas une nouvelle évolution fonctionnelle du Core. Il consiste à intégrer `v1.0.1` dans le premier produit métier réel `greg44500/saas-fiches-techniques-gms` via une branche dédiée `core-update/v1.0.1`.
+
+Séquence attendue :
+
+```text
+vérifier l’état réel du produit
+→ vérifier core-origin.json
+→ fetch upstream-core --tags
+→ créer core-update/v1.0.1
+→ merger le tag v1.0.1
+→ revoir le diff réel
+→ créer product-release.json
+→ adapter uniquement les identités/configurations propres au produit qui doivent l’être
+→ exécuter les gates Core + produit + frontend + E2E applicables
+→ mettre à jour core-origin.json seulement après validation
+→ ouvrir la PR produit
+→ fusionner après gates vertes
+→ vérifier la gate post-merge
+```
+
+Le pilote `saas-core-derived-pilot` reste une preuve de dérivation/upgrade et ne doit pas devenir la base du produit réel.
+
+Les évolutions Core 1.1 déjà différées restent séparées :
+
+```text
+D-023 — demande gouvernée de transfert de propriété
+D-024 — console Platform contextualisée du Workspace
+```
+
+Elles ne bloquent pas le démarrage du cadrage métier du produit après validation de son upgrade Core `v1.0.1`.
 
 ---
-
 ## 11. Rappel de méthode
 
 À chaque reprise :
