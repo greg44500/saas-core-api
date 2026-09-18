@@ -856,6 +856,7 @@ Avant de commencer le métier :
 - [ ] conserver l’historique Git du Core ;
 - [ ] créer le dépôt produit et configurer `origin` / `upstream-core` ;
 - [ ] créer `core-origin.json` avec le repository, la version, le tag et le commit exacts du Core intégré ;
+- [ ] créer ou adapter un `AGENTS.md` racine pour les règles propres au produit, en conservant les invariants Core et la séparation Core / métier ;
 - [ ] installer les dépendances et lancer la gate Core applicable ;
 - [ ] créer des variables d’environnement propres au produit ;
 - [ ] définir le périmètre métier et la tenancy ;

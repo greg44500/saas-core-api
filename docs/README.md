@@ -35,6 +35,18 @@ Lorsqu'un contrat canonique décrit explicitement une **cible à implémenter**,
 
 ## 3. Porte d'entrée du dépôt
 
+Pour tout agent IA ou développeur assisté, lire d'abord :
+
+```text
+AGENTS.md
+→ méthode de travail
+→ ordre d'autorité
+→ règles architecture / sécurité / tests / Git
+→ références vers les contrats détaillés
+```
+
+Puis utiliser le README général :
+
 ```text
 README.md
 → présentation du Core
