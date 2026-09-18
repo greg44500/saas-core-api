@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Création et maintenance des SaaS dérivés
 
 **Statut :** document canonique — actif  
-**Dernière mise à jour :** 2026-09-17  
+**Dernière mise à jour :** 2026-09-18  
 **Périmètre :** création d’un produit dérivé, séparation Core/métier, versionnement, mises à niveau du Core et préparation à la production
 
 ---
@@ -427,9 +427,9 @@ création + maintenance future du Core
 
 ## 11. Versionnement du Core
 
-Le Core a achevé la trajectoire de validation nécessaire à `1.0.0`. La publication stable reste gouvernée par `docs/releases/RELEASE-POLICY.md` et n’est effective qu’avec son tag Git immuable et sa GitHub Release.
+Le Core `1.0.0` est publié comme première release stable. Le tag annoté `v1.0.0` cible `dfdd39a57c7fb1ec7e53ab7778a806fdc86f1dff` et la GitHub Release stable associée est publiée. Les versions futures restent gouvernées par `docs/releases/RELEASE-POLICY.md`.
 
-La première version considérée comme stable sera :
+La première version stable publiée est :
 
 ```text
 v1.0.0
@@ -684,7 +684,7 @@ build Vite production
 
 ### E2E
 
-À partir du moment où Playwright sera intégré :
+Playwright étant désormais intégré à la gate canonique :
 
 ```text
 login / session
@@ -724,7 +724,7 @@ déploiement
 
 Même en urgence, la modification ne doit pas être poussée aveuglément sur toutes les productions sans vérification.
 
-La traçabilité `core-origin.json` est le mécanisme prévu pour identifier les produits concernés ; D-017 doit encore en valider l’usage réel.
+La traçabilité `core-origin.json` est le mécanisme prévu pour identifier les produits concernés ; D-017 en a validé l’usage réel sur `saas-core-derived-pilot`.
 
 ---
 
@@ -796,8 +796,8 @@ L’ancien `core-deferred-work-for-derived-saas.md` est désormais absorbé sur 
 | Permissions métier / rôles système | prêt | registre applicatif `applicationRolePermission.registry.js`, composition et tests locaux validés |
 | Routes backend métier | prêt | composition dans `applicationRoutes.registry.js`, tests locaux validés |
 | Routes frontend métier | prêt | composition dans `app/application-routes.js`, tests locaux et build validés |
-| Traçabilité version Core par produit | contrat défini, validation réelle D-017 requise | `core-origin.json` défini par D-015 ; exercice réel non encore effectué |
-| Releases / changelog Core | gouvernance D-015 en cours de validation | `core-release.json`, SemVer, RC/stable, CHANGELOG et notes de release définis |
+| Traçabilité version Core par produit | validée par D-017 | `core-origin.json` éprouvé sur `saas-core-derived-pilot` lors de l’upgrade RC1 → RC2 |
+| Releases / changelog Core | validés et utilisés pour `v1.0.0` | `core-release.json`, SemVer, RC/stable, CHANGELOG, notes, tag annoté et GitHub Release effectivement exercés |
 | CI de validation du Core | validée par D-015 / D-016 | `npm run release:check` et workflow `Core Gate`, E2E Playwright inclus |
 | CI d’upgrade d’un SaaS dérivé | validée par D-017 | stratégie éprouvée sur `saas-core-derived-pilot`, avec gates avant/après provenance et post-merge |
 | Packages Core séparés | non requis en V1 | à réévaluer après retour d’expérience réel |
@@ -896,7 +896,7 @@ Pour chaque nouvelle version Core :
 
 ## 26. Critères de diffusion du Core 1.0
 
-La politique de dérivation ne sera considérée opérationnelle que lorsque le Core aura au minimum :
+Les critères suivants ont servi de gate de diffusion et ont été satisfaits avant la publication stable :
 
 ```text
 contrats canoniques finalisés
@@ -910,7 +910,7 @@ procédure de création d’un dépôt dérivé testée réellement
 procédure de mise à niveau Core testée sur au moins un dépôt dérivé pilote
 ```
 
-Le tag stable `v1.0.0` ne doit être créé qu’après validation de ces conditions, notamment D-016 et D-017. La procédure ne doit pas être considérée validée uniquement parce qu’elle est théoriquement correcte.
+Ces conditions ont été validées, notamment par D-016 et D-017, puis `v1.0.0` a été publiée sur le commit post-merge validé `dfdd39a57c7fb1ec7e53ab7778a806fdc86f1dff`. Pour les futures releases, la validation doit rester fondée sur les preuves Git, tests, migrations et procédures réellement exécutées, pas sur leur seule description théorique.
 
 ---
 
