@@ -112,6 +112,7 @@ Décisions D-015 structurantes :
 - `npm run release:check` est la gate canonique locale et CI ;
 - les migrations restent des runners explicites inventoriés par manifest tant qu'un besoin réel ne justifie pas un registre persistant ;
 - `core-origin.json` est le contrat cible de provenance d'un SaaS dérivé ;
+- `product-release.json` porte l’identité et la version applicative propres au dérivé, indépendamment des métadonnées Core ;
 - D-017 a validé la stratégie réelle de dérivation et d’upgrade ; `v1.0.0` a ensuite été publiée conformément à `RELEASE-POLICY.md` sur le commit post-merge validé `dfdd39a57c7fb1ec7e53ab7778a806fdc86f1dff`.
 
 D-016 a étendu `npm run release:check` avec les E2E Playwright. La définition courante d’une Core Gate verte inclut donc la vérification de release, le lint et les tests backend, le lint/tests/build frontend puis Playwright.
@@ -201,7 +202,7 @@ docs/derived-saas/DERIVED-SAAS.md
   stratégie Git, upgrades, migrations, tests et points d'extension
 ```
 
-Le produit dérivé conserve l'historique Git du Core, possède son propre `origin` et conserve le Core comme `upstream-core`. D-015 définit le contrat de provenance `core-origin.json`; D-017 a validé cette stratégie par un exercice réel de dérivation + upgrade sur `saas-core-derived-pilot`.
+Le produit dérivé conserve l'historique Git du Core, possède son propre `origin` et conserve le Core comme `upstream-core`. D-015 définit le contrat de provenance `core-origin.json`; l’identité/version applicative indépendante est portée par `product-release.json`; D-017 a validé la stratégie Git et la provenance par un exercice réel de dérivation + upgrade sur `saas-core-derived-pilot`.
 
 D-025 fournit un mécanisme d’extension permettant à un dérivé d’ajouter ses fiches d’aide métier sans dupliquer ni réécrire le corpus Core.
 
