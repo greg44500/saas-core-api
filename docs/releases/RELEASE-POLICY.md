@@ -53,6 +53,10 @@ channel
 
 Il ne contient pas le SHA du commit qui le contient lui-même. La provenance immuable d’une release est portée par le tag Git et le commit qu’il référence.
 
+Cette cohérence concerne l’identité de release du Core. Dans un SaaS dérivé, les `package.json` et lockfiles hérités restent des métadonnées techniques du Core afin de limiter les divergences récurrentes lors des upgrades. Ils ne portent pas l’identité commerciale ni la version applicative du produit dérivé.
+
+L’identité/version applicative du dérivé est portée séparément par `product-release.json`, décrit en section 9.
+
 ---
 
 ## 3. SemVer
@@ -231,9 +235,44 @@ Contrat cible :
 
 Le SaaS dérivé met à jour ce fichier après intégration validée d’une nouvelle version du Core.
 
-La version applicative du produit dérivé reste indépendante de la version du Core.
+La version applicative du produit dérivé reste indépendante de la version du Core. Cette identité est déclarée dans :
 
-D-017 a validé ce mécanisme sur le dépôt dérivé réel `saas-core-derived-pilot`, avec mise à niveau de `v1.0.0-rc.1` vers `v1.0.0-rc.2` et mise à jour de `core-origin.json`.
+```text
+product-release.json
+```
+
+Contrat :
+
+```json
+{
+  "schemaVersion": 1,
+  "name": "saas-example-product",
+  "repository": "owner/saas-example-product",
+  "version": "0.1.0",
+  "channel": "development"
+}
+```
+
+Règles :
+
+```text
+core-release.json
+→ identité/version du Core
+
+core-origin.json
+→ provenance exacte du Core intégré dans le produit
+
+product-release.json
+→ identité/version applicative propre au produit
+```
+
+`product-release.json` utilise SemVer et les canaux `development`, `rc` et `stable` selon les mêmes contraintes de forme que les releases Core, mais sa version n’est pas comparée à celle de `core-release.json` ni aux versions des packages Core hérités.
+
+La gate `release:verify` exige désormais `product-release.json` lorsqu’un dépôt contient `core-origin.json`. Inversement, `product-release.json` n’est pas accepté dans le dépôt Core sans `core-origin.json`.
+
+Un produit dérivé ne doit donc pas renommer ou reversionner les packages Core uniquement pour porter son identité applicative. Cette séparation réduit les conflits lors des futurs merges `core-update/vX.Y.Z`.
+
+D-017 a validé la provenance via `core-origin.json` sur le dépôt dérivé réel `saas-core-derived-pilot`. Le contrat `product-release.json` complète cette séparation pour les produits dérivés réels créés après la stable 1.0.
 
 ---
 
