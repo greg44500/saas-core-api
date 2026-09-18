@@ -298,6 +298,10 @@ pilote dérivé
 Core 1.1
 → D-023 / D-024 et autres évolutions génériques explicitement décidées
 
+identité/version d’un SaaS dérivé réel
+→ contrat générique product-release.json séparé de core-release.json / core-origin.json
+→ validation par release:verify avant intégration dans une prochaine release Core
+
 premier SaaS métier réel
 → repartir de la release stable et reclasser les dettes produit / production applicables
 ```

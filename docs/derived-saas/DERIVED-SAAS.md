@@ -455,7 +455,7 @@ Les canaux, tags et critères de release sont définis dans `docs/releases/RELEA
 
 Le numéro de version d’une RC ou release doit être associé à un tag Git immuable et à des notes de version.
 
-Le `package.json` du Core porte la version du Core avant dérivation. Après dérivation, le produit possède sa propre version applicative ; la version du Core intégrée est donc tracée séparément.
+Les `package.json` et lockfiles hérités restent des métadonnées techniques du Core après dérivation afin de limiter les divergences lors des upgrades. L’identité et la version applicative propres au produit sont portées séparément par `product-release.json`, tandis que la version du Core intégrée est tracée dans `core-origin.json`.
 
 ---
 
@@ -484,7 +484,36 @@ La version, le tag et le commit doivent identifier exactement la version du Core
 
 La version applicative du SaaS dérivé reste indépendante de la version du Core.
 
-D-017 a validé ce mécanisme sur `saas-core-derived-pilot` : la provenance `core-origin.json` a été mise à jour après intégration validée de `v1.0.0-rc.2`.
+Le produit réel déclare cette identité dans :
+
+```json
+{
+  "schemaVersion": 1,
+  "name": "saas-example-product",
+  "repository": "owner/saas-example-product",
+  "version": "0.1.0",
+  "channel": "development"
+}
+```
+
+dans `product-release.json`.
+
+La séparation canonique devient :
+
+```text
+core-release.json
+→ identité/version du Core
+
+core-origin.json
+→ provenance du Core intégré
+
+product-release.json
+→ identité/version applicative du produit
+```
+
+Un dérivé ne doit pas renommer ou reversionner les packages Core uniquement pour porter son identité produit ; ces changements créeraient des conflits récurrents sans valeur métier lors des futurs upgrades.
+
+D-017 a validé la provenance sur `saas-core-derived-pilot` : `core-origin.json` a été mis à jour après intégration validée de `v1.0.0-rc.2`. `product-release.json` complète désormais ce contrat pour les produits dérivés réels.
 
 Cette provenance permet de répondre immédiatement à :
 
@@ -797,6 +826,7 @@ L’ancien `core-deferred-work-for-derived-saas.md` est désormais absorbé sur 
 | Routes backend métier | prêt | composition dans `applicationRoutes.registry.js`, tests locaux validés |
 | Routes frontend métier | prêt | composition dans `app/application-routes.js`, tests locaux et build validés |
 | Traçabilité version Core par produit | validée par D-017 | `core-origin.json` éprouvé sur `saas-core-derived-pilot` lors de l’upgrade RC1 → RC2 |
+| Identité/version applicative du dérivé | prête | `product-release.json`, SemVer indépendant du Core, validation par `release:verify` |
 | Releases / changelog Core | validés et utilisés pour `v1.0.0` | `core-release.json`, SemVer, RC/stable, CHANGELOG, notes, tag annoté et GitHub Release effectivement exercés |
 | CI de validation du Core | validée par D-015 / D-016 | `npm run release:check` et workflow `Core Gate`, E2E Playwright inclus |
 | CI d’upgrade d’un SaaS dérivé | validée par D-017 | stratégie éprouvée sur `saas-core-derived-pilot`, avec gates avant/après provenance et post-merge |
@@ -856,6 +886,7 @@ Avant de commencer le métier :
 - [ ] conserver l’historique Git du Core ;
 - [ ] créer le dépôt produit et configurer `origin` / `upstream-core` ;
 - [ ] créer `core-origin.json` avec le repository, la version, le tag et le commit exacts du Core intégré ;
+- [ ] créer `product-release.json` avec l’identité, le dépôt, la version et le canal propres au produit ;
 - [ ] créer ou adapter un `AGENTS.md` racine pour les règles propres au produit, en conservant les invariants Core et la séparation Core / métier ;
 - [ ] installer les dépendances et lancer la gate Core applicable ;
 - [ ] créer des variables d’environnement propres au produit ;
@@ -940,6 +971,7 @@ Capability Registry
 routing dérivé
 migrations
 core-origin.json ou son remplacement
+product-release.json
 procédure d’upgrade
 ```
 
