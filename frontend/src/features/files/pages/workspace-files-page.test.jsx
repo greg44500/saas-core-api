@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -298,11 +298,8 @@ describe('WorkspaceFilesPage', () => {
     });
   });
 
-  it('ne réinitialise pas la pagination après le debounce initial vide', async () => {
+  it('ne réinitialise pas la pagination après le debounce initial vide', () => {
     vi.useFakeTimers();
-    const user = userEvent.setup({
-      advanceTimers: vi.advanceTimersByTime,
-    });
 
     mocks.useListWorkspaceFilesQuery.mockReturnValue({
       data: {
@@ -316,7 +313,10 @@ describe('WorkspaceFilesPage', () => {
     });
 
     renderPage();
-    await user.click(screen.getByRole('button', { name: 'Suivant' }));
+
+    expect(vi.getTimerCount()).toBe(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Suivant' }));
 
     expect(mocks.useListWorkspaceFilesQuery).toHaveBeenLastCalledWith({
       workspaceId: 'workspace-1',
@@ -324,8 +324,8 @@ describe('WorkspaceFilesPage', () => {
       limit: 10,
     });
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(SEARCH_DEBOUNCE_MS + 1);
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS + 1);
     });
 
     expect(mocks.useListWorkspaceFilesQuery).toHaveBeenLastCalledWith({
