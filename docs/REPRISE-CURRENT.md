@@ -2,11 +2,11 @@
 
 > **Statut : document temporaire de développement**
 >
-> Cette synthèse décrit l’état courant après publication réelle de `v1.0.1` stable et validation post-release de ses preuves GitHub.
+> Cette synthèse décrit l’état courant après publication réelle de `v1.1.0` stable et validation post-release de ses preuves GitHub.
 >
 > Le code actuel, les contraintes DB, les tests réellement exécutés et les contrats canoniques priment toujours sur ce document.
 >
-> **Dernière mise à jour : 2026-09-18**
+> **Dernière mise à jour : 2026-09-21**
 
 ---
 
@@ -31,43 +31,54 @@ Les anciennes synthèses de reprise ne sont pas autoritatives lorsqu’elles son
 La release stable courante du Core est réellement publiée :
 
 ```text
-version : 1.0.1
-tag : v1.0.1
-commit : 9613bdb0c70ee1950dfa7da68e5cbefa704e88f1
-GitHub Release : Core 1.0.1 — Patch stable
-release id : 391556800
-publication : 2026-09-18T14:50:42Z
+version : 1.1.0
+tag : v1.1.0
+commit : 8326fb48856dcef151b5ab01495c934951050d6d
+GitHub Release : Core 1.1.0 — WorkspaceMember transactional lifecycle
+release id : 392837893
+publication : 2026-09-21T09:39:46Z
 statut : stable — non draft / non prerelease
 ```
 
-Validation de la release `1.0.1` :
+Validation fonctionnelle et de release :
 
 ```text
-PR #27 — Release — Core 1.0.1
-HEAD PR : 14d4745d8c24c80050f0fe3759f3d1b5cf3c5df1
-Core Gate #45
-run : 35356056148
-result : success
+PR #29 — feat(workspace-members): add transactional removal lifecycle
+HEAD PR : 281bf7f827c710c19fc107d7e5b723b8b85e0e2c
+Core Gate #49 / run 35581178327 : success
 
-merge main : 9613bdb0c70ee1950dfa7da68e5cbefa704e88f1
-Core Gate #46
-run : 35356874737
-result : success
+merge fonctionnel : 065b64a8362222a134aa2d7117ea8627caa95ca5
+Core Gate #50 / run 35581807433 : success
+
+PR #30 — release: prepare Core 1.1.0
+HEAD PR : d23e762c58689937f6ea08a864b3dfb13bb5c32e
+Core Gate #51 / run 35582853334 : success
+
+merge release : 8326fb48856dcef151b5ab01495c934951050d6d
+Core Gate #52 / run 35583462463 : success
 ```
 
-Le tag annoté `v1.0.1` cible exactement le commit `9613bdb0c70ee1950dfa7da68e5cbefa704e88f1`.
+Le tag `v1.1.0` cible exactement le commit
+`8326fb48856dcef151b5ab01495c934951050d6d`.
 
-`core-release.json`, le package racine et le package frontend sont alignés sur `1.0.1` / `stable`.
+`core-release.json`, le package racine, les lockfiles et le package frontend
+sont alignés sur `1.1.0` / `stable`.
 
-La release stable initiale `v1.0.0` reste une référence publiée immuable :
+La release introduit un point d’extension générique et rétrocompatible :
 
 ```text
-tag : v1.0.0
-commit : dfdd39a57c7fb1ec7e53ab7778a806fdc86f1dff
-release id : 390898671
+backend/config/applicationWorkspaceMemberLifecycle.registry.js
+→ onMemberRemoved
+→ exécution dans la transaction MongoDB Core
+→ erreur applicative propagée pour rollback
 ```
 
-Les tags publiés `v1.0.0-rc.1`, `v1.0.0-rc.2`, `v1.0.0` et `v1.0.1` ne doivent pas être déplacés ou réécrits.
+Les deux voies Core actuelles vers `WorkspaceMember.status = REMOVED` sont
+couvertes : retrait administratif et fermeture de compte. `SUSPENDED` ne
+déclenche pas ce lifecycle.
+
+Les anciennes releases stables restent des références immuables, notamment
+`v1.0.0` et `v1.0.1`.
 
 ---
 
@@ -288,64 +299,49 @@ Les obligations propres au produit, à son infrastructure et à son contexte lé
 
 ## 10. État post-release et prochaine décision
 
-La publication de `v1.0.1` est terminée et vérifiée :
+La publication de `v1.1.0` est terminée et vérifiée :
 
 ```text
-PR #27 fusionnée
-→ main 9613bdb0c70ee1950dfa7da68e5cbefa704e88f1
-→ Core Gate #46 / run 35356874737 : success
-→ tag annoté v1.0.1
-→ tag cible exactement 9613bdb0c70ee1950dfa7da68e5cbefa704e88f1
-→ GitHub Release 391556800
+PR #29 fonctionnelle
+→ Core Gate #49 : success
+→ merge 065b64a...
+→ Core Gate #50 : success
+
+PR #30 release
+→ Core Gate #51 : success
+→ merge 8326fb4...
+→ Core Gate #52 : success
+
+tag v1.1.0
+→ cible 8326fb48856dcef151b5ab01495c934951050d6d
+→ GitHub Release 392837893
 → stable / non draft / non prerelease
-→ core-release.json : 1.0.1 / stable
-→ package racine : 1.0.1
-→ package frontend : 1.0.1
 ```
 
-Le patch `1.0.1` formalise la séparation suivante pour les SaaS dérivés :
+Le prochain travail prioritaire est l’upgrade contrôlé du premier produit
+métier réel :
 
 ```text
-core-release.json
-→ identité/version du Core
-
-core-origin.json
-→ provenance exacte du Core intégré
-
-product-release.json
-→ identité/version applicative propre au produit dérivé
+greg44500/saas-fiches-techniques-gms
+Core actuel : v1.0.1
+Core cible : v1.1.0
 ```
 
-Le prochain travail prioritaire n’est pas une nouvelle évolution fonctionnelle du Core. Il consiste à intégrer `v1.0.1` dans le premier produit métier réel `greg44500/saas-fiches-techniques-gms` via une branche dédiée `core-update/v1.0.1`.
-
-Séquence attendue :
+L’upgrade doit rester strictement séparé de l’implémentation métier :
 
 ```text
-vérifier l’état réel du produit
-→ vérifier core-origin.json
-→ fetch upstream-core --tags
-→ créer core-update/v1.0.1
-→ merger le tag v1.0.1
-→ revoir le diff réel
-→ créer product-release.json
-→ adapter uniquement les identités/configurations propres au produit qui doivent l’être
-→ exécuter les gates Core + produit + frontend + E2E applicables
-→ mettre à jour core-origin.json seulement après validation
-→ ouvrir la PR produit
-→ fusionner après gates vertes
-→ vérifier la gate post-merge
+core-update/v1.1.0
+→ intégrer le tag Core
+→ vérifier le diff
+→ exécuter les gates
+→ mettre à jour core-origin.json après validation
+→ documenter le contrat disponible
+→ Pull Request produit
 ```
 
-Le pilote `saas-core-derived-pilot` reste une preuve de dérivation/upgrade et ne doit pas devenir la base du produit réel.
-
-Les évolutions Core 1.1 déjà différées restent séparées :
-
-```text
-D-023 — demande gouvernée de transfert de propriété
-D-024 — console Platform contextualisée du Workspace
-```
-
-Elles ne bloquent pas le démarrage du cadrage métier du produit après validation de son upgrade Core `v1.0.1`.
+Le produit pourra ensuite, dans son propre projet métier, implémenter son
+handler `onMemberRemoved` pour ses relations d’accès. Le Core ne doit jamais
+importer ces modèles métier.
 
 ---
 
