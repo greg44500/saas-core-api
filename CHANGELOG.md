@@ -10,6 +10,29 @@ Aucun changement supplémentaire documenté.
 
 ---
 
+## 1.1.1 — 2026-09-21
+
+Patch rétrocompatible corrigeant une réinitialisation différée de pagination dans la liste des fichiers et stabilisant les tests Select Base UI sous jsdom.
+
+### Fixed
+
+- `WorkspaceFilesPage` ne programme plus de debounce lorsque la recherche normalisée est déjà identique à la recherche active ;
+- la pagination serveur n’est plus ramenée à la page 1 après le montage initial avec une recherche vide ;
+- le debounce réel de recherche et le retour page 1 lors d’un changement effectif de recherche sont conservés ;
+- les tests interactifs des Select Base UI utilisent désormais un harness jsdom déterministe avec géométrie de trigger réaliste et attente asynchrone des options.
+
+### Impact
+
+- aucune migration MongoDB ;
+- aucune variable d’environnement ;
+- aucune dépendance ajoutée, supprimée ou mise à niveau ;
+- aucun changement de modèle ou d’index MongoDB ;
+- aucun breaking change HTTP ;
+- aucun changement du composant Select en production ;
+- aucune modification métier spécifique à un SaaS dérivé.
+
+---
+
 ## 1.1.0 — 2026-09-21
 
 Release mineure rétrocompatible ajoutant un point d’extension transactionnel générique au lifecycle `WorkspaceMember`.
