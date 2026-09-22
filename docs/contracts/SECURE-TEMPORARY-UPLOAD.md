@@ -91,10 +91,13 @@ router.post(
             next(error);
         }
     },
+    uploadService.cleanupTemporaryUploadOnError,
 );
 ```
 
 `processTemporaryUpload()` supprime le temporaire après le callback `consume`, que celui-ci réussisse ou échoue.
+
+`cleanupTemporaryUploadOnError` constitue la barrière complémentaire pour les erreurs HTTP qui pourraient survenir après Multer mais avant l'appel à `processTemporaryUpload()`. La suppression étant idempotente, un double passage de nettoyage est sans danger.
 
 Si le traitement consommateur et le nettoyage échouent tous les deux, les deux causes sont conservées dans un `AggregateError`.
 
@@ -157,7 +160,7 @@ Dans ce cas, le SaaS dérivé fournit un `contentInspector` dans sa politique.
 
 L'inspecteur doit analyser le contenu réel. Une simple vérification du nom ou du MIME déclaré est insuffisante.
 
-Un retour autre que `true`, ou une exception, provoque un refus fermé.
+Un retour autre que `true` provoque un refus fermé. Une exception technique de l'inspecteur est propagée comme erreur de traitement après nettoyage du temporaire ; elle n'est pas transformée artificiellement en erreur de format.
 
 ---
 
