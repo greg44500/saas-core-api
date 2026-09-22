@@ -11,7 +11,9 @@
       "id": "subscription-term-type",
       "script": "migration:subscription-term-type",
       "runner": "backend/migrations/runAddSubscriptionTermTypeMigration.js",
-      "dependsOn": ["subscription-kind"]
+      "dependsOn": [
+        "subscription-kind"
+      ]
     },
     {
       "id": "subscription-lifecycle-indexes",
@@ -23,6 +25,12 @@
       "id": "operational-indexes",
       "script": "migration:operational-indexes",
       "runner": "backend/migrations/runHardenOperationalIndexesMigration.js",
+      "dependsOn": []
+    },
+    {
+      "id": "application-global-authorization-indexes",
+      "script": "migration:application-global-authorization-indexes",
+      "runner": "backend/migrations/runAddApplicationGlobalAuthorizationIndexesMigration.js",
       "dependsOn": []
     },
     {
@@ -47,7 +55,9 @@
       "id": "workspace-member-usage-reconcile",
       "script": "migration:workspace-member-usage-reconcile",
       "runner": "backend/migrations/runReconcileWorkspaceMemberUsageMetricMigration.js",
-      "dependsOn": ["workspace-member-usage"]
+      "dependsOn": [
+        "workspace-member-usage"
+      ]
     },
     {
       "id": "member-invite-permission",
@@ -95,7 +105,9 @@
       "id": "baseline-remove-file-upload",
       "script": "migration:baseline-remove-file-upload",
       "runner": "backend/migrations/runRemoveFileUploadFromBaselinePlanMigration.js",
-      "dependsOn": ["baseline-plan-system-role"]
+      "dependsOn": [
+        "baseline-plan-system-role"
+      ]
     }
   ]
 }
