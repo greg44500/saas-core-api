@@ -7,6 +7,10 @@ import {
 } from "../../modules/auditLog/auditLog.service.js";
 
 import {
+    createCleanupTemporaryUploadOnError,
+} from "../../middlewares/cleanupTemporaryUploadOnError.js";
+
+import {
     createUploadSingleFile,
 } from "../../middlewares/uploadMiddleware.js";
 
@@ -115,6 +119,11 @@ const createSecureTemporaryUploadService = ({
             discardTemporaryFile,
         });
 
+    const cleanupTemporaryUploadOnError =
+        createCleanupTemporaryUploadOnError({
+            discardTemporaryFile,
+        });
+
 
     /**
      * Inspecte un fichier Multer et remet le temporaire vérifié au consommateur.
@@ -177,6 +186,7 @@ const createSecureTemporaryUploadService = ({
             inspectionService
                 .inspectUploadedFile,
         processTemporaryUpload,
+        cleanupTemporaryUploadOnError,
         discardTemporaryFile,
     });
 };
