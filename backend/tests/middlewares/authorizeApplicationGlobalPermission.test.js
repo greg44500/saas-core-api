@@ -24,6 +24,7 @@ const buildApp = ({
     requiredPermission =
         'example-resource:read',
     withUser = true,
+    withForeignAuthorizationContexts = false,
 }) => {
     const app = express();
     const authorize =
@@ -37,6 +38,14 @@ const buildApp = ({
             req.user = {
                 _id: 'user-id',
             };
+
+            if (withForeignAuthorizationContexts) {
+                req.permissions = ['workspace:read'];
+                req.platformAuthorization = {
+                    permissions: ['platform:users:read'],
+                };
+            }
+
             next();
         });
     }
@@ -114,6 +123,34 @@ describe('authorizeApplicationGlobalPermission', () => {
         await request(app)
             .get('/protected')
             .expect(403);
+    });
+
+    it('n’accorde aucun droit à partir des contextes Workspace ou Platform présents sur la requête', async () => {
+        const app = buildApp({
+            authorizationResolver:
+                vi.fn().mockResolvedValue({
+                    permissions: [],
+                }),
+            withForeignAuthorizationContexts: true,
+        });
+
+        await request(app)
+            .get('/protected')
+            .expect(403);
+    });
+
+    it('permet de cumuler les trois contextes sans les confondre', async () => {
+        const app = buildApp({
+            authorizationResolver:
+                vi.fn().mockResolvedValue({
+                    permissions: ['example-resource:read'],
+                }),
+            withForeignAuthorizationContexts: true,
+        });
+
+        await request(app)
+            .get('/protected')
+            .expect(200);
     });
 
     it('refuse de construire une route avec une permission inconnue', () => {

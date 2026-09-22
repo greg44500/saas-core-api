@@ -59,9 +59,12 @@ const validatePermissionDefinition = (definition, label) => {
         );
     }
 
-    if (normalizedKey.startsWith('platform:')) {
+    if (
+        normalizedKey.startsWith('platform:')
+        || normalizedKey.startsWith('workspace:')
+    ) {
         throw new TypeError(
-            'Application-global permissions cannot use the Platform namespace',
+            'Application-global permissions cannot use Platform or Workspace namespaces',
         );
     }
 

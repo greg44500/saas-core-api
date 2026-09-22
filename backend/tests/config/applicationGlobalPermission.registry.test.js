@@ -72,6 +72,18 @@ describe('application-global permission registry', () => {
         )).toThrow(/collides with another authorization scope/);
     });
 
+    it('refuse le namespace Workspace même sans collision déclarée', () => {
+        expect(() => composeApplicationGlobalPermissions([
+            {
+                permissions: [
+                    buildDefinition({
+                        key: 'workspace:global_manage',
+                    }),
+                ],
+            },
+        ])).toThrow(/Platform or Workspace namespaces/);
+    });
+
     it('refuse une collision avec une permission Platform', () => {
         expect(() => composeApplicationGlobalPermissions(
             [
