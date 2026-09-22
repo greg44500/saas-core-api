@@ -1,0 +1,69 @@
+name: Publish Core v1.2.0
+
+on:
+  push:
+    branches:
+      - feature/application-global-authorization
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout validated main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify validated main commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="5703a7536b4b77945cec3e7ba8198bc29e2b28b7"
+          actual="$(git rev-parse HEAD)"
+
+          if [ "$actual" != "$expected" ]; then
+            echo "Refusing release: main is $actual, expected $expected"
+            exit 1
+          fi
+
+      - name: Publish immutable tag and GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          repo="$GITHUB_REPOSITORY"
+          expected="5703a7536b4b77945cec3e7ba8198bc29e2b28b7"
+          tag="v1.2.0"
+
+          git fetch --force --tags origin
+
+          if git show-ref --tags --verify --quiet "refs/tags/$tag"; then
+            target="$(git rev-list -n 1 "$tag")"
+
+            if [ "$target" != "$expected" ]; then
+              echo "Refusing release: $tag points to $target, expected $expected"
+              exit 1
+            fi
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$tag" "$expected" -m "Core v1.2.0 - Application-global authorization"
+            git push origin "refs/tags/$tag"
+          fi
+
+          if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
+            echo "GitHub Release $tag already exists."
+          else
+            gh release create "$tag" \
+              --repo "$repo" \
+              --verify-tag \
+              --title "Core v1.2.0 - Application-global authorization" \
+              --notes-file docs/releases/1.2.0.md
+          fi
