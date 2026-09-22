@@ -64,17 +64,13 @@ const createUploadedFileTypeInspector = ({
                 return false;
             }
 
-            try {
-                return (
-                    await fileType.contentInspector({
-                        filePath,
-                        originalName,
-                        declaredMimeType,
-                    })
-                ) === true;
-            } catch {
-                return false;
-            }
+            return (
+                await fileType.contentInspector({
+                    filePath,
+                    originalName,
+                    declaredMimeType,
+                })
+            ) === true;
         };
 
 
