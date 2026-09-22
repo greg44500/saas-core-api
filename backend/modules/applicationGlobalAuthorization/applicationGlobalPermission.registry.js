@@ -59,15 +59,6 @@ const validatePermissionDefinition = (definition, label) => {
         );
     }
 
-    if (
-        normalizedKey.startsWith('platform:')
-        || normalizedKey.startsWith('workspace:')
-    ) {
-        throw new TypeError(
-            'Application-global permissions cannot use Platform or Workspace namespaces',
-        );
-    }
-
     for (const value of [
         permissionLabel,
         category,
@@ -179,6 +170,15 @@ const composeApplicationGlobalPermissions = (
                 throw new TypeError(
                     'Application-global permission collides with another authorization scope: '
                     + normalized.key,
+                );
+            }
+
+            if (
+                normalized.key.startsWith('platform:')
+                || normalized.key.startsWith('workspace:')
+            ) {
+                throw new TypeError(
+                    'Application-global permissions cannot use Platform or Workspace namespaces',
                 );
             }
 
