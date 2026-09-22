@@ -10,7 +10,7 @@ Aucun changement supplémentaire documenté.
 
 ---
 
-## 1.1.1 — 2026-09-21
+## 1.1.1 — 2026-09-22
 
 Patch rétrocompatible corrigeant une réinitialisation différée de pagination dans la liste des fichiers et stabilisant les tests Select Base UI sous jsdom.
 
@@ -19,7 +19,8 @@ Patch rétrocompatible corrigeant une réinitialisation différée de pagination
 - `WorkspaceFilesPage` ne programme plus de debounce lorsque la recherche normalisée est déjà identique à la recherche active ;
 - la pagination serveur n’est plus ramenée à la page 1 après le montage initial avec une recherche vide ;
 - le debounce réel de recherche et le retour page 1 lors d’un changement effectif de recherche sont conservés ;
-- les tests interactifs des Select Base UI utilisent désormais un harness jsdom déterministe avec géométrie de trigger réaliste et attente asynchrone des options.
+- le harness Vitest/jsdom fournit désormais une géométrie de fallback aux combobox lorsque jsdom retourne `0 × 0`, ce qui stabilise globalement les Select Base UI sans modifier les composants de production ;
+- les tests interactifs Select restent libres d’attendre le montage asynchrone des options via `findByRole` lorsque nécessaire.
 
 ### Impact
 
