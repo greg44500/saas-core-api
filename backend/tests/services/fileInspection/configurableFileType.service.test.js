@@ -115,6 +115,42 @@ describe("Configurable uploaded file type inspector", () => {
     });
 
 
+    it("propage une erreur technique de l'inspecteur spécialisé", async () => {
+        const inspectionError =
+            new Error("Inspector unavailable");
+
+        const inspectUploadedFileType =
+            createUploadedFileTypeInspector({
+                allowedFileTypes: {
+                    TABULAR: {
+                        mimeType:
+                            "text/x-tabular",
+                        extensions: ["tab"],
+                        contentInspector:
+                            vi.fn()
+                                .mockRejectedValue(
+                                    inspectionError,
+                                ),
+                    },
+                },
+                detectFileType: vi.fn(),
+            });
+
+        await expect(
+            inspectUploadedFileType({
+                filePath:
+                    "/temporary/tabular-file",
+                originalName:
+                    "catalogue.tab",
+                declaredMimeType:
+                    "text/x-tabular",
+            }),
+        ).rejects.toBe(
+            inspectionError,
+        );
+    });
+
+
     it("conserve la détection générique par signature pour les types binaires", async () => {
         const detectFileType =
             vi.fn().mockResolvedValue({
