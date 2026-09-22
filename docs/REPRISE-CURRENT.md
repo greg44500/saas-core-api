@@ -1,93 +1,128 @@
 # SAAS-CORE-API — Reprise courante
 
-**Dernière mise à jour :** 2026-09-22
-**Base stable avant ce lot :** v1.1.2
-**Lot courant :** autorisation globale applicative
-**Version cible :** 1.2.0
+**Dernière mise à jour :** 2026-09-22  
+**Baseline stable :** v1.2.0  
+**Commit baseline :** 5703a7536b4b77945cec3e7ba8198bc29e2b28b7  
+**Lot courant :** upload temporaire sécurisé configurable  
+**Release cible :** aucune — changement volontairement non tagué
 
 ## État réel de référence
 
 Le lot part du commit main :
 
-    193e632d62cb048f3988e073665759cce8dd379f
+    5703a7536b4b77945cec3e7ba8198bc29e2b28b7
 
-correspondant à Core 1.1.2.
+correspondant à Core 1.2.0.
 
-La publication de 1.2.0 n’est effective qu’après :
+Le travail est réalisé sur :
 
-    Pull Request unique
-    → Core Gate verte
-    → merge main
-    → tag immuable v1.2.0
-    → GitHub Release
+    feat/configurable-secure-temporary-upload
 
-## Décision d’architecture
+Objectif Git :
 
-Le Core distingue désormais trois autorités :
+    une branche
+    → une PR Core
+    → Core Gate
+    → un merge main
 
-    Platform authorization
-    Application-global authorization
-    Workspace authorization
+Aucun bump de version, tag ou GitHub Release n'est prévu pour ce lot.
 
-Application-global authorization répond au besoin de ressources métier globales d’un SaaS dérivé qui n’appartiennent ni à Platform ni à un Workspace.
+## Besoin générique
 
-La nouvelle frontière repose sur :
+Un SaaS dérivé doit pouvoir recevoir un fichier multipart uniquement pour un
+traitement technique temporaire, en réutilisant les garanties de sécurité du
+Core sans créer un document File durable.
 
-    backend/config/applicationGlobalPermission.registry.js
-    ApplicationGlobalRole
-    ApplicationGlobalMember
-    resolveApplicationGlobalAuthorization()
-    authorizeApplicationGlobalPermission()
+Premier besoin démontré : import de données tabulaires dans un produit dérivé.
 
-Le Core n’embarque aucune permission métier GMS ou autre permission produit.
+Le Core ne connaît aucune règle métier d'import.
 
-## Sécurité
+## Architecture retenue
 
-Les droits globaux sont résolus depuis MongoDB.
+Le pipeline existant est généralisé au lieu d'être dupliqué.
 
-- aucun droit implicite depuis PlatformRole ou PlatformTeamMember ;
-- aucun droit implicite depuis Role ou WorkspaceMember ;
-- rôle archivé = zéro droit ;
-- membership suspendu ou révoqué = zéro droit ;
-- permission persistée inconnue = refus ;
-- permission reserved interdite dans un rôle personnalisé ;
-- création/modification/assignation limitée aux permissions déjà détenues par l’acteur ;
-- bootstrap réservé aux seeds/migrations du produit ;
-- User.status reste contrôlé par authenticate.
+Primitives ajoutées ou généralisées :
 
-## Production
+    createMulterUpload()
+    normalizeTemporaryUploadPolicy()
+    createUploadedFileTypeInspector()
+    createSecureTemporaryUploadService()
 
-autoIndex étant désactivé en production, le lot introduit :
+Le comportement historique du module File durable reste le défaut :
 
-    npm run migration:application-global-authorization-indexes
+    PDF
+    JPEG
+    PNG
 
-Cette migration doit être exécutée avant utilisation de la primitive par un SaaS dérivé.
+## Politique configurable
 
-## Frontend
+Le produit dérivé peut déclarer :
 
-Aucune surface frontend Core n’est ajoutée.
+    MIME autorisés
+    extensions autorisées
+    taille maximale
+    contentInspector spécialisé si nécessaire
 
-Les produits dérivés montent leurs propres routes et écrans de gouvernance en utilisant les primitives backend Core.
+La dépendance actuelle file-type sait reconnaître XLSX/OOXML mais n'accepte
+pas CSV ni les anciens fichiers XLS/MS-CFB comme types identifiés.
+
+Le contrat impose donc un contentInspector produit pour les formats que
+file-type ne sait pas distinguer de manière suffisamment fiable.
+
+Une simple confiance dans le nom du fichier, son extension ou son MIME client
+est interdite.
+
+## Sécurité conservée
+
+Le pipeline temporaire conserve :
+
+    quarantaine disque
+    limites Multer
+    nom temporaire aléatoire
+    inspection du contenu
+    checksum SHA-256
+    antivirus
+    fail-closed
+    nettoyage après erreur d'inspection
+    nettoyage après erreur du consommateur
+    purge des temporaires abandonnés
+    confinement des chemins
+
+## Non-persistance
+
+Cette primitive n'impose pas :
+
+    document File MongoDB
+    capability file_upload
+    quota storage_bytes
+    quota file_uploads_monthly
+    corbeille utilisateur
+    stockage définitif
+
+Le produit reste responsable des permissions et capabilities métier de la
+route qui consomme le fichier.
 
 ## Produit saas-fiches-techniques-gms
 
-Après publication et intégration de Core 1.2.0, M-002 pourra reprendre sans utiliser platform:* pour la gouvernance de son référentiel métier global.
+Après merge de ce lot Core :
 
-Le produit devra composer ses permissions globales métier, synchroniser ses rôles système, attribuer explicitement les memberships nécessaires et protéger ses routes métier avec le guard Core.
-
-Les concepts Produit, Catalogue, CanonicalProduct, ProductVariant et ProductCategory restent hors du Core.
+1. relever le commit exact de main Core ;
+2. intégrer ce commit dans le produit selon la stratégie de dérivation ;
+3. mettre à jour core-origin.json avec le commit réellement intégré sans
+   inventer de nouvelle release ;
+4. remettre feature/m002-catalogue-produits à jour ;
+5. remplacer multer.memoryStorage() par la primitive Core ;
+6. définir les contentInspectors produit nécessaires aux formats réels ;
+7. reprendre M-002 sans recommencer le module.
 
 ## Références canoniques
 
     AGENTS.md
-    docs/contracts/APPLICATION-GLOBAL-AUTHORIZATION.md
-    docs/contracts/PLATFORM-TEAM.md
-    docs/contracts/CAPABILITIES.md
+    docs/contracts/SECURE-TEMPORARY-UPLOAD.md
     docs/derived-saas/DERIVED-SAAS.md
     docs/derived-saas/EXTENSION-POINTS.md
-    docs/security/SECURITY.md
-    docs/releases/1.2.0.md
-    docs/releases/MIGRATION-POLICY.md
     docs/releases/RELEASE-POLICY.md
+    docs/DEBT.md
 
-Le code réel, les contraintes MongoDB et les tests réellement exécutés restent prioritaires sur ce document.
+Le code réel et les tests réellement exécutés restent prioritaires sur ce
+document.
