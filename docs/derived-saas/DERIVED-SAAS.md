@@ -815,12 +815,13 @@ L’ancien `core-deferred-work-for-derived-saas.md` est désormais absorbé sur 
 
 ---
 
-## 22. État des points d’extension au 2026-09-17
+## 22. État des points d’extension au 2026-09-24
 
 | Zone | État | Commentaire |
 |---|---|---|
 | Capability Registry | prêt | point de composition explicite disponible, métadonnées et relations feature → métriques supportées |
-| Navigation Workspace | prêt | composition au niveau `app/workspace-navigation.js` |\n| Navigation Platform | prêt | composition au niveau `app/application-platform-navigation.js`, visibilité générique et autorité backend séparée |
+| Navigation Workspace | prêt | composition au niveau `app/workspace-navigation.js` |
+| Navigation Platform | prêt | composition au niveau `app/application-platform-navigation.js`, visibilité générique et autorité backend séparée |
 | Composants frontend partagés | prêt | réutilisation par composition |
 | Permissions métier / rôles système | prêt | registre applicatif `applicationRolePermission.registry.js`, composition et tests locaux validés |
 | Routes backend métier | prêt | composition dans `applicationRoutes.registry.js`, tests locaux validés |
@@ -897,7 +898,8 @@ Avant de commencer le métier :
 - [ ] composer les permissions métier et extensions des rôles système ;
 - [ ] composer les routes backend et frontend dans les points applicatifs prévus ;
 - [ ] composer le lifecycle WorkspaceMember lorsqu’un module possède des relations métier à invalider sur REMOVED ;
-- [ ] composer la navigation Workspace ;\n- [ ] composer la navigation Platform lorsque le produit expose une gouvernance globale depuis l’administration ;
+- [ ] composer la navigation Workspace ;
+- [ ] composer la navigation Platform lorsque le produit expose une gouvernance globale depuis l’administration ;
 - [ ] configurer le catalogue commercial du produit ;
 - [ ] réévaluer toutes les dettes applicables ;
 - [ ] ajouter les tests métier et E2E critiques ;
