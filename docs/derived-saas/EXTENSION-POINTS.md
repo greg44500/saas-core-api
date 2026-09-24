@@ -1,8 +1,8 @@
 # SAAS-CORE-API — Points d’extension des SaaS dérivés
 
 **Statut :** canonique — actif  
-**Dernière mise à jour :** 2026-09-10  
-**Périmètre :** RBAC, capabilities, routing, navigation, widgets Dashboard et lifecycle transactionnel WorkspaceMember
+**Dernière mise à jour :** 2026-09-24  
+**Périmètre :** RBAC, capabilities, routing, navigations Workspace/Platform, widgets Dashboard, autorisation Application Global et lifecycle transactionnel WorkspaceMember
 
 ---
 
@@ -540,6 +540,7 @@ backend/config/applicationRoutes.registry.js
 backend/config/applicationWorkspaceMemberLifecycle.registry.js
 frontend/src/app/application-routes.js
 frontend/src/app/workspace-navigation.js
+frontend/src/app/application-platform-navigation.js
 frontend/src/app/application-dashboard.js
 ```
 
@@ -590,8 +591,15 @@ frontend routing
 → route injectée dans la bonne surface
 → guard attendu conservé
 
-navigation
+navigation Workspace
 → entrée présente seulement lorsque l’utilisateur peut réellement l’utiliser
+
+navigation Platform
+→ descriptor explicitement composé
+→ collisions de clés/destinations refusées
+→ visibilité fondée sur le contexte autorisé
+→ aucune permission Application Global héritée de Platform
+→ route protégée indépendamment de la navigation
 
 dashboard
 → widget composé dans le registre attendu
@@ -628,6 +636,7 @@ Les tests démontrent que les points de composition permettent à un module mét
 - monter ses routes backend ;
 - ajouter ses routes frontend ;
 - composer sa navigation Workspace ;
+- composer sa navigation Platform sans importer le métier dans le Core ;
 - déclarer des widgets Dashboard filtrés par capability/permission puis par préférence personnelle ;
 - exécuter ses tests ;
 
@@ -653,6 +662,7 @@ backend/constants/role.constants.js
 frontend/src/app/application-routes.js
 frontend/src/app/router.jsx
 frontend/src/app/workspace-navigation.js
+frontend/src/app/application-platform-navigation.js
 frontend/src/app/application-dashboard.js
 frontend/src/features/workspace/dashboard/core-dashboard-widgets.js
 frontend/src/components/shared/dashboard-display-preferences.jsx
