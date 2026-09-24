@@ -473,14 +473,14 @@ Contrat cible :
 {
   "schemaVersion": 1,
   "repository": "greg44500/saas-core-api",
-  "version": "1.0.0-rc.1",
-  "tag": "v1.0.0-rc.1",
-  "commit": "<sha du tag Core intégré>",
+  "version": "1.2.1",
+  "tag": "v1.2.1",
+  "commit": "<sha exact du Core réellement intégré>",
   "integratedAt": "<date ISO>"
 }
 ```
 
-La version, le tag et le commit doivent identifier exactement la version du Core intégrée. Le produit met à jour ce fichier seulement après intégration validée d’une nouvelle version Core.
+`version` et `tag` identifient la release stable de base. `commit` identifie le SHA exact réellement intégré. Lors d’une intégration normale, ce SHA est celui du tag. Lorsqu’une évolution post-tag compatible est explicitement retenue, `commit` peut être un descendant du tag sans déplacer ni réécrire ce tag. Le produit met à jour ce fichier seulement après intégration validée du Core.
 
 La version applicative du SaaS dérivé reste indépendante de la version du Core.
 
@@ -971,6 +971,7 @@ stratégie Git de dérivation
 RBAC extensible
 Capability Registry
 routing dérivé
+navigation Platform dérivée
 lifecycle transactionnel WorkspaceMember
 migrations
 core-origin.json ou son remplacement
