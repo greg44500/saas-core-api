@@ -820,7 +820,7 @@ L’ancien `core-deferred-work-for-derived-saas.md` est désormais absorbé sur 
 | Zone | État | Commentaire |
 |---|---|---|
 | Capability Registry | prêt | point de composition explicite disponible, métadonnées et relations feature → métriques supportées |
-| Navigation Workspace | prêt | composition au niveau `app/workspace-navigation.js` |
+| Navigation Workspace | prêt | composition au niveau `app/workspace-navigation.js` |\n| Navigation Platform | prêt | composition au niveau `app/application-platform-navigation.js`, visibilité générique et autorité backend séparée |
 | Composants frontend partagés | prêt | réutilisation par composition |
 | Permissions métier / rôles système | prêt | registre applicatif `applicationRolePermission.registry.js`, composition et tests locaux validés |
 | Routes backend métier | prêt | composition dans `applicationRoutes.registry.js`, tests locaux validés |
@@ -897,7 +897,7 @@ Avant de commencer le métier :
 - [ ] composer les permissions métier et extensions des rôles système ;
 - [ ] composer les routes backend et frontend dans les points applicatifs prévus ;
 - [ ] composer le lifecycle WorkspaceMember lorsqu’un module possède des relations métier à invalider sur REMOVED ;
-- [ ] composer la navigation Workspace ;
+- [ ] composer la navigation Workspace ;\n- [ ] composer la navigation Platform lorsque le produit expose une gouvernance globale depuis l’administration ;
 - [ ] configurer le catalogue commercial du produit ;
 - [ ] réévaluer toutes les dettes applicables ;
 - [ ] ajouter les tests métier et E2E critiques ;
@@ -1132,3 +1132,44 @@ docs/contracts/SECURE-TEMPORARY-UPLOAD.md
 Lors d'un upgrade Core qui apporte cette primitive sans nouvelle release
 taguée, la provenance produit doit pointer vers le commit Core réellement
 intégré et ne doit pas inventer un nouveau tag ou numéro de version.
+
+
+---
+
+## Navigation Platform d'un SaaS dérivé
+
+Lorsqu'un produit possède une gouvernance globale qui doit être accessible
+depuis l'administration Platform, il compose sa navigation dans :
+
+```text
+frontend/src/app/application-platform-navigation.js
+```
+
+Le produit déclare le libellé, la destination, l'icône éventuelle et une règle
+`isVisible(context)`. Pour une autorité Application Global, cette règle lit
+`applicationGlobalPermissions` et non les permissions Platform.
+
+Invariants :
+
+```text
+Super Admin Platform
+≠
+autorisation métier globale implicite
+
+navigation visible
+≠
+autorisation backend
+
+route métier globale
+→ conserve son propre guard Application Global
+```
+
+Les collisions d'identifiants ou de destinations avec la navigation Core sont
+refusées. La composition reste explicite et sans autodécouverte.
+
+Une évolution postérieure à un tag stable peut être intégrée par SHA exact
+lorsqu'elle a été explicitement décidée comme telle. Dans ce cas
+`core-origin.json` conserve la release stable de base dans `version` et
+`tag`, tandis que `commit` référence le SHA exact réellement intégré. Le
+champ `tag` ne doit jamais être présenté comme pointant vers ce SHA
+postérieur.
