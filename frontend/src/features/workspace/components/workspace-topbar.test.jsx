@@ -59,6 +59,17 @@ describe('WorkspaceTopbar', () => {
     vi.clearAllMocks();
   });
 
+  it('utilise le token de hauteur Workspace exposé aux contenus sticky', () => {
+    useWorkspaceContextMock.mockReturnValue({ can: () => false });
+    useGetWorkspaceSubscriptionQueryMock.mockReturnValue({ data: undefined });
+
+    const { container } = renderTopbar(workspace);
+
+    expect(container.querySelector('header > div')).toHaveClass(
+      'min-h-[var(--workspace-topbar-height)]',
+    );
+  });
+
   it('affiche le plan effectif uniquement avec subscription:read', () => {
     useWorkspaceContextMock.mockReturnValue({ can: () => true });
     useGetWorkspaceSubscriptionQueryMock.mockReturnValue({

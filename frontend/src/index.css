@@ -60,6 +60,13 @@
   --radius: 0.75rem;
 
   /*
+   * Contrat de layout Workspace. Les modules dérivés qui ont besoin d’une
+   * zone sticky sous la topbar consomment ce token au lieu de recopier sa
+   * hauteur. La topbar Core utilise elle-même ce token.
+   */
+  --workspace-topbar-height: 4rem;
+
+  /*
    * Les palettes D-011.B surchargent ces tokens sémantiques à partir
    * d'identifiants contrôlés. Aucune couleur libre n'est exposée à l'utilisateur.
    */
