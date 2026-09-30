@@ -9,61 +9,57 @@
 
 ## Objet du lot
 
-Simplifier le shell Workspace générique afin qu’un SaaS dérivé mette sa valeur
-métier au premier plan sans recopier ni détourner les primitives Core.
+Améliorer en un seul lot Core l’UI/UX du shell Workspace et la séparation
+visuelle des navigations dérivées, sans introduire de métier produit dans le
+Core.
 
-Le lot reste strictement frontend/documentation :
+Contraintes :
 
 ```text
+une seule PR pour ce lot
 aucun backend
 aucune DB
 aucune migration
 aucune variable d’environnement
 aucune dépendance
-aucun métier GMS dans le Core
+aucune release / aucun tag / aucun bump Core
+intégration future par SHA exact
 ```
 
 ## Dépendance avec la PR #44
 
-La branche a été créée sur :
+La branche part du HEAD :
 
 ```text
 3200ee4614c4d60f78decb62f50d36c4addce3be
 ```
 
-qui est le HEAD de la PR #44
-`fix(frontend): expose workspace topbar sticky offset`.
+de la PR #44 `fix(frontend): expose workspace topbar sticky offset`.
 
-Cette PR a déjà passé la Core Gate #83 avec succès. Le présent lot réutilise
-son contrat `--workspace-topbar-height` au lieu de dupliquer sa modification.
+Cette PR a passé la Core Gate #83 avec succès. Le présent lot réutilise son
+token `--workspace-topbar-height` au lieu de dupliquer la hauteur de la
+topbar.
 
-Pour conserver une PR finale propre vers `main`, #44 doit être fusionnée
-avant la PR de ce lot ou la PR courante doit être retargetée après cette
-fusion.
+## Dashboard Workspace
 
-## Décisions UI/UX
-
-### Dashboard Workspace
-
-Les widgets suivants sont retirés du registre :
+Les widgets suivants sont retirés :
 
 ```text
 core.workspace-status
 core.workspace-role
 ```
 
-Ils ne sont pas remplacés par d’autres KPI.
+Le Dashboard reste orienté synthèse utile et future valeur métier.
 
-Les anciens IDs éventuellement conservés dans les préférences utilisateur sont
-ignorés par le registre courant ; aucune migration destructive des préférences
-n’est introduite.
+Les anciens IDs éventuellement conservés dans
+`User.preferences.dashboard.hiddenWidgetIds` restent tolérés mais deviennent
+inertes, car le registre courant reste l’autorité.
 
-### Topbar Workspace
+## WorkspaceTopbar
 
-Le statut réel du Workspace est présenté par un `WorkspaceStatusBadge` à côté
-du sélecteur de Workspace.
+Le statut réel du Workspace est affiché en badge à côté du sélecteur.
 
-Mapping sémantique :
+Mapping :
 
 ```text
 active     → success
@@ -72,73 +68,108 @@ archived   → neutral
 closed     → destructive
 ```
 
-### Identité utilisateur
+Le rôle Workspace et le plan effectif sont visibles dans l’identité
+utilisateur. Le popover avatar expose également ces détails via le contrat Auth
+générique `menuContextItems`.
 
-Le rôle Workspace et le plan effectif sont des informations de contexte du
-shell :
-
-```text
-Nom utilisateur
-Rôle · Plan
-```
-
-Le popover avatar reçoit les mêmes informations via un contrat Auth générique
-`menuContextItems`. Le composant Auth ne connaît ni Workspace ni Plan.
-
-Un tooltip explique l’action de l’avatar :
+Tooltip avatar :
 
 ```text
 Voir le compte utilisateur
 ```
 
-### Navigation Workspace
+## Sidebar Workspace
 
-Le Core sépare maintenant :
+La navigation Core elle-même devient plate :
 
 ```text
-coreWorkspacePrimaryNavigation
-coreWorkspaceAdministrationNavigation
+Tableau de bord
+Fichiers
+Membres
+Rôles et permissions
+Paramètres
+Abonnement
+Activité
 ```
 
-Le moteur générique est :
+Les anciennes catégories `Ressources`, `Gestion du workspace` et
+`Compte & offre` ne structurent plus la Sidebar Workspace.
+
+Lorsqu’un produit dérivé déclare des modules, l’ordre est strictement :
+
+```text
+fonctions applicatives / métier
+→ séparateur « Administration de l’espace »
+→ navigation Core complète
+```
+
+Aucun titre `Métier`, `Gestion métier` ou équivalent n’est ajouté.
+
+Le moteur de composition est centralisé dans :
 
 ```text
 frontend/src/features/workspace/navigation/compose-workspace-navigation.js
 ```
 
-Ordre avec modules applicatifs :
+Le produit ne doit conserver dans `app/workspace-navigation.js` que la
+déclaration de ses modules.
+
+## Animation des groupes
+
+Les groupes restent supportés pour les modules qui en ont besoin.
+
+Mode développé :
 
 ```text
-Tableau de bord
-→ modules applicatifs
-→ séparateur
-→ Fichiers
-→ Membres
-→ Rôles et permissions
-→ Paramètres
-→ Abonnement
-→ Activité
+Base UI Collapsible
+--collapsible-panel-height
+transition height + opacity
+motion-reduce:transition-none
 ```
 
-Les anciennes catégories Core `Ressources`, `Gestion du workspace` et
-`Compte & offre` ne structurent plus la sidebar Workspace.
+Mode icône :
 
-Les groupes restent supportés pour les modules qui en ont réellement besoin.
-Leur ouverture/fermeture en mode développé utilise la transition Base UI basée
-sur `--collapsible-panel-height`. Le mode icône continue d’utiliser un
-popover.
+```text
+Popover existant conservé
+```
 
-## Commits du lot avant documentation
+Les tests attendent la fin réelle de la transition de fermeture au lieu de
+supposer un démontage instantané.
+
+## Sidebar Platform
+
+Aucune refonte.
+
+Le comportement existant reste inchangé et le Core ajoute uniquement :
+
+```text
+navigation Platform Core
+→ séparateur visuel simple
+→ navigation applicative
+```
+
+Le séparateur est absent sans module applicatif et retiré s’il devient orphelin
+après filtrage des autorisations.
+
+Aucun libellé métier spécifique n’est imposé au Core Platform.
+
+## Commits du lot
 
 ```text
 de8aee26ac916ab10ed27f67ed378575ce610154
 → contexte Workspace déplacé dans le shell
 
 068dedb48c0f43cef3f31356e14ac7461ab54663
-→ navigation Workspace simplifiée et moteur de composition
+→ première simplification de navigation
 
 452d97da617f5205ceec0761ef173895bb31463e
-→ tests adaptés aux transitions de fermeture
+→ tests adaptés aux transitions Base UI
+
+2072b640c8251b8acd8f5989454eaf9bedde3b46
+→ documentation initiale du lot
+
+e8cf81f097b4f560334b2b1c0a2da8f157289479
+→ alignement exact du contrat de séparation Workspace / Platform
 ```
 
 ## Validation attendue
@@ -149,42 +180,34 @@ La validation canonique reste :
 npm run release:check
 ```
 
-Elle doit être exécutée par la Core Gate de la PR finale.
-
-Points particulièrement couverts par les tests frontend :
-
-- retrait des widgets statut/rôle ;
-- anciens IDs de préférences inertes ;
-- badge de statut et mapping sémantique ;
-- rôle + plan dans l’identité Workspace ;
-- détails contextuels génériques du popover utilisateur ;
-- tooltip avatar ;
-- ordre de composition Workspace ;
-- navigation Core plate ;
-- filtrage permission/capability ;
-- séparateur ;
-- groupes applicatifs développés/réduits ;
-- attente réelle des transitions Base UI.
+La sandbox actuelle ne peut pas résoudre `github.com`, donc aucun clone local
+ni résultat local n’est déclaré comme exécuté. La Core Gate de la PR finale
+reste l’autorité de validation réelle.
 
 ## Après merge Core
 
-Le SaaS dérivé devra intégrer le SHA exact post-tag validé conformément à
-`docs/releases/RELEASE-POLICY.md` :
+Le produit dérivé devra intégrer le SHA Core exact validé tout en conservant :
 
 ```text
 version = 1.2.1
 tag     = v1.2.1
-commit  = SHA Core exact intégré
+commit  = SHA post-tag exact intégré
 ```
 
-Le produit devra ensuite supprimer sa copie locale de
-`composeWorkspaceNavigation()` et importer le moteur Core, tout en conservant
-uniquement ses descriptors métier dans
-`APPLICATION_WORKSPACE_NAVIGATION_MODULES`.
+Puis il devra :
 
-Principe directeur :
+1. importer le moteur Core `composeWorkspaceNavigation()` au lieu de conserver
+   sa copie locale ;
+2. garder ses descriptors Dossiers / Produits / Fournisseurs dans
+   `APPLICATION_WORKSPACE_NAVIGATION_MODULES` ;
+3. bénéficier automatiquement du séparateur `Administration de l’espace` ;
+4. conserver la Sidebar Platform existante avec le simple séparateur Core avant
+   les entrées applicatives ;
+5. valider visuellement le résultat dans le produit.
+
+Principe :
 
 ```text
-Core = shell, primitives, sécurité et composition génériques
-Produit = modules métier et valeur utilisateur
+Core = shell et composition génériques
+Produit = valeur métier
 ```

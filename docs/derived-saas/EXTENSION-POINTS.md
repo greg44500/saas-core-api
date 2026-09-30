@@ -306,35 +306,33 @@ Le produit déclare uniquement ses modules dans :
 frontend/src/app/workspace-navigation.js
 ```
 
-Le moteur de composition générique appartient désormais au Core :
+Le moteur de composition générique appartient au Core :
 
 ```text
 frontend/src/features/workspace/navigation/compose-workspace-navigation.js
 ```
 
-Le Core distingue deux zones :
+Le Core fournit une navigation Workspace plate :
 
 ```text
-coreWorkspacePrimaryNavigation
-→ entrée primaire, actuellement le Tableau de bord
-
-coreWorkspaceAdministrationNavigation
-→ surfaces génériques d’administration du Workspace
+coreWorkspaceNavigation
 ```
 
-Lorsqu’un produit déclare des entrées applicatives, l’ordre final est :
+Lorsqu’un SaaS dérivé déclare des entrées applicatives, l’ordre final est :
 
 ```text
-Tableau de bord Core
-→ navigation applicative / métier
-→ séparateur visuel générique
-→ administration Workspace Core
+navigation applicative / métier
+→ séparateur « Administration de l’espace »
+→ navigation Workspace Core
 ```
 
-Sans module applicatif, `coreWorkspaceNavigation` reste une navigation Core
-plate sans séparateur artificiel.
+Le Core ne crée aucun titre « Métier », « Gestion métier » ou équivalent. Les
+descriptors applicatifs portent déjà leurs propres libellés.
 
-Le descriptor de navigation reste volontairement simple :
+Sans module applicatif, `coreWorkspaceNavigation` est rendu directement et
+aucun séparateur artificiel n’est ajouté.
+
+Le renderer partagé accepte trois types de descriptors :
 
 ```text
 item
@@ -342,22 +340,19 @@ group
 separator
 ```
 
-Les modules applicatifs fournissent leurs `item` ou `group`; le séparateur
-entre application et administration est injecté par le moteur Core. Le
-composant `AppSidebar` rend ces trois types sans connaître le métier.
-
-Les entrées restent filtrées selon les permissions et capabilities effectives
-lorsque le domaine le nécessite. Un séparateur en tête, en fin ou dupliqué est
-retiré du rendu.
+Le séparateur Workspace est injecté par le moteur Core avec le libellé
+`Administration de l’espace`. Les séparateurs de tête, de fin ou consécutifs
+sont retirés après filtrage des permissions/capabilities.
 
 Les groupes conservent leur comportement développé/réduit. En mode développé,
 leur panneau utilise la transition native Base UI fondée sur
-`--collapsible-panel-height`; en mode icône, ils restent présentés dans un
+`--collapsible-panel-height`, avec `motion-reduce` pour respecter les
+préférences d’accessibilité. En mode icône, ils restent présentés dans un
 popover.
 
-Le SaaS dérivé ne doit plus recopier la fonction de composition dans son propre
-fichier `app/workspace-navigation.js`. Il importe le moteur Core puis déclare
-seulement `APPLICATION_WORKSPACE_NAVIGATION_MODULES`.
+Le SaaS dérivé ne doit plus recopier `composeWorkspaceNavigation()`. Son
+fichier `app/workspace-navigation.js` importe le moteur Core puis déclare
+uniquement `APPLICATION_WORKSPACE_NAVIGATION_MODULES`.
 
 ---
 
@@ -877,14 +872,19 @@ Le Core fournit :
 corePlatformNavigationSections
 ```
 
-La navigation finale est composée explicitement :
+La navigation finale est composée explicitement sans refondre la Sidebar
+Platform :
 
 ```text
 navigation Platform Core
-+
-sections déclarées par les modules applicatifs
+→ séparateur visuel simple
+→ sections déclarées par les modules applicatifs
 → APPLICATION_PLATFORM_NAVIGATION
 ```
+
+Le séparateur est ajouté uniquement lorsqu’au moins une section applicative est
+déclarée. Il n’a pas de libellé métier imposé par le Core et disparaît
+automatiquement si le filtrage d’autorisation laisse une séparation orpheline.
 
 Un module applicatif fournit un tableau `sections`. Une entrée peut être un
 item direct ou un groupe. Les identifiants et destinations sont contrôlés sur

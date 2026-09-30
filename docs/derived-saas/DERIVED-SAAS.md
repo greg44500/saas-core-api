@@ -820,7 +820,7 @@ L’ancien `core-deferred-work-for-derived-saas.md` est désormais absorbé sur 
 | Zone | État | Commentaire |
 |---|---|---|
 | Capability Registry | prêt | point de composition explicite disponible, métadonnées et relations feature → métriques supportées |
-| Navigation Workspace | prêt | déclaration des modules dans `app/workspace-navigation.js`, composition et ordre du shell portés par `features/workspace/navigation/compose-workspace-navigation.js` |
+| Navigation Workspace | prêt | modules applicatifs déclarés dans `app/workspace-navigation.js`, puis séparateur « Administration de l’espace » et navigation Core via `features/workspace/navigation/compose-workspace-navigation.js` |
 | Navigation Platform | prêt | composition au niveau `app/application-platform-navigation.js`, visibilité générique et autorité backend séparée |
 | Composants frontend partagés | prêt | réutilisation par composition |
 | Permissions métier / rôles système | prêt | registre applicatif `applicationRolePermission.registry.js`, composition et tests locaux validés |
