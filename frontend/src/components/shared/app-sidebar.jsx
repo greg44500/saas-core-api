@@ -36,6 +36,18 @@ function findActiveGroupId(navigation, isItemActive) {
   ))?.id ?? null;
 }
 
+function AppSidebarSeparator({ id }) {
+  return (
+    <li
+      aria-orientation="horizontal"
+      className="mx-2 my-2 border-t border-sidebar-border group-data-[collapsible=icon]:mx-1"
+      data-navigation-id={id}
+      data-sidebar="separator"
+      role="separator"
+    />
+  );
+}
+
 function AppSidebarLink({
   getHref,
   getIcon,
@@ -153,7 +165,14 @@ function ExpandedSidebarGroup({
           )}
         />
       </CollapsibleTrigger>
-      <CollapsibleContent>
+      <CollapsibleContent
+        className={cn(
+          'h-[var(--collapsible-panel-height)] overflow-hidden opacity-100',
+          'transition-[height,opacity] duration-200 ease-out motion-reduce:transition-none',
+          'data-[starting-style]:h-0 data-[starting-style]:opacity-0',
+          'data-[ending-style]:h-0 data-[ending-style]:opacity-0',
+        )}
+      >
         <SidebarMenuSub>
           {group.items.map((item) => (
             <SidebarMenuSubItem key={item.id}>
@@ -192,11 +211,6 @@ function AppSidebarGroup(props) {
   return <ExpandedSidebarGroup {...props} active={active} />;
 }
 
-/**
- * Rend une navigation normalisée sans connaître les permissions, features ou
- * modules métier qui l'ont produite. Les adaptateurs Workspace/Platform
- * restent responsables de l'autorisation ; ce composant ne porte que l'UX.
- */
 function AppSidebarNavigation({
   getHref,
   getIcon,
@@ -234,7 +248,9 @@ function AppSidebarNavigation({
           <SidebarGroupContent>
             <SidebarMenu>
               {navigation.map((entry) => (
-                entry.type === 'group' ? (
+                entry.type === 'separator' ? (
+                  <AppSidebarSeparator id={entry.id} key={entry.id} />
+                ) : entry.type === 'group' ? (
                   <AppSidebarGroup
                     expanded={openGroupId === entry.id}
                     getHref={getHref}
@@ -308,4 +324,9 @@ function AppSidebar({
   );
 }
 
-export { AppSidebar, AppSidebarNavigation, findActiveGroupId };
+export {
+  AppSidebar,
+  AppSidebarNavigation,
+  AppSidebarSeparator,
+  findActiveGroupId,
+};
