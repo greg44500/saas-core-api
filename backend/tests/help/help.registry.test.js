@@ -19,6 +19,14 @@ const category = {
     order: 10,
 };
 
+const platformCategory = {
+    id: 'platform_test',
+    context: HELP_CONTEXT.PLATFORM,
+    label: 'Platform',
+    description: 'Catégorie Platform de test.',
+    order: 10,
+};
+
 const entry = {
     id: 'workspace.test.read',
     context: HELP_CONTEXT.WORKSPACE,
@@ -85,6 +93,61 @@ describe('help.registry', () => {
         });
 
         expect(registry.entries[0].id).toBe('workspace.archive');
+    });
+
+    it('valide une exigence Application Global uniquement dans le contexte Platform', () => {
+        const registry = createHelpRegistry({
+            categories: [platformCategory],
+            entries: [{
+                ...entry,
+                id: 'platform.test.global',
+                context: HELP_CONTEXT.PLATFORM,
+                categoryId: platformCategory.id,
+                audience: {
+                    permissions: [],
+                    applicationGlobalPermissions: ['catalog:read'],
+                    ownerOnly: false,
+                },
+            }],
+            applicationGlobalPermissions: ['catalog:read'],
+        });
+
+        expect(
+            registry.entries[0].audience.applicationGlobalPermissions,
+        ).toEqual(['catalog:read']);
+    });
+
+    it('refuse une exigence Application Global sur une fiche Workspace', () => {
+        expect(() => createHelpRegistry({
+            categories: [category],
+            entries: [{
+                ...entry,
+                audience: {
+                    permissions: [CORE_PERMISSION.WORKSPACE_READ],
+                    applicationGlobalPermissions: ['catalog:read'],
+                    ownerOnly: false,
+                },
+            }],
+            applicationGlobalPermissions: ['catalog:read'],
+        })).toThrow(/cannot require application-global permissions/);
+    });
+
+    it('refuse une permission Application Global inconnue', () => {
+        expect(() => createHelpRegistry({
+            categories: [platformCategory],
+            entries: [{
+                ...entry,
+                id: 'platform.test.global',
+                context: HELP_CONTEXT.PLATFORM,
+                categoryId: platformCategory.id,
+                audience: {
+                    permissions: [],
+                    applicationGlobalPermissions: ['catalog:unknown'],
+                    ownerOnly: false,
+                },
+            }],
+            applicationGlobalPermissions: ['catalog:read'],
+        })).toThrow(/unknown application-global permission/);
     });
 
     it('refuse les identifiants de fiche dupliqués', () => {
