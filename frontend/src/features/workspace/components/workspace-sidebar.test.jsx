@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router';
@@ -167,7 +167,9 @@ describe('WorkspaceSidebar', () => {
 
     expect(moduleA).toHaveAttribute('aria-expanded', 'false');
     expect(moduleB).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.queryByRole('link', { name: 'Vue module A' })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('link', { name: 'Vue module A' })).not.toBeInTheDocument();
+    });
     expect(screen.getByRole('link', { name: 'Vue module B' })).toBeInTheDocument();
   });
 
