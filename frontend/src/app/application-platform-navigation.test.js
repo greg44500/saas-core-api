@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  PLATFORM_APPLICATION_SEPARATOR,
   composeApplicationPlatformNavigation,
 } from '@/app/application-platform-navigation';
 import { corePlatformNavigationSections } from '@/features/platform/lib/platform-navigation';
@@ -24,6 +25,8 @@ describe('application Platform navigation composition', () => {
     expect(
       navigation.slice(0, corePlatformNavigationSections.length),
     ).toEqual(corePlatformNavigationSections);
+    expect(navigation.at(corePlatformNavigationSections.length))
+      .toEqual(PLATFORM_APPLICATION_SEPARATOR);
     expect(navigation.at(-1)).toMatchObject({
       id: 'catalog',
       label: 'Catalogue',

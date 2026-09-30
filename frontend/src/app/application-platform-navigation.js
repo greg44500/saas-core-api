@@ -1,5 +1,10 @@
 import { corePlatformNavigationSections } from '@/features/platform/lib/platform-navigation';
 
+const PLATFORM_APPLICATION_SEPARATOR = Object.freeze({
+  id: 'platform-application-separator',
+  type: 'separator',
+});
+
 function assertNonEmptyString(value, label) {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
@@ -119,6 +124,10 @@ function assertUniquePlatformNavigationEntries(navigation) {
       return;
     }
 
+    if (entry.type === 'separator') {
+      return;
+    }
+
     if (registeredDestinations.has(entry.to)) {
       throw new TypeError(
         `Duplicate Platform navigation destination "${entry.to}"`,
@@ -167,10 +176,15 @@ function composeApplicationPlatformNavigation(navigationModules = []) {
     },
   );
 
-  const navigation = Object.freeze([
-    ...corePlatformNavigationSections,
-    ...applicationSections,
-  ]);
+  const navigation = Object.freeze(
+    applicationSections.length === 0
+      ? [...corePlatformNavigationSections]
+      : [
+        ...corePlatformNavigationSections,
+        PLATFORM_APPLICATION_SEPARATOR,
+        ...applicationSections,
+      ],
+  );
 
   assertUniquePlatformNavigationEntries(navigation);
 
@@ -192,6 +206,7 @@ const APPLICATION_PLATFORM_NAVIGATION =
 
 export {
   APPLICATION_PLATFORM_NAVIGATION,
+  PLATFORM_APPLICATION_SEPARATOR,
   APPLICATION_PLATFORM_NAVIGATION_MODULES,
   composeApplicationPlatformNavigation,
 };

@@ -1,53 +1,13 @@
-import { coreWorkspaceNavigation } from '@/features/workspace/navigation/core-workspace-navigation';
-
-/**
- * Compose les groupes de navigation des modules métier réellement embarqués.
- *
- * Le composant Sidebar reste générique. L'application dérivée importe ici les
- * descriptors de navigation de ses modules et les ajoute à la collection
- * applicative, sans modifier le composant de navigation du Core.
- */
-function composeWorkspaceNavigation(navigationModules = []) {
-  if (!Array.isArray(navigationModules)) {
-    throw new TypeError('navigationModules must be an array');
-  }
-
-  const applicationGroups = navigationModules.flatMap((moduleDefinition, index) => {
-    if (
-      moduleDefinition === null
-      || Array.isArray(moduleDefinition)
-      || typeof moduleDefinition !== 'object'
-    ) {
-      throw new TypeError(
-        `Workspace navigation module at index ${index} must be an object`,
-      );
-    }
-
-    const groups = moduleDefinition.groups ?? [];
-
-    if (!Array.isArray(groups)) {
-      throw new TypeError(
-        `navigationModules[${index}].groups must be an array`,
-      );
-    }
-
-    return groups;
-  });
-
-  return Object.freeze([
-    ...coreWorkspaceNavigation,
-    ...applicationGroups,
-  ]);
-}
+import {
+  composeWorkspaceNavigation,
+} from '@/features/workspace/navigation/compose-workspace-navigation';
 
 /**
  * Point de composition de la navigation Workspace du produit dérivé.
  *
- * Exemple :
- *
- * const APPLICATION_WORKSPACE_NAVIGATION_MODULES = Object.freeze([
- *   catalogWorkspaceNavigation,
- * ]);
+ * Les modules applicatifs sont déclarés ici. Le moteur de composition demeure
+ * dans la feature Workspace Core afin qu'un dérivé n'ait pas à recopier sa
+ * logique d'ordre, de séparation ou d'évolution du shell.
  */
 const APPLICATION_WORKSPACE_NAVIGATION_MODULES = Object.freeze([]);
 

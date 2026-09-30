@@ -20,11 +20,12 @@ function visibleDestinations(
   return getVisiblePlatformNavigationSections(
     visibilityContext,
     navigationSections,
-  ).flatMap((entry) => (
-    entry.type === 'group'
+  ).flatMap((entry) => {
+    if (entry.type === 'separator') return [];
+    return entry.type === 'group'
       ? entry.items.map((item) => item.to)
-      : [entry.to]
-  ));
+      : [entry.to];
+  });
 }
 
 describe('platform navigation policy', () => {
@@ -87,10 +88,17 @@ describe('platform navigation policy', () => {
       ],
     };
 
+    const visibleApplicationNavigation = getVisiblePlatformNavigationSections(
+      platformAccess,
+      applicationNavigation,
+    );
+
     expect(visibleDestinations(
       platformAccess,
       applicationNavigation,
     )).toContain('/derived-reference');
+    expect(visibleApplicationNavigation.map((entry) => entry.type))
+      .toContain('separator');
     expect(canAccessPlatformPath(
       '/derived-reference',
       platformAccess,
@@ -106,6 +114,12 @@ describe('platform navigation policy', () => {
       withoutApplicationPermission,
       applicationNavigation,
     )).not.toContain('/derived-reference');
+    expect(
+      getVisiblePlatformNavigationSections(
+        withoutApplicationPermission,
+        applicationNavigation,
+      ).some((entry) => entry.type === 'separator'),
+    ).toBe(false);
     expect(canAccessPlatformPath(
       '/derived-reference',
       withoutApplicationPermission,
