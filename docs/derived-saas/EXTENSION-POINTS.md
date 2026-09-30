@@ -1,7 +1,7 @@
 # SAAS-CORE-API — Points d’extension des SaaS dérivés
 
 **Statut :** canonique — actif  
-**Dernière mise à jour :** 2026-09-24  
+**Dernière mise à jour :** 2026-09-30  
 **Périmètre :** RBAC, capabilities, routing, navigations Workspace/Platform, widgets Dashboard, autorisation Application Global et lifecycle transactionnel WorkspaceMember
 
 ---
@@ -300,23 +300,64 @@ Une route métier peut ajouter un guard ou un composant de contrôle supplément
 
 ## 7. Point d’extension de la navigation Workspace
 
-Fichier applicatif :
+Le produit déclare uniquement ses modules dans :
 
 ```text
 frontend/src/app/workspace-navigation.js
 ```
 
-Le Core fournit :
+Le moteur de composition générique appartient désormais au Core :
 
 ```text
-coreWorkspaceNavigation
+frontend/src/features/workspace/navigation/compose-workspace-navigation.js
 ```
 
-L’application dérivée compose les groupes de navigation de ses modules dans `workspaceNavigation`.
+Le Core distingue deux zones :
 
-Le composant Sidebar reste générique et ne doit pas importer directement un module métier.
+```text
+coreWorkspacePrimaryNavigation
+→ entrée primaire, actuellement le Tableau de bord
 
-Les entrées sont filtrées selon les permissions et capabilities effectives lorsque le domaine le nécessite.
+coreWorkspaceAdministrationNavigation
+→ surfaces génériques d’administration du Workspace
+```
+
+Lorsqu’un produit déclare des entrées applicatives, l’ordre final est :
+
+```text
+Tableau de bord Core
+→ navigation applicative / métier
+→ séparateur visuel générique
+→ administration Workspace Core
+```
+
+Sans module applicatif, `coreWorkspaceNavigation` reste une navigation Core
+plate sans séparateur artificiel.
+
+Le descriptor de navigation reste volontairement simple :
+
+```text
+item
+group
+separator
+```
+
+Les modules applicatifs fournissent leurs `item` ou `group`; le séparateur
+entre application et administration est injecté par le moteur Core. Le
+composant `AppSidebar` rend ces trois types sans connaître le métier.
+
+Les entrées restent filtrées selon les permissions et capabilities effectives
+lorsque le domaine le nécessite. Un séparateur en tête, en fin ou dupliqué est
+retiré du rendu.
+
+Les groupes conservent leur comportement développé/réduit. En mode développé,
+leur panneau utilise la transition native Base UI fondée sur
+`--collapsible-panel-height`; en mode icône, ils restent présentés dans un
+popover.
+
+Le SaaS dérivé ne doit plus recopier la fonction de composition dans son propre
+fichier `app/workspace-navigation.js`. Il importe le moteur Core puis déclare
+seulement `APPLICATION_WORKSPACE_NAVIGATION_MODULES`.
 
 ---
 
@@ -434,13 +475,37 @@ Ces capacités ne seront introduites que si une application dérivée démontre 
 
 ### 8.4 Widgets Core et widgets métier
 
-Les widgets Workspace actuels du Core — par exemple statut du workspace, rôle, abonnement ou activité — servent principalement à fournir un Dashboard générique avant dérivation.
+Le Dashboard Workspace ne doit pas dupliquer les informations structurelles du
+shell applicatif.
 
-Ils ne constituent pas le modèle fonctionnel du futur Dashboard métier.
+À partir du lot UI/UX du 2026-09-30 :
 
-Dans un SaaS dérivé, les modules applicatifs sont destinés à déclarer les KPI et données opérationnelles pertinentes pour le métier via ce point d’extension.
+```text
+statut du Workspace
+→ badge dans la WorkspaceTopbar
 
-Le Dashboard Platform est un cas distinct : il constitue déjà une surface métier d’administration de la plateforme. Sa projection d’autorisation reste définie côté backend ; la préférence personnelle ne peut que réduire cette projection.
+rôle Workspace courant
+→ identité utilisateur du shell + détails du popover compte
+```
+
+Les descriptors `core.workspace-status` et `core.workspace-role` ne font
+donc plus partie du registre Dashboard. Les anciens identifiants éventuellement
+présents dans `User.preferences.dashboard.hiddenWidgetIds` deviennent
+simplement inertes : le registre courant reste l’autorité et aucune migration
+de préférence n’est nécessaire.
+
+Les widgets Core restants ne doivent être conservés que lorsqu’ils apportent
+une synthèse réellement utile, par exemple abonnement ou activité selon les
+droits disponibles.
+
+Dans un SaaS dérivé, les modules applicatifs sont destinés à déclarer les KPI
+et données opérationnelles pertinentes pour le métier via ce point
+d’extension.
+
+Le Dashboard Platform est un cas distinct : il constitue déjà une surface
+métier d’administration de la plateforme. Sa projection d’autorisation reste
+définie côté backend ; la préférence personnelle ne peut que réduire cette
+projection.
 
 ---
 
@@ -558,6 +623,8 @@ backend/config/applicationRoutes.registry.js
 backend/config/applicationWorkspaceMemberLifecycle.registry.js
 frontend/src/app/application-routes.js
 frontend/src/app/workspace-navigation.js
+frontend/src/features/workspace/navigation/compose-workspace-navigation.js
+frontend/src/features/workspace/navigation/core-workspace-navigation.js
 frontend/src/app/application-platform-navigation.js
 frontend/src/app/application-dashboard.js
 ```
