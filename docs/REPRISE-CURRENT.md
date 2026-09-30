@@ -3,7 +3,7 @@
 **Dernière mise à jour :** 2026-09-30  
 **Baseline stable :** v1.2.1  
 **Commit stable de base :** d90d8f1e6034cbbf4f63de2be7312eae69b1d698  
-**Dépendance immédiate :** PR #44 — offset sticky Workspace, Core Gate #83 success  
+**Dépendance intégrée :** PR #44 fusionnée sur `main` — merge `73f8b662714f7afd33ddf40fa2af0fb55689d79a`  
 **Branche courante :** `feat/workspace-shell-sidebar-ux`  
 **Release cible :** aucune — évolution frontend post-tag compatible
 
@@ -26,9 +26,9 @@ aucune release / aucun tag / aucun bump Core
 intégration future par SHA exact
 ```
 
-## Dépendance avec la PR #44
+## Intégration de la PR #44
 
-La branche part du HEAD :
+La branche a été créée sur le HEAD :
 
 ```text
 3200ee4614c4d60f78decb62f50d36c4addce3be
@@ -36,9 +36,15 @@ La branche part du HEAD :
 
 de la PR #44 `fix(frontend): expose workspace topbar sticky offset`.
 
-Cette PR a passé la Core Gate #83 avec succès. Le présent lot réutilise son
-token `--workspace-topbar-height` au lieu de dupliquer la hauteur de la
-topbar.
+Cette PR a passé la Core Gate #83 avec succès puis a été fusionnée sur
+`main` au commit :
+
+```text
+73f8b662714f7afd33ddf40fa2af0fb55689d79a
+```
+
+Le présent lot réutilise donc le contrat
+`--workspace-topbar-height` désormais intégré à `main`.
 
 ## Dashboard Workspace
 
