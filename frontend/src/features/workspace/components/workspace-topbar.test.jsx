@@ -5,11 +5,6 @@ import { MemoryRouter } from 'react-router';
 const useWorkspaceContextMock = vi.hoisted(() => vi.fn());
 const useGetWorkspaceSubscriptionQueryMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@/components/shared/expandable-search', () => ({
-  ExpandableSearch: ({ ariaLabel }) => (
-    <div aria-label={ariaLabel} role="search" />
-  ),
-}));
 vi.mock('@/features/workspace/components/workspace-context', () => ({
   useWorkspaceContext: useWorkspaceContextMock,
 }));
@@ -103,22 +98,20 @@ describe('WorkspaceTopbar', () => {
     expect(screen.getByText('Plan Free')).toBeInTheDocument();
   });
 
-  it('affiche la recherche et les préférences sur le Dashboard comme sur les autres pages Workspace', () => {
+  it('ne duplique pas les recherches métier dans la topbar Workspace', () => {
     useWorkspaceContextMock.mockReturnValue({ can: () => true });
     useGetWorkspaceSubscriptionQueryMock.mockReturnValue({ data: undefined });
 
     const { unmount } = renderTopbar(workspace);
 
-    expect(screen.getByRole('search', { name: 'Recherche globale' }))
-      .toBeInTheDocument();
+    expect(screen.queryByRole('search')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Préférences d’affichage' }))
       .toBeInTheDocument();
 
     unmount();
     renderTopbar(workspace, '/workspaces/workspace-1/members');
 
-    expect(screen.getByRole('search', { name: 'Recherche globale' }))
-      .toBeInTheDocument();
+    expect(screen.queryByRole('search')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Préférences d’affichage' }))
       .toBeInTheDocument();
   });

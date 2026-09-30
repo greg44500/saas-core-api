@@ -755,6 +755,127 @@ Toute modification de ces points de composition doit vérifier si le présent co
 
 ---
 
+## Centre d’aide applicatif
+
+Le Core fournit déjà le moteur, les routes, la recherche locale et les
+composants du centre d’aide. Un SaaS dérivé ajoute uniquement son contenu
+fonctionnel.
+
+Point de composition backend :
+
+```text
+backend/config/applicationHelp.registry.js
+```
+
+Collection :
+
+```text
+APPLICATION_HELP_MODULES
+```
+
+Un module d’aide peut déclarer :
+
+```js
+{
+    key: 'catalog',
+    categories: [...],
+    entries: [...],
+    workspaceRemediationEntryIds: [...],
+}
+```
+
+Le registre final compose :
+
+```text
+corpus Help Core
++
+modules Help applicatifs
+→ ACTIVE_HELP_REGISTRY
+→ même centre d’aide utilisateur
+```
+
+Le produit ne doit donc pas modifier `helpCore.registry.js` pour ajouter
+Dossiers, Produits, Fournisseurs ou toute autre notion métier.
+
+### Audience d’une fiche
+
+Pour une fiche Workspace :
+
+```text
+audience.permissions
+→ permissions Workspace
+
+requirements.features
+→ capabilities Workspace éventuelles
+
+applicationGlobalPermissions
+→ interdit
+```
+
+Pour une fiche Platform :
+
+```text
+audience.permissions
+→ permissions Platform éventuelles
+
+audience.applicationGlobalPermissions
+→ permissions globales applicatives éventuelles
+```
+
+Les deux tableaux peuvent être combinés. Dans ce cas, toutes les exigences
+doivent être satisfaites.
+
+Exemple générique :
+
+```js
+{
+    id: 'platform.catalog.read',
+    context: 'platform',
+    categoryId: 'platform_application_catalog',
+    audience: {
+        permissions: [],
+        applicationGlobalPermissions: ['catalog:read'],
+        ownerOnly: false,
+    },
+    // ...
+}
+```
+
+Le service Help résout les deux autorités séparément. Une permission Platform
+ne se transforme jamais en permission Application Global.
+
+### Catégories
+
+Le registre autorise jusqu’à 10 catégories par contexte. Le Core en utilise
+actuellement :
+
+```text
+Workspace → 4
+Platform  → 5
+```
+
+La capacité restante appartient aux produits dérivés. Les modules d’un même
+produit peuvent aussi partager une catégorie applicative commune lorsque cela
+rend l’aide plus lisible.
+
+Le frontend affiche le corpus composé dans le même Help Center et conserve la
+recherche sur les seules fiches déjà autorisées par le backend.
+
+Tests minimaux d’un module Help dérivé :
+
+```text
+composition du module
+unicité des ids
+catégories valides
+permissions connues
+filtrage Workspace/Platform
+filtrage Application Global si utilisé
+remédiation Workspace si déclarée
+absence des fiches non autorisées
+```
+
+---
+
 ## Application-global authorization
 
 ### Point de composition
