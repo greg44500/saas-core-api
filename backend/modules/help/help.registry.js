@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
 import {
+    ACTIVE_APPLICATION_GLOBAL_PERMISSION_REGISTRY,
+} from '../../config/applicationGlobalPermission.registry.js';
+import {
     ACTIVE_PLAN_CAPABILITY_REGISTRY,
 } from '../../config/applicationCapability.registry.js';
 import {
@@ -56,6 +59,10 @@ const helpEntrySchema = z.strictObject({
     }),
     audience: z.strictObject({
         permissions: z.array(nonEmptyText(120)).max(12).default([]),
+        applicationGlobalPermissions: z
+            .array(nonEmptyText(120))
+            .max(12)
+            .default([]),
         ownerOnly: z.boolean().default(false),
     }),
     requirements: z.strictObject({
@@ -105,6 +112,9 @@ const freezeEntry = ({
         }),
         audience: Object.freeze({
             permissions: Object.freeze([...entry.audience.permissions]),
+            applicationGlobalPermissions: Object.freeze([
+                ...entry.audience.applicationGlobalPermissions,
+            ]),
             ownerOnly: entry.audience.ownerOnly,
         }),
         requirements: Object.freeze({
@@ -179,6 +189,8 @@ const createHelpRegistry = ({
         ACTIVE_APPLICATION_ROLE_PERMISSION_REGISTRY.permissions,
     platformPermissions =
         ACTIVE_PLATFORM_PERMISSION_REGISTRY.permissionKeys,
+    applicationGlobalPermissions =
+        ACTIVE_APPLICATION_GLOBAL_PERMISSION_REGISTRY.permissionKeys,
     features = ACTIVE_PLAN_CAPABILITY_REGISTRY.features,
 } = {}) => {
     const parsedCategories = z.array(helpCategorySchema).parse(categories);
@@ -209,6 +221,9 @@ const createHelpRegistry = ({
 
     const workspacePermissionSet = new Set(workspacePermissions);
     const platformPermissionSet = new Set(platformPermissions);
+    const applicationGlobalPermissionSet = new Set(
+        applicationGlobalPermissions,
+    );
     const featureSet = new Set(features);
     const entriesById = new Map();
     const categoriesById = new Map(
@@ -237,6 +252,27 @@ const createHelpRegistry = ({
         if (unknownPermission) {
             throw new TypeError(
                 `Help entry "${entry.id}" references an unknown permission: ${unknownPermission}`,
+            );
+        }
+
+        const unknownApplicationGlobalPermission =
+            entry.audience.applicationGlobalPermissions.find(
+                (permission) =>
+                    !applicationGlobalPermissionSet.has(permission),
+            );
+
+        if (unknownApplicationGlobalPermission) {
+            throw new TypeError(
+                `Help entry "${entry.id}" references an unknown application-global permission: ${unknownApplicationGlobalPermission}`,
+            );
+        }
+
+        if (
+            entry.context === HELP_CONTEXT.WORKSPACE
+            && entry.audience.applicationGlobalPermissions.length > 0
+        ) {
+            throw new TypeError(
+                `Workspace help entry "${entry.id}" cannot require application-global permissions`,
             );
         }
 
