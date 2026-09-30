@@ -81,7 +81,7 @@ describe('PlatformQuickAccess', () => {
     const suggestion = await screen.findByText('Abonnements');
     await user.click(suggestion);
 
-    expect(screen.getByRole('status', { name: 'Route courante' }))
+    expect(screen.getByLabelText('Route courante'))
       .toHaveTextContent('/platform/subscriptions');
   });
 
