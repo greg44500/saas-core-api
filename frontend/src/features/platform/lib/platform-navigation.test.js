@@ -9,6 +9,7 @@ import {
   getActivePlatformNavigationGroupId,
   getFirstPlatformDestination,
   getPlatformNavigationItemForPath,
+  getPlatformQuickAccessItems,
   getVisiblePlatformNavigationSections,
   hasActivePlatformAccess,
 } from '@/features/platform/lib/platform-navigation';
@@ -125,6 +126,66 @@ describe('platform navigation policy', () => {
       withoutApplicationPermission,
       applicationNavigation,
     )).toBe(false);
+  });
+
+  it('alimente l’accès rapide avec les seules destinations autorisées, y compris applicatives', () => {
+    const navigation = composeApplicationPlatformNavigation([
+      {
+        sections: [
+          {
+            type: 'group',
+            id: 'derived-governance',
+            label: 'Gouvernance applicative',
+            items: [
+              {
+                id: 'derived-reference',
+                label: 'Référentiel applicatif',
+                to: '/derived-reference',
+                isVisible: ({ applicationGlobalPermissions }) => (
+                  applicationGlobalPermissions.has(
+                    'derived:reference:read',
+                  )
+                ),
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const allowedItems = getPlatformQuickAccessItems(
+      {
+        status: 'active',
+        permissions: [PLATFORM_PERMISSION.USERS_READ],
+        applicationGlobalPermissions: ['derived:reference:read'],
+      },
+      navigation,
+    );
+
+    expect(allowedItems).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'users',
+        label: 'Utilisateurs',
+        groupLabel: 'Gestion clients',
+      }),
+      expect.objectContaining({
+        id: 'derived-reference',
+        label: 'Référentiel applicatif',
+        groupLabel: 'Gouvernance applicative',
+      }),
+    ]));
+
+    const forbiddenItems = getPlatformQuickAccessItems(
+      {
+        status: 'active',
+        permissions: [PLATFORM_PERMISSION.USERS_READ],
+        applicationGlobalPermissions: [],
+      },
+      navigation,
+    );
+
+    expect(forbiddenItems.map(({ id }) => id))
+      .not.toContain('derived-reference');
   });
 
   it('ne transforme jamais les permissions Platform en autorisation Application Global', () => {
