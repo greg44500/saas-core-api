@@ -15,8 +15,8 @@ import {
  * Point d'extension explicite du centre d'aide pour les SaaS dérivés.
  *
  * Un module métier peut ajouter ses catégories et fiches sans modifier le
- * corpus Core. La limite de cinq catégories par contexte reste contrôlée par
- * createHelpRegistry afin de préserver le contrat UX D-025.
+ * corpus Core. Le registre conserve une limite UX explicite par contexte tout
+ * en réservant suffisamment de capacité aux modules d'un SaaS dérivé.
  *
  * Une extension doit aussi déclarer explicitement les fiches Workspace qui
  * restent exécutables en mode remédiation. Sans déclaration, la fiche reste
