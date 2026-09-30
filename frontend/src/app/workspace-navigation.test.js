@@ -6,7 +6,11 @@ import {
 import {
   WORKSPACE_ADMINISTRATION_SEPARATOR,
 } from '@/features/workspace/navigation/compose-workspace-navigation';
-import { coreWorkspaceNavigation } from '@/features/workspace/navigation/core-workspace-navigation';
+import {
+  coreWorkspaceAdministrationNavigation,
+  coreWorkspaceDashboardNavigationItem,
+  coreWorkspaceNavigation,
+} from '@/features/workspace/navigation/core-workspace-navigation';
 
 describe('workspace navigation composition', () => {
   it('conserve la navigation Core plate lorsqu’aucun module applicatif n’est déclaré', () => {
@@ -16,7 +20,7 @@ describe('workspace navigation composition', () => {
     expect(navigation.every((entry) => entry.type === 'item')).toBe(true);
   });
 
-  it('place les modules applicatifs avant le séparateur puis toute la navigation Core', () => {
+  it('place le Dashboard avant les modules applicatifs puis sépare uniquement l’administration Core', () => {
     const catalogGroup = {
       id: 'catalog',
       type: 'group',
@@ -31,10 +35,14 @@ describe('workspace navigation composition', () => {
     ]);
 
     expect(navigation).toEqual([
+      coreWorkspaceDashboardNavigationItem,
       catalogGroup,
       WORKSPACE_ADMINISTRATION_SEPARATOR,
-      ...coreWorkspaceNavigation,
+      ...coreWorkspaceAdministrationNavigation,
     ]);
+    expect(navigation[0].id).toBe('dashboard');
+    expect(navigation[1]).toBe(catalogGroup);
+    expect(navigation[2]).toBe(WORKSPACE_ADMINISTRATION_SEPARATOR);
     expect(WORKSPACE_ADMINISTRATION_SEPARATOR.label)
       .toBe('Administration de l’espace');
   });
