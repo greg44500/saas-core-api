@@ -6,6 +6,7 @@ import {
 } from '../../constants/workspaceAccess.constants.js';
 import {
     HELP_CONTEXT,
+    MAX_HELP_CATEGORIES_PER_CONTEXT,
     composeHelpModuleExtensions,
     createHelpRegistry,
 } from '../../modules/help/help.registry.js';
@@ -188,17 +189,34 @@ describe('help.registry', () => {
         })).toThrow(/Workspace remediation help entry is invalid/);
     });
 
-    it('refuse plus de cinq catégories dans un même contexte', () => {
-        const categories = Array.from({ length: 6 }, (_, index) => ({
-            ...category,
-            id: `workspace_test_${index}`,
-            order: index,
-        }));
+    it('réserve de la capacité aux catégories dérivées tout en conservant une limite UX', () => {
+        const acceptedCategories = Array.from(
+            { length: MAX_HELP_CATEGORIES_PER_CONTEXT },
+            (_, index) => ({
+                ...category,
+                id: `workspace_test_${index}`,
+                order: index,
+            }),
+        );
 
         expect(() => createHelpRegistry({
-            categories,
+            categories: acceptedCategories,
             entries: [],
-        })).toThrow(/more than 5 categories/);
+        })).not.toThrow();
+
+        const overflowingCategories = [
+            ...acceptedCategories,
+            {
+                ...category,
+                id: 'workspace_test_overflow',
+                order: MAX_HELP_CATEGORIES_PER_CONTEXT,
+            },
+        ];
+
+        expect(() => createHelpRegistry({
+            categories: overflowingCategories,
+            entries: [],
+        })).toThrow(/cannot expose more than/);
     });
 
     it('compose explicitement les modules métier et leur politique de remédiation', () => {
