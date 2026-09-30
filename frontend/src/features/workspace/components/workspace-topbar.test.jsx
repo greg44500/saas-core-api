@@ -53,7 +53,11 @@ function renderTopbar(workspace, path = '/workspaces/workspace-1/dashboard') {
 }
 
 describe('WorkspaceTopbar', () => {
-  const workspace = { id: 'workspace-1', name: 'Acme' };
+  const workspace = {
+    id: 'workspace-1',
+    name: 'Acme',
+    status: 'active',
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -68,6 +72,16 @@ describe('WorkspaceTopbar', () => {
     expect(container.querySelector('header > div')).toHaveClass(
       'min-h-[var(--workspace-topbar-height)]',
     );
+  });
+
+  it('affiche le statut courant à côté du sélecteur de workspace', () => {
+    useWorkspaceContextMock.mockReturnValue({ can: () => false });
+    useGetWorkspaceSubscriptionQueryMock.mockReturnValue({ data: undefined });
+
+    renderTopbar(workspace);
+
+    expect(screen.getByText('Espace de travail : Acme')).toBeInTheDocument();
+    expect(screen.getByText('Actif')).toBeInTheDocument();
   });
 
   it('affiche le plan effectif uniquement avec subscription:read', () => {
