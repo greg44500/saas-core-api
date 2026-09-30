@@ -3,217 +3,193 @@
 **Dernière mise à jour :** 2026-09-30  
 **Baseline stable :** v1.2.1  
 **Commit stable de base :** d90d8f1e6034cbbf4f63de2be7312eae69b1d698  
-**Dépendance intégrée :** PR #44 fusionnée sur `main` — merge `73f8b662714f7afd33ddf40fa2af0fb55689d79a`  
-**Branche courante :** `feat/workspace-shell-sidebar-ux`  
-**Release cible :** aucune — évolution frontend post-tag compatible
+**Lot UI/UX précédent :** PR #45 fusionnée — merge `1a8672169cc72fa34e05132ae3798d79bf71dcc0`  
+**Branche courante :** `feat/core-help-platform-quick-access`  
+**Release cible :** aucune — évolution post-tag compatible avec v1.2.1
 
-## Objet du lot
+## Objet du lot courant
 
-Améliorer en un seul lot Core l’UI/UX du shell Workspace et la séparation
-visuelle des navigations dérivées, sans introduire de métier produit dans le
-Core.
-
-Contraintes :
+Finaliser le lot Core générique avant une unique intégration dans le SaaS
+dérivé :
 
 ```text
-une seule PR pour ce lot
-aucun backend
-aucune DB
-aucune migration
-aucune variable d’environnement
-aucune dépendance
-aucune release / aucun tag / aucun bump Core
-intégration future par SHA exact
+mise à jour du centre d’aide Core
++
+extension Help compatible Application Global
++
+suppression de la recherche Workspace redondante
++
+accès rapide Platform réellement fonctionnel
 ```
 
-## Intégration de la PR #44
+Aucun contenu métier GMS n’est ajouté au Core.
 
-La branche a été créée sur le HEAD :
+## Aide Core et aide des SaaS dérivés
+
+Le point d’extension existant est conservé :
 
 ```text
-3200ee4614c4d60f78decb62f50d36c4addce3be
+backend/config/applicationHelp.registry.js
+→ APPLICATION_HELP_MODULES
+→ ACTIVE_HELP_REGISTRY
 ```
 
-de la PR #44 `fix(frontend): expose workspace topbar sticky offset`.
+Le produit dérivé ajoute son aide métier dans ce registre sans modifier
+`helpCore.registry.js`.
 
-Cette PR a passé la Core Gate #83 avec succès puis a été fusionnée sur
-`main` au commit :
+L’utilisateur final conserve un seul centre d’aide par contexte. La séparation
+Core / produit reste une séparation de code.
+
+### Autorisation Application Global
+
+Les fiches Platform peuvent désormais déclarer :
 
 ```text
-73f8b662714f7afd33ddf40fa2af0fb55689d79a
+audience.permissions
+→ permissions Platform
+
+audience.applicationGlobalPermissions
+→ permissions Application Global
 ```
 
-Le présent lot réutilise donc le contrat
-`--workspace-topbar-height` désormais intégré à `main`.
+Les deux autorités sont résolues séparément.
 
-## Dashboard Workspace
-
-Les widgets suivants sont retirés :
+Invariant :
 
 ```text
-core.workspace-status
-core.workspace-role
+Platform Super Admin / Fondateur
+≠
+autorité métier globale implicite
 ```
 
-Le Dashboard reste orienté synthèse utile et future valeur métier.
+Le registre Help autorise jusqu’à 10 catégories par contexte afin que les
+dérivés disposent d’une capacité réelle. Le Core en occupe actuellement 4 côté
+Workspace et 5 côté Platform.
 
-Les anciens IDs éventuellement conservés dans
-`User.preferences.dashboard.hiddenWidgetIds` restent tolérés mais deviennent
-inertes, car le registre courant reste l’autorité.
+## Aide mise à jour pour le shell Workspace
 
-## WorkspaceTopbar
+Le corpus Core documente maintenant :
 
-Le statut réel du Workspace est affiché en badge à côté du sélecteur.
+- le statut de l’espace affiché près du sélecteur ;
+- le rôle visible dans l’identité utilisateur ;
+- le plan effectif lorsqu’un utilisateur possède `subscription:read` ;
+- la séparation `Administration de l’espace` ;
+- la navigation Core plate ;
+- la différence entre droits Platform et droits globaux applicatifs.
 
-Mapping :
+Les anciennes instructions `Ressources → Fichiers` sont remplacées par la
+navigation actuelle.
+
+## Recherche Workspace
+
+La recherche générique de `WorkspaceTopbar` est supprimée.
+
+Principe :
 
 ```text
-active     → success
-suspended  → warning
-archived   → neutral
-closed     → destructive
+Workspace
+→ recherches dans les pages fonctionnelles
+→ pas de moteur global dupliqué dans le shell
 ```
 
-Le rôle Workspace et le plan effectif sont visibles dans l’identité
-utilisateur. Le popover avatar expose également ces détails via le contrat Auth
-générique `menuContextItems`.
+## Accès rapide Platform
 
-Tooltip avatar :
+La recherche factice de la topbar Platform est remplacée par un accès rapide
+aux vues d’administration autorisées.
+
+Source :
 
 ```text
-Voir le compte utilisateur
+APPLICATION_PLATFORM_NAVIGATION
++
+getVisiblePlatformNavigationSections()
+→ getPlatformQuickAccessItems()
 ```
 
-## Sidebar Workspace
+Le mécanisme recherche les libellés de destinations et de groupes, puis navigue
+vers la vue sélectionnée.
 
-La navigation Core elle-même devient plate :
+Il inclut automatiquement :
+
+- les vues Core autorisées par les permissions Platform ;
+- les vues dérivées autorisées par leur callback `isVisible` ;
+- donc les vues globales applicatives lorsqu’une permission Application Global
+  correspondante est présente.
+
+Il ne recherche volontairement pas les données elles-mêmes. Les recherches
+d’utilisateurs, workspaces, abonnements ou objets métier restent dans leurs
+pages dédiées.
+
+## Périmètre technique
+
+Le lot modifie :
 
 ```text
-Tableau de bord
-Fichiers
-Membres
-Rôles et permissions
-Paramètres
-Abonnement
-Activité
+backend/modules/help/*
+backend/config/applicationHelp.registry.js
+backend/tests/help/*
+frontend/src/features/help/*
+frontend/src/features/workspace/components/workspace-topbar*
+frontend/src/features/platform/components/platform-quick-access*
+frontend/src/features/platform/lib/platform-navigation*
+frontend/src/app/layouts/platform-layout*
+docs/contracts/CORE-CONTRACT.md
+docs/derived-saas/*
+docs/debt/D-025-secure-help-center.md
 ```
 
-Les anciennes catégories `Ressources`, `Gestion du workspace` et
-`Compte & offre` ne structurent plus la Sidebar Workspace.
-
-Lorsqu’un produit dérivé déclare des modules, l’ordre est strictement :
+Le lot ne modifie pas :
 
 ```text
-fonctions applicatives / métier
-→ séparateur « Administration de l’espace »
-→ navigation Core complète
+MongoDB schemas
+migrations
+variables d’environnement
+dépendances npm
+version Core
+tag Core
+GitHub Release
+contenu métier GMS
 ```
 
-Aucun titre `Métier`, `Gestion métier` ou équivalent n’est ajouté.
+## Validation
 
-Le moteur de composition est centralisé dans :
-
-```text
-frontend/src/features/workspace/navigation/compose-workspace-navigation.js
-```
-
-Le produit ne doit conserver dans `app/workspace-navigation.js` que la
-déclaration de ses modules.
-
-## Animation des groupes
-
-Les groupes restent supportés pour les modules qui en ont besoin.
-
-Mode développé :
-
-```text
-Base UI Collapsible
---collapsible-panel-height
-transition height + opacity
-motion-reduce:transition-none
-```
-
-Mode icône :
-
-```text
-Popover existant conservé
-```
-
-Les tests attendent la fin réelle de la transition de fermeture au lieu de
-supposer un démontage instantané.
-
-## Sidebar Platform
-
-Aucune refonte.
-
-Le comportement existant reste inchangé et le Core ajoute uniquement :
-
-```text
-navigation Platform Core
-→ séparateur visuel simple
-→ navigation applicative
-```
-
-Le séparateur est absent sans module applicatif et retiré s’il devient orphelin
-après filtrage des autorisations.
-
-Aucun libellé métier spécifique n’est imposé au Core Platform.
-
-## Commits du lot
-
-```text
-de8aee26ac916ab10ed27f67ed378575ce610154
-→ contexte Workspace déplacé dans le shell
-
-068dedb48c0f43cef3f31356e14ac7461ab54663
-→ première simplification de navigation
-
-452d97da617f5205ceec0761ef173895bb31463e
-→ tests adaptés aux transitions Base UI
-
-2072b640c8251b8acd8f5989454eaf9bedde3b46
-→ documentation initiale du lot
-
-e8cf81f097b4f560334b2b1c0a2da8f157289479
-→ alignement exact du contrat de séparation Workspace / Platform
-```
-
-## Validation attendue
-
-La validation canonique reste :
+Validation canonique :
 
 ```bash
 npm run release:check
 ```
 
-La sandbox actuelle ne peut pas résoudre `github.com`, donc aucun clone local
-ni résultat local n’est déclaré comme exécuté. La Core Gate de la PR finale
-reste l’autorité de validation réelle.
+La Core Gate de la PR finale reste l’autorité de validation réelle.
 
-## Après merge Core
+## Après merge validé
 
-Le produit dérivé devra intégrer le SHA Core exact validé tout en conservant :
+Le produit `saas-fiches-techniques-gms` devra intégrer **une seule fois** le
+SHA Core final de ce lot.
+
+La provenance restera :
 
 ```text
 version = 1.2.1
 tag     = v1.2.1
-commit  = SHA post-tag exact intégré
+commit  = <SHA Core post-tag exact validé>
 ```
 
-Puis il devra :
+Le produit devra ensuite :
 
-1. importer le moteur Core `composeWorkspaceNavigation()` au lieu de conserver
-   sa copie locale ;
-2. garder ses descriptors Dossiers / Produits / Fournisseurs dans
-   `APPLICATION_WORKSPACE_NAVIGATION_MODULES` ;
-3. bénéficier automatiquement du séparateur `Administration de l’espace` ;
-4. conserver la Sidebar Platform existante avec le simple séparateur Core avant
-   les entrées applicatives ;
-5. valider visuellement le résultat dans le produit.
+1. conserver ses modules Dossiers / Produits / Fournisseurs ;
+2. utiliser le moteur Core `composeWorkspaceNavigation()` ;
+3. bénéficier du shell Workspace mis à jour ;
+4. injecter son aide métier via `APPLICATION_HELP_MODULES` ;
+5. déclarer les permissions Application Global des fiches d’aide globales
+   lorsqu’elles existent ;
+6. conserver ses entrées Platform dérivées, automatiquement accessibles via
+   l’accès rapide si elles sont autorisées ;
+7. valider visuellement et fonctionnellement le produit.
 
 Principe :
 
 ```text
-Core = shell et composition génériques
-Produit = valeur métier
+Core = mécanismes génériques + aide générique
+Produit = métier + aide métier
+Interface finale = expérience unifiée
 ```
