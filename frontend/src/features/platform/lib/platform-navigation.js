@@ -221,6 +221,30 @@ function getVisiblePlatformNavigationSections(
   return compactNavigationSeparators(visibleNavigation);
 }
 
+function getPlatformQuickAccessItems(
+  visibilityContextInput,
+  navigationSections = corePlatformNavigationSections,
+) {
+  return getVisiblePlatformNavigationSections(
+    visibilityContextInput,
+    navigationSections,
+  ).flatMap((entry) => {
+    if (entry.type === 'separator') return [];
+
+    if (entry.type === 'group') {
+      return entry.items.map((item) => ({
+        ...item,
+        groupLabel: entry.label,
+      }));
+    }
+
+    return [{
+      ...entry,
+      groupLabel: null,
+    }];
+  });
+}
+
 function hasActivePlatformAccess(platformAccess) {
   return platformAccess?.status === 'active'
     && Array.isArray(platformAccess.permissions)
@@ -318,6 +342,7 @@ export {
   getActivePlatformNavigationGroupId,
   getFirstPlatformDestination,
   getPlatformNavigationItemForPath,
+  getPlatformQuickAccessItems,
   getVisiblePlatformNavigationSections,
   hasActivePlatformAccess,
   platformNavigationItems,
