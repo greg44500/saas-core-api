@@ -6,6 +6,24 @@
 
 ---
 
+## Offset sticky sous la topbar Workspace
+
+Le layout Workspace expose le token CSS générique :
+
+~~~css
+--workspace-topbar-height
+~~~
+
+La `WorkspaceTopbar` consomme elle-même ce token. Un module dérivé qui doit
+maintenir une zone `sticky` immédiatement sous la topbar peut donc utiliser :
+
+~~~css
+top: var(--workspace-topbar-height);
+~~~
+
+Le module dérivé ne doit pas recopier `4rem`, `min-h-16` ou une autre hauteur
+interne de la topbar. Si la hauteur Core évolue, le token reste l’autorité de
+layout.
 ## 1. Objectif
 
 Un SaaS dérivé doit pouvoir ajouter un module métier sans modifier les longues listes centrales du Core.
