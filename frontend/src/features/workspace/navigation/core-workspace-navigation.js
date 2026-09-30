@@ -11,7 +11,13 @@ import {
 import { WORKSPACE_FEATURE } from '@/features/workspace/constants/workspace-features';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
 
-const coreWorkspacePrimaryNavigation = Object.freeze([
+/**
+ * Navigation générique du Core Workspace.
+ *
+ * Dans un SaaS dérivé, le moteur de composition place les modules applicatifs
+ * avant cette liste puis ajoute le séparateur "Administration de l’espace".
+ */
+const coreWorkspaceNavigation = Object.freeze([
   Object.freeze({
     id: 'dashboard',
     type: 'item',
@@ -19,9 +25,6 @@ const coreWorkspacePrimaryNavigation = Object.freeze([
     Icon: LayoutDashboard,
     path: 'dashboard',
   }),
-]);
-
-const coreWorkspaceAdministrationNavigation = Object.freeze([
   Object.freeze({
     id: 'files',
     type: 'item',
@@ -75,13 +78,4 @@ const coreWorkspaceAdministrationNavigation = Object.freeze([
   }),
 ]);
 
-const coreWorkspaceNavigation = Object.freeze([
-  ...coreWorkspacePrimaryNavigation,
-  ...coreWorkspaceAdministrationNavigation,
-]);
-
-export {
-  coreWorkspaceAdministrationNavigation,
-  coreWorkspaceNavigation,
-  coreWorkspacePrimaryNavigation,
-};
+export { coreWorkspaceNavigation };

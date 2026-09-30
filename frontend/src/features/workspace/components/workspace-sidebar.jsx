@@ -2,35 +2,12 @@ import { useLocation } from 'react-router';
 
 import { APPLICATION_IDENTITY } from '@/app/application-identity';
 import { AppSidebar } from '@/components/shared/app-sidebar';
+import { compactNavigationSeparators } from '@/components/shared/navigation-separators';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 
 function canDisplayNavigationItem(item, { can, hasFeature }) {
   return (!item.permission || can(item.permission))
     && (!item.feature || hasFeature(item.feature));
-}
-
-function compactNavigationSeparators(navigation) {
-  const compacted = [];
-
-  navigation.forEach((entry) => {
-    if (entry.type !== 'separator') {
-      compacted.push(entry);
-      return;
-    }
-
-    if (
-      compacted.length > 0
-      && compacted.at(-1)?.type !== 'separator'
-    ) {
-      compacted.push(entry);
-    }
-  });
-
-  while (compacted.at(-1)?.type === 'separator') {
-    compacted.pop();
-  }
-
-  return compacted;
 }
 
 /**
@@ -98,7 +75,6 @@ function WorkspaceSidebar({ navigation = [], workspace }) {
 
 export {
   WorkspaceSidebar,
-  compactNavigationSeparators,
   filterWorkspaceNavigation,
   getActiveNavigationGroupId,
   isNavigationItemActive,

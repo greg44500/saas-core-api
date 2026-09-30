@@ -36,15 +36,44 @@ function findActiveGroupId(navigation, isItemActive) {
   ))?.id ?? null;
 }
 
-function AppSidebarSeparator({ id }) {
+function AppSidebarSeparator({ id, label = null }) {
+  if (!label) {
+    return (
+      <li
+        aria-orientation="horizontal"
+        className="mx-2 my-2 border-t border-sidebar-border group-data-[collapsible=icon]:mx-1"
+        data-navigation-id={id}
+        data-sidebar="separator"
+        role="separator"
+      />
+    );
+  }
+
   return (
     <li
+      aria-label={label}
       aria-orientation="horizontal"
-      className="mx-2 my-2 border-t border-sidebar-border group-data-[collapsible=icon]:mx-1"
+      className="my-3 flex items-center gap-2"
       data-navigation-id={id}
       data-sidebar="separator"
       role="separator"
-    />
+    >
+      <span
+        aria-hidden="true"
+        className="h-px flex-1 bg-sidebar-border group-data-[collapsible=icon]:hidden"
+      />
+      <span className="shrink-0 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground group-data-[collapsible=icon]:sr-only">
+        {label}
+      </span>
+      <span
+        aria-hidden="true"
+        className="h-px flex-1 bg-sidebar-border group-data-[collapsible=icon]:hidden"
+      />
+      <span
+        aria-hidden="true"
+        className="hidden h-px flex-1 bg-sidebar-border group-data-[collapsible=icon]:block"
+      />
+    </li>
   );
 }
 
@@ -249,7 +278,11 @@ function AppSidebarNavigation({
             <SidebarMenu>
               {navigation.map((entry) => (
                 entry.type === 'separator' ? (
-                  <AppSidebarSeparator id={entry.id} key={entry.id} />
+                  <AppSidebarSeparator
+                    id={entry.id}
+                    key={entry.id}
+                    label={entry.label}
+                  />
                 ) : entry.type === 'group' ? (
                   <AppSidebarGroup
                     expanded={openGroupId === entry.id}

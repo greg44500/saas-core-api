@@ -7,9 +7,9 @@ import { composeWorkspaceNavigation } from '@/app/workspace-navigation';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { WorkspaceProvider } from '@/features/workspace/components/workspace-context';
+import { compactNavigationSeparators } from '@/components/shared/navigation-separators';
 import {
   WorkspaceSidebar,
-  compactNavigationSeparators,
 } from '@/features/workspace/components/workspace-sidebar';
 import { WORKSPACE_FEATURE } from '@/features/workspace/constants/workspace-features';
 import { WORKSPACE_PERMISSION } from '@/features/workspace/constants/workspace-permissions';
@@ -255,14 +255,29 @@ describe('WorkspaceSidebar', () => {
       { navigation },
     );
 
-    const separator = screen.getByRole('separator');
+    const catalog = screen.getByRole('link', { name: 'Catalogue' });
+    const separator = screen.getByRole('separator', {
+      name: 'Administration de l’espace',
+    });
+    const dashboard = screen.getByRole('link', { name: 'Tableau de bord' });
+    const files = screen.getByRole('link', { name: 'Fichiers' });
 
-    expect(screen.getByRole('link', { name: 'Catalogue' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Fichiers' })).toBeInTheDocument();
     expect(separator).toHaveAttribute(
       'data-navigation-id',
       'workspace-administration-separator',
     );
+    expect(
+      catalog.compareDocumentPosition(separator)
+      & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      separator.compareDocumentPosition(dashboard)
+      & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      dashboard.compareDocumentPosition(files)
+      & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('retire les séparateurs en tête, en fin et les doublons consécutifs', () => {
