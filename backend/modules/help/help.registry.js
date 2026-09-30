@@ -32,6 +32,7 @@ const HELP_ENTRY_ID_PATTERN =
 const HELP_CATEGORY_ID_PATTERN =
     /^(workspace|platform)_[a-z][a-z0-9_]*$/;
 const HELP_MODULE_KEY_PATTERN = /^[a-z][a-z0-9_-]*$/;
+const MAX_HELP_CATEGORIES_PER_CONTEXT = 10;
 
 const nonEmptyText = (maxLength) => z
     .string()
@@ -212,9 +213,12 @@ const createHelpRegistry = ({
             (category) => category.context === context,
         ).length;
 
-        if (contextCategoryCount > 5) {
+        if (
+            contextCategoryCount
+            > MAX_HELP_CATEGORIES_PER_CONTEXT
+        ) {
             throw new TypeError(
-                `Help context "${context}" cannot expose more than 5 categories`,
+                `Help context "${context}" cannot expose more than ${MAX_HELP_CATEGORIES_PER_CONTEXT} categories`,
             );
         }
     }
@@ -371,6 +375,7 @@ const createHelpRegistry = ({
 
 export {
     HELP_CONTEXT,
+    MAX_HELP_CATEGORIES_PER_CONTEXT,
     composeHelpModuleExtensions,
     createHelpRegistry,
     helpCategorySchema,
