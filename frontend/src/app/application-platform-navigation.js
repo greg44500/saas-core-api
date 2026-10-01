@@ -53,7 +53,7 @@ function normalizePlatformNavigationEntry(entry, label) {
     Array.isArray(entry.items) ? 'group' : 'item'
   );
 
-  if (inferredType === 'group') {
+  if (inferredType === 'group' || inferredType === 'section') {
     if (!Array.isArray(entry.items)) {
       throw new TypeError(`${label}.items must be an array`);
     }
@@ -67,7 +67,7 @@ function normalizePlatformNavigationEntry(entry, label) {
 
     return Object.freeze({
       ...entry,
-      type: 'group',
+      type: inferredType,
       items: Object.freeze(
         entry.items.map((item, itemIndex) => (
           normalizePlatformNavigationItem(
@@ -81,7 +81,7 @@ function normalizePlatformNavigationEntry(entry, label) {
 
   if (inferredType !== 'item') {
     throw new TypeError(
-      `${label}.type must be "item" or "group"`,
+      `${label}.type must be "item", "group" or "section"`,
     );
   }
 
@@ -119,7 +119,7 @@ function assertUniquePlatformNavigationEntries(navigation) {
 
     registeredIds.add(entry.id);
 
-    if (entry.type === 'group') {
+    if (entry.type === 'group' || entry.type === 'section') {
       entry.items.forEach(registerItem);
       return;
     }
@@ -176,12 +176,20 @@ function composeApplicationPlatformNavigation(navigationModules = []) {
     },
   );
 
+  const firstApplicationEntry = applicationSections[0];
+  const needsLegacyApplicationSeparator = (
+    firstApplicationEntry
+    && firstApplicationEntry.type !== 'section'
+  );
+
   const navigation = Object.freeze(
     applicationSections.length === 0
       ? [...corePlatformNavigationSections]
       : [
         ...corePlatformNavigationSections,
-        PLATFORM_APPLICATION_SEPARATOR,
+        ...(needsLegacyApplicationSeparator
+          ? [PLATFORM_APPLICATION_SEPARATOR]
+          : []),
         ...applicationSections,
       ],
   );

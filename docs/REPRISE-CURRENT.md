@@ -1,113 +1,90 @@
 # SAAS-CORE-API — Reprise courante
 
-**Dernière mise à jour :** 2026-09-30  
+**Dernière mise à jour :** 2026-10-01  
 **Baseline stable :** v1.2.1  
-**Dernier lot validé sur main :** PR #46 — merge `a9d99aa6307a6e7adf884e949cebc4059549824e`  
-**Branche courante :** `fix/workspace-dashboard-navigation-status-layout`  
-**Release cible :** aucune — correctif frontend post-tag compatible
+**Point de départ du lot :** `main@d3b9891bc2a32705a0a99b2ed62bed60caf653ca`  
+**Dernier lot intégré avant ce travail :** PR #47 — merge `d3b9891bc2a32705a0a99b2ed62bed60caf653ca`  
+**Branche courante :** `feat/platform-navigation-sections`  
+**Release cible :** aucune — évolution frontend compatible post-tag v1.2.1
 
 ## Objet du lot
 
-Corriger deux incohérences visuelles du shell Workspace avant l’intégration
-finale dans un SaaS dérivé.
+Ajouter au moteur générique de navigation Platform une primitive visuelle `section` utilisable par les SaaS dérivés.
 
-Aucun changement métier, backend, DB ou release.
-
-## Navigation Workspace
-
-Le Tableau de bord est une surface Core transversale qui compose :
+Le besoin est uniquement structurel :
 
 ```text
-widgets Core
-+
-widgets applicatifs / métier
+Core
+→ fournit la primitive de section visuelle
+
+produit dérivé
+→ fournit libellés, routes, icônes, autorisations et comportement métier
 ```
 
-Il doit donc rester la première entrée du Workspace, y compris dans un SaaS
-dérivé.
+Aucun référentiel métier, produit, fournisseur ou permission métier n’est ajouté au Core.
 
-Ordre cible lorsqu’un produit déclare des modules :
+## Contrat de navigation Platform
+
+Descriptors historiques conservés :
 
 ```text
-Tableau de bord
-modules applicatifs / métier
-séparateur « Administration de l’espace »
-Fichiers
-Membres
-Rôles et permissions
-Paramètres
-Abonnement
-Activité
+item
+group
+separator interne Core
 ```
 
-Aucun séparateur, groupe ou espacement spécifique n’est ajouté entre
-`Tableau de bord` et les modules applicatifs. Ils utilisent le rythme normal
-de la Sidebar.
-
-Le moteur Core expose explicitement :
+Nouveau descriptor applicatif :
 
 ```text
-coreWorkspaceDashboardNavigationItem
-coreWorkspaceAdministrationNavigation
-coreWorkspaceNavigation
+section
+→ id
+→ label
+→ items[]
+→ isVisible(context) optionnel
 ```
 
-et `composeWorkspaceNavigation()` assemble le shell sans que le dérivé ne
-recopie cette logique.
+Une `section` :
 
-Sans module applicatif, la navigation Core plate complète reste inchangée.
+- organise visuellement les entrées ;
+- n’est jamais repliable ;
+- disparaît si tous ses enfants sont filtrés ;
+- ne laisse aucun séparateur orphelin ;
+- reste compatible avec la Sidebar compacte ;
+- alimente le routing et l’accès rapide à travers ses enfants.
 
-## Statut du Workspace
+Les anciens descriptors `item` et `group` conservent leur comportement et leur séparation historique.
 
-La topbar regroupe désormais le contexte sous la forme :
+## Autorisations
+
+Invariant inchangé :
 
 ```text
-Espace de travail : Nom | [badge statut]
+Platform permissions
+≠
+Application Global permissions
 ```
 
-Le badge n’est plus repoussé à l’extrémité de la zone disponible.
-
-Objectif : rendre immédiatement visible un état sensible comme
-`Suspendu`, `Archivé` ou `Clôturé`.
-
-## Identité du SaaS dérivé
-
-Aucun changement de nom produit n’est effectué dans ce lot Core.
-
-Le Core conserve son identité générique :
+Le contexte de visibilité conserve séparément :
 
 ```text
-frontend/src/app/application-identity.js
-→ SaaS Core
+platformAccess
+platformPermissions
+applicationGlobalPermissions
 ```
 
-Chaque SaaS dérivé doit définir sa propre identité dans son dépôt après
-intégration du Core. Cette personnalisation appartient au produit et ne doit pas
-être codée dans `saas-core-api`.
+Un Fondateur / Super Admin Platform ne reçoit aucune permission Application Global implicite. Les guards backend restent l’autorité de sécurité.
 
-## Tests adaptés
-
-Les tests verrouillent maintenant :
-
-- Dashboard en première position ;
-- modules applicatifs immédiatement après ;
-- séparateur uniquement avant l’administration Core ;
-- absence de changement de la navigation Core lorsqu’aucun module n’est déclaré ;
-- ordre visuel `workspace → | → badge` dans la topbar ;
-- maintien des permissions/capabilities existantes.
-
-## Périmètre
+## Périmètre du lot
 
 Modifié :
 
 ```text
-frontend/src/features/workspace/navigation/core-workspace-navigation.js
-frontend/src/features/workspace/navigation/compose-workspace-navigation.js
-frontend/src/app/workspace-navigation.test.js
+frontend/src/app/application-platform-navigation.js
+frontend/src/features/platform/lib/platform-navigation.js
+frontend/src/components/shared/app-sidebar.jsx
+frontend/src/app/application-platform-navigation.test.js
+frontend/src/features/platform/lib/platform-navigation.test.js
 frontend/src/features/workspace/components/workspace-sidebar.test.jsx
-frontend/src/features/workspace/components/workspace-topbar.jsx
-frontend/src/features/workspace/components/workspace-topbar.test.jsx
-backend/modules/help/helpCore.registry.js
 docs/derived-saas/EXTENSION-POINTS.md
 docs/derived-saas/DERIVED-SAAS.md
 docs/REPRISE-CURRENT.md
@@ -116,44 +93,53 @@ docs/REPRISE-CURRENT.md
 Non modifié :
 
 ```text
-MongoDB
+backend d’autorisation
+MongoDB / Mongoose
 migrations
-backend métier
-permissions
-capabilities
-dépendances npm
-version Core
-tag Core
-GitHub Release
-identité du SaaS métier
+plans / capabilities
+RBAC Workspace
+Files
+subscriptions
+référentiels métier
+routes métier
 ```
 
 ## Validation
 
-Validation canonique :
+Gate canonique :
 
 ```bash
 npm run release:check
 ```
 
-La Core Gate de la PR reste l’autorité de validation.
+Elle reste l’autorité avant merge.
 
-## Après merge validé
+Le résultat de la Core Gate est communiqué par Greg. Ne pas sonder ou relancer périodiquement GitHub Actions.
 
-Le SHA post-tag final devra être intégré une seule fois dans
-`saas-fiches-techniques-gms` en conservant :
+## Versionnement
+
+La baseline stable reste :
 
 ```text
 version = 1.2.1
 tag     = v1.2.1
-commit  = <SHA Core exact du merge final>
 ```
 
-Le produit devra ensuite :
+Le tag `v1.2.1` reste immuable. Aucun nouveau tag, aucune GitHub Release et aucune micro-version artificielle ne sont créés pour ce lot.
 
-1. utiliser le moteur Core `composeWorkspaceNavigation()` ;
-2. conserver ses modules Dossiers / Produits / Fournisseurs ;
-3. vérifier visuellement l’ordre Dashboard → métier → Administration ;
-4. définir son propre `APPLICATION_IDENTITY` à la place de `SaaS Core` ;
-5. vérifier le format `Nom du Workspace | badge` ;
-6. poursuivre l’intégration Help Center et la reprise M-002 selon le cadrage produit.
+Après merge et validation de la Gate finale, un SaaS dérivé peut intégrer le SHA Core exact descendant de `v1.2.1` en conservant la version et le tag de base dans `core-origin.json`.
+
+## Après validation Core
+
+Ne pas modifier `saas-fiches-techniques-gms` avant confirmation de la fusion et de la Gate finale.
+
+La reprise produit devra suivre :
+
+```text
+branche core-update dédiée
+→ intégration du SHA Core exact
+→ tests globaux produit
+→ Core Gate produit
+→ core-origin.json après validation
+→ implémentation métier de Gestion des référentiels
+```
