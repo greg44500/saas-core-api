@@ -402,7 +402,7 @@ describe('platform navigation policy', () => {
 
     const context = {
       status: 'active',
-      permissions: [],
+      permissions: ['platform:placeholder:read'],
       applicationGlobalPermissions: ['derived:reference:read'],
     };
 

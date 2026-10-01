@@ -272,6 +272,7 @@ function AppSidebarSection({
     </>
   );
 }
+
 function AppSidebarGroup(props) {
   const { isMobile, state } = useSidebar();
   const collapsed = state === 'collapsed' && !isMobile;

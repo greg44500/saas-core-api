@@ -87,6 +87,7 @@ function normalizePlatformNavigationEntry(entry, label) {
 
   return normalizePlatformNavigationItem(entry, label);
 }
+
 function assertUniquePlatformNavigationEntries(navigation) {
   const registeredIds = new Set();
   const registeredDestinations = new Set();
