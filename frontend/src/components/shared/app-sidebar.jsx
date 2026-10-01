@@ -221,6 +221,57 @@ function ExpandedSidebarGroup({
   );
 }
 
+function AppSidebarSectionLabel({
+  id,
+  label,
+  separated,
+}) {
+  if (separated) {
+    return <AppSidebarSeparator id={id} label={label} />;
+  }
+
+  return (
+    <li
+      className="px-2 pb-1 pt-1 group-data-[collapsible=icon]:hidden"
+      data-navigation-id={id}
+      data-sidebar="section-label"
+    >
+      <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+    </li>
+  );
+}
+
+function AppSidebarSection({
+  getHref,
+  getIcon,
+  isItemActive,
+  onNavigate,
+  section,
+  separated,
+}) {
+  return (
+    <>
+      <AppSidebarSectionLabel
+        id={section.id}
+        label={section.label}
+        separated={separated}
+      />
+      {section.items.map((item) => (
+        <SidebarMenuItem key={item.id}>
+          <AppSidebarLink
+            getHref={getHref}
+            getIcon={getIcon}
+            isItemActive={isItemActive}
+            item={item}
+            onNavigate={onNavigate}
+          />
+        </SidebarMenuItem>
+      ))}
+    </>
+  );
+}
 function AppSidebarGroup(props) {
   const { isMobile, state } = useSidebar();
   const collapsed = state === 'collapsed' && !isMobile;
@@ -276,12 +327,22 @@ function AppSidebarNavigation({
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigation.map((entry) => (
+              {navigation.map((entry, entryIndex) => (
                 entry.type === 'separator' ? (
                   <AppSidebarSeparator
                     id={entry.id}
                     key={entry.id}
                     label={entry.label}
+                  />
+                ) : entry.type === 'section' ? (
+                  <AppSidebarSection
+                    getHref={getHref}
+                    getIcon={getIcon}
+                    isItemActive={isItemActive}
+                    key={entry.id}
+                    onNavigate={handleNavigate}
+                    section={entry}
+                    separated={entryIndex > 0}
                   />
                 ) : entry.type === 'group' ? (
                   <AppSidebarGroup
@@ -360,6 +421,7 @@ function AppSidebar({
 export {
   AppSidebar,
   AppSidebarNavigation,
+  AppSidebarSection,
   AppSidebarSeparator,
   findActiveGroupId,
 };
