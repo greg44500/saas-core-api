@@ -222,17 +222,24 @@ function ExpandedSidebarGroup({
 }
 
 function AppSidebarSectionLabel({
+  collapsed,
   id,
   label,
   separated,
 }) {
+  if (collapsed) {
+    return separated
+      ? <AppSidebarSeparator id={id} />
+      : null;
+  }
+
   if (separated) {
     return <AppSidebarSeparator id={id} label={label} />;
   }
 
   return (
     <li
-      className="px-2 pb-1 pt-1 group-data-[collapsible=icon]:hidden"
+      className="px-2 pb-1 pt-1"
       data-navigation-id={id}
       data-sidebar="section-label"
     >
@@ -251,9 +258,13 @@ function AppSidebarSection({
   section,
   separated,
 }) {
+  const { isMobile, state } = useSidebar();
+  const collapsed = state === 'collapsed' && !isMobile;
+
   return (
     <>
       <AppSidebarSectionLabel
+        collapsed={collapsed}
         id={section.id}
         label={section.label}
         separated={separated}

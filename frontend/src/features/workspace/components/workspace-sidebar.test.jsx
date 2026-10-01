@@ -360,4 +360,59 @@ describe('WorkspaceSidebar', () => {
 
     expect(screen.queryByRole('separator')).not.toBeInTheDocument();
   });
+  it('conserve uniquement un séparateur muet entre sections en mode compact', async () => {
+    const user = userEvent.setup();
+
+    renderSidebar(
+      [WORKSPACE_PERMISSION.WORKSPACE_READ],
+      {
+        navigation: [
+          {
+            id: 'application-management',
+            type: 'section',
+            label: 'Gestion applicative',
+            items: [
+              {
+                id: 'application-reference',
+                label: 'Référentiel',
+                path: 'reference',
+              },
+            ],
+          },
+          {
+            id: 'application-operations',
+            type: 'section',
+            label: 'Opérations applicatives',
+            items: [
+              {
+                id: 'application-jobs',
+                label: 'Traitements',
+                path: 'jobs',
+              },
+            ],
+          },
+        ],
+      },
+    );
+
+    expect(screen.getByText('Gestion applicative')).toBeInTheDocument();
+    expect(screen.getByText('Opérations applicatives')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', {
+      name: 'Réduire la navigation',
+    }));
+
+    expect(screen.queryByText('Gestion applicative')).not.toBeInTheDocument();
+    expect(screen.queryByText('Opérations applicatives')).not.toBeInTheDocument();
+
+    const separators = screen.getAllByRole('separator');
+    expect(separators).toHaveLength(1);
+    expect(separators[0]).not.toHaveAttribute('aria-label');
+    expect(separators[0]).toHaveAttribute(
+      'data-navigation-id',
+      'application-operations',
+    );
+    expect(screen.getByRole('link', { name: 'Référentiel' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Traitements' })).toBeInTheDocument();
+  });
 });

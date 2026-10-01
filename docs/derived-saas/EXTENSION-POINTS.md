@@ -1116,7 +1116,7 @@ Le Core garantit :
 - absence de séparateur orphelin en tête ou en fin ;
 - prise en charge des enfants par le routing et l’accès rapide ;
 - collisions d’identifiants et de destinations refusées ;
-- mode compact sans consommation d’espace par le libellé ;
+- mode compact sans libellé de section dans le DOM ; seules les séparations visuelles nécessaires entre sections sont conservées ;
 - compatibilité inchangée des descriptors `item` et `group`.
 
 La visibilité applicative peut utiliser explicitement `applicationGlobalPermissions`. Les permissions Platform ne sont jamais converties implicitement en permissions Application Global.
