@@ -1,145 +1,72 @@
 # SAAS-CORE-API — Reprise courante
 
-**Dernière mise à jour :** 2026-10-01  
+**Dernière mise à jour :** 2026-10-02  
 **Baseline stable :** v1.2.1  
-**Point de départ du lot :** `main@d3b9891bc2a32705a0a99b2ed62bed60caf653ca`  
-**Dernier lot intégré avant ce travail :** PR #47 — merge `d3b9891bc2a32705a0a99b2ed62bed60caf653ca`  
-**Branche courante :** `feat/platform-navigation-sections`  
+**Point de départ du lot :** `main@6581e573c6a6885790b23fe502bd34d8199ea6ba`  
+**Branche courante :** `feat/design-system-segmented-workspace-quick-access`  
 **Release cible :** aucune — évolution frontend compatible post-tag v1.2.1
 
 ## Objet du lot
 
-Ajouter au moteur générique de navigation Platform une primitive visuelle `section` utilisable par les SaaS dérivés.
+Ajouter des primitives génériques Design System nécessaires aux produits
+dérivés, sans introduire de logique métier :
 
-Le besoin est uniquement structurel :
+- `ToggleGroup` Base UI ;
+- `SegmentedControl` exclusif et accessible ;
+- variante `Button warning` ;
+- accès rapide Workspace aux vues de navigation autorisées, symétrique à
+  l'accès rapide Platform ;
+- retrait du widget Core `Abonnement` du Dashboard Workspace, puisque le plan
+  est déjà visible dans l'identité utilisateur et reste gérable dans sa vue dédiée.
 
-```text
-Core
-→ fournit la primitive de section visuelle
+## Frontière Core / métier
 
-produit dérivé
-→ fournit libellés, routes, icônes, autorisations et comportement métier
-```
+Le Core fournit la mécanique transverse uniquement. Aucun libellé, taux,
+règle M-004, restauration ou référentiel métier n'est ajouté.
 
-Aucun référentiel métier, produit, fournisseur ou permission métier n’est ajouté au Core.
+Le SaaS dérivé fournit ses items, valeurs, routes, permissions et usages.
 
-## Contrat de navigation Platform
+## Navigation haute
 
-Descriptors historiques conservés :
-
-```text
-item
-group
-separator interne Core
-```
-
-Nouveau descriptor applicatif :
+La recherche de la topbar n'est pas une recherche de données métier.
 
 ```text
-section
-→ id
-→ label
-→ items[]
-→ isVisible(context) optionnel
+Platform
+→ accès rapide aux vues Platform autorisées
+
+Workspace
+→ accès rapide aux vues Workspace autorisées
 ```
 
-Une `section` :
+La mécanique Autocomplete/recherche est mutualisée dans
+`components/shared/navigation-quick-access.jsx`.
 
-- organise visuellement les entrées ;
-- n’est jamais repliable ;
-- disparaît si tous ses enfants sont filtrés ;
-- ne laisse aucun séparateur orphelin ;
-- reste compatible avec la Sidebar compacte ;
-- alimente le routing et l’accès rapide à travers ses enfants.
-
-Les anciens descriptors `item` et `group` conservent leur comportement et leur séparation historique.
-
-## Autorisations
-
-Invariant inchangé :
-
-```text
-Platform permissions
-≠
-Application Global permissions
-```
-
-Le contexte de visibilité conserve séparément :
-
-```text
-platformAccess
-platformPermissions
-applicationGlobalPermissions
-```
-
-Un Fondateur / Super Admin Platform ne reçoit aucune permission Application Global implicite. Les guards backend restent l’autorité de sécurité.
-
-## Périmètre du lot
-
-Modifié :
-
-```text
-frontend/src/app/application-platform-navigation.js
-frontend/src/features/platform/lib/platform-navigation.js
-frontend/src/components/shared/app-sidebar.jsx
-frontend/src/app/application-platform-navigation.test.js
-frontend/src/features/platform/lib/platform-navigation.test.js
-frontend/src/features/workspace/components/workspace-sidebar.test.jsx
-docs/derived-saas/EXTENSION-POINTS.md
-docs/derived-saas/DERIVED-SAAS.md
-docs/REPRISE-CURRENT.md
-```
-
-Non modifié :
-
-```text
-backend d’autorisation
-MongoDB / Mongoose
-migrations
-plans / capabilities
-RBAC Workspace
-Files
-subscriptions
-référentiels métier
-routes métier
-```
+Les enfants de `group` et `section` Workspace sont filtrés par permissions
+et capabilities avant d'être rendus ou proposés dans l'accès rapide.
 
 ## Validation
 
-Gate canonique :
+Validation canonique :
 
 ```bash
 npm run release:check
 ```
 
-Elle reste l’autorité avant merge.
-
-Le résultat de la Core Gate est communiqué par Greg. Ne pas sonder ou relancer périodiquement GitHub Actions.
+La Core Gate de la PR reste l'autorité avant merge. Greg communique son
+résultat ; ne pas sonder périodiquement GitHub Actions.
 
 ## Versionnement
 
-La baseline stable reste :
+Aucun changement de version, tag ou GitHub Release pour ce lot.
+
+La baseline reste :
 
 ```text
 version = 1.2.1
 tag     = v1.2.1
 ```
 
-Le tag `v1.2.1` reste immuable. Aucun nouveau tag, aucune GitHub Release et aucune micro-version artificielle ne sont créés pour ce lot.
-
-Après merge et validation de la Gate finale, un SaaS dérivé peut intégrer le SHA Core exact descendant de `v1.2.1` en conservant la version et le tag de base dans `core-origin.json`.
-
-## Après validation Core
-
-Ne pas modifier `saas-fiches-techniques-gms` avant confirmation de la fusion et de la Gate finale.
-
-La reprise produit devra suivre :
-
-```text
-branche core-update dédiée
-→ intégration du SHA Core exact
-→ tests globaux produit
-→ Core Gate produit
-→ core-origin.json après validation
-→ implémentation métier de Gestion des référentiels
-```
+Après merge et Core Gate finale verte, le produit dérivé peut intégrer le SHA
+Core exact descendant de v1.2.1 dans une branche `core-update/v1.2.1`, en
+conservant `version` et `tag` et en mettant à jour uniquement le `commit`
+de `core-origin.json` après validation.
