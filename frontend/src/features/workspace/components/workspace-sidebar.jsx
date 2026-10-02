@@ -5,6 +5,7 @@ import { AppSidebar } from '@/components/shared/app-sidebar';
 import { useWorkspaceContext } from '@/features/workspace/components/workspace-context';
 import {
   filterWorkspaceNavigation,
+  getActiveNavigationGroupId,
   isNavigationItemActive,
 } from '@/features/workspace/lib/workspace-navigation';
 
@@ -33,4 +34,9 @@ function WorkspaceSidebar({ navigation = [], workspace }) {
   );
 }
 
-export { WorkspaceSidebar };
+export {
+  WorkspaceSidebar,
+  filterWorkspaceNavigation,
+  getActiveNavigationGroupId,
+  isNavigationItemActive,
+};
