@@ -15,7 +15,9 @@ dérivés, sans introduire de logique métier :
 - `SegmentedControl` exclusif et accessible ;
 - variante `Button warning` ;
 - accès rapide Workspace aux vues de navigation autorisées, symétrique à
-  l'accès rapide Platform.
+  l'accès rapide Platform ;
+- retrait du widget Core `Abonnement` du Dashboard Workspace, puisque le plan
+  est déjà visible dans l'identité utilisateur et reste gérable dans sa vue dédiée.
 
 ## Frontière Core / métier
 
