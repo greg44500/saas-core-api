@@ -81,39 +81,92 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clamav
 
+      - name: Verify MongoDB image
+        run: |
+          set -euo pipefail
+
+          docker pull mongo:8.0
+          docker image inspect mongo:8.0 \
+            --format 'Image={{.Id}} OS={{.Os}} Architecture={{.Architecture}} Digests={{json .RepoDigests}}'
+          docker run --rm mongo:8.0 mongod --version | grep -E '^db version v8\.0\.'
+
       - name: Start MongoDB replica set
         run: |
-          docker run --rm -d \
+          set -euo pipefail
+
+          # Do not use --rm: retain an exited container and its logs for diagnosis.
+          container_id="$(docker run -d \
             --name saas-core-mongo \
-            -p 27017:27017 \
+            -p 127.0.0.1:27017:27017 \
             mongo:8.0 \
             --replSet rs0 \
-            --bind_ip_all
+            --bind_ip_all)"
+          test -n "$container_id"
+          echo "MongoDB container: $container_id"
 
+          ready=false
           for attempt in {1..30}; do
-            if docker exec saas-core-mongo mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' | grep -q '^1$'; then
+            state="$(docker inspect saas-core-mongo --format '{{.State.Status}}')"
+            if [[ "$state" != "running" ]]; then
+              exit_code="$(docker inspect saas-core-mongo --format '{{.State.ExitCode}}')"
+              echo "::error::MongoDB exited before readiness (state=$state, exitCode=$exit_code)." >&2
+              exit 1
+            fi
+            if docker exec saas-core-mongo mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' 2>/dev/null | grep -qx '1'; then
+              ready=true
               break
             fi
             sleep 2
           done
 
-          docker exec saas-core-mongo mongosh --quiet --eval \
-            'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
+          if [[ "$ready" != true ]]; then
+            echo "::error::MongoDB did not respond to ping within 60 seconds." >&2
+            exit 1
+          fi
 
+          docker exec saas-core-mongo mongosh --quiet --eval \
+            'const result = rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]}); if (result.ok !== 1) { printjson(result); quit(1); }'
+
+          primary=false
           for attempt in {1..30}; do
-            if docker exec saas-core-mongo mongosh --quiet --eval 'db.hello().isWritablePrimary' | grep -q '^true$'; then
-              exit 0
+            state="$(docker inspect saas-core-mongo --format '{{.State.Status}}')"
+            if [[ "$state" != "running" ]]; then
+              exit_code="$(docker inspect saas-core-mongo --format '{{.State.ExitCode}}')"
+              echo "::error::MongoDB exited during replica set election (state=$state, exitCode=$exit_code)." >&2
+              exit 1
+            fi
+            if docker exec saas-core-mongo mongosh --quiet --eval 'db.hello().isWritablePrimary' 2>/dev/null | grep -qx 'true'; then
+              primary=true
+              break
             fi
             sleep 2
           done
 
-          echo 'MongoDB replica set did not become writable primary.' >&2
-          docker logs saas-core-mongo
-          exit 1
+          if [[ "$primary" != true ]]; then
+            echo "::error::MongoDB replica set rs0 did not become writable primary within 60 seconds." >&2
+            exit 1
+          fi
+
+          echo 'MongoDB replica set rs0 is writable primary.'
 
       - name: Run canonical Core gate
         run: npm run release:check
 
-      - name: MongoDB logs on failure
+      - name: MongoDB diagnostics on failure
         if: failure()
-        run: docker logs saas-core-mongo || true
+        run: |
+          docker ps -a --filter 'name=^/saas-core-mongo$'
+          if docker container inspect saas-core-mongo >/dev/null 2>&1; then
+            docker inspect saas-core-mongo --format \
+              'MongoDB state={{.State.Status}} exitCode={{.State.ExitCode}} error={{.State.Error}} image={{.Image}}'
+            docker logs --timestamps saas-core-mongo
+          else
+            echo 'MongoDB container was not created or is no longer available.'
+          fi
+
+      - name: Remove MongoDB container
+        if: always()
+        run: |
+          if docker container inspect saas-core-mongo >/dev/null 2>&1; then
+            docker rm -f saas-core-mongo
+          fi
