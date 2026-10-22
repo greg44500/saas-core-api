@@ -88,7 +88,8 @@ jobs:
           docker pull mongo:8.0
           docker image inspect mongo:8.0 \
             --format 'Image={{.Id}} OS={{.Os}} Architecture={{.Architecture}} Digests={{json .RepoDigests}}'
-          docker run --rm mongo:8.0 mongod --version | grep -E '^db version v8\.0\.'
+          # The running server is checked for its MongoDB version after readiness.
+          # A disposable container would discard the diagnostic evidence on early exit.
 
       - name: Start MongoDB replica set
         run: |
@@ -121,6 +122,13 @@ jobs:
 
           if [[ "$ready" != true ]]; then
             echo "::error::MongoDB did not respond to ping within 60 seconds." >&2
+            exit 1
+          fi
+
+          mongo_version="$(docker exec saas-core-mongo mongosh --quiet --eval 'db.version()')"
+          echo "Running MongoDB server version: $mongo_version"
+          if [[ ! "$mongo_version" =~ ^8\.0\.[0-9]+$ ]]; then
+            echo "::error::MongoDB server must use the 8.0 release series (got: $mongo_version)." >&2
             exit 1
           fi
 
