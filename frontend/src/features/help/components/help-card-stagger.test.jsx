@@ -63,7 +63,7 @@ describe('HelpCenter — apparition en cascade', () => {
       </TooltipProvider>,
     );
 
-    const first = screen.getByRole('link', { name: /Procédure compte 1/ });
+    const first = screen.getByRole('link', { name: /Procédure compte 1\\b/ });
     const second = screen.getByRole('link', { name: /Procédure compte 2/ });
     const last = screen.getByRole('link', { name: /Procédure compte 10/ });
 
@@ -79,7 +79,7 @@ describe('HelpCenter — apparition en cascade', () => {
     expect(members).toHaveClass('help-card-stagger-in');
     expect(members.style.getPropertyValue('--help-card-stagger-index')).toBe('0');
     expect(invite.style.getPropertyValue('--help-card-stagger-index')).toBe('1');
-    expect(screen.queryByRole('link', { name: /Procédure compte 1/ }))
+    expect(screen.queryByRole('link', { name: /Procédure compte 1\\b/ }))
       .not.toBeInTheDocument();
   });
 });
