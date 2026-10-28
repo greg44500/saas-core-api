@@ -131,10 +131,11 @@ function HelpCatalog({ basePath, catalog }) {
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {activeEntries.map((entry) => (
+                    {activeEntries.map((entry, index) => (
                       <Link
-                        className="group block h-40 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="help-card-stagger-in group block h-40 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         key={entry.id}
+                        style={{ '--help-card-stagger-index': Math.min(index, 8) }}
                         to={`${basePath}/${entry.id}`}
                       >
                         <Card className="h-full transition-[border-color,background-color,box-shadow] group-hover:border-primary/50 group-hover:bg-accent/25 group-hover:shadow-sm">
