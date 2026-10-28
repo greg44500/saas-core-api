@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,13 +13,7 @@ const categories = [
   { value: 'process', label: 'Fiches process' },
 ];
 
-let onResize;
-
 class MockResizeObserver {
-  constructor(callback) {
-    onResize = callback;
-  }
-
   observe() {}
 
   disconnect() {}
@@ -87,13 +81,12 @@ function simulateViewport({ width, contentWidth }) {
   });
   viewport.scrollTo = scrollTo;
 
-  act(() => onResize?.());
+  fireEvent.resize(window);
 
   return { viewport, scrollTo };
 }
 
 beforeEach(() => {
-  onResize = undefined;
   vi.stubGlobal('ResizeObserver', MockResizeObserver);
 });
 
@@ -179,7 +172,7 @@ describe('ScrollableTabsList', () => {
       clientWidth: { configurable: true, value: 600 },
       scrollWidth: { configurable: true, value: 480 },
     });
-    act(() => onResize?.());
+    fireEvent.resize(window);
 
     expect(screen.queryByRole('button', {
       name: 'Faire défiler les onglets vers la droite',
